@@ -1,0 +1,27 @@
+id: default
+name: Cold Chuck
+slots:
+  - id: slot_1
+    name: Slot 1
+    pos:
+        x: 100
+        y: 250
+        z: 0
+  - id: slot_2
+    name: Slot 2
+    pos:
+        x: 125
+        y: 250
+        z: 0
+  - id: slot_3
+    name: Slot 3
+    pos:
+        x: 150
+        y: 250
+        z: 0
+  - id: slot_4
+    name: Slot 4
+    pos:
+        x: 175
+        y: 250
+        z: 0

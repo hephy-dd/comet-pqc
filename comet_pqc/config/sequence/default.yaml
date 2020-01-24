@@ -1,0 +1,281 @@
+id: default
+name: Default
+description: Default measurement sequence.
+items:
+  - name: PQC Flute 1
+    socket: socket_1
+    measurements:
+      - name: Polysilicon Van-der-Pauw cross
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 500 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: N+ Van-der-Pauw cross
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -1 mA
+            current_stop: 1 mA
+            Current_step: 50 uA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: P-stop Van-der-Pauw cross
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -500 nA
+            current_stop: 500 nA
+            current_step: 25 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: FET
+        type: bias_iv_ramp
+        parameters:
+            matrix: []
+            bias_voltage: 100 mV
+            bias_current_compliance: 10 uA
+            voltage_start: -5 V
+            voltage_stop: 10 V
+            voltage_step: 0.1 V
+            waiting_time: 500 ms # TODO 0-500ms
+            current_compliance: 10 uA
+            sense_mode: local
+      - name: MOS capacitor
+        type: cv_ramp
+        parameters:
+            matrix: []
+            bias_voltage_start: -5 V
+            bias_voltage_stop: 10 V
+            bias_voltage_step: 0.1 V
+            waiting_time: 100 ms
+            current_compliance: 1 uA
+            lcr_frequency: 1 kHz # TODO 10 kHz
+            lcr_amplitude: 250 mV
+            # TODO variants
+      - name: Capacitor test structure
+        type: cv_ramp
+        parameters:
+            matrix: []
+            bias_voltage_start: -5 V
+            bias_voltage_stop: 5 V
+            bias_voltage_step: 0.1 V
+            waiting_time: 100 ms
+            current_compliance: 100 uA
+            sense_mode: local
+            lcr_frequency: 1 kHz
+            lcr_amplitude: 250 mV
+            # TODO variants
+      - name: Diode IV
+        type: iv_ramp
+        parameters:
+            matrix: []
+            voltage_start: 0 V
+            voltage_stop: -1000 V
+            voltage_step: 10 V
+            waiting_time: 1 s
+            current_compliance: 1 uA
+            sense_mode: local
+      - name: Diode CV
+        type: cv_ramp
+        parameters:
+            matrix: []
+            bias_voltage_start: 0 V
+            bias_voltage_stop: -500 V
+            bias_voltage_step: 5 V
+            waiting_time: 500 ms
+            current_compliance: 100 uA
+            sense_mode: local
+            lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
+            lcr_amplitude: 250 mV
+  - name: PQC Flute 2
+    socket: socket_2
+    measurements:
+      - name: GCD
+        type: bias_iv_ramp
+        parameters:
+            matrix: []
+            bias_voltage: -5 V
+            bias_current_compliance: 10 uA
+            voltage_start: -10 V
+            voltage_stop: 10 V
+            voltage_step: 0.1 V
+            waiting_time: 500 ms # TODO 0-500ms
+            current_compliance: 10 uA
+            sense_mode: local
+      - name: Polysilicon meander
+        type: iv_ramp
+        parameters:
+            matrix: []
+            voltage_start: -100 mV
+            voltage_stop: 100 mV
+            voltage_step: 25 mV
+            waiting_time: 200 ms
+            current_compliance: 10 uA
+            sense_mode: local
+      - name: N+ linewidth structure
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -1 mA
+            current_stop: 1 mA
+            current_step: 50 uA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: P-stop linewidth structure
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -500 nA
+            current_stop: 500 nA
+            current_step: 25 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Dielectric Breakdown
+        type: iv_ramp
+        parameters:
+            matrix: []
+            voltage_start: 0 V
+            voltage_stop: 250 V
+            voltage_step: 10 V
+            waiting_time: 500 ms
+            current_compliance: 1 uA
+            sense_mode: local
+  - name: PQC Flute 3
+    socket: socket_3
+    measurements:
+      - name: Metal meander
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -1 mA
+            current_stop: 1 mA
+            current_step: 50 uA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Metal clover leaf Van-der-Pauw
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 mA # TODO -10 mA, -100 mA
+            current_stop: 10 mA # TODO 10 mA, 100 mA
+            current_step: 500 uA # TODO 500 uA, 5 mA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: P+ cross-bridge Van-der-Pauw
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 500 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Bulk cross
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: 0 nA
+            current_stop: 500 nA
+            current_step: 5 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Diode IV
+        type: iv_ramp
+        parameters:
+            matrix: []
+            voltage_start: 0 V
+            voltage_stop: -1000 V
+            voltage_step: 10 V
+            waiting_time: 1 s
+            current_compliance: 1 uA
+            sense_mode: local
+      - name: Diode CV
+        type: cv_ramp
+        parameters:
+            matrix: []
+            bias_voltage_start: 0 V
+            bias_voltage_stop: -500 V
+            bias_voltage_step: 5 V
+            waiting_time: 500 ms
+            current_compliance: 100 uA
+            sense_mode: local
+            lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
+            lcr_amplitude: 250 mV
+  - name: PQC Flute 4
+    socket: socket_4
+    measurements:
+      - name: GCD05
+        type: bias_iv_ramp
+        parameters:
+            matrix: []
+            bias_voltage: -5 V
+            bias_current_compliance: 10 uA
+            voltage_start: -10 V
+            voltage_stop: 10 V
+            voltage_step: 0.1 V
+            waiting_time: 500 ms # TODO 0-500ms
+            current_compliance: 10 uA
+            sense_mode: local
+      - name: N+ CBKR
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 100 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Polysilicon CBKR
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 100 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: Polysilicon contact chain
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 100 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: P+ contact chain
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 100 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote
+      - name: N+ contact chain
+        type: 4wire_iv_ramp
+        parameters:
+            matrix: []
+            current_start: -10 uA
+            current_stop: 10 uA
+            current_step: 100 nA
+            waiting_time: 200 ms
+            voltage_compliance: 20 V
+            sense_mode: remote

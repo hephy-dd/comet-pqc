@@ -1,0 +1,38 @@
+type: object
+properties:
+    id:
+        type: string
+    name:
+        type: string
+    description:
+        type: string
+    slots:
+        type: array
+        items:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                pos:
+                    type: object
+                    properties:
+                        x:
+                            type: integer
+                        y:
+                            type: integer
+                        z:
+                            type: integer
+                    required:
+                      - x
+                      - y
+                      - z
+            required:
+              - id
+              - name
+              - pos
+required:
+  - id
+  - name
+  - slots
