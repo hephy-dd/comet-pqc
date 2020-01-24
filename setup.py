@@ -8,7 +8,6 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'comet @ https://github.com/hephy-dd/comet/archive/0.6.0.zip#egg=comet-0.6.0',
-        'pint',
         'pyyaml',
         'jsonschema'
     ],
