@@ -13,6 +13,7 @@ This COMET application provides PQC sensor measurements.
 - Keithley 6517B Electrometer
 - Keithley 2657A Source Meter
 - Keithley 2410 Source Meter
+- Corvus TT positioning controller
 
 ## Install
 
