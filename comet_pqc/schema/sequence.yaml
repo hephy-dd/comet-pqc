@@ -2,6 +2,8 @@ type: object
 properties:
     id:
         type: string
+    enabled:
+        type: boolean
     name:
         type: string
     description:
@@ -11,6 +13,8 @@ properties:
         items:
             type: object
             properties:
+                enabled:
+                    type: boolean
                 name:
                     type: string
                 socket:

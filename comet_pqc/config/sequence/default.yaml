@@ -47,7 +47,7 @@ items:
             waiting_time: 500 ms # TODO 0-500ms
             current_compliance: 10 uA
             sense_mode: local
-      - name: MOS capacitor
+      - name: MOS capacitor (2 SMU)
         type: cv_ramp
         parameters:
             matrix: []
@@ -58,8 +58,19 @@ items:
             current_compliance: 1 uA
             lcr_frequency: 1 kHz # TODO 10 kHz
             lcr_amplitude: 250 mV
-            # TODO variants
-      - name: Capacitor test structure
+      - name: MOS capacitor (1 SMU)
+        type: cv_ramp_alt
+        enabled: false
+        parameters:
+            matrix: []
+            bias_voltage_start: -5 V
+            bias_voltage_stop: 10 V
+            bias_voltage_step: 0.1 V
+            waiting_time: 100 ms
+            current_compliance: 1 uA
+            lcr_frequency: 1 kHz # TODO 10 kHz
+            lcr_amplitude: 250 mV
+      - name: Capacitor test structure (2 SMU)
         type: cv_ramp
         parameters:
             matrix: []
@@ -71,7 +82,19 @@ items:
             sense_mode: local
             lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
-            # TODO variants
+      - name: Capacitor test structure (1 SMU)
+        type: cv_ramp_alt
+        enabled: false
+        parameters:
+            matrix: []
+            bias_voltage_start: -5 V
+            bias_voltage_stop: 5 V
+            bias_voltage_step: 0.1 V
+            waiting_time: 100 ms
+            current_compliance: 100 uA
+            sense_mode: local
+            lcr_frequency: 1 kHz
+            lcr_amplitude: 250 mV
       - name: Diode IV
         type: iv_ramp
         parameters:

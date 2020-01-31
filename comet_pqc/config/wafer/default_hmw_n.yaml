@@ -1,6 +1,6 @@
-id: default_hme_n
-name: Default HME N
-description: Default wafer, east half-moon, northern structure.
+id: default_hmw_n
+name: Default HMW N
+description: Default wafer, west half-moon, northern structure.
 references:
   - id: ref_1
     name: Reference 1
