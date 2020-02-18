@@ -12,12 +12,14 @@ from .trees import *
 from .panels import *
 
 def main():
-    app = comet.Application('comet-pqc')
+    app = comet.Application()
+    app.name = 'comet-pqc'
     app.version = __version__
     app.title = f"PQC {app.version}"
-    app.qt.window.resize(960, 720)
+    app.width = 960
+    app.height = 720
 
-    def on_calibrate(event):
+    def on_calibrate():
         result =comet.show_question(
             title="Calibrate table",
             text="Are you sure to calibrate the table?"
@@ -28,7 +30,7 @@ def main():
             app.layout.get("stop_btn").enabled = False
             app.processes.get("calibrate").start()
 
-    def on_start(event):
+    def on_start():
         result =comet.show_question(
             title="Start measurement",
             text="Are you sure to start a new measurement?"
@@ -39,7 +41,7 @@ def main():
             app.layout.get("stop_btn").enabled = True
             app.processes.get("measure").start()
 
-    def on_stop(event):
+    def on_stop():
         result =comet.show_question(
             title="Stop measurement",
             text="Are you sure to stop the running measurement?"
@@ -74,28 +76,24 @@ def main():
         app.progress = value, maximum
 
     app.processes.add("calibrate", CalibrateProcess(
-        finish=on_calibrate_finish,
-        slots=dict(
-            message=on_message,
-            progress=on_progress
-        )
+        finished=on_calibrate_finish,
+        message=on_message,
+        progress=on_progress
     ))
     app.processes.add("measure", MeasureProcess(
-        finish=on_measure_finish,
-        slots=dict(
-            message=on_message,
-            progress=on_progress,
-            show_panel=on_show_panel
-        )
+        finished=on_measure_finish,
+        message=on_message,
+        progress=on_progress,
+        show_panel=on_show_panel
     ))
 
     app.layout = comet.Row(
         comet.Column(
             WaferTree(id="wafer_tree"),
             SequenceTree(id="sequence_tree"),
-            comet.Button(id="calib_btn", text="Calibrate", enabled=True, click=on_calibrate),
-            comet.Button(id="start_btn", text="Start", enabled=True, click=on_start),
-            comet.Button(id="stop_btn", text="Stop", enabled=False, click=on_stop),
+            comet.Button(id="calib_btn", text="Calibrate", enabled=True, clicked=on_calibrate),
+            comet.Button(id="start_btn", text="Start", enabled=True, clicked=on_start),
+            comet.Button(id="stop_btn", text="Stop", enabled=False, clicked=on_stop),
             stretch=(3,7,0,0,0)
         ),
         comet.Column(

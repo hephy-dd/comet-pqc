@@ -1,5 +1,3 @@
-from PyQt5 import QtWidgets
-
 import comet
 
 class Panel(comet.Widget):
