@@ -64,6 +64,7 @@ def main():
         if result:
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
+            app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = False
             app.processes.get("calibrate").start()
 
@@ -75,7 +76,9 @@ def main():
         if result:
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
+            app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = True
+            app.layout.get("tabs").current = 0
             app.processes.get("measure").start()
 
     def on_stop():
@@ -86,18 +89,21 @@ def main():
         if result:
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
+            app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = False
             app.processes.get("measure").stop()
 
     def on_calibrate_finish():
         app.layout.get("calib_btn").enabled = True
         app.layout.get("start_btn").enabled = True
+        app.layout.get("cont_btn").enabled = False
         app.layout.get("stop_btn").enabled = False
         app.progress = None
 
     def on_measure_finish():
         app.layout.get("calib_btn").enabled = True
         app.layout.get("start_btn").enabled = True
+        app.layout.get("cont_btn").enabled = False
         app.layout.get("stop_btn").enabled = False
         app.progress = None
 
@@ -105,6 +111,16 @@ def main():
         for panel in app.layout.get("panels").children:
             panel.visible = False
         app.layout.get(id).visible = True
+
+    def on_auto_toggle(checked):
+        app.processes.get("measure").auto_continue = checked
+
+    def on_continue():
+        app.layout.get("cont_btn").enabled = False
+        app.processes.get("measure").wait_for_continue = False
+
+    def on_enable_continue():
+        app.layout.get("cont_btn").enabled = True
 
     def on_message(message):
         app.message = message
@@ -121,7 +137,8 @@ def main():
         finished=on_measure_finish,
         message=on_message,
         progress=on_progress,
-        show_panel=on_show_panel
+        show_panel=on_show_panel,
+        enable_continue=on_enable_continue
     ))
 
     app.layout = comet.Row(
@@ -130,16 +147,32 @@ def main():
             SequenceTree(id="sequence_tree"),
             comet.Button(id="calib_btn", text="Calibrate", enabled=True, clicked=on_calibrate),
             comet.Button(id="start_btn", text="Start", enabled=True, clicked=on_start),
+            comet.Row(
+                comet.Button(id="auto_btn", text="Autopilot", checkable=True, checked=True, toggled=on_auto_toggle),
+                comet.Button(id="cont_btn", text="Continue", enabled=False, clicked=on_continue),
+            ),
             comet.Button(id="stop_btn", text="Stop", enabled=False, clicked=on_stop),
             stretch=(3,7,0,0,0)
         ),
-        comet.Column(
-            IVRamp(id="iv_ramp", visible=False),
-            BiasIVRamp(id="bias_iv_ramp", visible=False),
-            CVRamp(id="cv_ramp", visible=False),
-            CVRampAlt(id="cv_ramp_alt", visible=False),
-            FourWireIVRamp(id="4wire_iv_ramp", visible=False),
-            id="panels"
+        comet.Tabs(
+            comet.Tab(
+                title="Measurement",
+                layout=comet.Column(
+                    IVRamp(id="iv_ramp", visible=False),
+                    BiasIVRamp(id="bias_iv_ramp", visible=False),
+                    CVRamp(id="cv_ramp", visible=False),
+                    CVRampAlt(id="cv_ramp_alt", visible=False),
+                    FourWireIVRamp(id="4wire_iv_ramp", visible=False),
+                    id="panels"
+                )
+            ),
+            comet.Tab(
+                title="Summary",
+                layout=comet.Column(
+                    id="summary"
+                )
+            ),
+            id="tabs"
         ),
         stretch=(4,9)
     )
