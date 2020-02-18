@@ -3,6 +3,12 @@ import sys
 from PyQt5 import QtWidgets
 
 import comet
+from comet.driver.keithley import K707B
+from comet.driver.keithley import K2657A
+from comet.driver.keysight import E4980A
+from comet.driver.keithley import K6517B
+from comet.driver.keithley import K2410
+from comet.driver.corvus import Venus1
 
 from . import config
 from . import __version__
@@ -16,8 +22,39 @@ def main():
     app.name = 'comet-pqc'
     app.version = __version__
     app.title = f"PQC {app.version}"
+    app.about = f"COMET application for PQC measurements, version {app.version}."
     app.width = 960
     app.height = 720
+
+    # Register devices
+    app.devices.add("matrix", K707B(comet.Resource(
+        resource_name="TCPIP::10.0.0.2::23::SOCKET",
+        encoding='latin1',
+        read_termination="\r\n"
+    )))
+    app.devices.add("smu1", K2657A(comet.Resource(
+        resource_name="TCPIP::10.0.0.3::23::SOCKET",
+        encoding='latin1',
+        read_termination="\r\n"
+    )))
+    app.devices.add("lcr", E4980A(comet.Resource(
+        resource_name="TCPIP::10.0.0.4::5025::SOCKET",
+        read_termination="\r\n"
+    )))
+    app.devices.add("elm", K6517B(comet.Resource(
+        resource_name="TCPIP::10.0.0.5::10001::SOCKET",
+        read_termination="\r\n"
+    )))
+    app.devices.add("smu2", K2410(comet.Resource(
+        resource_name="TCPIP::10.0.0.5::10002::SOCKET",
+        read_termination="\r\n"
+    )))
+    app.devices.add("corvus", Venus1(comet.Resource(
+        resource_name="TCPIP::10.0.0.6::23::SOCKET",
+        read_termination="\r\n",
+        write_termination="\r\n"
+    )))
+    app.devices.load_settings()
 
     def on_calibrate():
         result =comet.show_question(
