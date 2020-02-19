@@ -101,7 +101,7 @@ class Chuck:
 class ChuckSlot:
 
     def __init__(self, id, name, pos, description=""):
-        self.id = id,
+        self.id = id
         self.name = name
         self.pos = Position(**pos)
         self.description = description
