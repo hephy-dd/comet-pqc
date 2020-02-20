@@ -21,9 +21,6 @@ class CalibrateProcess(comet.Process):
 class MeasureProcess(comet.Process):
     """Measure process executing a sequence of measurements."""
 
-    cuck_config = {}
-    wafer_config = {}
-    sequence_config = {}
     wafers = []
 
     manual_mode = False
@@ -56,13 +53,11 @@ class MeasureProcess(comet.Process):
     def run(self):
         self.push("message", "Measuring...")
         self.wait_for_continue.clear()
-        wafer_config = self.wafer_config
-        config = self.sequence_config
         # Count measurements
         count = 0
         step = 0
         for wafer in self.wafers:
-            for item in config.items:
+            for item in wafer["sequence_config"].items:
                 if item.enabled:
                     for measurement in item.measurements:
                         if measurement.enabled:
@@ -75,11 +70,11 @@ class MeasureProcess(comet.Process):
                 if not self.pause():
                     break
         for wafer in self.wafers:
-            for item in config.items:
+            for item in wafer["sequence_config"].items:
                 if not self.running:
                     break
+                item.locked = True
                 if item.enabled:
-                    item.locked = True
                     item.state = "ACTIVE"
                     if self.manual_mode:
                         ref = {}
@@ -88,8 +83,8 @@ class MeasureProcess(comet.Process):
                         if not self.pause():
                             break
                     for measurement in item.measurements:
+                        measurement.locked = True
                         if measurement.enabled:
-                            measurement.locked = True
                             measurement.state = "ACTIVE"
                             if not self.auto_continue:
                                 self.push("enable_continue")
@@ -103,5 +98,8 @@ class MeasureProcess(comet.Process):
                             self.run_measurement(measurement)
                             measurement.state = "DONE"
                             step += 1
-                    item.state = "DONE"
+                # Lock all before next flute
+                for measurement in item.measurements:
+                    measurement.locked = True
+            item.state = "DONE"
         self.push("message", "Done.")

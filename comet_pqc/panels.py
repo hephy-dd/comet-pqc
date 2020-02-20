@@ -22,6 +22,7 @@ class BiasIVRamp(Panel):
         super().__init__(*args, **kwargs)
         self.layout = comet.Column(
             comet.Label("Bias + IV Ramp"),
+            comet.Plot(),
             comet.Stretch()
         )
 
@@ -51,5 +52,6 @@ class FourWireIVRamp(Panel):
         super().__init__(*args, **kwargs)
         self.layout = comet.Column(
             comet.Label("4 Wire IV Ramp"),
+            comet.Plot(),
             comet.Stretch()
         )

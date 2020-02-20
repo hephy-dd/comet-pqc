@@ -4,15 +4,27 @@ import comet
 
 class SlotItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, slot, wafer, sequence):
+    def __init__(self, slot):
         super().__init__()
         self.setCheckState(0, QtCore.Qt.Checked)
         self.setData(0, 0x2000, slot)
         self.setText(0, slot.name)
-        self.setData(1, 0x2000, wafer)
-        self.setText(1, wafer.name)
-        self.setData(2, 0x2000, sequence)
-        self.setText(2, sequence.name)
+
+    @property
+    def checked(self):
+        return self.checkState(0) == QtCore.Qt.Checked
+
+    @property
+    def slot(self):
+        return self.data(0, 0x2000)
+
+    @property
+    def wafer_config(self):
+        return self.treeWidget().itemWidget(self, 1).currentData()
+
+    @property
+    def sequence_config(self):
+        return self.treeWidget().itemWidget(self, 2).currentData()
 
 class WaferTree(comet.Widget):
     """Wafer/Slot selection widget."""
@@ -34,11 +46,26 @@ class WaferTree(comet.Widget):
         if column == 2:
             comet.show_info(title="2", text=item.data(2, 0x2000).id)
 
-    def load(self, config, wafer, sequence):
+    @property
+    def items(self):
+        items = []
+        for index in range(self.qt.topLevelItemCount()):
+            items.append(self.qt.topLevelItem(index))
+        return items
+
+    def load(self, config, wafers, sequences):
         self.qt.clear()
         for slot in config.slots:
-            item = SlotItem(slot, wafer, sequence)
+            item = SlotItem(slot)
             self.qt.addTopLevelItem(item)
+            widget = QtWidgets.QComboBox()
+            for wafer in wafers.values():
+                widget.addItem(wafer.name, wafer)
+            self.qt.setItemWidget(item, 1, widget)
+            widget = QtWidgets.QComboBox()
+            for sequence in sequences.values():
+                widget.addItem(sequence.name, sequence)
+            self.qt.setItemWidget(item, 2, widget)
         self.qt.resizeColumnToContents(2)
         self.qt.resizeColumnToContents(1)
         self.qt.resizeColumnToContents(0)
@@ -87,13 +114,15 @@ class SequenceTree(comet.Widget):
 
     def update_item(self, item, column):
         item.data(0, 0x2000).enabled = item.checkState(0) == QtCore.Qt.Checked
-        print(item.data(0, 0x2000))
 
     def items(self):
         items = []
         for index in range(self.qt.topLevelItemCount()):
             items.append(self.qt.topLevelItem(index))
         return items
+
+    def clear(self):
+        self.qt.clear()
 
     def sync(self):
         for item in self.items():
@@ -104,6 +133,10 @@ class SequenceTree(comet.Widget):
             else:
                 flags &= ~QtCore.Qt.ItemIsUserCheckable
                 color = "green"
+            if item.data(0, 0x2000).state == "ACTIVE":
+                color = "orange"
+            if item.checkState(0) != QtCore.Qt.Checked:
+                item.data(0, 0x2000).state = ""
             item.setFlags(flags)
             item.setForeground(0, QtGui.QBrush(QtGui.QColor(color)))
             item.setForeground(1, QtGui.QBrush(QtGui.QColor(color)))
@@ -116,6 +149,10 @@ class SequenceTree(comet.Widget):
                 else:
                     flags &= ~QtCore.Qt.ItemIsUserCheckable
                     color = "green"
+                if measurement.data(0, 0x2000).state == "ACTIVE":
+                    color = "orange"
+                if measurement.checkState(0) != QtCore.Qt.Checked:
+                    measurement.data(0, 0x2000).state = ""
                 measurement.setFlags(flags)
                 measurement.setForeground(0, QtGui.QBrush(QtGui.QColor(color)))
                 measurement.setForeground(1, QtGui.QBrush(QtGui.QColor(color)))

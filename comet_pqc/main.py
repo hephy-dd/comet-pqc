@@ -1,6 +1,7 @@
+import copy
 import sys
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtMultimedia, QtMultimediaWidgets
 
 import comet
 from comet.driver.keithley import K707B
@@ -16,6 +17,35 @@ from . import __version__
 from .processes import *
 from .trees import *
 from .panels import *
+
+class CameraDialog(QtWidgets.QDialog):
+
+    def __init__(self):
+        super().__init__()
+        self.media_content = QtMultimedia.QMediaContent(QtCore.QUrl("http://10.0.0.0:8080"))
+        self.media_player = QtMultimedia.QMediaPlayer()
+        self.media_player.setMedia(self.media_content)
+        self.video_widget = QtMultimediaWidgets.QVideoWidget()
+        self.video_widget.setFixedSize(640, 480)
+        self.media_player.setVideoOutput(self.video_widget)
+        self.left_button = QtWidgets.QPushButton("Left")
+        self.up_button = QtWidgets.QPushButton("Up")
+        self.down_button = QtWidgets.QPushButton("Down")
+        self.right_button = QtWidgets.QPushButton("Right")
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addWidget(self.left_button)
+        button_layout.addWidget(self.up_button)
+        button_layout.addWidget(self.down_button)
+        button_layout.addWidget(self.right_button)
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok
+        )
+        button_box.accepted.connect(self.accept)
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.video_widget)
+        layout.addLayout(button_layout)
+        layout.addWidget(button_box)
+        self.setLayout(layout)
 
 def main():
     app = comet.Application()
@@ -81,17 +111,29 @@ def main():
             app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = True
             app.layout.get("tabs").current = 0
-            # TODO: load wafers
-            app.processes.get("measure").wafers = [None, None, None, None]
-            for item in app.processes.get("measure").sequence_config.items:
-                item.locked = False
-                item.state = "READY" if item.enabled else ""
-                for measurement in item.measurements:
-                    measurement.locked = False
-                    measurement.state = "READY" if measurement.enabled else ""
-            slot = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
-            app.layout.get(slot.id).sync()
-            app.processes.get("measure").start()
+            measure = app.processes.get("measure")
+            wafers = []
+            for item in app.layout.get("wafer_tree").items:
+                sequence_tree = app.layout.get(item.slot.id)
+                sequence_tree.clear()
+                if item.checked:
+                    # Duplicate configuration for every wafer
+                    wafer_config = copy.deepcopy(item.wafer_config)
+                    sequence_config = copy.deepcopy(item.sequence_config)
+                    wafers.append(dict(
+                        wafer_config=wafer_config,
+                        sequence_config=sequence_config
+                    ))
+                    sequence_tree.load(sequence_config)
+                    for flute in sequence_config.items:
+                        flute.locked = False
+                        flute.state = "" if flute.enabled else ""
+                        for measurement in flute.measurements:
+                            measurement.locked = False
+                            measurement.state = "" if measurement.enabled else ""
+                    sequence_tree.sync()
+            measure.wafers = wafers
+            measure.start()
 
     def on_stop():
         result =comet.show_question(
@@ -120,27 +162,21 @@ def main():
         app.layout.get("cont_btn").enabled = False
         app.layout.get("stop_btn").enabled = False
         app.progress = None
-        for item in app.processes.get("measure").sequence_config.items:
-            item.locked = False
-            for measurement in item.measurements:
-                measurement.locked = False
-        slot = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
-        app.layout.get(slot.id).sync()
 
     def on_next_flute(ref):
         # TODO: camera window
-        from PyQt5 import QtWidgets
-        dialog = QtWidgets.QDialog()
+        dialog = CameraDialog()
         dialog.setWindowTitle("Move to Flute")
-        ref["point"] = dialog.exec_()
+        dialog.exec_()
+        ref["point"] = 2, 3
         app.processes.get("measure").unpause()
 
     def on_select_ref(ref):
         # TODO: camera window
-        from PyQt5 import QtWidgets
-        dialog = QtWidgets.QDialog()
+        dialog = CameraDialog()
         dialog.setWindowTitle("Move to REF point")
-        ref["point"] = dialog.exec_()
+        dialog.exec_()
+        ref["point"] = 2, 3
         app.processes.get("measure").unpause()
 
     def on_show_panel(measurement):
@@ -232,33 +268,48 @@ def main():
     chuck_file = config.list_configs(config.CHUCK_DIR)[0][1]
     chuck_config = config.load_chuck(chuck_file)
 
-    wafers_file = config.list_configs(config.WAFER_DIR)[0][1]
-    wafer_config = config.load_wafer(wafers_file)
+    wafer_configs = {key: config.load_wafer(value) for key, value in config.list_configs(config.WAFER_DIR)}
+    sequence_configs = {key: config.load_sequence(value) for key, value in config.list_configs(config.SEQUENCE_DIR)}
 
-    sequence_file = config.list_configs(config.SEQUENCE_DIR)[0][1]
-    sequence_config = config.load_sequence(sequence_file)
-
-    app.layout.get("wafer_tree").load(chuck_config, wafer_config, sequence_config)
-    #app.layout.get("sequence_tree").load(sequence_config)
-
+    app.layout.get("wafer_tree").load(chuck_config, wafer_configs, sequence_configs)
     app.processes.get("measure").chuck_config = chuck_config
-    app.processes.get("measure").wafer_config = wafer_config
-    app.processes.get("measure").sequence_config = sequence_config
 
     column = app.layout.get("sequences")
     for slot in chuck_config.slots:
         tree = SequenceTree(id=slot.id, slot=slot, visible=slot.id=="slot_1")
         column.append(tree)
-        tree.load(sequence_config)
+        tree.sync()
 
     def on_select(current, previous):
         """Show only the current sequence tree."""
         for child in app.layout.get("sequences").children:
             child.visible = False
-        slot = current.data(0, 0x2000)
-        app.layout.get(slot.id).visible = True
+        app.layout.get(current.slot.id).visible = True
+        app.layout.get(current.slot.id).sync()
 
     app.layout.get("wafer_tree").qt.currentItemChanged.connect(on_select)
+
+    # Init
+    wafers = []
+    for item in app.layout.get("wafer_tree").items:
+        sequence_tree = app.layout.get(item.slot.id)
+        sequence_tree.clear()
+        if item.checked:
+            # Duplicate configuration for every wafer
+            wafer_config = copy.deepcopy(item.wafer_config)
+            sequence_config = copy.deepcopy(item.sequence_config)
+            wafers.append(dict(
+                wafer_config=wafer_config,
+                sequence_config=sequence_config
+            ))
+            sequence_tree.load(sequence_config)
+            for flute in sequence_config.items:
+                flute.locked = False
+                flute.state = "" if flute.enabled else ""
+                for measurement in flute.measurements:
+                    measurement.locked = False
+                    measurement.state = "" if measurement.enabled else ""
+            sequence_tree.sync()
 
     return app.run()
 
