@@ -17,6 +17,7 @@ from . import __version__
 from .processes import *
 from .trees import *
 from .panels import *
+from .dialogs import CameraDialog
 
 class CameraDialog(QtWidgets.QDialog):
 
@@ -153,19 +154,35 @@ def main():
 
     def on_next_flute(ref):
         # TODO: camera window
-        dialog = CameraDialog()
-        dialog.setWindowTitle("Move to Flute")
-        dialog.exec_()
-        ref["point"] = 2, 3
-        app.processes.get("measure").unpause()
+        try:
+            with app.devices.get("corvus") as corvus:
+                corvus.mode = corvus.HOST_MODE
+                dialog = CameraDialog(corvus)
+                dialog.setWindowTitle("Move to Flute")
+                if dialog.Accepted == dialog.exec_():
+                    ref["point"] = 2, 3
+                else:
+                    app.processes.get("measure").stop()
+            app.processes.get("measure").unpause()
+        except Exception as e:
+            comet.show_exception(e)
+            app.processes.get("measure").stop()
 
     def on_select_ref(ref):
         # TODO: camera window
-        dialog = CameraDialog()
-        dialog.setWindowTitle("Move to REF point")
-        dialog.exec_()
-        ref["point"] = 2, 3
-        app.processes.get("measure").unpause()
+        try:
+            with app.devices.get("corvus") as corvus:
+                corvus.mode = corvus.HOST_MODE
+                dialog = CameraDialog(corvus)
+                dialog.setWindowTitle("Move to REF point")
+                if dialog.Accepted == dialog.exec_():
+                    ref["point"] = 2, 3
+                else:
+                    app.processes.get("measure").stop()
+            app.processes.get("measure").unpause()
+        except Exception as e:
+            comet.show_exception(e)
+            app.processes.get("measure").stop()
 
     def on_show_panel(measurement):
         """Show measurement specific panel and update panel with measuremens
