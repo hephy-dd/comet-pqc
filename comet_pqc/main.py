@@ -92,6 +92,7 @@ def main():
             text="Are you sure to calibrate the table?"
         )
         if result:
+            # Update buttons
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
             app.layout.get("manual_btn").enabled = False
@@ -105,34 +106,18 @@ def main():
             text="Are you sure to start a new measurement?"
         )
         if result:
+            # Update buttons
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
             app.layout.get("manual_btn").enabled = False
             app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = True
             app.layout.get("tabs").current = 0
+            # Reset summary
+            on_clear_summary()
+            # Start process
             measure = app.processes.get("measure")
-            wafers = []
-            for item in app.layout.get("wafer_tree").items:
-                sequence_tree = app.layout.get(item.slot.id)
-                sequence_tree.clear()
-                if item.checked:
-                    # Duplicate configuration for every wafer
-                    wafer_config = copy.deepcopy(item.wafer_config)
-                    sequence_config = copy.deepcopy(item.sequence_config)
-                    wafers.append(dict(
-                        wafer_config=wafer_config,
-                        sequence_config=sequence_config
-                    ))
-                    sequence_tree.load(sequence_config)
-                    for flute in sequence_config.items:
-                        flute.locked = False
-                        flute.state = "" if flute.enabled else ""
-                        for measurement in flute.measurements:
-                            measurement.locked = False
-                            measurement.state = "" if measurement.enabled else ""
-                    sequence_tree.sync()
-            measure.wafers = wafers
+            measure.wafers = load_wafers()
             measure.start()
 
     def on_stop():
@@ -141,11 +126,14 @@ def main():
             text="Are you sure to stop the running measurement?"
         )
         if result:
+            # Update buttons
             app.layout.get("calib_btn").enabled = False
             app.layout.get("start_btn").enabled = False
             app.layout.get("cont_btn").enabled = False
             app.layout.get("stop_btn").enabled = False
-            app.processes.get("measure").stop()
+            # Stop process
+            measure = app.processes.get("measure")
+            measure.stop()
 
     def on_calibrate_finished():
         app.layout.get("calib_btn").enabled = True
@@ -180,9 +168,14 @@ def main():
         app.processes.get("measure").unpause()
 
     def on_show_panel(measurement):
+        """Show measurement specific panel and update panel with measuremens
+        attributes.
+        """
         for panel in app.layout.get("panels").children:
             panel.visible = False
-        app.layout.get(measurement.type).visible = True
+        panel = app.layout.get(measurement.type)
+        panel.update_parameters(measurement.parameters)
+        panel.visible = True
         slot = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
         app.layout.get(slot.id).sync()
         app.processes.get("measure").unpause()
@@ -205,11 +198,44 @@ def main():
     def on_enable_continue():
         app.layout.get("cont_btn").enabled = True
 
+    def on_clear_summary():
+        app.layout.get("summary").layout = comet.Column()
+
+    def on_append_summary(name, value):
+        app.layout.get("summary").layout.append(comet.Row(
+            comet.Label(text=name),
+            comet.Label(text=format(value))
+        ))
+
     def on_message(message):
         app.message = message
 
     def on_progress(value, maximum):
         app.progress = value, maximum
+
+    def load_wafers():
+        """Load current wafer configs from UI."""
+        wafers = []
+        for item in app.layout.get("wafer_tree").items:
+            sequence_tree = app.layout.get(item.slot.id)
+            sequence_tree.clear()
+            if item.checked:
+                # Duplicate configuration for every wafer
+                wafer_config = copy.deepcopy(item.wafer_config)
+                sequence_config = copy.deepcopy(item.sequence_config)
+                wafers.append(dict(
+                    wafer_config=wafer_config,
+                    sequence_config=sequence_config
+                ))
+                sequence_tree.load(sequence_config)
+                for flute in sequence_config.items:
+                    flute.locked = False
+                    flute.state = "" if flute.enabled else ""
+                    for measurement in flute.measurements:
+                        measurement.locked = False
+                        measurement.state = "" if measurement.enabled else ""
+                sequence_tree.sync()
+        return wafers
 
     app.processes.add("calibrate", CalibrateProcess(
         finished=on_calibrate_finished,
@@ -224,7 +250,8 @@ def main():
         select_ref=on_select_ref,
         next_flute=on_next_flute,
         show_panel=on_show_panel,
-        enable_continue=on_enable_continue
+        enable_continue=on_enable_continue,
+        append_summary=on_append_summary
     ))
 
     app.layout = comet.Row(
@@ -239,7 +266,7 @@ def main():
                 comet.Button(id="cont_btn", text="Continue", enabled=False, clicked=on_continue),
             ),
             comet.Button(id="stop_btn", text="Stop", enabled=False, clicked=on_stop),
-            stretch=(3,7,0,0,0)
+            stretch=(3, 7, 0, 0, 0)
         ),
         comet.Tabs(
             comet.Tab(
@@ -255,13 +282,11 @@ def main():
             ),
             comet.Tab(
                 title="Summary",
-                layout=comet.Column(
-                    id="summary"
-                )
+                layout=comet.ScrollArea(id="summary")
             ),
             id="tabs"
         ),
-        stretch=(4,9)
+        stretch=(4, 9)
     )
 
     # Loading configurations

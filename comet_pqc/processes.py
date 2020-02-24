@@ -97,6 +97,7 @@ class MeasureProcess(comet.Process):
                             self.push("message", f"Measuring {item.name} {measurement.name}...")
                             self.run_measurement(measurement)
                             measurement.state = "DONE"
+                            self.push("append_summary", measurement.name, random.random())
                             step += 1
                 # Lock all before next flute
                 for measurement in item.measurements:
