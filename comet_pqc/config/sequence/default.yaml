@@ -21,7 +21,7 @@ items:
             matrix: []
             current_start: -1 mA
             current_stop: 1 mA
-            Current_step: 50 uA
+            current_step: 50 uA
             waiting_time: 200 ms
             voltage_compliance: 20 V
             sense_mode: remote
