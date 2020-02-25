@@ -2,6 +2,8 @@ type: object
 properties:
     id:
         type: string
+    enabled:
+        type: boolean
     name:
         type: string
     description:
@@ -13,6 +15,8 @@ properties:
             properties:
                 id:
                     type: string
+                enabled:
+                    type: boolean
                 name:
                     type: string
                 pos:
