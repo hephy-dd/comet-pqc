@@ -19,43 +19,14 @@ from .trees import *
 from .panels import *
 from .dialogs import CameraDialog
 
-class CameraDialog(QtWidgets.QDialog):
-
-    def __init__(self):
-        super().__init__()
-        self.media_content = QtMultimedia.QMediaContent(QtCore.QUrl("http://10.0.0.0:8080"))
-        self.media_player = QtMultimedia.QMediaPlayer()
-        self.media_player.setMedia(self.media_content)
-        self.video_widget = QtMultimediaWidgets.QVideoWidget()
-        self.video_widget.setFixedSize(640, 480)
-        self.media_player.setVideoOutput(self.video_widget)
-        self.left_button = QtWidgets.QPushButton("Left")
-        self.up_button = QtWidgets.QPushButton("Up")
-        self.down_button = QtWidgets.QPushButton("Down")
-        self.right_button = QtWidgets.QPushButton("Right")
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.addWidget(self.left_button)
-        button_layout.addWidget(self.up_button)
-        button_layout.addWidget(self.down_button)
-        button_layout.addWidget(self.right_button)
-        button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok
-        )
-        button_box.accepted.connect(self.accept)
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self.video_widget)
-        layout.addLayout(button_layout)
-        layout.addWidget(button_box)
-        self.setLayout(layout)
-
 def main():
     app = comet.Application()
-    app.name = 'comet-pqc'
+    app.name = "comet-pqc"
     app.version = __version__
     app.title = f"PQC {app.version}"
     app.about = f"COMET application for PQC measurements, version {app.version}."
-    app.width = 1024
-    app.height = 768
+    app.width = 1280
+    app.height = 800
 
     # Register devices
     app.devices.add("matrix", K707B(comet.Resource(
@@ -118,7 +89,7 @@ def main():
             on_clear_summary()
             # Start process
             measure = app.processes.get("measure")
-            measure.wafers = load_wafers()
+            measure.wafers = on_load_wafers()
             measure.start()
 
     def on_stop():
@@ -152,15 +123,16 @@ def main():
         app.layout.get("stop_btn").enabled = False
         app.progress = None
 
-    def on_next_flute(ref):
-        # TODO: camera window
+    def on_move_to(name, data):
+        """Manually move to socket/reference point."""
         try:
             with app.devices.get("corvus") as corvus:
                 corvus.mode = corvus.HOST_MODE
                 dialog = CameraDialog(corvus)
-                dialog.setWindowTitle("Move to Flute")
+                dialog.setWindowTitle(f"Move to {name}")
+                data["point"] = None
                 if dialog.Accepted == dialog.exec_():
-                    ref["point"] = 2, 3
+                    data["point"] = corvus.pos
                 else:
                     app.processes.get("measure").stop()
             app.processes.get("measure").unpause()
@@ -168,30 +140,14 @@ def main():
             comet.show_exception(e)
             app.processes.get("measure").stop()
 
-    def on_select_ref(ref):
-        # TODO: camera window
-        try:
-            with app.devices.get("corvus") as corvus:
-                corvus.mode = corvus.HOST_MODE
-                dialog = CameraDialog(corvus)
-                dialog.setWindowTitle("Move to REF point")
-                if dialog.Accepted == dialog.exec_():
-                    ref["point"] = 2, 3
-                else:
-                    app.processes.get("measure").stop()
-            app.processes.get("measure").unpause()
-        except Exception as e:
-            comet.show_exception(e)
-            app.processes.get("measure").stop()
-
-    def on_show_panel(measurement):
+    def on_show_panel(item, measurement):
         """Show measurement specific panel and update panel with measuremens
         attributes.
         """
         for panel in app.layout.get("panels").children:
             panel.visible = False
         panel = app.layout.get(measurement.type)
-        panel.update_parameters(measurement.parameters)
+        panel.load(item, measurement)
         panel.visible = True
         slot = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
         app.layout.get(slot.id).sync()
@@ -230,7 +186,7 @@ def main():
     def on_progress(value, maximum):
         app.progress = value, maximum
 
-    def load_wafers():
+    def on_load_wafers():
         """Load current wafer configs from UI."""
         wafers = []
         for item in app.layout.get("wafer_tree").items:
@@ -264,8 +220,7 @@ def main():
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        select_ref=on_select_ref,
-        next_flute=on_next_flute,
+        move_to=on_move_to,
         show_panel=on_show_panel,
         enable_continue=on_enable_continue,
         append_summary=on_append_summary
@@ -299,7 +254,10 @@ def main():
             ),
             comet.Tab(
                 title="Summary",
-                layout=comet.ScrollArea(id="summary")
+                layout=comet.ScrollArea(layout=comet.Column(
+                    comet.Widget(id="summary"),
+                    comet.Stretch()
+                ))
             ),
             id="tabs"
         ),
@@ -317,8 +275,8 @@ def main():
     app.processes.get("measure").chuck_config = chuck_config
 
     column = app.layout.get("sequences")
-    for slot in chuck_config.slots:
-        tree = SequenceTree(id=slot.id, slot=slot, visible=slot.id=="slot_1")
+    for index, slot in enumerate(chuck_config.slots):
+        tree = SequenceTree(id=slot.id, slot=slot, visible=(0 == index))
         column.append(tree)
         tree.sync()
 
@@ -331,27 +289,22 @@ def main():
 
     app.layout.get("wafer_tree").qt.currentItemChanged.connect(on_select)
 
+    def on_select_item(current, previous):
+        if current is not None:
+            measurement = current.data(0, 0x2000)
+            if isinstance(measurement, config.SequenceMeasurement):
+                item = current.parent().data(0, 0x2000)
+                for panel in app.layout.get("panels").children:
+                    panel.visible = False
+                panel = app.layout.get(measurement.type)
+                if panel:
+                    panel.load(item, measurement)
+                    panel.visible = True
+
+    for child in app.layout.get("sequences").children:
+        child.qt.currentItemChanged.connect(on_select_item)
     # Init
-    wafers = []
-    for item in app.layout.get("wafer_tree").items:
-        sequence_tree = app.layout.get(item.slot.id)
-        sequence_tree.clear()
-        if item.checked:
-            # Duplicate configuration for every wafer
-            wafer_config = copy.deepcopy(item.wafer_config)
-            sequence_config = copy.deepcopy(item.sequence_config)
-            wafers.append(dict(
-                wafer_config=wafer_config,
-                sequence_config=sequence_config
-            ))
-            sequence_tree.load(sequence_config)
-            for flute in sequence_config.items:
-                flute.locked = False
-                flute.state = "" if flute.enabled else ""
-                for measurement in flute.measurements:
-                    measurement.locked = False
-                    measurement.state = "" if measurement.enabled else ""
-            sequence_tree.sync()
+    on_load_wafers()
 
     return app.run()
 

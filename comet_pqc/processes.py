@@ -39,8 +39,8 @@ class MeasureProcess(comet.Process):
     def unpause(self):
         self.wait_for_continue.clear()
 
-    def run_measurement(self, measurement):
-        self.push("show_panel", measurement)
+    def run_measurement(self, item, measurement):
+        self.push("show_panel", item, measurement)
         self.pause()
         measurement = measurement_factory(measurement.type)
         if measurement is None:
@@ -50,37 +50,73 @@ class MeasureProcess(comet.Process):
         except Exception as e:
             raise e
 
-    def run(self):
-        self.push("message", "Measuring...")
-        self.wait_for_continue.clear()
-        # Count measurements
+    def count_measurements(self):
         count = 0
-        step = 0
         for wafer in self.wafers:
             for item in wafer["sequence_config"].items:
                 if item.enabled:
                     for measurement in item.measurements:
                         if measurement.enabled:
                             count += 1
+        return count
+
+    def pick_references(self, wafer):
+        positions = []
+        wafer_config = wafer["wafer_config"]
+        for reference in wafer_config.references:
+            data = {}
+            self.push("message", f"Move to {reference.name} @{wafer_config.name} [{reference.pos.x}, {reference.pos.y}]")
+            self.push("move_to", reference.name, data)
+            if not self.pause():
+                return
+            positions.append(data.get("point"))
+            if not self.running:
+                return
+        for index, item in enumerate(wafer["sequence_config"].items):
+            # TODO: Calculate item (flute) coordinates based on picked references
+            item.pos = positions[0]
+
+    def pick_socket(self, item, wafer):
+        item.pos = None
+        data = {}
+        # Find socket for item (flute)
+        wafer_config = wafer["wafer_config"]
+        socket = list(filter(lambda socket: socket.id == item.socket, wafer_config.sockets))[0]
+        self.push("message", f"Move to {item.name} @{wafer_config.name} [{socket.pos.x}, {socket.pos.y}]")
+        self.push("move_to", item.name, data)
+        if not self.pause():
+            return
+        item.pos = data.get("point")
+
+    def run(self):
+        self.push("message", "Measuring...")
+        self.wait_for_continue.clear()
+        # Count measurements
+        count = self.count_measurements()
+        step = 0
+        for wafer in self.wafers:
+            sequence_config = wafer["sequence_config"]
+            for item in sequence_config.items:
+                item.pos = None
+        # In default mode, pick reference points for every wafer
         if not self.manual_mode:
             for wafer in self.wafers:
-                ref = {}
-                self.push("message", "Move to wafer reference point...")
-                self.push("select_ref", ref)
-                if not self.pause():
-                    break
+                self.pick_references(wafer)
+                if not self.running:
+                    return
         for wafer in self.wafers:
-            for item in wafer["sequence_config"].items:
+            wafer_config = wafer["wafer_config"]
+            sequence_config = wafer["sequence_config"]
+            for item in sequence_config.items:
                 if not self.running:
                     break
                 item.locked = True
                 if item.enabled:
                     item.state = "ACTIVE"
+                    # In manual mode, pick current socket (flute)
                     if self.manual_mode:
-                        ref = {}
-                        self.push("message", "Manually move to flute...")
-                        self.push("next_flute", ref)
-                        if not self.pause():
+                        self.pick_socket(item, wafer)
+                        if not self.running:
                             break
                     for measurement in item.measurements:
                         measurement.locked = True
@@ -94,13 +130,14 @@ class MeasureProcess(comet.Process):
                             if not self.running:
                                 break
                             self.push("progress", step, count)
-                            self.push("message", f"Measuring {item.name} {measurement.name}...")
-                            self.run_measurement(measurement)
+                            self.push("message", f"Measuring {item.name} {measurement.name} @{wafer_config.name}...")
+                            self.run_measurement(item, measurement)
                             measurement.state = "DONE"
                             self.push("append_summary", measurement.name, random.random())
                             step += 1
+
                 # Lock all before next flute
                 for measurement in item.measurements:
                     measurement.locked = True
-            item.state = "DONE"
+                item.state = "DONE"
         self.push("message", "Done.")

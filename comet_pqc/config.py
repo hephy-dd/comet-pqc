@@ -92,44 +92,49 @@ class Position:
 
 class Chuck:
 
-    def __init__(self, id, name, description="", slots=[]):
+    def __init__(self, id, name, enabled=True, description="", slots=[]):
         self.id = id
         self.name = name
+        self.enabled = enabled
         self.description = description
         self.slots = list(map(lambda kwargs: ChuckSlot(**kwargs), slots))
 
 class ChuckSlot:
 
-    def __init__(self, id, name, pos, description=""):
+    def __init__(self, id, name, pos, enabled=True, description=""):
         self.id = id
         self.name = name
         self.pos = Position(**pos)
+        self.enabled = enabled
         self.description = description
 
 class Wafer:
 
-    def __init__(self, id, name, description="", references=[], sockets=[]):
+    def __init__(self, id, name, enabled=True, description="", references=[], sockets=[]):
         self.id = id
         self.name = name
+        self.enabled = enabled
         self.description = description
         self.references = list(map(lambda kwargs: WaferReference(**kwargs), references))
         self.sockets = list(map(lambda kwargs: WaferSocket(**kwargs), sockets))
 
 class WaferReference:
 
-    def __init__(self, id, name, pos, type=None, description=""):
+    def __init__(self, id, name, pos, type=None, enabled=True, description=""):
         self.id = id
         self.name = name
         self.type = type
+        self.enabled = enabled
         self.pos = Position(**pos)
         self.description = description
 
 class WaferSocket:
 
-    def __init__(self, id, name, pos, type=None, description=""):
+    def __init__(self, id, name, pos, type=None, enabled=True, description=""):
         self.id = id
         self.name = name
         self.type = type
+        self.enabled = enabled
         self.pos = Position(**pos)
         self.description = description
 
