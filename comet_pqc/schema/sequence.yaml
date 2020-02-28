@@ -17,13 +17,13 @@ properties:
                     type: boolean
                 name:
                     type: string
-                socket:
+                position:
                     type: string
                 parameters:
                     type: object
             required:
               - name
-              - socket
+              - position
 required:
   - id
   - name

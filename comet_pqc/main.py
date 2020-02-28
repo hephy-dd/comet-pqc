@@ -149,8 +149,8 @@ def main():
         panel = app.layout.get(measurement.type)
         panel.load(item, measurement)
         panel.visible = True
-        slot = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
-        app.layout.get(slot.id).sync()
+        position = app.layout.get("wafer_tree").qt.currentItem().data(0, 0x2000)
+        app.layout.get(position.id).sync()
         app.processes.get("measure").unpause()
 
     def on_show_error(exc, tb):
@@ -180,6 +180,10 @@ def main():
             comet.Label(text=format(value))
         ))
 
+    def on_run_measurement():
+        data = {}
+        on_move_to("", data)
+
     def on_message(message):
         app.message = message
 
@@ -190,7 +194,7 @@ def main():
         """Load current wafer configs from UI."""
         wafers = []
         for item in app.layout.get("wafer_tree").items:
-            sequence_tree = app.layout.get(item.slot.id)
+            sequence_tree = app.layout.get(item.position.id)
             sequence_tree.clear()
             if item.checked:
                 # Duplicate configuration for every wafer
@@ -244,12 +248,21 @@ def main():
             comet.Tab(
                 title="Measurement",
                 layout=comet.Column(
-                    IVRamp(id="iv_ramp", visible=False),
-                    BiasIVRamp(id="bias_iv_ramp", visible=False),
-                    CVRamp(id="cv_ramp", visible=False),
-                    CVRampAlt(id="cv_ramp_alt", visible=False),
-                    FourWireIVRamp(id="4wire_iv_ramp", visible=False),
-                    id="panels"
+                    comet.Column(
+                        IVRamp(id="iv_ramp", visible=False),
+                        BiasIVRamp(id="bias_iv_ramp", visible=False),
+                        CVRamp(id="cv_ramp", visible=False),
+                        CVRampAlt(id="cv_ramp_alt", visible=False),
+                        FourWireIVRamp(id="4wire_iv_ramp", visible=False),
+                        id="panels"
+                    ),
+                    comet.Row(
+                        comet.Stretch(),
+                        comet.Button(text="Run", clicked=on_run_measurement),
+                        id="panel_controls",
+                        visible=False
+                    ),
+                    stretch=(1, 0)
                 )
             ),
             comet.Tab(
@@ -275,8 +288,8 @@ def main():
     app.processes.get("measure").chuck_config = chuck_config
 
     column = app.layout.get("sequences")
-    for index, slot in enumerate(chuck_config.slots):
-        tree = SequenceTree(id=slot.id, slot=slot, visible=(0 == index))
+    for index, position in enumerate(chuck_config.positions):
+        tree = SequenceTree(id=position.id, position=position, visible=(0 == index))
         column.append(tree)
         tree.sync()
 
@@ -284,22 +297,24 @@ def main():
         """Show only the current sequence tree."""
         for child in app.layout.get("sequences").children:
             child.visible = False
-        app.layout.get(current.slot.id).visible = True
-        app.layout.get(current.slot.id).sync()
+        app.layout.get(current.position.id).visible = True
+        app.layout.get(current.position.id).sync()
 
     app.layout.get("wafer_tree").qt.currentItemChanged.connect(on_select)
 
     def on_select_item(current, previous):
+        app.layout.get("panel_controls").visible = False
+        for panel in app.layout.get("panels").children:
+            panel.visible = False
         if current is not None:
             measurement = current.data(0, 0x2000)
             if isinstance(measurement, config.SequenceMeasurement):
                 item = current.parent().data(0, 0x2000)
-                for panel in app.layout.get("panels").children:
-                    panel.visible = False
                 panel = app.layout.get(measurement.type)
                 if panel:
                     panel.load(item, measurement)
                     panel.visible = True
+                    app.layout.get("panel_controls").visible = True
 
     for child in app.layout.get("sequences").children:
         child.qt.currentItemChanged.connect(on_select_item)

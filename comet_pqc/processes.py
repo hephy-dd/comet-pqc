@@ -60,29 +60,30 @@ class MeasureProcess(comet.Process):
                             count += 1
         return count
 
-    def pick_references(self, wafer):
+    def pick_positions(self, wafer):
         positions = []
         wafer_config = wafer["wafer_config"]
-        for reference in wafer_config.references:
+        # TODO
+        for position in (wafer_config.positions[0], wafer_config.positions[-1]):
             data = {}
-            self.push("message", f"Move to {reference.name} @{wafer_config.name} [{reference.pos.x}, {reference.pos.y}]")
-            self.push("move_to", reference.name, data)
+            self.push("message", f"Move to {position.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
+            self.push("move_to", position.name, data)
             if not self.pause():
                 return
             positions.append(data.get("point"))
             if not self.running:
                 return
         for index, item in enumerate(wafer["sequence_config"].items):
-            # TODO: Calculate item (flute) coordinates based on picked references
+            # TODO: Calculate item (flute) coordinates based on picked positions
             item.pos = positions[0]
 
-    def pick_socket(self, item, wafer):
+    def pick_position(self, item, wafer):
         item.pos = None
         data = {}
-        # Find socket for item (flute)
+        # Find position for item (flute)
         wafer_config = wafer["wafer_config"]
-        socket = list(filter(lambda socket: socket.id == item.socket, wafer_config.sockets))[0]
-        self.push("message", f"Move to {item.name} @{wafer_config.name} [{socket.pos.x}, {socket.pos.y}]")
+        position = list(filter(lambda position: position.id == item.position, wafer_config.positions))[0]
+        self.push("message", f"Move to {item.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
         self.push("move_to", item.name, data)
         if not self.pause():
             return
@@ -98,10 +99,10 @@ class MeasureProcess(comet.Process):
             sequence_config = wafer["sequence_config"]
             for item in sequence_config.items:
                 item.pos = None
-        # In default mode, pick reference points for every wafer
+        # In default mode, pick positions for every wafer
         if not self.manual_mode:
             for wafer in self.wafers:
-                self.pick_references(wafer)
+                self.pick_positions(wafer)
                 if not self.running:
                     return
         for wafer in self.wafers:
@@ -113,9 +114,9 @@ class MeasureProcess(comet.Process):
                 item.locked = True
                 if item.enabled:
                     item.state = "ACTIVE"
-                    # In manual mode, pick current socket (flute)
+                    # In manual mode, pick current position (flute)
                     if self.manual_mode:
-                        self.pick_socket(item, wafer)
+                        self.pick_position(item, wafer)
                         if not self.running:
                             break
                     for measurement in item.measurements:

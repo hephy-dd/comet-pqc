@@ -3,7 +3,7 @@ name: Default
 description: Default measurement sequence.
 items:
   - name: PQC Flute 1
-    socket: socket_1
+    position: flute_1
     measurements:
       - name: Polysilicon Van-der-Pauw cross
         type: 4wire_iv_ramp
@@ -118,7 +118,7 @@ items:
             lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
             lcr_amplitude: 250 mV
   - name: PQC Flute 2
-    socket: socket_2
+    position: flute_2
     measurements:
       - name: GCD
         type: bias_iv_ramp
@@ -173,7 +173,7 @@ items:
             current_compliance: 1 uA
             sense_mode: local
   - name: PQC Flute 3
-    socket: socket_3
+    position: flute_3
     measurements:
       - name: Metal meander
         type: 4wire_iv_ramp
@@ -238,7 +238,7 @@ items:
             lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
             lcr_amplitude: 250 mV
   - name: PQC Flute 4
-    socket: socket_4
+    position: flute_4
     measurements:
       - name: GCD05
         type: bias_iv_ramp

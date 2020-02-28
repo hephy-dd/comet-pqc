@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    references:
+    positions:
         type: array
         items:
             type: object
@@ -38,34 +38,7 @@ properties:
               - id
               - name
               - pos
-    sockets:
-        type: array
-        items:
-            type: object
-            properties:
-                id:
-                    type: string
-                enabled:
-                    type: boolean
-                name:
-                    type: string
-                description:
-                    type: string
-                pos:
-                    type: object
-                    properties:
-                        x:
-                            type: integer
-                        y:
-                            type: integer
-                        z:
-                            type: integer
-                    required:
-                      - x
-                      - y
-                      - z
 required:
   - id
   - name
-  - references
-  - sockets
+  - positions

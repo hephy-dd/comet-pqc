@@ -92,14 +92,14 @@ class Position:
 
 class Chuck:
 
-    def __init__(self, id, name, enabled=True, description="", slots=[]):
+    def __init__(self, id, name, enabled=True, description="", positions=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.slots = list(map(lambda kwargs: ChuckSlot(**kwargs), slots))
+        self.positions = list(map(lambda kwargs: ChuckPosition(**kwargs), positions))
 
-class ChuckSlot:
+class ChuckPosition:
 
     def __init__(self, id, name, pos, enabled=True, description=""):
         self.id = id
@@ -110,25 +110,14 @@ class ChuckSlot:
 
 class Wafer:
 
-    def __init__(self, id, name, enabled=True, description="", references=[], sockets=[]):
+    def __init__(self, id, name, enabled=True, description="", positions=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.references = list(map(lambda kwargs: WaferReference(**kwargs), references))
-        self.sockets = list(map(lambda kwargs: WaferSocket(**kwargs), sockets))
+        self.positions = list(map(lambda kwargs: WaferPosition(**kwargs), positions))
 
-class WaferReference:
-
-    def __init__(self, id, name, pos, type=None, enabled=True, description=""):
-        self.id = id
-        self.name = name
-        self.type = type
-        self.enabled = enabled
-        self.pos = Position(**pos)
-        self.description = description
-
-class WaferSocket:
+class WaferPosition:
 
     def __init__(self, id, name, pos, type=None, enabled=True, description=""):
         self.id = id
@@ -155,9 +144,9 @@ class Sequence:
 
 class SequenceItem:
 
-    def __init__(self, name, socket, enabled=True, description="", measurements=[]):
+    def __init__(self, name, position, enabled=True, description="", measurements=[]):
         self.name = name
-        self.socket = socket
+        self.position = position
         self.enabled = enabled
         self.description = description
         self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements))

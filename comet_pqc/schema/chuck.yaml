@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    slots:
+    positions:
         type: array
         items:
             type: object
@@ -39,4 +39,4 @@ properties:
 required:
   - id
   - name
-  - slots
+  - positions

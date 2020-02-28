@@ -2,20 +2,20 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 import comet
 
-class SlotItem(QtWidgets.QTreeWidgetItem):
+class WaferItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, slot):
+    def __init__(self, position):
         super().__init__()
         self.setCheckState(0, QtCore.Qt.Checked)
-        self.setData(0, 0x2000, slot)
-        self.setText(0, slot.name)
+        self.setData(0, 0x2000, position)
+        self.setText(0, position.name)
 
     @property
     def checked(self):
         return self.checkState(0) == QtCore.Qt.Checked
 
     @property
-    def slot(self):
+    def position(self):
         return self.data(0, 0x2000)
 
     @property
@@ -27,14 +27,14 @@ class SlotItem(QtWidgets.QTreeWidgetItem):
         return self.treeWidget().itemWidget(self, 2).currentData()
 
 class WaferTree(comet.Widget):
-    """Wafer/Slot selection widget."""
+    """Position/Wafer selection widget."""
 
     QtBaseClass = QtWidgets.QTreeWidget
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.qt.setRootIsDecorated(False)
-        self.qt.setHeaderLabels(["Slot", "Wafer", "Sequence"])
+        self.qt.setHeaderLabels(["Position", "Wafer", "Sequence"])
         self.qt.resizeColumnToContents(2)
         self.qt.resizeColumnToContents(1)
         self.qt.resizeColumnToContents(0)
@@ -55,8 +55,8 @@ class WaferTree(comet.Widget):
 
     def load(self, config, wafers, sequences):
         self.qt.clear()
-        for slot in config.slots:
-            item = SlotItem(slot)
+        for position in config.positions:
+            item = WaferItem(position)
             self.qt.addTopLevelItem(item)
             widget = QtWidgets.QComboBox()
             for wafer in wafers.values():
@@ -104,10 +104,10 @@ class SequenceTree(comet.Widget):
 
     QtBaseClass = QtWidgets.QTreeWidget
 
-    def __init__(self, slot, *args, **kwargs):
+    def __init__(self, position, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.slot = slot
-        self.qt.setHeaderLabels([f"{slot.name} Measurement", "Status"])
+        self.position = position
+        self.qt.setHeaderLabels([f"Measurement", "Status"])
         self.qt.resizeColumnToContents(0)
         self.qt.setColumnWidth(1, 64)
         self.qt.itemChanged.connect(self.update_item)
