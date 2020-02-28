@@ -49,6 +49,7 @@ items:
             sense_mode: local
       - name: MOS capacitor (2 SMU)
         type: cv_ramp
+        description: Variant using two SMUs
         parameters:
             matrix: []
             bias_voltage_start: -5 V
@@ -60,6 +61,7 @@ items:
             lcr_amplitude: 250 mV
       - name: MOS capacitor (1 SMU)
         type: cv_ramp_alt
+        description: Variant using a single SMU
         enabled: false
         parameters:
             matrix: []

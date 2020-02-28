@@ -80,6 +80,9 @@ class IVRamp(MatrixSwitch):
     type = "iv_ramp"
 
     def code(self, *args, **kwargs):
+        with self.devices.get("smu1") as smu1:
+            idn = smu1.identification
+            logging.info("smu1: %s", idn)
         time.sleep(random.uniform(2.5, 4.0))
 
 class BiasIVRamp(MatrixSwitch):

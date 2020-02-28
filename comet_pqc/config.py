@@ -99,6 +99,9 @@ class Chuck:
         self.description = description
         self.positions = list(map(lambda kwargs: ChuckPosition(**kwargs), positions))
 
+    def __str__(self):
+        return self.name
+
 class ChuckPosition:
 
     def __init__(self, id, name, pos, enabled=True, description=""):
@@ -116,6 +119,9 @@ class Wafer:
         self.enabled = enabled
         self.description = description
         self.positions = list(map(lambda kwargs: WaferPosition(**kwargs), positions))
+
+    def __str__(self):
+        return self.name
 
 class WaferPosition:
 
@@ -135,6 +141,9 @@ class Sequence:
         self.enabled = enabled
         self.description = description
         self.items = list(map(lambda kwargs: SequenceItem(**kwargs), items))
+
+    def __str__(self):
+        return self.name
 
     def __iter__(self):
         return iter(self.items)
