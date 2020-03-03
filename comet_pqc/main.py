@@ -89,14 +89,14 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
-    def on_sequence_changed(index, item):
+    def on_sequence_changed(index):
         dashboard = app.layout.get("dashboard")
         for panel in dashboard.children:
             panel.visible = False
         select = app.layout.get("sequence_select")
         tree = app.layout.get("sequence_tree")
         tree.clear()
-        for item in select.selected.items:
+        for item in select.current.items:
             sequence_item = tree.append([item.name, ""])
             sequence_item.name = item.name
             sequence_item.position = item.position
@@ -131,12 +131,17 @@ def main():
                 measurement.checkable = not state
 
     def on_calibrate_start():
-        app.layout.get("calibrate_button").enabled = False
-        app.layout.get("start_button").enabled = False
-        app.layout.get("autopilot_button").enabled = False
-        app.layout.get("continue_button").enabled = False
-        app.layout.get("stop_button").enabled = False
-        app.processes.get("calibrate").start()
+        result =comet.show_question(
+            title="Calibrate table",
+            text="Are you sure to calibrate the table?"
+        )
+        if result:
+            app.layout.get("calibrate_button").enabled = False
+            app.layout.get("start_button").enabled = False
+            app.layout.get("autopilot_button").enabled = False
+            app.layout.get("continue_button").enabled = False
+            app.layout.get("stop_button").enabled = False
+            app.processes.get("calibrate").start()
 
     def on_calibrate_finished():
         app.layout.get("calibrate_button").enabled = True
@@ -146,13 +151,18 @@ def main():
         app.layout.get("stop_button").enabled = False
 
     def on_measure_start():
-        app.layout.get("calibrate_button").enabled = False
-        app.layout.get("start_button").enabled = False
-        app.layout.get("autopilot_button").enabled = True
-        app.layout.get("continue_button").enabled = False
-        app.layout.get("stop_button").enabled = True
-        on_tree_locked(True)
-        app.processes.get("measure").start()
+        result =comet.show_question(
+            title="Start measurement",
+            text="Are you sure to start a new measurement?"
+        )
+        if result:
+            app.layout.get("calibrate_button").enabled = False
+            app.layout.get("start_button").enabled = False
+            app.layout.get("autopilot_button").enabled = True
+            app.layout.get("continue_button").enabled = False
+            app.layout.get("stop_button").enabled = True
+            on_tree_locked(True)
+            app.processes.get("measure").start()
 
     def on_measure_continue():
         pass
@@ -183,19 +193,23 @@ def main():
         app.progress = value, maximum
 
     app.processes.add("calibrate", CalibrateProcess(
-        finished=on_calibrate_finished,
-        message=on_message,
-        progress=on_progress
+        events=dict(
+            finished=on_calibrate_finished,
+            message=on_message,
+            progress=on_progress
+        )
     ))
     app.processes.add("measure", MeasureProcess(
-        finished=on_measure_finished,
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress,
-        ###move_to=on_move_to,
-        ###show_panel=on_show_panel,
-        ###enable_continue=on_enable_continue,
-        ###append_summary=on_append_summary
+        events=dict(
+            finished=on_measure_finished,
+            failed=on_show_error,
+            message=on_message,
+            progress=on_progress,
+            ###move_to=on_move_to,
+            ###show_panel=on_show_panel,
+            ###enable_continue=on_enable_continue,
+            ###append_summary=on_append_summary
+        )
     ))
 
     app.layout = comet.Row(

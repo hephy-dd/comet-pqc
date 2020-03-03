@@ -8,15 +8,15 @@ import comet
 from .measurements import measurement_factory
 
 class CalibrateProcess(comet.Process):
-    """Calibration process for CORVUS table."""
+    """Calibration process for Corvus table."""
 
     def run(self):
         steps = 8
-        self.push("message", "Calibrating...")
+        self.events.message("Calibrating...")
         for i in range(steps):
-            self.push("progress", i + 1, steps)
+            self.events.progress(i + 1, steps)
             time.sleep(1)
-        self.push("message", None)
+        self.events.message(None)
 
 class MeasureProcess(comet.Process):
     """Measure process executing a sequence of measurements."""
@@ -40,7 +40,7 @@ class MeasureProcess(comet.Process):
         self.wait_for_continue.clear()
 
     def run_measurement(self, item, measurement):
-        self.push("show_panel", item, measurement)
+        self.events.show_panel(item, measurement)
         self.pause()
         measurement = measurement_factory(measurement.type)
         if measurement is None:
@@ -66,8 +66,8 @@ class MeasureProcess(comet.Process):
         # TODO
         for position in (wafer_config.positions[0], wafer_config.positions[-1]):
             data = {}
-            self.push("message", f"Move to {position.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
-            self.push("move_to", position.name, data)
+            self.events.message(f"Move to {position.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
+            self.events.move_to(position.name, data)
             if not self.pause():
                 return
             positions.append(data.get("point"))
@@ -83,14 +83,14 @@ class MeasureProcess(comet.Process):
         # Find position for item (flute)
         wafer_config = wafer["wafer_config"]
         position = list(filter(lambda position: position.id == item.position, wafer_config.positions))[0]
-        self.push("message", f"Move to {item.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
-        self.push("move_to", item.name, data)
+        self.events.message(f"Move to {item.name} @{wafer_config.name} [{position.pos.x}, {position.pos.y}]")
+        self.events.move_to(item.name, data)
         if not self.pause():
             return
         item.pos = data.get("point")
 
     def run(self):
-        self.push("message", "Measuring...")
+        self.events.message("Measuring...")
         self.wait_for_continue.clear()
         # Count measurements
         count = self.count_measurements()
@@ -124,21 +124,21 @@ class MeasureProcess(comet.Process):
                         if measurement.enabled:
                             measurement.state = "ACTIVE"
                             if not self.auto_continue:
-                                self.push("enable_continue")
-                                self.push("message", "Waiting for user to continue...")
+                                self.events.enable_continue()
+                                self.events.message("Waiting for user to continue...")
                                 if not self.pause():
                                     break
                             if not self.running:
                                 break
-                            self.push("progress", step, count)
-                            self.push("message", f"Measuring {item.name} {measurement.name} @{wafer_config.name}...")
+                            self.events.progress(step, count)
+                            self.events.message(f"Measuring {item.name} {measurement.name} @{wafer_config.name}...")
                             self.run_measurement(item, measurement)
                             measurement.state = "DONE"
-                            self.push("append_summary", measurement.name, random.random())
+                            self.events.append_summary(measurement.name, random.random())
                             step += 1
 
                 # Lock all before next flute
                 for measurement in item.measurements:
                     measurement.locked = True
                 item.state = "DONE"
-        self.push("message", "Done.")
+        self.events.message("Done.")
