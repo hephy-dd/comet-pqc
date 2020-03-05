@@ -1,3 +1,4 @@
+import copy
 import glob
 import re
 import os
@@ -179,3 +180,4 @@ class SequenceMeasurement:
                 if re.match(r'^[+-]?\d+', value.strip()):
                     value = comet.ureg(value)
             self.parameters[key] = value
+        self.default_parameters = copy.deepcopy(self.parameters)

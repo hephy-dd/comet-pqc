@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import sys
@@ -96,7 +97,7 @@ def main():
         select = app.layout.get("sequence_select")
         tree = app.layout.get("sequence_tree")
         tree.clear()
-        for item in select.current.items:
+        for item in copy.deepcopy(select.current.items):
             sequence_item = tree.append([item.name, ""])
             sequence_item.name = item.name
             sequence_item.position = item.position
@@ -107,9 +108,9 @@ def main():
                 measurement_item = sequence_item.append([measurement.name, ""])
                 measurement_item.name = measurement.name
                 measurement_item.type = measurement.type
-                measurement_item.parameters = measurement.parameters.copy()
+                measurement_item.parameters = copy.deepcopy(measurement.parameters)
+                measurement_item.default_parameters = copy.deepcopy(measurement.default_parameters)
                 measurement_item.description = measurement.description
-                import random
                 measurement_item.series = {}
                 measurement_item[0].checkable = True
                 measurement_item[0].checked = measurement.enabled
@@ -180,6 +181,15 @@ def main():
         app.layout.get("continue_button").enabled = False
         app.layout.get("stop_button").enabled = False
         on_tree_locked(False)
+
+    def on_select_path():
+        output = app.layout.get("output")
+        path = comet.directory_open(
+            title="Output",
+            path=output.value
+        )
+        if path:
+            output.value = path
 
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
@@ -264,6 +274,13 @@ def main():
                 enabled=False,
                 clicked=on_measure_stop
             ),
+            comet.FieldSet(
+                title="Output",
+                layout=comet.Row(
+                    comet.Text(id="output", value="/tmp"),
+                    comet.Button(text="...", width=32, clicked=on_select_path)
+                )
+            )
         ),
         comet.Tabs(
             comet.Tab(
