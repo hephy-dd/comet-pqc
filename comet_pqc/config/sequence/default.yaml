@@ -1,14 +1,14 @@
 id: default
 name: Default
 description: Default measurement sequence.
-items:
+connections:
   - name: PQC Flute 1
-    position: flute_1
+    connection: flute_1
     measurements:
       - name: Polysilicon Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -18,7 +18,7 @@ items:
       - name: N+ Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -28,7 +28,7 @@ items:
       - name: P-stop Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -38,7 +38,7 @@ items:
       - name: FET
         type: bias_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage: 100 mV
             bias_current_compliance: 10 uA
             voltage_start: -5 V
@@ -51,7 +51,7 @@ items:
         type: cv_ramp
         description: Variant using two SMUs
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
@@ -64,7 +64,7 @@ items:
         description: Variant using a single SMU
         enabled: false
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
@@ -75,7 +75,7 @@ items:
       - name: Capacitor test structure (2 SMU)
         type: cv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: -5 V
             bias_voltage_stop: 5 V
             bias_voltage_step: 0.1 V
@@ -88,7 +88,7 @@ items:
         type: cv_ramp_alt
         enabled: false
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: -5 V
             bias_voltage_stop: 5 V
             bias_voltage_step: 0.1 V
@@ -100,7 +100,7 @@ items:
       - name: Diode IV
         type: iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             voltage_start: 0 V
             voltage_stop: -1000 V
             voltage_step: 10 V
@@ -110,7 +110,7 @@ items:
       - name: Diode CV
         type: cv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
@@ -120,12 +120,12 @@ items:
             lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
             lcr_amplitude: 250 mV
   - name: PQC Flute 2
-    position: flute_2
+    connection: flute_2
     measurements:
       - name: GCD
         type: bias_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage: -5 V
             bias_current_compliance: 10 uA
             voltage_start: -10 V
@@ -137,7 +137,7 @@ items:
       - name: Polysilicon meander
         type: iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             voltage_start: -100 mV
             voltage_stop: 100 mV
             voltage_step: 25 mV
@@ -147,7 +147,7 @@ items:
       - name: N+ linewidth structure
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -157,7 +157,7 @@ items:
       - name: P-stop linewidth structure
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -167,7 +167,7 @@ items:
       - name: Dielectric Breakdown
         type: iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             voltage_start: 0 V
             voltage_stop: 250 V
             voltage_step: 10 V
@@ -175,12 +175,12 @@ items:
             current_compliance: 1 uA
             sense_mode: local
   - name: PQC Flute 3
-    position: flute_3
+    connection: flute_3
     measurements:
       - name: Metal meander
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -190,7 +190,7 @@ items:
       - name: Metal clover leaf Van-der-Pauw
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 mA # TODO -10 mA, -100 mA
             current_stop: 10 mA # TODO 10 mA, 100 mA
             current_step: 500 uA # TODO 500 uA, 5 mA
@@ -200,7 +200,7 @@ items:
       - name: P+ cross-bridge Van-der-Pauw
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -210,7 +210,7 @@ items:
       - name: Bulk cross
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: 0 nA
             current_stop: 500 nA
             current_step: 5 nA
@@ -220,7 +220,7 @@ items:
       - name: Diode IV
         type: iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             voltage_start: 0 V
             voltage_stop: -1000 V
             voltage_step: 10 V
@@ -230,7 +230,7 @@ items:
       - name: Diode CV
         type: cv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
@@ -240,12 +240,12 @@ items:
             lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
             lcr_amplitude: 250 mV
   - name: PQC Flute 4
-    position: flute_4
+    connection: flute_4
     measurements:
       - name: GCD05
         type: bias_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             bias_voltage: -5 V
             bias_current_compliance: 10 uA
             voltage_start: -10 V
@@ -257,7 +257,7 @@ items:
       - name: N+ CBKR
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -267,7 +267,7 @@ items:
       - name: Polysilicon CBKR
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -277,7 +277,7 @@ items:
       - name: Polysilicon contact chain
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -287,7 +287,7 @@ items:
       - name: P+ contact chain
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -297,7 +297,7 @@ items:
       - name: N+ contact chain
         type: 4wire_iv_ramp
         parameters:
-            matrix: []
+            matrix_channels: []
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA

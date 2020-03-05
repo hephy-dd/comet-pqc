@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    positions:
+    connections:
         type: array
         items:
             type: object
@@ -41,4 +41,4 @@ properties:
 required:
   - id
   - name
-  - positions
+  - connections

@@ -1,7 +1,7 @@
 id: default_hmw_n
 name: Default HMW N
 description: Default wafer, west half-moon, northern structure.
-positions:
+connections:
   - id: flute_1
     name: Flute 1
     pos:

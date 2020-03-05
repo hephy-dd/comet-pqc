@@ -114,17 +114,17 @@ class ChuckPosition:
 
 class Wafer:
 
-    def __init__(self, id, name, enabled=True, description="", positions=[]):
+    def __init__(self, id, name, enabled=True, description="", connections=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.positions = list(map(lambda kwargs: WaferPosition(**kwargs), positions))
+        self.connections = list(map(lambda kwargs: WaferConnection(**kwargs), connections))
 
     def __str__(self):
         return self.name
 
-class WaferPosition:
+class WaferConnection:
 
     def __init__(self, id, name, pos, type=None, enabled=True, description=""):
         self.id = id
@@ -136,27 +136,27 @@ class WaferPosition:
 
 class Sequence:
 
-    def __init__(self, id, name, enabled=True, description="", items=[]):
+    def __init__(self, id, name, enabled=True, description="", connections=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.items = list(map(lambda kwargs: SequenceItem(**kwargs), items))
+        self.connections = list(map(lambda kwargs: SequenceConnection(**kwargs), connections))
 
     def __str__(self):
         return self.name
 
     def __iter__(self):
-        return iter(self.items)
+        return iter(self.connections)
 
     def __len__(self):
-        return len(self.items)
+        return len(self.connections)
 
-class SequenceItem:
+class SequenceConnection:
 
-    def __init__(self, name, position, enabled=True, description="", measurements=[]):
+    def __init__(self, name, connection, enabled=True, description="", measurements=[]):
         self.name = name
-        self.position = position
+        self.connection = connection
         self.enabled = enabled
         self.description = description
         self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements))

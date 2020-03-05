@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    items:
+    connections:
         type: array
         items:
             type: object
@@ -17,14 +17,14 @@ properties:
                     type: boolean
                 name:
                     type: string
-                position:
+                connection:
                     type: string
                 parameters:
                     type: object
             required:
               - name
-              - position
+              - connection
 required:
   - id
   - name
-  - items
+  - connections
