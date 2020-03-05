@@ -48,6 +48,14 @@ class Panel(comet.Widget):
     def save(self):
         pass
 
+    @property
+    def locked(self):
+        return not self.layout.enabled
+
+    @locked.setter
+    def locked(self, enabled):
+        self.layout.enabled = not enabled
+
 class IVRamp(Panel):
     """Panel for IV ramp measurements."""
 
@@ -56,24 +64,35 @@ class IVRamp(Panel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.plot = comet.Plot(legend="bottom", height=300)
+        self.plot = comet.Plot(legend=None, height=300)
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
 
-        self.matrix = comet.Text(changed=lambda value: self.save())
+        self.matrix_channels = comet.Text(
+            tooltip="Matrix card switching channels, comma separated list."
+        )
 
-        self.voltage_start = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V", changed=lambda value: self.save())
-        self.voltage_stop = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V", changed=lambda value: self.save())
-        self.voltage_step = comet.Number(maximum=2000, decimals=3, suffix="V", changed=lambda value: self.save())
-        self.waiting_time = comet.Number(maximum=2000, decimals=1, suffix="s", changed=lambda value: self.save())
+        self.voltage_start = comet.Number(decimals=3, suffix="V", changed=lambda value: self.save())
+        self.voltage_stop = comet.Number(decimals=3, suffix="V", changed=lambda value: self.save())
+        self.voltage_step = comet.Number(decimals=3, suffix="V", changed=lambda value: self.save())
+        self.waiting_time = comet.Number(decimals=1, suffix="s", changed=lambda value: self.save())
         self.current_compliance = comet.Number(maximum=200000, suffix="uA", changed=lambda value: self.save())
         self.sense_mode = comet.Select(values=["local", "remote"], changed=lambda value: self.save())
 
         self.content.layout = comet.Column(
             self.plot,
-            comet.Label(text="Matrix"),
-            self.matrix,
+            comet.FieldSet(
+                title="Matrix",
+                layout=comet.Column(
+                    comet.CheckBox(text="Enabled"),
+                    comet.Label(text="Channels"),
+                    comet.Row(
+                        self.matrix_channels,
+                        comet.Button(text="Load from Matrix", enabled=False)
+                    )
+                )
+            ),
             comet.Row(
                 comet.Column(
                     comet.Label(text="Start"),
@@ -93,11 +112,6 @@ class IVRamp(Panel):
                     self.sense_mode,
                     comet.Stretch()
                 )
-            ),
-            comet.Stretch(),
-            comet.Row(
-                comet.Button(text="Restore Defaults", clicked=self.restore),
-                comet.Stretch()
             )
         )
 
@@ -107,7 +121,7 @@ class IVRamp(Panel):
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        self.matrix.value = encode_matrix(item.parameters.get("matrix"))
+        self.matrix_channels.value = encode_matrix(item.parameters.get("matrix_channels"))
         self.voltage_start.value = item.parameters.get("voltage_start").to("V").m
         self.voltage_stop.value = item.parameters.get("voltage_stop").to("V").m
         self.voltage_step.value = item.parameters.get("voltage_step").to("V").m
@@ -119,7 +133,7 @@ class IVRamp(Panel):
         super().save()
         if self.current_item:
             self.current_item[0].bold = True
-            self.current_item.parameters["matrix"] = decode_matrix(self.matrix.value)
+            self.current_item.parameters["matrix_channels"] = decode_matrix(self.matrix_channels.value)
             self.current_item.parameters["voltage_start"] = self.voltage_start.value * comet.ureg("V")
             self.current_item.parameters["voltage_stop"] = self.voltage_stop.value * comet.ureg("V")
             self.current_item.parameters["voltage_step"] = self.voltage_step.value * comet.ureg("V")
@@ -130,7 +144,7 @@ class IVRamp(Panel):
     def restore(self):
         if self.current_item:
             self.current_item[0].bold = True
-            self.matrix.value = encode_matrix(self.current_item.default_parameters.get("matrix"))
+            self.matrix_channels.value = encode_matrix(self.current_item.default_parameters.get("matrix_channels"))
             self.voltage_start.value = self.current_item.default_parameters.get("voltage_start").to("V").m
             self.voltage_stop.value = self.current_item.default_parameters.get("voltage_stop").to("V").m
             self.voltage_step.value = self.current_item.default_parameters.get("voltage_step").to("V").m
@@ -151,12 +165,23 @@ class BiasIVRamp(Panel):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
 
-        self.matrix = comet.Text()
+        self.matrix_channels = comet.Text(
+            tooltip="Matrix card switching channels, comma separated list."
+        )
 
         self.content.layout = comet.Column(
             self.plot,
-            comet.Label(text="Matrix"),
-            self.matrix,
+            comet.FieldSet(
+                title="Matrix",
+                layout=comet.Column(
+                    comet.CheckBox(text="Enabled"),
+                    comet.Label(text="Channels"),
+                    comet.Row(
+                        self.matrix_channels,
+                        comet.Button(text="Load from Matrix", enabled=False)
+                    )
+                )
+            ),
         )
 
     def load(self, item):
@@ -165,7 +190,7 @@ class BiasIVRamp(Panel):
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        self.matrix.value = encode_matrix(item.parameters.get("matrix"))
+        self.matrix_channels.value = encode_matrix(item.parameters.get("matrix_channels"))
 
 class CVRamp(Panel):
     """Panel for CV ramp measurements."""
@@ -177,16 +202,27 @@ class CVRamp(Panel):
 
         self.plot = comet.Plot(legend="bottom", height=300)
 
-        self.matrix = comet.Text()
+        self.matrix_channels = comet.Text(
+            tooltip="Matrix card switching channels, comma separated list."
+        )
 
-        self.bias_voltage_start = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V")
-        self.bias_voltage_stop = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(maximum=2000, decimals=3, suffix="V")
+        self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_step = comet.Number(decimals=3, suffix="V")
 
         self.content.layout = comet.Column(
             self.plot,
-            comet.Label(text="Matrix"),
-            self.matrix,
+            comet.FieldSet(
+                title="Matrix",
+                layout=comet.Column(
+                    comet.CheckBox(text="Enabled"),
+                    comet.Label(text="Channels"),
+                    comet.Row(
+                        self.matrix_channels,
+                        comet.Button(text="Load from Matrix", enabled=False)
+                    )
+                )
+            ),
             comet.Label(text="Start"),
             self.bias_voltage_start,
             comet.Label(text="Stop"),
@@ -201,7 +237,7 @@ class CVRamp(Panel):
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        self.matrix.value = encode_matrix(item.parameters.get("matrix"))
+        self.matrix_channels.value = encode_matrix(item.parameters.get("matrix_channels"))
         self.bias_voltage_start.value = item.parameters.get("bias_voltage_start").to("V").m
         self.bias_voltage_stop.value = item.parameters.get("bias_voltage_stop").to("V").m
         self.bias_voltage_step.value = item.parameters.get("bias_voltage_step").to("V").m
@@ -216,16 +252,27 @@ class CVRampAlt(Panel):
 
         self.plot = comet.Plot(legend="bottom", height=300)
 
-        self.matrix = comet.Text()
+        self.matrix_channels = comet.Text(
+            tooltip="Matrix card switching channels, comma separated list."
+        )
 
-        self.bias_voltage_start = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V")
-        self.bias_voltage_stop = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(maximum=2000, decimals=3, suffix="V")
+        self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_step = comet.Number(decimals=3, suffix="V")
 
         self.content.layout = comet.Column(
             self.plot,
-            comet.Label(text="Matrix"),
-            self.matrix,
+            comet.FieldSet(
+                title="Matrix",
+                layout=comet.Column(
+                    comet.CheckBox(text="Enabled"),
+                    comet.Label(text="Channels"),
+                    comet.Row(
+                        self.matrix_channels,
+                        comet.Button(text="Load from Matrix", enabled=False)
+                    )
+                )
+            ),
             self.bias_voltage_start,
             comet.Label(text="Stop"),
             self.bias_voltage_stop,
@@ -239,7 +286,7 @@ class CVRampAlt(Panel):
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        self.matrix.value = encode_matrix(item.parameters.get("matrix"))
+        self.matrix_channels.value = encode_matrix(item.parameters.get("matrix_channels"))
         self.bias_voltage_start.value = item.parameters.get("bias_voltage_start").to("V").m
         self.bias_voltage_stop.value = item.parameters.get("bias_voltage_stop").to("V").m
         self.bias_voltage_step.value = item.parameters.get("bias_voltage_step").to("V").m
@@ -257,16 +304,27 @@ class FourWireIVRamp(Panel):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
 
-        self.matrix = comet.Text()
+        self.matrix_channels = comet.Text(
+            tooltip="Matrix card switching channels, comma separated list."
+        )
 
-        self.current_start = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="uA")
-        self.current_stop = comet.Number(minimum=-2000, maximum=2000, decimals=3, suffix="uA")
-        self.current_step = comet.Number(maximum=200000, decimals=3, suffix="nA")
+        self.current_start = comet.Number(decimals=3, suffix="uA")
+        self.current_stop = comet.Number(decimals=3, suffix="uA")
+        self.current_step = comet.Number(decimals=3, suffix="nA")
 
         self.content.layout = comet.Column(
             self.plot,
-            comet.Label(text="Matrix"),
-            self.matrix,
+            comet.FieldSet(
+                title="Matrix",
+                layout=comet.Column(
+                    comet.CheckBox(text="Enabled"),
+                    comet.Label(text="Channels"),
+                    comet.Row(
+                        self.matrix_channels,
+                        comet.Button(text="Load from Matrix", enabled=False)
+                    )
+                )
+            ),
             comet.Label(text="Start"),
             self.current_start,
             comet.Label(text="Stop"),
@@ -281,7 +339,7 @@ class FourWireIVRamp(Panel):
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        self.matrix.value = encode_matrix(item.parameters.get("matrix"))
+        self.matrix_channels.value = encode_matrix(item.parameters.get("matrix_channels"))
         self.current_start.value = item.parameters.get("current_start").to("uA").m
         self.current_stop.value = item.parameters.get("current_stop").to("uA").m
         self.current_step.value = item.parameters.get("current_step").to("nA").m

@@ -16,6 +16,7 @@ from . import __version__
 
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
+from .processes import CurrentProcess
 
 from .panels import IVRamp
 from .panels import BiasIVRamp
@@ -44,7 +45,7 @@ def main():
         read_termination="\r\n",
         write_termination="\r\n"
     )))
-    app.devices.add("smu1", K2657A(comet.Resource(
+    app.devices.add("k2657", K2657A(comet.Resource(
         resource_name="TCPIP::10.0.0.3::23::SOCKET",
         encoding='latin1',
         read_termination="\r\n",
@@ -60,7 +61,7 @@ def main():
         read_termination="\r\n",
         write_termination="\r\n"
     )))
-    app.devices.add("smu2", K2410(comet.Resource(
+    app.devices.add("k2410", K2410(comet.Resource(
         resource_name="TCPIP::10.0.0.5::10002::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n"
@@ -97,10 +98,10 @@ def main():
         select = app.layout.get("sequence_select")
         tree = app.layout.get("sequence_tree")
         tree.clear()
-        for item in copy.deepcopy(select.current.items):
+        for item in copy.deepcopy(select.current):
             sequence_item = tree.append([item.name, ""])
             sequence_item.name = item.name
-            sequence_item.position = item.position
+            sequence_item.connection = item.connection
             sequence_item.description = item.description
             sequence_item[0].checkable = True
             sequence_item[0].checked = item.enabled
@@ -191,6 +192,33 @@ def main():
         if path:
             output.value = path
 
+    def on_current_run():
+        app.layout.get("run_current").enabled = False
+        app.layout.get("stop_current").enabled = True
+        dashboard = app.layout.get("dashboard")
+        for panel in dashboard.children:
+            panel.locked = True
+        tree = app.layout.get("sequence_tree")
+        measurement_item = tree.current
+        current = app.processes.get("current")
+        current.set('output', app.layout.get("output").value)
+        current.set('type', measurement_item.type)
+        current.set('parameters', measurement_item.parameters)
+        current.start()
+
+    def on_current_stop():
+        app.layout.get("run_current").enabled = False
+        app.layout.get("stop_current").enabled = False
+        current = app.processes.get("current")
+        current.stop()
+
+    def on_current_finished():
+        app.layout.get("run_current").enabled = True
+        app.layout.get("stop_current").enabled = False
+        dashboard = app.layout.get("dashboard")
+        for panel in dashboard.children:
+            panel.locked = False
+
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
         app.progress = None
@@ -221,77 +249,124 @@ def main():
             ###append_summary=on_append_summary
         )
     ))
+    app.processes.add("current", CurrentProcess(
+        events=dict(
+            finished=on_current_finished,
+            failed=on_show_error,
+            message=on_message,
+            progress=on_progress,
+        )
+    ))
 
     app.layout = comet.Row(
+        # Left column
         comet.Column(
-            comet.Row(
-                comet.Column(
-                    comet.Label("Sample"),
-                    comet.Label("Chuck"),
-                    comet.Label("Wafer"),
-                    comet.Label("Sequence")                ),
-                comet.Column(
-                    comet.Text(id="sample_text", value="Unnamed"),
-                    comet.Select(id="chuck_select"),
-                    comet.Select(id="wafer_select"),
-                    comet.Select(id="sequence_select", changed=on_sequence_changed)
-                ),
-                stretch=(0, 1)
-            ),
-            SequenceTree(id="sequence_tree", selected=on_tree_selected),
-            comet.Button(
-                id="calibrate_button",
-                text="Calibrate...",
-                tooltip="Calibrate table.",
-                clicked=on_calibrate_start
-            ),
-            comet.Row(
-                comet.Button(
-                    id="start_button",
-                    text="Start",
-                    tooltip="Start measurement sequence.",
-                    clicked=on_measure_start
-                ),
-                comet.Button(
-                    id="autopilot_button",
-                    text="Autopilot",
-                    tooltip="Run next measurement automatically.",
-                    checkable=True,
-                    checked=True
-                ),
-                comet.Button(
-                    id="continue_button",
-                    text="Continue",
-                    tooltip="Run next measurement manually.",
-                    enabled=False,
-                    clicked=on_measure_continue
+            comet.FieldSet(
+                title="Sample",
+                layout=comet.Row(
+                    comet.Column(
+                        comet.Label("Name"),
+                        comet.Label("Chuck"),
+                        comet.Label("Wafer Type"),
+                        comet.Label("Sequence")                ),
+                    comet.Column(
+                        comet.Text(id="sample_text", value="Unnamed"),
+                        comet.Select(id="chuck_select"),
+                        comet.Select(id="wafer_select"),
+                        comet.Select(id="sequence_select", changed=on_sequence_changed)
+                    ),
+                    stretch=(0, 1)
                 )
             ),
-            comet.Button(
-                id="stop_button",
-                text="Stop",
-                tooltip="Stop measurement sequence.",
-                enabled=False,
-                clicked=on_measure_stop
+            comet.FieldSet(
+                title="Sequence",
+                layout=comet.Column(
+                    SequenceTree(id="sequence_tree", selected=on_tree_selected),
+                    comet.Row(
+                        comet.Button(
+                            id="start_button",
+                            text="Start",
+                            tooltip="Start measurement sequence.",
+                            clicked=on_measure_start
+                        ),
+                        comet.Button(
+                            id="autopilot_button",
+                            text="Autopilot",
+                            tooltip="Run next measurement automatically.",
+                            checkable=True,
+                            checked=True
+                        ),
+                        comet.Button(
+                            id="continue_button",
+                            text="Continue",
+                            tooltip="Run next measurement manually.",
+                            enabled=False,
+                            clicked=on_measure_continue
+                        )
+                    ),
+                    comet.Button(
+                        id="stop_button",
+                        text="Stop",
+                        tooltip="Stop measurement sequence.",
+                        enabled=False,
+                        clicked=on_measure_stop
+                    )
+                )
+            ),
+            comet.FieldSet(
+                title="Controls",
+                layout=comet.Row(
+                    comet.Button(text="Table", enabled=False, checkable=True, checked=True),
+                    comet.Button(text="Joystick", enabled=False, checkable=True, checked=True),
+                    comet.Button(text="Light", enabled=False, checkable=True, checked=True),
+                    comet.Stretch(),
+                    comet.Button(
+                        id="calibrate_button",
+                        text="Calibrate",
+                        tooltip="Calibrate table.",
+                        clicked=on_calibrate_start
+                    )
+                )
             ),
             comet.FieldSet(
                 title="Output",
                 layout=comet.Row(
-                    comet.Text(id="output", value="/tmp"),
+                    comet.Text(id="output", value=os.path.expanduser("~/PQC/")),
                     comet.Button(text="...", width=32, clicked=on_select_path)
                 )
-            )
+            ),
+            stretch=(0, 1, 0, 0, 0)
         ),
+        # Right column
         comet.Tabs(
             comet.Tab(
-                title="Dashboard",
+                title="Measurement",
                 layout=comet.Column(
-                    IVRamp(id="iv_ramp", visible=False),
-                    BiasIVRamp(id="bias_iv_ramp", visible=False),
-                    CVRamp(id="cv_ramp", visible=False),
-                    CVRampAlt(id="cv_ramp_alt", visible=False),
-                    FourWireIVRamp(id="4wire_iv_ramp", visible=False),
-                    id="dashboard"
+                    comet.Row(
+                        IVRamp(id="iv_ramp", visible=False),
+                        BiasIVRamp(id="bias_iv_ramp", visible=False),
+                        CVRamp(id="cv_ramp", visible=False),
+                        CVRampAlt(id="cv_ramp_alt", visible=False),
+                        FourWireIVRamp(id="4wire_iv_ramp", visible=False),
+                        id="dashboard"
+                    ),
+                    comet.Row(
+                        comet.Button(text="Restore Defaults"),
+                        comet.Stretch(),
+                        comet.Button(
+                            id="run_current",
+                            text="Run",
+                            tooltip="Run current measurement.",
+                            clicked=on_current_run
+                        ),
+                        comet.Button(
+                            id="stop_current",
+                            text="Stop",
+                            tooltip="Stop current measurement.",
+                            clicked=on_current_stop,
+                            enabled=False
+                        )
+                    )
                 )
             ),
             comet.Tab(

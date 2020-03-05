@@ -2,6 +2,7 @@ import logging
 import random
 import time
 import threading
+import os
 
 import comet
 
@@ -142,3 +143,15 @@ class MeasureProcess(comet.Process):
                     measurement.locked = True
                 item.state = "DONE"
         self.events.message("Done.")
+
+class CurrentProcess(comet.Process):
+
+    def run(self):
+        output = self.get("output")
+        type = self.get("type")
+        parameters = self.get("parameters")
+        path = os.path.join(output, comet.make_iso())
+        if not os.path.exists(path):
+            os.makedirs(path)
+        measurement = measurement_factory(type)
+        measurement.run(self, parameters, path)
