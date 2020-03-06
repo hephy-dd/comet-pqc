@@ -1,4 +1,5 @@
 from PyQt5 import QtCore
+import logging
 
 import comet
 
@@ -134,6 +135,8 @@ class IVRamp(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
+
+        # self.table = comet.Table(header=["Time", "Voltage", "Current"])
         self.plots.append(self.plot)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -201,16 +204,17 @@ class IVRamp(MatrixPanel):
             self.sense_mode.current = default_parameters.get("sense_mode")
 
     def append_reading(self, name, x, y):
+        self.plot.series.get(name).append(x, y)
+        if self.plot.zoomed:
+            self.plot.update("x")
+        else:
+            self.plot.fit()
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, y)
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
+
 
     def clear_readings(self):
         for series in self.plot.series.values():
