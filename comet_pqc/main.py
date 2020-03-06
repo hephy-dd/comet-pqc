@@ -366,7 +366,7 @@ def main():
                 id="output_fieldset",
                 title="Output",
                 layout=comet.Row(
-                    comet.Text(id="output", value=os.path.expanduser("~/PQC/")),
+                    comet.Text(id="output", value=os.path.join(os.path.expanduser("~"), "PQC")),
                     comet.Button(text="...", width=32, clicked=on_select_path)
                 )
             ),
