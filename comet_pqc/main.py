@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import sys
+import time
 
 import comet
 from comet.driver.keithley import K707B
@@ -18,17 +19,15 @@ from .processes import CalibrateProcess
 from .processes import MeasureProcess
 from .processes import CurrentProcess
 
+from .trees import SequenceTree
+from .trees import ConnectionTreeItem
+from .trees import MeasurementTreeItem
+
 from .panels import IVRamp
 from .panels import BiasIVRamp
 from .panels import CVRamp
 from .panels import CVRampAlt
 from .panels import FourWireIVRamp
-
-class SequenceTree(comet.Tree):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.header = ["Measurement", "State"]
 
 def main():
     app = comet.Application(
@@ -39,6 +38,7 @@ def main():
     )
 
     # Register devices
+
     app.devices.add("matrix", K707B(comet.Resource(
         resource_name="TCPIP::10.0.0.2::23::SOCKET",
         encoding='latin1',
@@ -73,6 +73,8 @@ def main():
     )))
     app.devices.load_settings()
 
+    # Register callbacks
+
     def load_chucks():
         select = app.layout.get("chuck_select")
         select.clear()
@@ -91,40 +93,38 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
-    def on_sequence_changed(index):
-        dashboard = app.layout.get("dashboard")
-        for panel in dashboard.children:
+    def on_load_sequence_tree(index):
+        """Clears current sequence tree and loads new sequence tree from configuration."""
+        panels = app.layout.get("panels")
+        for panel in panels.children:
+            panel.unmount()
             panel.visible = False
-        select = app.layout.get("sequence_select")
         tree = app.layout.get("sequence_tree")
         tree.clear()
-        for item in copy.deepcopy(select.current):
-            sequence_item = tree.append([item.name, ""])
-            sequence_item.name = item.name
-            sequence_item.connection = item.connection
-            sequence_item.description = item.description
-            sequence_item[0].checkable = True
-            sequence_item[0].checked = item.enabled
-            for measurement in item.measurements:
-                measurement_item = sequence_item.append([measurement.name, ""])
-                measurement_item.name = measurement.name
-                measurement_item.type = measurement.type
-                measurement_item.parameters = copy.deepcopy(measurement.parameters)
-                measurement_item.default_parameters = copy.deepcopy(measurement.default_parameters)
-                measurement_item.description = measurement.description
-                measurement_item.series = {}
-                measurement_item[0].checkable = True
-                measurement_item[0].checked = measurement.enabled
+        select = app.layout.get("sequence_select")
+        sequence = copy.deepcopy(select.current)
+        for connection in sequence:
+            tree.append(ConnectionTreeItem(connection))
         tree.fit()
+        if len(tree):
+            tree.current = tree[0]
 
     def on_tree_selected(item):
-        dashboard = app.layout.get("dashboard")
-        for panel in dashboard.children:
+        panels = app.layout.get("panels")
+        for panel in panels.children:
+            panel.store()
+            panel.unmount()
+            panel.clear_readings()
             panel.visible = False
-        if item.qt.parent():
+        panel_controls = app.layout.get("panel_controls")
+        panel_controls.visible = False
+        if isinstance(item, ConnectionTreeItem):
+            pass
+        if isinstance(item, MeasurementTreeItem):
             panel = app.layout.get(item.type)
             panel.visible = True
-            panel.load(item)
+            panel.mount(item)
+            panel_controls.visible = True
 
     def on_tree_locked(state):
         for item in app.layout.get("sequence_tree"):
@@ -192,32 +192,63 @@ def main():
         if path:
             output.value = path
 
+    def on_current_restore():
+        if comet.show_question(
+            title="Restore Defaults",
+            text="Do you want to restore to default parameters?"
+        ):
+            tree = app.layout.get("sequence_tree")
+            measurement = tree.current
+            panel = app.layout.get(measurement.type)
+            panel.restore()
+
     def on_current_run():
-        app.layout.get("run_current").enabled = False
-        app.layout.get("stop_current").enabled = True
-        dashboard = app.layout.get("dashboard")
-        for panel in dashboard.children:
-            panel.locked = True
-        tree = app.layout.get("sequence_tree")
-        measurement_item = tree.current
-        current = app.processes.get("current")
-        current.set('output', app.layout.get("output").value)
-        current.set('type', measurement_item.type)
-        current.set('parameters', measurement_item.parameters)
-        current.start()
+        if comet.show_question(
+            title="Run Measurement",
+            text="Do you want to run the current measurement?"
+        ):
+            app.layout.get("restore_current").enabled = False
+            app.layout.get("run_current").enabled = False
+            app.layout.get("stop_current").enabled = True
+            app.layout.get("sample_fieldset").enabled = False
+            app.layout.get("sequence_fieldset").enabled = False
+            app.layout.get("output_fieldset").enabled = False
+            panels = app.layout.get("panels")
+            for panel in panels.children:
+                panel.locked = True
+            tree = app.layout.get("sequence_tree")
+            measurement = tree.current
+            panel = app.layout.get(measurement.type)
+            panel.store()
+            # TODO
+            panel.clear_readings()
+            current = app.processes.get("current")
+            current.set('output', app.layout.get("output").value)
+            current.set('type', measurement.type)
+            current.set('parameters', measurement.parameters)
+            current.events.reading = panel.append_reading
+            # TODO
+            current.start()
 
     def on_current_stop():
+        app.layout.get("restore_current").enabled = False
         app.layout.get("run_current").enabled = False
         app.layout.get("stop_current").enabled = False
         current = app.processes.get("current")
         current.stop()
 
     def on_current_finished():
+        app.layout.get("restore_current").enabled = True
         app.layout.get("run_current").enabled = True
         app.layout.get("stop_current").enabled = False
-        dashboard = app.layout.get("dashboard")
-        for panel in dashboard.children:
+        app.layout.get("sample_fieldset").enabled = True
+        app.layout.get("sequence_fieldset").enabled = True
+        app.layout.get("output_fieldset").enabled = True
+        panels = app.layout.get("panels")
+        for panel in panels.children:
             panel.locked = False
+        current = app.processes.get("current")
+        current.events.reading = lambda data: None
 
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
@@ -229,6 +260,8 @@ def main():
 
     def on_progress(value, maximum):
         app.progress = value, maximum
+
+    # Register processes
 
     app.processes.add("calibrate", CalibrateProcess(
         events=dict(
@@ -242,11 +275,7 @@ def main():
             finished=on_measure_finished,
             failed=on_show_error,
             message=on_message,
-            progress=on_progress,
-            ###move_to=on_move_to,
-            ###show_panel=on_show_panel,
-            ###enable_continue=on_enable_continue,
-            ###append_summary=on_append_summary
+            progress=on_progress
         )
     ))
     app.processes.add("current", CurrentProcess(
@@ -258,10 +287,13 @@ def main():
         )
     ))
 
+    # Create layout
+
     app.layout = comet.Row(
         # Left column
         comet.Column(
             comet.FieldSet(
+                id="sample_fieldset",
                 title="Sample",
                 layout=comet.Row(
                     comet.Column(
@@ -273,12 +305,13 @@ def main():
                         comet.Text(id="sample_text", value="Unnamed"),
                         comet.Select(id="chuck_select"),
                         comet.Select(id="wafer_select"),
-                        comet.Select(id="sequence_select", changed=on_sequence_changed)
+                        comet.Select(id="sequence_select", changed=on_load_sequence_tree)
                     ),
                     stretch=(0, 1)
                 )
             ),
             comet.FieldSet(
+                id="sequence_fieldset",
                 title="Sequence",
                 layout=comet.Column(
                     SequenceTree(id="sequence_tree", selected=on_tree_selected),
@@ -314,6 +347,7 @@ def main():
                 )
             ),
             comet.FieldSet(
+                id="controls_fieldset",
                 title="Controls",
                 layout=comet.Row(
                     comet.Button(text="Table", enabled=False, checkable=True, checked=True),
@@ -329,6 +363,7 @@ def main():
                 )
             ),
             comet.FieldSet(
+                id="output_fieldset",
                 title="Output",
                 layout=comet.Row(
                     comet.Text(id="output", value=os.path.expanduser("~/PQC/")),
@@ -348,10 +383,15 @@ def main():
                         CVRamp(id="cv_ramp", visible=False),
                         CVRampAlt(id="cv_ramp_alt", visible=False),
                         FourWireIVRamp(id="4wire_iv_ramp", visible=False),
-                        id="dashboard"
+                        id="panels"
                     ),
                     comet.Row(
-                        comet.Button(text="Restore Defaults"),
+                        comet.Button(
+                            id="restore_current",
+                            text="Restore Defaults",
+                            tooltip="Restore default measurement parameters.",
+                            clicked=on_current_restore
+                        ),
                         comet.Stretch(),
                         comet.Button(
                             id="run_current",
@@ -365,7 +405,9 @@ def main():
                             tooltip="Stop current measurement.",
                             clicked=on_current_stop,
                             enabled=False
-                        )
+                        ),
+                        visible=False,
+                        id="panel_controls"
                     )
                 )
             ),
@@ -381,6 +423,8 @@ def main():
         ),
         stretch=(4, 9)
     )
+
+    # Tweaks
 
     app.width = 1280
     app.height = 800

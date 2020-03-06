@@ -153,5 +153,5 @@ class CurrentProcess(comet.Process):
         path = os.path.join(output, comet.make_iso())
         if not os.path.exists(path):
             os.makedirs(path)
-        measurement = measurement_factory(type)
-        measurement.run(self, parameters, path)
+        measurement = measurement_factory(type, self, parameters)
+        measurement.run(path)
