@@ -104,6 +104,7 @@ class IVRamp(MatrixSwitch):
         voltage_start = self.parameters.get("voltage_start").to("V").m
         voltage_step = self.parameters.get("voltage_step").to("V").m
         waiting_time = self.parameters.get("waiting_time").to("s").m
+        sense_mode = self.parameters.get("sense_mode")
 
 
         idn = smu.identification
@@ -113,8 +114,16 @@ class IVRamp(MatrixSwitch):
         smu.system.beeper.status = False
         smu.clear()
 
+        # set sense mode
+        logging.info("set sense mode: '%s'", sense_mode)
+        if sense_mode == "remote":
+            smu.resource.write(":SYST:RSEN ON")
+        else:
+            smu.resource.write(":SYST:RSEN OFF")
+        smu.resource.query("*OPC?")
+
         # set compliance
-        logging.info("set compliance to %E A", current_compliance)
+        logging.info("set compliance: %E A", current_compliance)
         smu.sense.current.protection.level = current_compliance
 
         error = smu.system.error
@@ -129,9 +138,10 @@ class IVRamp(MatrixSwitch):
             voltage = smu.source.voltage.level
             step = calc_step(voltage, 0, voltage_step)
 
-            logging.info("ramp to zero, from %E V to %E V with step %E V", voltage, 0, step)
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
             for voltage in comet.Range(voltage, 0, step):
-                logging.info("set voltage to %E V", voltage)
+                logging.info("set voltage: %E V", voltage)
+                self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
                 time.sleep(.100)
                 if not self.process.running:
@@ -158,9 +168,10 @@ class IVRamp(MatrixSwitch):
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
 
-            logging.info("ramp to start voltage, from %E V to %E V with step %E V", voltage, voltage_start, step)
+            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, step)
             for voltage in comet.Range(voltage, voltage_start, step):
-                logging.info("set voltage to %E V", voltage)
+                logging.info("set voltage: %E V", voltage)
+                self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
                 time.sleep(.100)
                 # Returns <elements> comma separated
@@ -185,7 +196,6 @@ class IVRamp(MatrixSwitch):
         voltage_step = self.parameters.get("voltage_step").to("V").m
         voltage_stop = self.parameters.get("voltage_stop").to("V").m
         waiting_time = self.parameters.get("waiting_time").to("s").m
-        sense_mode = self.parameters.get("sense_mode")
 
         if self.process.running:
 
@@ -206,15 +216,17 @@ class IVRamp(MatrixSwitch):
                 # Get configured READ/FETCh elements
                 elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
 
-                logging.info("ramp to end voltage, from %E V to %E V with step %E V", voltage, voltage_stop, step)
+                logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):
-                    logging.info("set voltage to %E V", voltage)
+                    logging.info("set voltage: %E V", voltage)
+                    self.process.events.message(f"{voltage:.3f} V")
                     smu.clear()
                     smu.source.voltage.level = voltage
                     time.sleep(.100)
                     error = smu.system.error
                     if error[0]:
                         logging.error(error)
+                        self.process.events.message(error)
                         smu.clear()
                         #raise RuntimeError(f"{error[0]}: {error[1]}")
                     timestamp = time.time()
@@ -254,9 +266,10 @@ class IVRamp(MatrixSwitch):
         voltage = smu.source.voltage.level
         step = calc_step(voltage, 0, voltage_step)
 
-        logging.info("ramp to zero, from %E V to %E V with step %E V", voltage, 0, step)
+        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
         for voltage in comet.Range(voltage, 0, step):
-            logging.info("set voltage to %E V", voltage)
+            logging.info("set voltage: %E V", voltage)
+            self.process.events.message(f"{voltage:.3f} V")
             smu.source.voltage.level = voltage
             time.sleep(.100)
 

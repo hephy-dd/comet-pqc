@@ -138,7 +138,8 @@ class IVRamp(MatrixPanel):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
 
-        self.table = comet.Table(header=["Time [s]", "Voltage [V]", "Current [uA]", ""], stretch=True)
+        self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
+        self.table.fit()
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
@@ -153,24 +154,31 @@ class IVRamp(MatrixPanel):
         self.sense_mode = comet.Select(values=["local", "remote"])
 
         self.controls.append(comet.Row(
-            comet.Column(
-                comet.Label(text="Start"),
-                self.voltage_start,
-                comet.Label(text="Stop"),
-                self.voltage_stop,
-                comet.Label(text="Step"),
-                self.voltage_step,
-                comet.Label(text="Waiting Time"),
-                self.waiting_time,
-                comet.Stretch()
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Row(
+                    comet.Column(
+                        comet.Label(text="Start"),
+                        self.voltage_start,
+                        comet.Label(text="Stop"),
+                        self.voltage_stop,
+                        comet.Label(text="Step"),
+                        self.voltage_step,
+                        comet.Stretch()
+                    ),
+                    comet.Column(
+                        comet.Label(text="Waiting Time"),
+                        self.waiting_time,
+                        comet.Label(text="Current Compliance"),
+                        self.current_compliance,
+                        comet.Label(text="Sense Mode"),
+                        self.sense_mode,
+                        comet.Stretch()
+                    )
+                )
             ),
-            comet.Column(
-                comet.Label(text="Current Compliance"),
-                self.current_compliance,
-                comet.Label(text="Sense Mode"),
-                self.sense_mode,
-                comet.Stretch()
-            )
+            comet.Stretch(),
+            stretch=(2, 2)
         ))
 
     def mount(self, measurement):
@@ -210,6 +218,7 @@ class IVRamp(MatrixPanel):
             self.sense_mode.current = default_parameters.get("sense_mode")
 
     def append_reading(self, name, x, y):
+        voltage = x * comet.ureg('V')
         current = y * comet.ureg('A')
         if self.measurement:
             if name in self.plot.series:
@@ -221,7 +230,10 @@ class IVRamp(MatrixPanel):
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-            self.table.append([time.time(), x, current.to('uA').m, ""])
+            self.table.append([
+                format(voltage.to('V').m, '.3f'),
+                format(current.to('uA').m, '.3f'),
+            ])
 
     def clear_readings(self):
         for series in self.plot.series.values():
@@ -249,13 +261,20 @@ class BiasIVRamp(MatrixPanel):
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
-        self.controls.append(comet.Column(
-            comet.Label(text="Start"),
-            self.bias_voltage_start,
-            comet.Label(text="Stop"),
-            self.bias_voltage_stop,
-            comet.Label(text="Step"),
-            self.bias_voltage_step
+        self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.bias_voltage_start,
+                    comet.Label(text="Stop"),
+                    self.bias_voltage_stop,
+                    comet.Label(text="Step"),
+                    self.bias_voltage_step
+                )
+            ),
+            comet.Stretch(),
+            stretch=(1, 3)
         ))
 
 class CVRamp(MatrixPanel):
@@ -272,14 +291,54 @@ class CVRamp(MatrixPanel):
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
-        self.controls.append(comet.Column(
-            comet.Label(text="Start"),
-            self.bias_voltage_start,
-            comet.Label(text="Stop"),
-            self.bias_voltage_stop,
-            comet.Label(text="Step"),
-            self.bias_voltage_step
+        self.lcr_frequency = comet.List(height=64)
+        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
+
+        self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.bias_voltage_start,
+                    comet.Label(text="Stop"),
+                    self.bias_voltage_stop,
+                    comet.Label(text="Step"),
+                    self.bias_voltage_step
+                )
+            ),
+            comet.FieldSet(
+                title="LCR",
+                layout=comet.Column(
+                    comet.Label(text="AC Frequencies"),
+                    self.lcr_frequency,
+                    comet.Label(text="AC Amplitude"),
+                    self.lcr_amplitude,
+                    comet.Stretch()
+                )
+            ),
+            comet.Stretch(),
+            stretch=(1, 1, 2)
         ))
+
+    def mount(self, measurement):
+        super().mount(measurement)
+        parameters = measurement.parameters
+        self.lcr_frequency.values = parameters.get("lcr_frequency", [])
+        self.lcr_amplitude.value = parameters.get("lcr_amplitude").to("mV").m
+
+    def store(self):
+        super().store()
+        if self.measurement:
+            parameters = self.measurement.parameters
+            parameters["lcr_frequency"] = self.lcr_frequency.values
+            parameters["lcr_amplitude"] = self.lcr_amplitude.value * comet.ureg("mV")
+
+    def restore(self):
+        super().restore()
+        if self.measurement:
+            default_parameters = self.measurement.default_parameters
+            self.lcr_frequency.values = default_parameters.get("lcr_frequency_start", [])
+            self.lcr_amplitude.value = default_parameters.get("lcr_amplitude").to("mV").m
 
 class CVRampAlt(MatrixPanel):
     """Panel for CV ramp (alternate) measurements."""
@@ -295,13 +354,20 @@ class CVRampAlt(MatrixPanel):
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
-        self.controls.append(comet.Column(
-            comet.Label(text="Start"),
-            self.bias_voltage_start,
-            comet.Label(text="Stop"),
-            self.bias_voltage_stop,
-            comet.Label(text="Step"),
-            self.bias_voltage_step
+        self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.bias_voltage_start,
+                    comet.Label(text="Stop"),
+                    self.bias_voltage_stop,
+                    comet.Label(text="Step"),
+                    self.bias_voltage_step
+                )
+            ),
+            comet.Stretch(),
+            stretch=(1, 3)
         ))
 
 class FourWireIVRamp(MatrixPanel):
@@ -311,7 +377,7 @@ class FourWireIVRamp(MatrixPanel):
         super().__init__(*args, **kwargs)
         self.title = "4 Wire IV Ramp"
 
-        self.plot = comet.Plot(legend="bottom", height=300)
+        self.plot = comet.Plot(height=300)
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
@@ -321,13 +387,20 @@ class FourWireIVRamp(MatrixPanel):
         self.current_stop = comet.Number(decimals=3, suffix="uA")
         self.current_step = comet.Number(minimum=0, decimals=3, suffix="nA")
 
-        self.controls.append(comet.Column(
-            comet.Label(text="Start"),
-            self.current_start,
-            comet.Label(text="Stop"),
-            self.current_stop,
-            comet.Label(text="Step"),
-            self.current_step
+        self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.current_start,
+                    comet.Label(text="Stop"),
+                    self.current_stop,
+                    comet.Label(text="Step"),
+                    self.current_step
+                )
+            ),
+            comet.Stretch(),
+            stretch=(1, 3)
         ))
 
 class FrequencyScan(MatrixPanel):
@@ -337,7 +410,7 @@ class FrequencyScan(MatrixPanel):
         super().__init__(*args, **kwargs)
         self.title = "Frequency Scan"
 
-        self.plot = comet.Plot(legend="bottom", height=300)
+        self.plot = comet.Plot(height=300)
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
@@ -379,7 +452,7 @@ class FrequencyScan(MatrixPanel):
                 )
             ),
             comet.Stretch(),
-            stretch=(0, 0, 1)
+            stretch=(1, 1, 2)
         ))
 
     def mount(self, measurement):
