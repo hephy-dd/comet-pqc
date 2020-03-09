@@ -94,6 +94,35 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
+    def on_import_sequence():
+        filename = comet.filename_open(
+            title="Import Sequence",
+            filter="YAML (*.yaml *.yml)"
+        )
+        if filename:
+            try:
+                sequence = config.load_sequence(filename)
+            except Exception as e:
+                logging.error(e)
+                comet.show_error(
+                    title="Import Sequence Error",
+                    text=e.message if hasattr(e, "message") else format(e),
+                    details=format(e)
+                )
+                return
+            select = app.layout.get("sequence_select")
+            for item in select.values:
+                if item.id == sequence.id or item.name == sequence.name:
+                    if comet.show_question(
+                        title="Sequence already loaded",
+                        text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
+                    ):
+                        select.remove(item)
+                    else:
+                        return
+            select.append(sequence)
+            select.current = sequence
+
     def on_sample_changed(value):
         app.settings["sample"] = value
 
@@ -311,7 +340,8 @@ def main():
                         comet.Label("Name"),
                         comet.Label("Chuck"),
                         comet.Label("Wafer Type"),
-                        comet.Label("Sequence")                ),
+                        comet.Label("Sequence")
+                    ),
                     comet.Column(
                         comet.Text(
                             id="sample_text",
@@ -459,6 +489,17 @@ def main():
     load_chucks()
     load_wafers()
     load_sequences()
+
+    # There's no hook, so it's a hack.
+    # Import sequence
+    from PyQt5 import QtWidgets
+    ui = app.qt.window.ui
+    sequenceMenu = QtWidgets.QMenu("&Sequence")
+    ui.fileMenu.insertMenu(ui.quitAction, sequenceMenu)
+    importAction = QtWidgets.QAction("&Import...")
+    importAction.triggered.connect(on_import_sequence)
+    sequenceMenu.addAction(importAction)
+    ui.fileMenu.insertSeparator(ui.quitAction)
 
     return app.run()
 
