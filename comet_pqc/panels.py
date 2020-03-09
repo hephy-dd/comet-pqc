@@ -1,3 +1,4 @@
+import time
 from PyQt5 import QtCore
 
 import comet
@@ -33,12 +34,12 @@ class MeasurementPanel(Panel):
         )
         self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
         self.description_label = comet.Label()
-        self.plots = comet.Column()
+        self.data = comet.Column()
         self.controls = comet.Column()
         self.layout = comet.Column(
             self.title_label,
             self.description_label,
-            self.plots,
+            self.data,
             self.controls,
             comet.Stretch(),
             stretch=(0, 0, 0, 0, 1)
@@ -134,7 +135,13 @@ class IVRamp(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
-        self.plots.append(self.plot)
+
+        self.table = comet.Table(header=["Time [s]", "Voltage [V]", "Current [uA]", ""], stretch=True)
+
+        self.tabs = comet.Tabs()
+        self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
+        self.tabs.append(comet.Tab(title="Table", layout=self.table))
+        self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -201,16 +208,18 @@ class IVRamp(MatrixPanel):
             self.sense_mode.current = default_parameters.get("sense_mode")
 
     def append_reading(self, name, x, y):
+        current = y * comet.ureg('A')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, y)
+                self.plot.series.get(name).append(x, current.to('uA').m)
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
                     self.plot.fit()
+            self.table.append([time.time(), x, current.to('uA').m, ""])
 
     def clear_readings(self):
         for series in self.plot.series.values():
@@ -219,6 +228,7 @@ class IVRamp(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
+        self.table.clear()
 
 class BiasIVRamp(MatrixPanel):
     """Panel for bias IV ramp measurements."""
@@ -231,7 +241,7 @@ class BiasIVRamp(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
-        self.plots.append(self.plot)
+        self.data.append(self.plot)
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -254,7 +264,7 @@ class CVRamp(MatrixPanel):
         self.title = "CV Ramp (1 SMU)"
 
         self.plot = comet.Plot(height=300)
-        self.plots.append(self.plot)
+        self.data.append(self.plot)
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -277,7 +287,7 @@ class CVRampAlt(MatrixPanel):
         self.title = "CV Ramp (2 SMU)"
 
         self.plot = comet.Plot(height=300)
-        self.plots.append(self.plot)
+        self.data.append(self.plot)
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -303,7 +313,7 @@ class FourWireIVRamp(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
-        self.plots.append(self.plot)
+        self.data.append(self.plot)
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
         self.current_stop = comet.Number(decimals=3, suffix="uA")

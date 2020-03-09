@@ -17,6 +17,10 @@ __all__ = [
     "FourWireIVRamp"
 ]
 
+def calc_step(start, stop, step):
+    """Returns positive/negative step according to start and stop value."""
+    return -abs(step) if start > stop else abs(step)
+
 def measurement_factory(type, *args, **kwargs):
     """Factory function to create a new measurement instance by type.
 
@@ -103,6 +107,9 @@ class IVRamp(MatrixSwitch):
         idn = smu.identification
         logging.info("Using SMU: %s", idn)
 
+        # Beeper off
+        smu.system.beeper.status = False
+
         # set compliance
         logging.info("set compliance to %E A", current_compliance)
         smu.sense.current.protection.level = current_compliance
@@ -112,7 +119,7 @@ class IVRamp(MatrixSwitch):
         # If output enabled
         if smu.output:
             voltage = smu.source.voltage.level
-            step = -abs(voltage_step) if voltage > 0 else abs(voltage_step)
+            step = calc_step(voltage, 0, voltage_step)
 
             logging.info("ramp to zero, from %E V to %E V with step %E V", voltage, 0, step)
             for voltage in comet.Range(voltage, 0, step):
@@ -133,7 +140,7 @@ class IVRamp(MatrixSwitch):
         if self.process.running:
 
             voltage = smu.source.voltage.level
-            step = -abs(voltage_step) if voltage > voltage_start else abs(voltage_step)
+            step = calc_step(voltage, voltage_start, voltage_step)
 
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
@@ -178,11 +185,11 @@ class IVRamp(MatrixSwitch):
                 f.write(os.linesep)
 
                 voltage = smu.source.voltage.level
-                step = -abs(voltage_step) if voltage > voltage_stop else abs(voltage_step)
+                step = calc_step(voltage, voltage_stop, voltage_step)
 
                 # Get configured READ/FETCh elements
                 elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-                f.write(",".join(elements))
+                f.write("timestamp [s],voltage [V],current[A]")
 
                 logging.info("ramp to end voltage, from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):
@@ -213,7 +220,7 @@ class IVRamp(MatrixSwitch):
     def finalize(self, smu):
         voltage_step = self.parameters.get("voltage_step").to("V").m
         voltage = smu.source.voltage.level
-        step = -abs(voltage_step) if voltage > 0 else abs(voltage_step)
+        step = calc_step(voltage, 0, voltage_step)
 
         logging.info("ramp to zero, from %E V to %E V with step %E V", voltage, 0, step)
         for voltage in comet.Range(voltage, 0, step):
