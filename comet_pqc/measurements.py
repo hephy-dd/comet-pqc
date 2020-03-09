@@ -18,7 +18,8 @@ __all__ = [
     "FrequencyScan",
 ]
 
-def calc_step(start, stop, step):
+# TODO: integrate into comet.Range
+def auto_step(start, stop, step):
     """Returns positive/negative step according to start and stop value."""
     return -abs(step) if start > stop else abs(step)
 
@@ -136,7 +137,7 @@ class IVRamp(MatrixSwitch):
         # If output enabled
         if smu.output:
             voltage = smu.source.voltage.level
-            step = calc_step(voltage, 0, voltage_step)
+            step = auto_step(voltage, 0, voltage_step)
 
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
             for voltage in comet.Range(voltage, 0, step):
@@ -163,7 +164,7 @@ class IVRamp(MatrixSwitch):
         if self.process.running:
 
             voltage = smu.source.voltage.level
-            step = calc_step(voltage, voltage_start, voltage_step)
+            step = auto_step(voltage, voltage_start, voltage_step)
 
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
@@ -211,7 +212,7 @@ class IVRamp(MatrixSwitch):
                 f.flush()
 
                 voltage = smu.source.voltage.level
-                step = calc_step(voltage, voltage_stop, voltage_step)
+                step = auto_step(voltage, voltage_stop, voltage_step)
 
                 # Get configured READ/FETCh elements
                 elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
@@ -264,7 +265,7 @@ class IVRamp(MatrixSwitch):
     def finalize(self, smu):
         voltage_step = self.parameters.get("voltage_step").to("V").m
         voltage = smu.source.voltage.level
-        step = calc_step(voltage, 0, voltage_step)
+        step = auto_step(voltage, 0, voltage_step)
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
         for voltage in comet.Range(voltage, 0, step):

@@ -20,6 +20,20 @@ def encode_matrix(values):
 def decode_matrix(value):
     return list(map(str.strip, value.split(",")))
 
+class MatrixText(comet.Text):
+    """Overloaded text input to handle matrix channel list."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return decode_matrix(self.qt.text())
+
+    @value.setter
+    def value(self, value):
+        self.qt.setText(encode_matrix(value or []))
+
 class Panel(comet.Widget):
     """Base class for panels."""
 
@@ -31,6 +45,7 @@ class MeasurementPanel(Panel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._bindings = {}
         self.title_label = comet.Label(
             stylesheet="font-size: 16px; font-weight: bold; background-color: white; height: 32px;"
         )
@@ -48,12 +63,40 @@ class MeasurementPanel(Panel):
         )
         self.unmount()
 
+    def bind(self, key, element, default=None, unit=None):
+        """Bind measurement parameter to UI element for syncronization on mount
+        and store.
+
+        >>> # for measurement parameter "value" of unit "V"
+        >>> self.value = comet.Number()
+        >>> self.bind("value", self.value, default=10.0, unit="V")
+        """
+        self._bindings[key] = element, default, unit
+
     def mount(self, measurement):
         """Mount measurement to panel."""
         self.unmount()
         self.title_label.text = f"{self.title} &rarr; {measurement.name}"
         self.description_label.text = measurement.description
         self.measurement = measurement
+        # Load parameters to UI
+        parameters = self.measurement.parameters
+        for key, item in self._bindings.items():
+            element, default, unit = item
+            value = parameters.get(key, default)
+            if unit is not None:
+                if isinstance(value, comet.ureg.Quantity):
+                    value = value.to(unit).m
+            if isinstance(element, comet.List):
+                setattr(element, "values", value)
+            elif isinstance(element, comet.Select):
+                setattr(element, "current", value)
+            elif isinstance(element, comet.CheckBox):
+                setattr(element, "checked", value)
+            elif isinstance(element, comet.Text):
+                setattr(element, "value", value)
+            else:
+                setattr(element, "value", value)
 
     def unmount(self):
         """Unmount measurement from panel."""
@@ -62,11 +105,45 @@ class MeasurementPanel(Panel):
         self.measurement = None
 
     def store(self):
-        pass
+        """Store UI element values to measurement parameters."""
+        if self.measurement:
+            parameters = self.measurement.parameters
+            for key, item in self._bindings.items():
+                element, default, unit = item
+                if isinstance(element, comet.List):
+                    value = getattr(element, "values")
+                elif isinstance(element, comet.Select):
+                    value = getattr(element, "current")
+                elif isinstance(element, comet.CheckBox):
+                    value = getattr(element, "checked")
+                elif isinstance(element, comet.Text):
+                    value = getattr(element, "value")
+                else:
+                    value = getattr(element, "value")
+                if unit is not None:
+                    value = value * comet.ureg(unit)
+                parameters[key] = value
 
     def restore(self):
         """Restore measurement defaults."""
-        pass
+        if self.measurement:
+            default_parameters = self.measurement.default_parameters
+            for key, item in self._bindings.items():
+                element, default, unit = item
+                value = default_parameters.get(key, default)
+                if unit is not None:
+                    if isinstance(value, comet.ureg.Quantity):
+                        value = value.to(unit).m
+                if isinstance(element, comet.List):
+                    setattr(element, "values", value)
+                elif isinstance(element, comet.Select):
+                    setattr(element, "current", value)
+                elif isinstance(element, comet.CheckBox):
+                    setattr(element, "checked", value)
+                elif isinstance(element, comet.Text):
+                    setattr(element, "value", value)
+                else:
+                    setattr(element, "value", value)
 
     def append_reading(self, name, x, y):
         pass
@@ -90,7 +167,7 @@ class MatrixPanel(MeasurementPanel):
         super().__init__(*args, **kwargs)
 
         self.matrix_enabled = comet.CheckBox(text="Enabled")
-        self.matrix_channels = comet.Text(
+        self.matrix_channels = MatrixText(
             tooltip="Matrix card switching channels, comma separated list."
         )
 
@@ -106,25 +183,8 @@ class MatrixPanel(MeasurementPanel):
             )
         ))
 
-    def mount(self, measurement):
-        super().mount(measurement)
-        parameters = measurement.parameters
-        self.matrix_enabled.checked = parameters.get("matrix_enabled", False)
-        self.matrix_channels.value = encode_matrix(parameters.get("matrix_channels", []))
-
-    def store(self):
-        super().store()
-        if self.measurement:
-            parameters = self.measurement.parameters
-            parameters["matrix_enabled"] = self.matrix_enabled.checked
-            parameters["matrix_channels"] = decode_matrix(self.matrix_channels.value)
-
-    def restore(self):
-        super().restore()
-        if self.measurement:
-            default_parameters = self.measurement.default_parameters
-            self.matrix_enabled.checked = default_parameters.get("matrix_enabled")
-            self.matrix_channels.value = encode_matrix(default_parameters.get("matrix_channels"))
+        self.bind("matrix_enabled", self.matrix_enabled, False)
+        self.bind("matrix_channels", self.matrix_channels, [])
 
 class IVRamp(MatrixPanel):
     """Panel for IV ramp measurements."""
@@ -181,41 +241,19 @@ class IVRamp(MatrixPanel):
             stretch=(2, 2)
         ))
 
+        self.bind("voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
+        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+        self.bind("waiting_time", self.waiting_time, 1, unit="s")
+        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
+        self.bind("sense_mode", self.sense_mode, "local")
+
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.get(name).replace(points)
                 self.plot.fit()
-        parameters = measurement.parameters
-        self.voltage_start.value = parameters.get("voltage_start").to("V").m
-        self.voltage_stop.value = parameters.get("voltage_stop").to("V").m
-        self.voltage_step.value = parameters.get("voltage_step").to("V").m
-        self.waiting_time.value = parameters.get("waiting_time").to("s").m
-        self.current_compliance.value = parameters.get("current_compliance").to("uA").m
-        self.sense_mode.current = parameters.get("sense_mode")
-
-    def store(self):
-        super().store()
-        if self.measurement:
-            parameters = self.measurement.parameters
-            parameters["voltage_start"] = self.voltage_start.value * comet.ureg("V")
-            parameters["voltage_stop"] = self.voltage_stop.value * comet.ureg("V")
-            parameters["voltage_step"] = self.voltage_step.value * comet.ureg("V")
-            parameters["waiting_time"] = self.waiting_time.value * comet.ureg("s")
-            parameters["current_compliance"] = self.current_compliance.value * comet.ureg("uA")
-            parameters["sense_mode"] = self.sense_mode.current
-
-    def restore(self):
-        super().restore()
-        if self.measurement:
-            default_parameters = self.measurement.default_parameters
-            self.voltage_start.value = default_parameters.get("voltage_start").to("V").m
-            self.voltage_stop.value = default_parameters.get("voltage_stop").to("V").m
-            self.voltage_step.value = default_parameters.get("voltage_step").to("V").m
-            self.waiting_time.value = default_parameters.get("waiting_time").to("s").m
-            self.current_compliance.value = default_parameters.get("current_compliance").to("uA").m
-            self.sense_mode.current = default_parameters.get("sense_mode")
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')
@@ -257,25 +295,43 @@ class BiasIVRamp(MatrixPanel):
         self.plot.add_series("series", "x", "y", text="IV", color="red")
         self.data.append(self.plot)
 
-        self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
-        self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
+        self.bias_voltage = comet.Number(decimals=3, suffix="V")
+        self.bias_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.voltage_start = comet.Number(decimals=3, suffix="V")
+        self.voltage_stop = comet.Number(decimals=3, suffix="V")
+        self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
         self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="Bias",
+                layout=comet.Column(
+                    comet.Label(text="Voltage"),
+                    self.bias_voltage,
+                    comet.Label(text="Current Compliance"),
+                    self.bias_current_compliance,
+                    comet.Stretch()
+                )
+            ),
             comet.FieldSet(
                 title="SMU",
                 layout=comet.Column(
                     comet.Label(text="Start"),
-                    self.bias_voltage_start,
+                    self.voltage_start,
                     comet.Label(text="Stop"),
-                    self.bias_voltage_stop,
+                    self.voltage_stop,
                     comet.Label(text="Step"),
-                    self.bias_voltage_step
+                    self.voltage_step
                 )
             ),
             comet.Stretch(),
-            stretch=(1, 3)
+            stretch=(1, 1, 2)
         ))
+
+        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("bias_current_compliance", self.bias_current_compliance, 0, unit="uA")
+        self.bind("voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
+        self.bind("voltage_step", self.voltage_step, 0, unit="V")
 
 class CVRamp(MatrixPanel):
     """Panel for CV ramp measurements."""
@@ -320,25 +376,11 @@ class CVRamp(MatrixPanel):
             stretch=(1, 1, 2)
         ))
 
-    def mount(self, measurement):
-        super().mount(measurement)
-        parameters = measurement.parameters
-        self.lcr_frequency.values = parameters.get("lcr_frequency", [])
-        self.lcr_amplitude.value = parameters.get("lcr_amplitude").to("mV").m
-
-    def store(self):
-        super().store()
-        if self.measurement:
-            parameters = self.measurement.parameters
-            parameters["lcr_frequency"] = self.lcr_frequency.values
-            parameters["lcr_amplitude"] = self.lcr_amplitude.value * comet.ureg("mV")
-
-    def restore(self):
-        super().restore()
-        if self.measurement:
-            default_parameters = self.measurement.default_parameters
-            self.lcr_frequency.values = default_parameters.get("lcr_frequency_start", [])
-            self.lcr_amplitude.value = default_parameters.get("lcr_amplitude").to("mV").m
+        self.bind("bias_voltage_start", self.bias_voltage_start, 0, unit="V")
+        self.bind("bias_voltage_stop", self.bias_voltage_stop, 0, unit="V")
+        self.bind("bias_voltage_step", self.bias_voltage_step, 0, unit="V")
+        self.bind("lcr_frequency", self.lcr_frequency, [])
+        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
 class CVRampAlt(MatrixPanel):
     """Panel for CV ramp (alternate) measurements."""
@@ -370,6 +412,10 @@ class CVRampAlt(MatrixPanel):
             stretch=(1, 3)
         ))
 
+        self.bind("bias_voltage_start", self.bias_voltage_start, 0, unit="V")
+        self.bind("bias_voltage_stop", self.bias_voltage_stop, 0, unit="V")
+        self.bind("bias_voltage_step", self.bias_voltage_step, 0, unit="V")
+
 class FourWireIVRamp(MatrixPanel):
     """Panel for 4 wire IV ramp measurements."""
 
@@ -385,7 +431,7 @@ class FourWireIVRamp(MatrixPanel):
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
         self.current_stop = comet.Number(decimals=3, suffix="uA")
-        self.current_step = comet.Number(minimum=0, decimals=3, suffix="nA")
+        self.current_step = comet.Number(minimum=0, decimals=3, suffix="uA")
 
         self.controls.append(comet.Row(
             comet.FieldSet(
@@ -402,6 +448,10 @@ class FourWireIVRamp(MatrixPanel):
             comet.Stretch(),
             stretch=(1, 3)
         ))
+
+        self.bind("current_start", self.current_start, 0, unit="uA")
+        self.bind("current_stop", self.current_stop, 0, unit="uA")
+        self.bind("current_step", self.current_step, 0, unit="uA")
 
 class FrequencyScan(MatrixPanel):
     """Frequency scan with log10 steps."""
@@ -455,37 +505,10 @@ class FrequencyScan(MatrixPanel):
             stretch=(1, 1, 2)
         ))
 
-    def mount(self, measurement):
-        super().mount(measurement)
-        parameters = measurement.parameters
-        self.bias_voltage.value = parameters.get("bias_voltage").to("V").m
-        self.current_compliance.value = parameters.get("current_compliance").to("uA").m
-        self.sense_mode.current = parameters.get("sense_mode")
-        self.lcr_frequency_start.value = parameters.get("lcr_frequency_start").to("Hz").m
-        self.lcr_frequency_stop.value = parameters.get("lcr_frequency_stop").to("MHz").m
-        self.lcr_frequency_steps.value = parameters.get("lcr_frequency_steps")
-        self.lcr_amplitude.value = parameters.get("lcr_amplitude").to("mV").m
-
-    def store(self):
-        super().store()
-        if self.measurement:
-            parameters = self.measurement.parameters
-            parameters["bias_voltage"] = self.bias_voltage.value * comet.ureg("V")
-            parameters["current_compliance"] = self.current_compliance.value * comet.ureg("uA")
-            parameters["sense_mode"] = self.sense_mode.current
-            parameters["lcr_frequency_start"] = self.lcr_frequency_start.value * comet.ureg("Hz")
-            parameters["lcr_frequency_stop"] = self.lcr_frequency_stop.value * comet.ureg("MHz")
-            parameters["lcr_frequency_steps"] = self.lcr_frequency_steps.value
-            parameters["lcr_amplitude"] = self.lcr_amplitude.value * comet.ureg("mV")
-
-    def restore(self):
-        super().restore()
-        if self.measurement:
-            default_parameters = self.measurement.default_parameters
-            self.bias_voltage.value = default_parameters.get("voltage_start").to("V").m
-            self.current_compliance.value = default_parameters.get("current_compliance").to("uA").m
-            self.sense_mode.current = default_parameters.get("sense_mode")
-            self.lcr_frequency_start.value = default_parameters.get("lcr_frequency_start").to("Hz").m
-            self.lcr_frequency_stop.value = default_parameters.get("lcr_frequency_stop").to("MHz").m
-            self.lcr_frequency_steps.value = default_parameters.get("lcr_frequency_steps")
-            self.lcr_amplitude.value = default_parameters.get("lcr_amplitude").to("mV").m
+        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
+        self.bind("sense_mode", self.sense_mode, "local")
+        self.bind("lcr_frequency_start", self.lcr_frequency_start, 0, unit="Hz")
+        self.bind("lcr_frequency_stop", self.lcr_frequency_stop, 0, unit="MHz")
+        self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
+        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
