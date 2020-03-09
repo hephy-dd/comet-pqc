@@ -223,8 +223,10 @@ def main():
             # TODO
             panel.clear_readings()
             current = app.processes.get("current")
+            current.set('sample_name', app.layout.get("sample_text").value)
             current.set('output', app.layout.get("output").value)
-            current.set('type', measurement.type)
+            current.set('measurement_type', measurement.type)
+            current.set('measurement_name', measurement.name)
             current.set('parameters', measurement.parameters)
             current.events.reading = panel.append_reading
             # TODO

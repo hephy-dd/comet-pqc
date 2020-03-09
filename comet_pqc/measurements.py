@@ -177,6 +177,8 @@ class IVRamp(MatrixSwitch):
         self.process.events.progress(3, 5)
 
     def measure(self, smu):
+        sample_name = self.process.get('sample_name')
+        measurement_name = self.process.get('measurement_name')
         current_compliance = self.parameters.get("current_compliance").to("A").m
         voltage_start = self.parameters.get("voltage_start").to("V").m
         voltage_step = self.parameters.get("voltage_step").to("V").m
@@ -186,8 +188,10 @@ class IVRamp(MatrixSwitch):
 
         if self.process.running:
 
-            with open(os.path.join(self.path, f"{self.type}.txt"), "w") as f:
+            with open(os.path.join(self.path, f"{sample_name}-{measurement_name}.txt".replace(" ", "_")), "w") as f:
                 # TODO
+                f.write(f"sample_name: {sample_name}\n")
+                f.write(f"measurement_name: {measurement_name}\n")
                 f.write(f"voltage_start: {voltage_start:E} V\n")
                 f.write(f"voltage_stop: {voltage_stop:E} V\n")
                 f.write(f"voltage_step: {voltage_step:E} V\n")
@@ -200,7 +204,6 @@ class IVRamp(MatrixSwitch):
 
                 # Get configured READ/FETCh elements
                 elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-                f.write("timestamp [s],voltage [V],current[A]")
 
                 logging.info("ramp to end voltage, from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):

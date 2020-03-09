@@ -148,7 +148,7 @@ class CurrentProcess(comet.Process):
 
     def run(self):
         output = self.get("output")
-        type = self.get("type")
+        type = self.get("measurement_type")
         parameters = self.get("parameters")
         path = os.path.join(output, comet.make_iso())
         if not os.path.exists(path):
