@@ -5,6 +5,7 @@ import os
 
 import jsonschema
 import yaml
+import pint.errors
 
 import comet
 
@@ -177,11 +178,16 @@ class SequenceMeasurement:
         self.parameters = {}
         for key, value in parameters.items():
             if isinstance(value, str):
-                if re.match(r'^[+-]?\d+\s+\w+$', value.strip()):
+                try:
                     value = comet.ureg(value)
+                except pint.errors.UndefinedUnitError:
+                    pass
             if isinstance(value, list):
                 for i in range(len(value)):
-                    if re.match(r'^[+-]?\d+\s+\w+$', value[i].strip()):
-                        value[i] = comet.ureg(value[i])
+                    if isinstance(value[i], str):
+                        try:
+                            value[i] = comet.ureg(value[i])
+                        except pint.errors.UndefinedUnitError:
+                            pass
             self.parameters[key] = value
         self.default_parameters = copy.deepcopy(self.parameters)
