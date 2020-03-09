@@ -177,7 +177,11 @@ class SequenceMeasurement:
         self.parameters = {}
         for key, value in parameters.items():
             if isinstance(value, str):
-                if re.match(r'^[+-]?\d+', value.strip()):
+                if re.match(r'^[+-]?\d+\s+\w+$', value.strip()):
                     value = comet.ureg(value)
+            if isinstance(value, list):
+                for i in range(len(value)):
+                    if re.match(r'^[+-]?\d+\s+\w+$', value[i].strip()):
+                        value[i] = comet.ureg(value[i])
             self.parameters[key] = value
         self.default_parameters = copy.deepcopy(self.parameters)
