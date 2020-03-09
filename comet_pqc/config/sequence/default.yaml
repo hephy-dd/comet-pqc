@@ -47,22 +47,22 @@ connections:
             waiting_time: 500 ms # TODO 0-500ms
             current_compliance: 10 uA
             sense_mode: local
-      - name: MOS capacitor (2 SMU)
+      - name: MOS capacitor (SMU and LCR)
         type: cv_ramp
-        description: Variant using two SMUs
+        description: Variant using SMU and LCR
         parameters:
             matrix_channels: []
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
-            current_compliance: 1 uA
-            lcr_frequency: 1 kHz # TODO 10 kHz
+            current_compliance: 100 uA
+            lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
-      - name: MOS capacitor (1 SMU)
+      - name: MOS capacitor (SMU)
         type: cv_ramp_alt
-        description: Variant using a single SMU
         enabled: false
+        description: Variant using one SMU
         parameters:
             matrix_channels: []
             bias_voltage_start: -5 V
@@ -70,9 +70,9 @@ connections:
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
             current_compliance: 1 uA
-            lcr_frequency: 1 kHz # TODO 10 kHz
+            lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (2 SMU)
+      - name: Capacitor test structure (SMU and LCR)
         type: cv_ramp
         parameters:
             matrix_channels: []
@@ -82,9 +82,9 @@ connections:
             waiting_time: 100 ms
             current_compliance: 100 uA
             sense_mode: local
-            lcr_frequency: 1 kHz
+            lcr_frequency: [1 kHz]
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (1 SMU)
+      - name: Capacitor test structure (SMU)
         type: cv_ramp_alt
         enabled: false
         parameters:
@@ -95,7 +95,7 @@ connections:
             waiting_time: 100 ms
             current_compliance: 100 uA
             sense_mode: local
-            lcr_frequency: 1 kHz
+            lcr_frequency: [1 kHz]
             lcr_amplitude: 250 mV
       - name: Diode IV
         type: iv_ramp
@@ -117,7 +117,19 @@ connections:
             waiting_time: 500 ms
             current_compliance: 100 uA
             sense_mode: local
-            lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
+            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_amplitude: 250 mV
+      - name: Diode Frequency Scan
+        type: frequency_scan
+        enabled: false
+        parameters:
+            matrix_channels: []
+            bias_voltage: 300 V
+            current_compliance: 10 uA
+            sense_mode: local
+            lcr_frequency_start: 100 Hz
+            lcr_frequency_stop: 2 MHz
+            lcr_frequency_steps: 100
             lcr_amplitude: 250 mV
   - name: PQC Flute 2
     connection: flute_2
@@ -168,10 +180,11 @@ connections:
         type: iv_ramp
         parameters:
             matrix_channels: []
+            iterations: 3
             voltage_start: 0 V
             voltage_stop: 250 V
             voltage_step: 10 V
-            waiting_time: 500 ms
+            waiting_time: 500 ms # TODO 0-500ms
             current_compliance: 1 uA
             sense_mode: local
   - name: PQC Flute 3
@@ -237,7 +250,18 @@ connections:
             waiting_time: 500 ms
             current_compliance: 100 uA
             sense_mode: local
-            lcr_frequency: 1 kHz # TODO 1 kHz, 10 kHz
+            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_amplitude: 250 mV
+      - name: Diode Frequency Scan
+        type: frequency_scan
+        enabled: false
+        parameters:
+            bias_voltage: 300 V
+            current_compliance: 10 uA
+            sense_mode: local
+            lcr_frequency_start: 100 Hz
+            lcr_frequency_stop: 2 MHz
+            lcr_frequency_steps: 100
             lcr_amplitude: 250 mV
   - name: PQC Flute 4
     connection: flute_4

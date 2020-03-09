@@ -28,6 +28,7 @@ from .panels import BiasIVRamp
 from .panels import CVRamp
 from .panels import CVRampAlt
 from .panels import FourWireIVRamp
+from .panels import FrequencyScan
 
 def main():
     app = comet.Application(
@@ -385,6 +386,7 @@ def main():
                         CVRamp(id="cv_ramp", visible=False),
                         CVRampAlt(id="cv_ramp_alt", visible=False),
                         FourWireIVRamp(id="4wire_iv_ramp", visible=False),
+                        FrequencyScan(id="frequency_scan", visible=False),
                         id="panels"
                     ),
                     comet.Row(
@@ -410,7 +412,8 @@ def main():
                         ),
                         visible=False,
                         id="panel_controls"
-                    )
+                    ),
+                    stretch=(1, 0)
                 )
             ),
             comet.Tab(

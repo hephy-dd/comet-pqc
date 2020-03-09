@@ -14,7 +14,8 @@ __all__ = [
     "BiasIVRamp",
     "CVRamp",
     "CVRampAlt",
-    "FourWireIVRamp"
+    "FourWireIVRamp",
+    "FrequencyScan",
 ]
 
 def calc_step(start, stop, step):
@@ -300,6 +301,14 @@ class FourWireIVRamp(MatrixSwitch):
     """4 wire IV ramp measurement."""
 
     type = "4wire_iv_ramp"
+
+    def code(self, *args, **kwargs):
+        time.sleep(random.uniform(2.5, 4.0))
+
+class FrequencyScan(MatrixSwitch):
+    """Frequency scan."""
+
+    type = "frequency_scan"
 
     def code(self, *args, **kwargs):
         time.sleep(random.uniform(2.5, 4.0))

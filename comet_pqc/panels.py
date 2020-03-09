@@ -10,7 +10,8 @@ __all__ = [
     "BiasIVRamp",
     "CVRamp",
     "CVRampAlt",
-    "FourWireIVRamp"
+    "FourWireIVRamp",
+    "FrequencyScan"
 ]
 
 def encode_matrix(values):
@@ -108,8 +109,8 @@ class MatrixPanel(MeasurementPanel):
     def mount(self, measurement):
         super().mount(measurement)
         parameters = measurement.parameters
-        self.matrix_enabled.checked = parameters.get("matrix_enabled")
-        self.matrix_channels.value = encode_matrix(parameters.get("matrix_channels"))
+        self.matrix_enabled.checked = parameters.get("matrix_enabled", False)
+        self.matrix_channels.value = encode_matrix(parameters.get("matrix_channels", []))
 
     def store(self):
         super().store()
@@ -146,7 +147,7 @@ class IVRamp(MatrixPanel):
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.voltage_step = comet.Number(decimals=3, suffix="V")
+        self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(decimals=1, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
         self.sense_mode = comet.Select(values=["local", "remote"])
@@ -246,7 +247,7 @@ class BiasIVRamp(MatrixPanel):
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
         self.controls.append(comet.Column(
             comet.Label(text="Start"),
@@ -269,7 +270,7 @@ class CVRamp(MatrixPanel):
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
         self.controls.append(comet.Column(
             comet.Label(text="Start"),
@@ -292,7 +293,7 @@ class CVRampAlt(MatrixPanel):
 
         self.bias_voltage_start = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.bias_voltage_step = comet.Number(decimals=3, suffix="V")
+        self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
         self.controls.append(comet.Column(
             comet.Label(text="Start"),
@@ -318,7 +319,7 @@ class FourWireIVRamp(MatrixPanel):
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
         self.current_stop = comet.Number(decimals=3, suffix="uA")
-        self.current_step = comet.Number(decimals=3, suffix="nA")
+        self.current_step = comet.Number(minimum=0, decimals=3, suffix="nA")
 
         self.controls.append(comet.Column(
             comet.Label(text="Start"),
@@ -328,3 +329,90 @@ class FourWireIVRamp(MatrixPanel):
             comet.Label(text="Step"),
             self.current_step
         ))
+
+class FrequencyScan(MatrixPanel):
+    """Frequency scan with log10 steps."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Frequency Scan"
+
+        self.plot = comet.Plot(legend="bottom", height=300)
+        self.plot.add_axis("x", align="bottom", text="Voltage [V]")
+        self.plot.add_axis("y", align="right", text="Current [uA]")
+        self.plot.add_series("series", "x", "y", text="IV", color="red")
+        self.data.append(self.plot)
+
+        self.bias_voltage = comet.Number(decimals=3, suffix="V")
+        self.current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.sense_mode = comet.Select(values=["local", "remote"])
+        self.lcr_frequency_start = comet.Number(minimum=0, decimals=3, suffix="Hz")
+        self.lcr_frequency_stop = comet.Number(minimum=0, decimals=3, suffix="MHz")
+        self.lcr_frequency_steps = comet.Number(minimum=1, maximum=1000, decimals=0)
+        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
+
+        self.controls.append(comet.Row(
+            comet.FieldSet(
+                title="SMU",
+                layout=comet.Column(
+                    comet.Label(text="Bias Voltage"),
+                    self.bias_voltage,
+                    comet.Label(text="Current Compliance"),
+                    self.current_compliance,
+                    comet.Label(text="Sense Mode"),
+                    self.sense_mode,
+                    comet.Stretch()
+                )
+            ),
+            comet.FieldSet(
+                title="LCR",
+                layout=comet.Column(
+                    comet.Label(text="AC Frequency Start"),
+                    self.lcr_frequency_start,
+                    comet.Label(text="AC Frequency Stop"),
+                    self.lcr_frequency_stop,
+                    comet.Label(text="AC Frequency Steps (log10)"),
+                    self.lcr_frequency_steps,
+                    comet.Label(text="AC Amplitude"),
+                    self.lcr_amplitude,
+                    comet.Stretch()
+                )
+            ),
+            comet.Stretch(),
+            stretch=(0, 0, 1)
+        ))
+
+    def mount(self, measurement):
+        super().mount(measurement)
+        parameters = measurement.parameters
+        self.bias_voltage.value = parameters.get("bias_voltage").to("V").m
+        self.current_compliance.value = parameters.get("current_compliance").to("uA").m
+        self.sense_mode.current = parameters.get("sense_mode")
+        self.lcr_frequency_start.value = parameters.get("lcr_frequency_start").to("Hz").m
+        self.lcr_frequency_stop.value = parameters.get("lcr_frequency_stop").to("MHz").m
+        self.lcr_frequency_steps.value = parameters.get("lcr_frequency_steps")
+        self.lcr_amplitude.value = parameters.get("lcr_amplitude").to("mV").m
+
+    def store(self):
+        super().store()
+        if self.measurement:
+            parameters = self.measurement.parameters
+            parameters["bias_voltage"] = self.bias_voltage.value * comet.ureg("V")
+            parameters["current_compliance"] = self.current_compliance.value * comet.ureg("uA")
+            parameters["sense_mode"] = self.sense_mode.current
+            parameters["lcr_frequency_start"] = self.lcr_frequency_start.value * comet.ureg("Hz")
+            parameters["lcr_frequency_stop"] = self.lcr_frequency_stop.value * comet.ureg("MHz")
+            parameters["lcr_frequency_steps"] = self.lcr_frequency_steps.value
+            parameters["lcr_amplitude"] = self.lcr_amplitude.value * comet.ureg("mV")
+
+    def restore(self):
+        super().restore()
+        if self.measurement:
+            default_parameters = self.measurement.default_parameters
+            self.bias_voltage.value = default_parameters.get("voltage_start").to("V").m
+            self.current_compliance.value = default_parameters.get("current_compliance").to("uA").m
+            self.sense_mode.current = default_parameters.get("sense_mode")
+            self.lcr_frequency_start.value = default_parameters.get("lcr_frequency_start").to("Hz").m
+            self.lcr_frequency_stop.value = default_parameters.get("lcr_frequency_stop").to("MHz").m
+            self.lcr_frequency_steps.value = default_parameters.get("lcr_frequency_steps")
+            self.lcr_amplitude.value = default_parameters.get("lcr_amplitude").to("mV").m
