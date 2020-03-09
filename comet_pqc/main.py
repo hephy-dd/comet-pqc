@@ -17,7 +17,7 @@ from . import __version__
 
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
-from .processes import CurrentProcess
+from .processes import SequenceProcess
 
 from .trees import SequenceTree
 from .trees import ConnectionTreeItem
@@ -94,6 +94,9 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
+    def on_sample_changed(value):
+        app.settings["sample"] = value
+
     def on_load_sequence_tree(index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
         panels = app.layout.get("panels")
@@ -153,10 +156,10 @@ def main():
         app.layout.get("continue_button").enabled = False
         app.layout.get("stop_button").enabled = False
 
-    def on_measure_start():
+    def on_sequence_start():
         result =comet.show_question(
-            title="Start measurement",
-            text="Are you sure to start a new measurement?"
+            title="Start sequence",
+            text="Are you sure to start a measurement sequence?"
         )
         if result:
             app.layout.get("calibrate_button").enabled = False
@@ -165,18 +168,20 @@ def main():
             app.layout.get("continue_button").enabled = False
             app.layout.get("stop_button").enabled = True
             on_tree_locked(True)
-            app.processes.get("measure").start()
+            sequence = app.processes.get("sequence")
+            sequence.start()
 
-    def on_measure_continue():
+    def on_sequence_continue():
         pass
 
-    def on_measure_stop():
+    def on_sequence_stop():
         app.layout.get("stop_button").enabled = False
         app.layout.get("autopilot_button").enabled = False
         app.layout.get("continue_button").enabled = False
-        app.processes.get("measure").stop()
+        sequence = app.processes.get("sequence")
+        sequence.stop()
 
-    def on_measure_finished():
+    def on_sequence_finished():
         app.layout.get("calibrate_button").enabled = True
         app.layout.get("start_button").enabled = True
         app.layout.get("autopilot_button").enabled = True
@@ -184,16 +189,19 @@ def main():
         app.layout.get("stop_button").enabled = False
         on_tree_locked(False)
 
-    def on_select_path():
+    def on_select_output():
         output = app.layout.get("output")
-        path = comet.directory_open(
+        value = comet.directory_open(
             title="Output",
             path=output.value
         )
-        if path:
-            output.value = path
+        if value:
+            output.value = value
 
-    def on_current_restore():
+    def on_output_changed(value):
+        app.settings["output_path"] = value
+
+    def on_measure_restore():
         if comet.show_question(
             title="Restore Defaults",
             text="Do you want to restore to default parameters?"
@@ -203,14 +211,14 @@ def main():
             panel = app.layout.get(measurement.type)
             panel.restore()
 
-    def on_current_run():
+    def on_measure_run():
         if comet.show_question(
             title="Run Measurement",
-            text="Do you want to run the current measurement?"
+            text="Do you want to run the current selected measurement?"
         ):
-            app.layout.get("restore_current").enabled = False
-            app.layout.get("run_current").enabled = False
-            app.layout.get("stop_current").enabled = True
+            app.layout.get("restore_measure").enabled = False
+            app.layout.get("run_measure").enabled = False
+            app.layout.get("stop_measure").enabled = True
             app.layout.get("sample_fieldset").enabled = False
             app.layout.get("sequence_fieldset").enabled = False
             app.layout.get("output_fieldset").enabled = False
@@ -223,35 +231,35 @@ def main():
             panel.store()
             # TODO
             panel.clear_readings()
-            current = app.processes.get("current")
-            current.set('sample_name', app.layout.get("sample_text").value)
-            current.set('output', app.layout.get("output").value)
-            current.set('measurement_type', measurement.type)
-            current.set('measurement_name', measurement.name)
-            current.set('parameters', measurement.parameters)
-            current.events.reading = panel.append_reading
+            measure = app.processes.get("measure")
+            measure.set('sample_name', app.layout.get("sample_text").value)
+            measure.set('output', app.layout.get("output").value)
+            measure.set('measurement_type', measurement.type)
+            measure.set('measurement_name', measurement.name)
+            measure.set('parameters', measurement.parameters)
+            measure.events.reading = panel.append_reading
             # TODO
-            current.start()
+            measure.start()
 
-    def on_current_stop():
-        app.layout.get("restore_current").enabled = False
-        app.layout.get("run_current").enabled = False
-        app.layout.get("stop_current").enabled = False
-        current = app.processes.get("current")
-        current.stop()
+    def on_measure_stop():
+        app.layout.get("restore_measure").enabled = False
+        app.layout.get("run_measure").enabled = False
+        app.layout.get("stop_measure").enabled = False
+        measure = app.processes.get("measure")
+        measure.stop()
 
-    def on_current_finished():
-        app.layout.get("restore_current").enabled = True
-        app.layout.get("run_current").enabled = True
-        app.layout.get("stop_current").enabled = False
+    def on_measure_finished():
+        app.layout.get("restore_measure").enabled = True
+        app.layout.get("run_measure").enabled = True
+        app.layout.get("stop_measure").enabled = False
         app.layout.get("sample_fieldset").enabled = True
         app.layout.get("sequence_fieldset").enabled = True
         app.layout.get("output_fieldset").enabled = True
         panels = app.layout.get("panels")
         for panel in panels.children:
             panel.locked = False
-        current = app.processes.get("current")
-        current.events.reading = lambda data: None
+        measure = app.processes.get("measure")
+        measure.events.reading = lambda data: None
 
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
@@ -273,17 +281,17 @@ def main():
             progress=on_progress
         )
     ))
-    app.processes.add("measure", MeasureProcess(
+    app.processes.add("sequence", SequenceProcess(
         events=dict(
-            finished=on_measure_finished,
+            finished=on_sequence_finished,
             failed=on_show_error,
             message=on_message,
             progress=on_progress
         )
     ))
-    app.processes.add("current", CurrentProcess(
+    app.processes.add("measure", MeasureProcess(
         events=dict(
-            finished=on_current_finished,
+            finished=on_measure_finished,
             failed=on_show_error,
             message=on_message,
             progress=on_progress,
@@ -305,7 +313,11 @@ def main():
                         comet.Label("Wafer Type"),
                         comet.Label("Sequence")                ),
                     comet.Column(
-                        comet.Text(id="sample_text", value="Unnamed"),
+                        comet.Text(
+                            id="sample_text",
+                            value=app.settings.get("sample", "Unnamed"),
+                            changed=on_sample_changed
+                        ),
                         comet.Select(id="chuck_select"),
                         comet.Select(id="wafer_select"),
                         comet.Select(id="sequence_select", changed=on_load_sequence_tree)
@@ -323,7 +335,7 @@ def main():
                             id="start_button",
                             text="Start",
                             tooltip="Start measurement sequence.",
-                            clicked=on_measure_start
+                            clicked=on_sequence_start
                         ),
                         comet.Button(
                             id="autopilot_button",
@@ -337,7 +349,7 @@ def main():
                             text="Continue",
                             tooltip="Run next measurement manually.",
                             enabled=False,
-                            clicked=on_measure_continue
+                            clicked=on_sequence_continue
                         )
                     ),
                     comet.Button(
@@ -345,7 +357,7 @@ def main():
                         text="Stop",
                         tooltip="Stop measurement sequence.",
                         enabled=False,
-                        clicked=on_measure_stop
+                        clicked=on_sequence_stop
                     )
                 )
             ),
@@ -369,8 +381,16 @@ def main():
                 id="output_fieldset",
                 title="Output",
                 layout=comet.Row(
-                    comet.Text(id="output", value=os.path.join(os.path.expanduser("~"), "PQC")),
-                    comet.Button(text="...", width=32, clicked=on_select_path)
+                    comet.Text(
+                        id="output",
+                        value=app.settings.get("output_path", os.path.join(os.path.expanduser("~"), "PQC")),
+                        changed=on_output_changed
+                    ),
+                    comet.Button(
+                        text="...",
+                        width=32,
+                        clicked=on_select_output
+                    )
                 )
             ),
             stretch=(0, 1, 0, 0, 0)
@@ -391,23 +411,23 @@ def main():
                     ),
                     comet.Row(
                         comet.Button(
-                            id="restore_current",
+                            id="restore_measure",
                             text="Restore Defaults",
                             tooltip="Restore default measurement parameters.",
-                            clicked=on_current_restore
+                            clicked=on_measure_restore
                         ),
                         comet.Stretch(),
                         comet.Button(
-                            id="run_current",
+                            id="run_measure",
                             text="Run",
                             tooltip="Run current measurement.",
-                            clicked=on_current_run
+                            clicked=on_measure_run
                         ),
                         comet.Button(
-                            id="stop_current",
+                            id="stop_measure",
                             text="Stop",
                             tooltip="Stop current measurement.",
-                            clicked=on_current_stop,
+                            clicked=on_measure_stop,
                             enabled=False
                         ),
                         visible=False,
@@ -430,6 +450,8 @@ def main():
     )
 
     # Tweaks
+
+    app.layout.get("start_button").enabled = False
 
     app.width = 1280
     app.height = 800

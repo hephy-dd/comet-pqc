@@ -20,7 +20,21 @@ class CalibrateProcess(comet.Process):
         self.events.message(None)
 
 class MeasureProcess(comet.Process):
-    """Measure process executing a sequence of measurements."""
+    """Measure process executing a single measurements."""
+
+    def run(self):
+        output = self.get("output")
+        type = self.get("measurement_type")
+        parameters = self.get("parameters")
+        path = os.path.join(output, comet.make_iso())
+        if not os.path.exists(path):
+            os.makedirs(path)
+        # TODO
+        measurement = measurement_factory(type, self, parameters)
+        measurement.run(path)
+
+class SequenceProcess(comet.Process):
+    """Sequence process executing a sequence of measurements."""
 
     wafers = []
 
@@ -143,15 +157,3 @@ class MeasureProcess(comet.Process):
                     measurement.locked = True
                 item.state = "DONE"
         self.events.message("Done.")
-
-class CurrentProcess(comet.Process):
-
-    def run(self):
-        output = self.get("output")
-        type = self.get("measurement_type")
-        parameters = self.get("parameters")
-        path = os.path.join(output, comet.make_iso())
-        if not os.path.exists(path):
-            os.makedirs(path)
-        measurement = measurement_factory(type, self, parameters)
-        measurement.run(path)
