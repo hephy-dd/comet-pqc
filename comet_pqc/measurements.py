@@ -104,15 +104,22 @@ class IVRamp(MatrixSwitch):
         voltage_step = self.parameters.get("voltage_step").to("V").m
         waiting_time = self.parameters.get("waiting_time").to("s").m
 
+
         idn = smu.identification
         logging.info("Using SMU: %s", idn)
 
         # Beeper off
         smu.system.beeper.status = False
+        smu.clear()
 
         # set compliance
         logging.info("set compliance to %E A", current_compliance)
         smu.sense.current.protection.level = current_compliance
+
+        error = smu.system.error
+        if error[0]:
+            logging.error(error)
+            raise RuntimeError(f"{error[0]}: {error[1]}")
 
         self.process.events.progress(1, 5)
 
@@ -135,6 +142,11 @@ class IVRamp(MatrixSwitch):
             smu.output = True
             time.sleep(.100)
 
+        error = smu.system.error
+        if error[0]:
+            logging.error(error)
+            raise RuntimeError(f"{error[0]}: {error[1]}")
+
         self.process.events.progress(2, 5)
 
         if self.process.running:
@@ -151,8 +163,8 @@ class IVRamp(MatrixSwitch):
                 smu.source.voltage.level = voltage
                 time.sleep(.100)
                 # Returns <elements> comma separated
-                values = list(map(float, smu.resource.query(":READ?").split(",")))
-                data = zip(elements, values)
+                #values = list(map(float, smu.resource.query(":READ?").split(",")))
+                #data = zip(elements, values)
                 time.sleep(waiting_time)
                 # Compliance?
                 compliance_tripped = smu.sense.current.protection.tripped
@@ -175,14 +187,13 @@ class IVRamp(MatrixSwitch):
         if self.process.running:
 
             with open(os.path.join(self.path, f"{self.type}.txt"), "w") as f:
-                f.write(f"voltage_start: {voltage_start:E} V")
-                f.write(os.linesep)
-                f.write(f"voltage_stop: {voltage_stop:E} V")
-                f.write(os.linesep)
-                f.write(f"voltage_step: {voltage_step:E} V")
-                f.write(os.linesep)
-                f.write(f"current_compliance: {current_compliance:E} A")
-                f.write(os.linesep)
+                # TODO
+                f.write(f"voltage_start: {voltage_start:E} V\n")
+                f.write(f"voltage_stop: {voltage_stop:E} V\n")
+                f.write(f"voltage_step: {voltage_step:E} V\n")
+                f.write(f"current_compliance: {current_compliance:E} A\n")
+                f.write("timestamp [s],voltage [V],current [A]\n")
+                f.flush()
 
                 voltage = smu.source.voltage.level
                 step = calc_step(voltage, voltage_stop, voltage_step)
@@ -194,24 +205,41 @@ class IVRamp(MatrixSwitch):
                 logging.info("ramp to end voltage, from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):
                     logging.info("set voltage to %E V", voltage)
+                    smu.clear()
                     smu.source.voltage.level = voltage
                     time.sleep(.100)
+                    error = smu.system.error
+                    if error[0]:
+                        logging.error(error)
+                        smu.clear()
+                        #raise RuntimeError(f"{error[0]}: {error[1]}")
                     timestamp = time.time()
                     # Returns <elements> comma separated
                     values = list(map(float, smu.resource.query(":READ?").split(",")))
+                    error = smu.system.error
+                    if error[0]:
+                        logging.error(error)
+                        smu.clear()
+                        #raise RuntimeError(f"{error[0]}: {error[1]}")
                     data = dict(zip(elements, values))
                     reading_voltage = data.get("VOLT")
                     reading_current = data.get("CURR")
                     logging.info("SMU reading: %E V %E A", reading_voltage, reading_current)
-                    self.process.events.reading("series", abs(reading_voltage) if step < 0 else reading_voltage, reading_current)
-                    f.write(f"{timestamp:.3f},{reading_voltage:E},{reading_current:E}")
-                    f.write(os.linesep)
+                    self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
+                    # TODO
+                    f.write(f"{timestamp:.3f},{voltage:E},{reading_current:E}\n")
+                    f.flush()
                     time.sleep(waiting_time)
                     # Compliance?
                     compliance_tripped = smu.sense.current.protection.tripped
                     if compliance_tripped:
                         logging.error("SMU in compliance")
                         raise ValueError("compliance tripped")
+                    error = smu.system.error
+                    if error[0]:
+                        logging.error(error)
+                        smu.clear()
+                        #raise RuntimeError(f"{error[0]}: {error[1]}")
                     if not self.process.running:
                         break
 

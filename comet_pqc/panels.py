@@ -1,5 +1,6 @@
 import time
 from PyQt5 import QtCore
+import logging
 
 import comet
 
