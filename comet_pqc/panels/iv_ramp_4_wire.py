@@ -20,6 +20,10 @@ class IVRamp4WirePanel(MatrixPanel):
         self.current_stop = comet.Number(decimals=3, suffix="uA")
         self.current_step = comet.Number(minimum=0, decimals=3, suffix="uA")
 
+        self.bind("current_start", self.current_start, 0, unit="uA")
+        self.bind("current_stop", self.current_stop, 0, unit="uA")
+        self.bind("current_step", self.current_step, 0, unit="uA")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="SMU",
@@ -35,7 +39,3 @@ class IVRamp4WirePanel(MatrixPanel):
             comet.Stretch(),
             stretch=(1, 3)
         ))
-
-        self.bind("current_start", self.current_start, 0, unit="uA")
-        self.bind("current_stop", self.current_stop, 0, unit="uA")
-        self.bind("current_step", self.current_step, 0, unit="uA")

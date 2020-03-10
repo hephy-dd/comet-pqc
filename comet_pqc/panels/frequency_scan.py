@@ -24,6 +24,14 @@ class FrequencyScanPanel(MatrixPanel):
         self.lcr_frequency_steps = comet.Number(minimum=1, maximum=1000, decimals=0)
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
 
+        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
+        self.bind("sense_mode", self.sense_mode, "local")
+        self.bind("lcr_frequency_start", self.lcr_frequency_start, 0, unit="Hz")
+        self.bind("lcr_frequency_stop", self.lcr_frequency_stop, 0, unit="MHz")
+        self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
+        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="SMU",
@@ -54,11 +62,3 @@ class FrequencyScanPanel(MatrixPanel):
             comet.Stretch(),
             stretch=(1, 1, 2)
         ))
-
-        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("lcr_frequency_start", self.lcr_frequency_start, 0, unit="Hz")
-        self.bind("lcr_frequency_stop", self.lcr_frequency_stop, 0, unit="MHz")
-        self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
-        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")

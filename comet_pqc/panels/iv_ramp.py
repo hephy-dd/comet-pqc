@@ -30,6 +30,13 @@ class IVRampPanel(MatrixPanel):
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
         self.sense_mode = comet.Select(values=["local", "remote"])
 
+        self.bind("voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
+        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+        self.bind("waiting_time", self.waiting_time, 1, unit="s")
+        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
+        self.bind("sense_mode", self.sense_mode, "local")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="SMU",
@@ -57,13 +64,6 @@ class IVRampPanel(MatrixPanel):
             comet.Stretch(),
             stretch=(2, 2)
         ))
-
-        self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
-        self.bind("voltage_step", self.voltage_step, 0, unit="V")
-        self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
 
     def mount(self, measurement):
         super().mount(measurement)

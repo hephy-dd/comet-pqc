@@ -22,6 +22,12 @@ class IVRampBiasPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
+        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("bias_current_compliance", self.bias_current_compliance, 0, unit="uA")
+        self.bind("voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
+        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="Bias",
@@ -47,9 +53,3 @@ class IVRampBiasPanel(MatrixPanel):
             comet.Stretch(),
             stretch=(1, 1, 2)
         ))
-
-        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("bias_current_compliance", self.bias_current_compliance, 0, unit="uA")
-        self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
-        self.bind("voltage_step", self.voltage_step, 0, unit="V")

@@ -34,6 +34,9 @@ class MatrixPanel(Panel):
             tooltip="Matrix card switching channels, comma separated list."
         )
 
+        self.bind("matrix_enabled", self.matrix_enabled, False)
+        self.bind("matrix_channels", self.matrix_channels, [])
+
         self.controls.append(comet.FieldSet(
             title="Matrix",
             layout=comet.Column(
@@ -45,6 +48,3 @@ class MatrixPanel(Panel):
                 )
             )
         ))
-
-        self.bind("matrix_enabled", self.matrix_enabled, False)
-        self.bind("matrix_channels", self.matrix_channels, [])

@@ -17,6 +17,10 @@ class CVRampAltPanel(MatrixPanel):
         self.bias_voltage_stop = comet.Number(decimals=3, suffix="V")
         self.bias_voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
 
+        self.bind("bias_voltage_start", self.bias_voltage_start, 0, unit="V")
+        self.bind("bias_voltage_stop", self.bias_voltage_stop, 0, unit="V")
+        self.bind("bias_voltage_step", self.bias_voltage_step, 0, unit="V")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="SMU",

@@ -20,6 +20,12 @@ class CVRampPanel(MatrixPanel):
         self.lcr_frequency = comet.List(height=64)
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
 
+        self.bind("bias_voltage_start", self.bias_voltage_start, 0, unit="V")
+        self.bind("bias_voltage_stop", self.bias_voltage_stop, 0, unit="V")
+        self.bind("bias_voltage_step", self.bias_voltage_step, 0, unit="V")
+        self.bind("lcr_frequency", self.lcr_frequency, [])
+        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
+
         self.controls.append(comet.Row(
             comet.FieldSet(
                 title="SMU",
@@ -45,9 +51,3 @@ class CVRampPanel(MatrixPanel):
             comet.Stretch(),
             stretch=(1, 1, 2)
         ))
-
-        self.bind("bias_voltage_start", self.bias_voltage_start, 0, unit="V")
-        self.bind("bias_voltage_stop", self.bias_voltage_stop, 0, unit="V")
-        self.bind("bias_voltage_step", self.bias_voltage_step, 0, unit="V")
-        self.bind("lcr_frequency", self.lcr_frequency, [])
-        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
