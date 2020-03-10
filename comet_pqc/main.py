@@ -1,3 +1,4 @@
+import argparse
 import copy
 import logging
 import os
@@ -30,7 +31,15 @@ from .panels import CVRampAlt
 from .panels import FourWireIVRamp
 from .panels import FrequencyScan
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    return parser.parse_args()
+
 def main():
+
+    args = parse_args()
+
     app = comet.Application(
         name="comet-pqc",
         version=__version__,
