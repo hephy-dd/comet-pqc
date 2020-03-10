@@ -1,90 +1,19 @@
 import logging
-import random
 import time
 import os
 
 import comet
-from comet.device import DeviceMixin
 
-__all__ = [
-    "measurement_factory",
-    "Measurement",
-    "MatrixSwitch",
-    "IVRamp",
-    "BiasIVRamp",
-    "CVRamp",
-    "CVRampAlt",
-    "FourWireIVRamp",
-    "FrequencyScan",
-]
+from .matrix import MatrixMeasurement
+
+__all__ = ["IVRampMeasurement"]
 
 # TODO: integrate into comet.Range
 def auto_step(start, stop, step):
     """Returns positive/negative step according to start and stop value."""
     return -abs(step) if start > stop else abs(step)
 
-def measurement_factory(type, *args, **kwargs):
-    """Factory function to create a new measurement instance by type.
-
-    >>> meas = measurement_factory("iv_ramp")
-    >>> meas.run()
-    """
-    for cls in globals().values():
-        if hasattr(cls, "type"):
-            if cls.type == type:
-                return cls(*args, **kwargs)
-
-class Measurement:
-    """Base measurement class."""
-
-    type = None
-
-    def __init__(self, process, parameters):
-        self.process = process
-        self.parameters = parameters
-
-    def run(self, *args, **kwargs):
-        """Run measurement."""
-        return self.code(**kwargs)
-
-    def code(self, *args, **kwargs):
-        """Implement custom measurement logic in method `code()`."""
-        raise NotImplementedError(f"Method `{self.__class__.__name__}.code()` not implemented.")
-
-class MatrixSwitch(Measurement, DeviceMixin):
-    """Base measurement class wrapping code into matrix configuration."""
-
-    type = None
-
-    def __init__(self, process, parameters):
-        super().__init__(process, parameters)
-
-    def setup_matrix(self):
-        """Setup marix switch."""
-        channels = self.parameters.get("matrix_channels", [])
-        logging.info("setup matrix channels: %s", channels)
-
-    def reset_matrix(self):
-        """Reset marix switch to a save state."""
-        logging.info("reset matrix")
-
-    def run(self, *args, **kwargs):
-        logging.info(f"running {self.type}...")
-        matrix_enabled = self.parameters.get("matrix_enabled", False)
-        result = None
-        try:
-            if matrix_enabled:
-                self.reset_matrix()
-                self.setup_matrix()
-            result = self.code(*args, **kwargs)
-        finally:
-            if matrix_enabled:
-                # Always reset matrix switch!
-                self.reset_matrix()
-        logging.info(f"finished {self.type}.")
-        return result
-
-class IVRamp(MatrixSwitch):
+class IVRampMeasurement(MatrixMeasurement):
     """IV ramp measurement.
 
     * set compliance
@@ -286,43 +215,3 @@ class IVRamp(MatrixSwitch):
                 self.measure(smu)
             finally:
                 self.finalize(smu)
-
-class BiasIVRamp(MatrixSwitch):
-    """Bias IV ramp measurement."""
-
-    type = "bias_iv_ramp"
-
-    def code(self, *args, **kwargs):
-        time.sleep(random.uniform(2.5, 4.0))
-
-class CVRamp(MatrixSwitch):
-    """CV ramp measurement."""
-
-    type = "cv_ramp"
-
-    def code(self, *args, **kwargs):
-        time.sleep(random.uniform(2.5, 4.0))
-
-class CVRampAlt(MatrixSwitch):
-    """Alternate CV ramp measurement."""
-
-    type = "cv_ramp_alt"
-
-    def code(self, *args, **kwargs):
-        time.sleep(random.uniform(2.5, 4.0))
-
-class FourWireIVRamp(MatrixSwitch):
-    """4 wire IV ramp measurement."""
-
-    type = "4wire_iv_ramp"
-
-    def code(self, *args, **kwargs):
-        time.sleep(random.uniform(2.5, 4.0))
-
-class FrequencyScan(MatrixSwitch):
-    """Frequency scan."""
-
-    type = "frequency_scan"
-
-    def code(self, *args, **kwargs):
-        time.sleep(random.uniform(2.5, 4.0))
