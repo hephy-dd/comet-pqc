@@ -24,12 +24,12 @@ from .trees import SequenceTree
 from .trees import ConnectionTreeItem
 from .trees import MeasurementTreeItem
 
-from .panels import IVRamp
-from .panels import BiasIVRamp
-from .panels import CVRamp
-from .panels import CVRampAlt
-from .panels import FourWireIVRamp
-from .panels import FrequencyScan
+from .panels import IVRampPanel
+from .panels import IVRampBiasPanel
+from .panels import IVRamp4WirePanel
+from .panels import CVRampPanel
+from .panels import CVRampAltPanel
+from .panels import FrequencyScanPanel
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -440,12 +440,12 @@ def main():
                 title="Measurement",
                 layout=comet.Column(
                     comet.Row(
-                        IVRamp(id="iv_ramp", visible=False),
-                        BiasIVRamp(id="bias_iv_ramp", visible=False),
-                        CVRamp(id="cv_ramp", visible=False),
-                        CVRampAlt(id="cv_ramp_alt", visible=False),
-                        FourWireIVRamp(id="4wire_iv_ramp", visible=False),
-                        FrequencyScan(id="frequency_scan", visible=False),
+                        IVRampPanel(id="iv_ramp", visible=False),
+                        IVRampBiasPanel(id="bias_iv_ramp", visible=False),
+                        CVRampPanel(id="cv_ramp", visible=False),
+                        CVRampAltPanel(id="cv_ramp_alt", visible=False),
+                        IVRamp4WirePanel(id="4wire_iv_ramp", visible=False),
+                        FrequencyScanPanel(id="frequency_scan", visible=False),
                         id="panels"
                     ),
                     comet.Row(
