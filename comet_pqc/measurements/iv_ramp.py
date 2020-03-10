@@ -4,14 +4,10 @@ import os
 
 import comet
 
+from ..utils import auto_step, safe_filename
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampMeasurement"]
-
-# TODO: integrate into comet.Range
-def auto_step(start, stop, step):
-    """Returns positive/negative step according to start and stop value."""
-    return -abs(step) if start > stop else abs(step)
 
 class IVRampMeasurement(MatrixMeasurement):
     """IV ramp measurement.
@@ -30,11 +26,12 @@ class IVRampMeasurement(MatrixMeasurement):
     def initialize(self, smu):
         self.process.events.progress(0, 5)
 
-        current_compliance = self.parameters.get("current_compliance").to("A").m
-        voltage_start = self.parameters.get("voltage_start").to("V").m
-        voltage_step = self.parameters.get("voltage_step").to("V").m
-        waiting_time = self.parameters.get("waiting_time").to("s").m
-        sense_mode = self.parameters.get("sense_mode")
+        parameters = self.measurement_item.parameters
+        current_compliance = parameters.get("current_compliance").to("A").m
+        voltage_start = parameters.get("voltage_start").to("V").m
+        voltage_step = parameters.get("voltage_step").to("V").m
+        waiting_time = parameters.get("waiting_time").to("s").m
+        sense_mode = parameters.get("sense_mode")
 
 
         idn = smu.identification
@@ -119,20 +116,28 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(3, 5)
 
     def measure(self, smu):
-        sample_name = self.process.get('sample_name')
-        measurement_name = self.process.get('measurement_name')
-        current_compliance = self.parameters.get("current_compliance").to("A").m
-        voltage_start = self.parameters.get("voltage_start").to("V").m
-        voltage_step = self.parameters.get("voltage_step").to("V").m
-        voltage_stop = self.parameters.get("voltage_stop").to("V").m
-        waiting_time = self.parameters.get("waiting_time").to("s").m
+        sample_name = self.sample_name
+        wafer_type = self.wafer_type
+        output_dir = self.output_dir
+        connection_name =  self.measurement_item.connection.name
+        measurement_name =  self.measurement_item.name
+        parameters = self.measurement_item.parameters
+        current_compliance = parameters.get("current_compliance").to("A").m
+        voltage_start = parameters.get("voltage_start").to("V").m
+        voltage_step = parameters.get("voltage_step").to("V").m
+        voltage_stop = parameters.get("voltage_stop").to("V").m
+        waiting_time = parameters.get("waiting_time").to("s").m
 
         if self.process.running:
 
-            with open(os.path.join(self.path, f"{sample_name}-{measurement_name}.txt".replace(" ", "_")), "w") as f:
+            filename = safe_filename(f"{sample_name}-{wafer_type}-{connection_name}-{measurement_name}.txt")
+            with open(os.path.join(output_dir, filename), "w") as f:
                 # TODO
                 f.write(f"sample_name: {sample_name}\n")
+                f.write(f"wafer_type: {wafer_type}\n")
+                f.write(f"connection_name: {connection_name}\n")
                 f.write(f"measurement_name: {measurement_name}\n")
+                f.write(f"measurement_type: {self.type}\n")
                 f.write(f"voltage_start: {voltage_start:E} V\n")
                 f.write(f"voltage_stop: {voltage_stop:E} V\n")
                 f.write(f"voltage_step: {voltage_step:E} V\n")
@@ -192,7 +197,8 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(4, 5)
 
     def finalize(self, smu):
-        voltage_step = self.parameters.get("voltage_step").to("V").m
+        parameters = self.measurement_item.parameters
+        voltage_step = parameters.get("voltage_step").to("V").m
         voltage = smu.source.voltage.level
         step = auto_step(voltage, 0, voltage_step)
 
@@ -207,8 +213,7 @@ class IVRampMeasurement(MatrixMeasurement):
 
         self.process.events.progress(5, 5)
 
-    def code(self, path, *args, **kwargs):
-        self.path = path
+    def code(self, *args, **kwargs):
         with self.devices.get("k2410") as smu:
             try:
                 self.initialize(smu)

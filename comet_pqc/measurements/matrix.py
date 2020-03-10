@@ -7,14 +7,11 @@ __all__ = ["MatrixMeasurement"]
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
 
-    type = None
-
-    def __init__(self, process, parameters):
-        super().__init__(process, parameters)
+    type = "matrix"
 
     def setup_matrix(self):
         """Setup marix switch."""
-        channels = self.parameters.get("matrix_channels", [])
+        channels = self.measurement_item.parameters.get("matrix_channels", [])
         logging.info("setup matrix channels: %s", channels)
 
     def reset_matrix(self):
@@ -23,7 +20,7 @@ class MatrixMeasurement(Measurement):
 
     def run(self, *args, **kwargs):
         logging.info(f"running {self.type}...")
-        matrix_enabled = self.parameters.get("matrix_enabled", False)
+        matrix_enabled = self.measurement_item.parameters.get("matrix_enabled", False)
         result = None
         try:
             if matrix_enabled:

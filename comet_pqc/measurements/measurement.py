@@ -5,11 +5,10 @@ __all__ = ["Measurement"]
 class Measurement(DeviceMixin):
     """Base measurement class."""
 
-    type = None
+    type = "measurement"
 
-    def __init__(self, process, parameters):
+    def __init__(self, process):
         self.process = process
-        self.parameters = parameters
 
     def run(self, *args, **kwargs):
         """Run measurement."""

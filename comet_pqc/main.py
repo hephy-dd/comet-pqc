@@ -31,6 +31,8 @@ from .panels import CVRampPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
+from .utils import safe_filename
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -103,6 +105,16 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
+    def create_output_dir(sample_name, wafer_name):
+        """Create new timestamp prefixed output directory."""
+        base = app.layout.get("output").value
+        iso_timestamp = comet.make_iso()
+        dirname = safe_filename(f"{iso_timestamp}-{sample_name}-{wafer_name}")
+        output_dir = os.path.join(base, dirname)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return output_dir
+
     def on_import_sequence():
         filename = comet.filename_open(
             title="Import Sequence",
@@ -168,12 +180,6 @@ def main():
             panel.mount(item)
             panel_controls.visible = True
 
-    def on_tree_locked(state):
-        for item in app.layout.get("sequence_tree"):
-            item.checkable = not state
-            for measurement in item.children:
-                measurement.checkable = not state
-
     def on_calibrate_start():
         result =comet.show_question(
             title="Calibrate table",
@@ -194,51 +200,6 @@ def main():
         app.layout.get("continue_button").enabled = False
         app.layout.get("stop_button").enabled = False
 
-    def on_sequence_start():
-        result =comet.show_question(
-            title="Start sequence",
-            text="Are you sure to start a measurement sequence?"
-        )
-        if result:
-            app.layout.get("calibrate_button").enabled = False
-            app.layout.get("start_button").enabled = False
-            app.layout.get("autopilot_button").enabled = True
-            app.layout.get("continue_button").enabled = False
-            app.layout.get("stop_button").enabled = True
-            on_tree_locked(True)
-            sequence = app.processes.get("sequence")
-            sequence.start()
-
-    def on_sequence_continue():
-        pass
-
-    def on_sequence_stop():
-        app.layout.get("stop_button").enabled = False
-        app.layout.get("autopilot_button").enabled = False
-        app.layout.get("continue_button").enabled = False
-        sequence = app.processes.get("sequence")
-        sequence.stop()
-
-    def on_sequence_finished():
-        app.layout.get("calibrate_button").enabled = True
-        app.layout.get("start_button").enabled = True
-        app.layout.get("autopilot_button").enabled = True
-        app.layout.get("continue_button").enabled = False
-        app.layout.get("stop_button").enabled = False
-        on_tree_locked(False)
-
-    def on_select_output():
-        output = app.layout.get("output")
-        value = comet.directory_open(
-            title="Output",
-            path=output.value
-        )
-        if value:
-            output.value = value
-
-    def on_output_changed(value):
-        app.settings["output_path"] = value
-
     def on_measure_restore():
         if comet.show_question(
             title="Restore Defaults",
@@ -254,6 +215,7 @@ def main():
             title="Run Measurement",
             text="Do you want to run the current selected measurement?"
         ):
+            app.layout.get("calibrate_button").enabled = False
             app.layout.get("restore_measure").enabled = False
             app.layout.get("run_measure").enabled = False
             app.layout.get("stop_measure").enabled = True
@@ -263,18 +225,22 @@ def main():
             panels = app.layout.get("panels")
             for panel in panels.children:
                 panel.locked = True
-            tree = app.layout.get("sequence_tree")
-            measurement = tree.current
+            sequence_tree = app.layout.get("sequence_tree")
+            sequence_tree.lock()
+            sequence_tree.reset()
+            measurement = sequence_tree.current
             panel = app.layout.get(measurement.type)
             panel.store()
             # TODO
             panel.clear_readings()
+            sample_name = app.layout.get("sample_text").value
+            wafer_type = app.layout.get("wafer_select").current.name
+            output_dir = create_output_dir(sample_name, wafer_type)
             measure = app.processes.get("measure")
-            measure.set('sample_name', app.layout.get("sample_text").value)
-            measure.set('output', app.layout.get("output").value)
-            measure.set('measurement_type', measurement.type)
-            measure.set('measurement_name', measurement.name)
-            measure.set('parameters', measurement.parameters)
+            measure.set("sample_name", sample_name)
+            measure.set("wafer_type", wafer_type)
+            measure.set("output_dir", output_dir)
+            measure.measurement_item = measurement
             measure.events.reading = panel.append_reading
             # TODO
             measure.start()
@@ -287,6 +253,7 @@ def main():
         measure.stop()
 
     def on_measure_finished():
+        app.layout.get("calibrate_button").enabled = True
         app.layout.get("restore_measure").enabled = True
         app.layout.get("run_measure").enabled = True
         app.layout.get("stop_measure").enabled = False
@@ -298,6 +265,70 @@ def main():
             panel.locked = False
         measure = app.processes.get("measure")
         measure.events.reading = lambda data: None
+        app.layout.get("sequence_tree").unlock()
+
+    def on_sequence_start():
+        result =comet.show_question(
+            title="Start sequence",
+            text="Are you sure to start a measurement sequence?"
+        )
+        if result:
+            app.layout.get("calibrate_button").enabled = False
+            app.layout.get("start_button").enabled = False
+            app.layout.get("autopilot_button").enabled = True
+            app.layout.get("continue_button").enabled = False
+            app.layout.get("stop_button").enabled = True
+            app.layout.get("panel_controls").enabled = False
+            panels = app.layout.get("panels")
+            for panel in panels.children:
+                panel.locked = True
+            sequence_tree = app.layout.get("sequence_tree")
+            sequence_tree.lock()
+            sequence_tree.reset()
+            sample_name = app.layout.get("sample_text").value
+            wafer_type = app.layout.get("wafer_select").current.name
+            output_dir = create_output_dir(sample_name, wafer_type)
+            sequence = app.processes.get("sequence")
+            sequence.set("sample_name", sample_name)
+            sequence.set("wafer_type", wafer_type)
+            sequence.set("output_dir", output_dir)
+            sequence.sequence_tree = sequence_tree
+            sequence.start()
+
+    def on_sequence_stop():
+        app.layout.get("stop_button").enabled = False
+        app.layout.get("autopilot_button").enabled = False
+        app.layout.get("continue_button").enabled = False
+        sequence = app.processes.get("sequence")
+        sequence.stop()
+
+    def on_sequence_finished():
+        app.layout.get("calibrate_button").enabled = True
+        app.layout.get("start_button").enabled = True
+        app.layout.get("autopilot_button").enabled = True
+        app.layout.get("continue_button").enabled = False
+        app.layout.get("stop_button").enabled = False
+        app.layout.get("panel_controls").enabled = True
+        panels = app.layout.get("panels")
+        for panel in panels.children:
+            panel.locked = False
+        sequence_tree = app.layout.get("sequence_tree")
+        sequence_tree.unlock()
+        sequence = app.processes.get("sequence")
+        sequence.set("sample_name", None)
+        sequence.set("output_dir", None)
+
+    def on_select_output():
+        output = app.layout.get("output")
+        value = comet.directory_open(
+            title="Output",
+            path=output.value
+        )
+        if value:
+            output.value = value
+
+    def on_output_changed(value):
+        app.settings["output_path"] = value
 
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
@@ -305,10 +336,40 @@ def main():
         comet.show_exception(exc, tb)
 
     def on_message(message):
+        logging.info(message)
         app.message = message
 
     def on_progress(value, maximum):
         app.progress = value, maximum
+
+    def on_autopilot_toggled(state):
+        sequence = app.processes.get("sequence")
+        sequence.set("autopilot", state)
+
+    def on_continue_connection(connection):
+        comet.show_info(
+            title=f"Connect {connection.name}",
+            text=f"Please connect with {connection.name}."
+        )
+        sequence = app.processes.get("sequence")
+        sequence.set("continue_connection", True)
+
+    def on_continue_measurement(measurement):
+        def on_continue():
+            if comet.show_question(
+                title="Continue sequence",
+                text=f"Do you want to continue with {measurement.connection.name}, {measurement.name}?"
+            ):
+                logging.info("Continuing sequence...")
+                app.layout.get("continue_button").enabled = False
+                app.layout.get("continue_button").clicked = None
+                sequence = app.processes.get("sequence")
+                sequence.set("continue_measurement", True)
+        app.layout.get("continue_button").enabled = True
+        app.layout.get("continue_button").clicked = on_continue
+
+    def on_measurement_state(item, state):
+        item.state = state
 
     # Register processes
 
@@ -319,20 +380,26 @@ def main():
             progress=on_progress
         )
     ))
-    app.processes.add("sequence", SequenceProcess(
-        events=dict(
-            finished=on_sequence_finished,
-            failed=on_show_error,
-            message=on_message,
-            progress=on_progress
-        )
-    ))
     app.processes.add("measure", MeasureProcess(
         events=dict(
             finished=on_measure_finished,
             failed=on_show_error,
             message=on_message,
             progress=on_progress,
+            measurement_state=on_measurement_state,
+            reading=lambda name, x, y: logging.info("READING: %s %s %s", name, x, y)
+        )
+    ))
+    app.processes.add("sequence", SequenceProcess(
+        events=dict(
+            finished=on_sequence_finished,
+            failed=on_show_error,
+            message=on_message,
+            progress=on_progress,
+            continue_connection=on_continue_connection,
+            continue_measurement=on_continue_measurement,
+            measurement_state=on_measurement_state,
+            reading=lambda name, x, y: logging.info("READING: %s %s %s", name, x, y)
         )
     ))
 
@@ -381,14 +448,14 @@ def main():
                             text="Autopilot",
                             tooltip="Run next measurement automatically.",
                             checkable=True,
-                            checked=True
+                            checked=False,
+                            toggled=on_autopilot_toggled
                         ),
                         comet.Button(
                             id="continue_button",
                             text="Continue",
                             tooltip="Run next measurement manually.",
-                            enabled=False,
-                            clicked=on_sequence_continue
+                            enabled=False
                         )
                     ),
                     comet.Button(
@@ -489,8 +556,6 @@ def main():
     )
 
     # Tweaks
-
-    app.layout.get("start_button").enabled = False
 
     app.width = 1280
     app.height = 800

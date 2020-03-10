@@ -47,7 +47,7 @@ connections:
             waiting_time: 500 ms # TODO 0-500ms
             current_compliance: 10 uA
             sense_mode: local
-      - name: MOS capacitor (SMU and LCR)
+      - name: MOS capacitor (LCR)
         type: cv_ramp
         description: Variant using SMU and LCR
         parameters:
@@ -72,7 +72,7 @@ connections:
             current_compliance: 1 uA
             lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (SMU and LCR)
+      - name: Capacitor test structure (LCR)
         type: cv_ramp
         parameters:
             matrix_channels: []

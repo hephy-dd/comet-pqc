@@ -20,7 +20,7 @@ This COMET application provides PQC sensor measurements.
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.1.0
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.2.0
 comet-pqc
 ```
 
@@ -31,4 +31,3 @@ See for pre-built Windows binaries in the releases section.
 ## License
 
 comet-pqc is licensed under the [GNU General Public License Version 3](https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE).
-

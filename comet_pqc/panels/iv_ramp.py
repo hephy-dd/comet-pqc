@@ -26,7 +26,7 @@ class IVRampPanel(MatrixPanel):
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = comet.Number(decimals=1, suffix="s")
+        self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
         self.sense_mode = comet.Select(values=["local", "remote"])
 
@@ -67,9 +67,22 @@ class IVRampPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
+        self.table.clear()
         for name, points in measurement.series.items():
             if name in self.plot.series:
-                self.plot.series.get(name).replace(points)
+                self.plot.series.clear()
+            for x, y in points:
+                voltage = x * comet.ureg('V')
+                current = y * comet.ureg('A')
+                self.plot.series.get(name).append(x, current.to('uA').m)
+                if self.plot.zoomed:
+                    self.plot.update("x")
+                else:
+                    self.plot.fit()
+                self.table.append([
+                    format(voltage.to('V').m, '.3f'),
+                    format(current.to('uA').m, '.3f'),
+                ])
                 self.plot.fit()
 
     def append_reading(self, name, x, y):
