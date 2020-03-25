@@ -1,0 +1,33 @@
+name: Deploy release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  deploy:
+    name: Deploy executable
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        pip install -U pip
+        pip install -r requirements.txt
+        pip install PyInstaller>=3.6
+    - name: Build executable
+      run: |
+        pyinstaller pyinstaller.spec
+    - name: Upload asset
+      uses: actions/upload-release-asset@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/comet-pqc.exe
+        asset_name: comet-pqc-${{ github.event.release.tag_name }}.exe
+        asset_content_type: binary/octet-stream
