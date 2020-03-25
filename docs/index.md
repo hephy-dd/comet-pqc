@@ -12,6 +12,15 @@ Process Quality Control for CMS tracker
 
 ## Getting started
 
+### Required instruments:
+
+- Keithley 707B Switching Matrix
+- Keysight E4980A LCR Meter
+- Keithley 6517B Electrometer
+- Keithley 2657A Source Meter
+- Keithley 2410 Source Meter
+- Corvus TT positioning controller
+
 ### Install
 
 Install from GitHub using pip
