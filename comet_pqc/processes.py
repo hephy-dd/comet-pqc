@@ -38,6 +38,9 @@ class CalibrateProcess(comet.Process, DeviceMixin):
             assert corvus.pos == (0, 0, 0)
             self.events.progress(3, 3)
             self.events.message(None)
+        error = corvus.error
+        if error:
+            raise RuntimeError(f"Error {error}")
         self.set("success", True)
 
 class MeasureProcess(comet.Process):
