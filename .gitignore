@@ -33,6 +33,8 @@ MANIFEST
 *.manifest
 *.spec
 !pyinstaller.spec
+entry_point.pyw
+version_info.txt
 
 # Installer logs
 pip-log.txt

@@ -82,8 +82,9 @@ a = Analysis(['entry_point.pyw'],
         (os.path.join(comet_root, 'assets', 'icons', '*.svg'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join(comet_root, 'assets', 'icons', '*.ico'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join('comet_pqc', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'config', 'chuck')),
-        (os.path.join('comet_pqc', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'sequence', 'chuck')),
-        (os.path.join('comet_pqc', 'config', 'wafer', '*.yaml'), os.path.join('comet_pqc', 'wafer', 'chuck'))
+        (os.path.join('comet_pqc', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'config', 'sequence')),
+        (os.path.join('comet_pqc', 'config', 'wafer', '*.yaml'), os.path.join('comet_pqc', 'config', 'wafer')),
+        (os.path.join('comet_pqc', 'schema', '*.yaml'), os.path.join('comet_pqc', 'schema'))
     ],
     hiddenimports=[
         'pyvisa-sim',
