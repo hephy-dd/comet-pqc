@@ -181,24 +181,29 @@ def main():
             panel_controls.visible = True
 
     def on_calibrate_start():
-        result =comet.show_question(
+        if comet.show_question(
             title="Calibrate table",
             text="Are you sure to calibrate the table?"
-        )
-        if result:
+        ):
             app.layout.get("calibrate_button").enabled = False
             app.layout.get("start_button").enabled = False
             app.layout.get("autopilot_button").enabled = False
             app.layout.get("continue_button").enabled = False
             app.layout.get("stop_button").enabled = False
-            app.processes.get("calibrate").start()
+            app.layout.enabled = False
+            calibrate = app.processes.get("calibrate")
+            calibrate.start()
 
     def on_calibrate_finished():
+        calibrate = app.processes.get("calibrate")
+        if calibrate.get("success", False):
+            comet.show_info(title="Success", text="Calibrated table successfully.")
         app.layout.get("calibrate_button").enabled = True
         app.layout.get("start_button").enabled = True
         app.layout.get("autopilot_button").enabled = True
         app.layout.get("continue_button").enabled = False
         app.layout.get("stop_button").enabled = False
+        app.layout.enabled = True
 
     def on_measure_restore():
         if comet.show_question(
@@ -376,6 +381,7 @@ def main():
     app.processes.add("calibrate", CalibrateProcess(
         events=dict(
             finished=on_calibrate_finished,
+            failed=on_show_error,
             message=on_message,
             progress=on_progress
         )

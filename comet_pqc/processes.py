@@ -5,19 +5,40 @@ import threading
 import os
 
 import comet
+from comet.device import DeviceMixin
 
 from .measurements import measurement_factory
 
-class CalibrateProcess(comet.Process):
+class CalibrateProcess(comet.Process, DeviceMixin):
     """Calibration process for Corvus table."""
 
     def run(self):
-        steps = 8
+        self.set("success", False)
         self.events.message("Calibrating...")
-        for i in range(steps):
-            self.events.progress(i + 1, steps)
-            time.sleep(1)
-        self.events.message(None)
+        with self.devices.get('corvus') as corvus:
+            corvus.mode = 0
+            self.events.progress(0, 3)
+            self.events.message("Calibrating Z axis...")
+            if corvus.z.enabled:
+                corvus.z.ncal()
+                while not corvus.z.caldone():
+                    time.sleep(.5)
+            self.events.progress(1, 3)
+            self.events.message("Calibrating Y axis...")
+            if corvus.y.enabled:
+                corvus.y.ncal()
+                while not corvus.y.caldone():
+                    time.sleep(.5)
+            self.events.progress(2, 3)
+            self.events.message("Calibrating X axis...")
+            if corvus.x.enabled:
+                corvus.x.ncal()
+                while not corvus.x.caldone():
+                    time.sleep(.5)
+            assert corvus.pos == (0, 0, 0)
+            self.events.progress(3, 3)
+            self.events.message(None)
+        self.set("success", True)
 
 class MeasureProcess(comet.Process):
     """Measure process executing a single measurements."""
