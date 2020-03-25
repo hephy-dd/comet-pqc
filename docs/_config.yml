@@ -1,0 +1,10 @@
+remote_theme: pmarsceill/just-the-docs
+theme: just-the-docs
+
+title: "COMET PQC"
+
+aux_links:
+  "COMET PQC on GitHub":
+    - "//github.com/hephy-dd/comet-pqc"
+
+footer_content: "Copyright &copy; 2019-2020 Bernhard Arnold. COMET PQC is licensed under the <a href=\"https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE\">GNU General Public License Version 3</a>."
