@@ -67,7 +67,7 @@ with open('entry_point.pyw', 'w') as f:
 with open('version_info.txt', 'w') as f:
     f.write(version_info.format(
         name=name,
-        organization=organization
+        organization=organization,
         version=version.split('.'),
         license=license
     ))
