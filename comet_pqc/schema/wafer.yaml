@@ -30,14 +30,17 @@ properties:
                             type: integer
                         z:
                             type: integer
+                    additionalProperties: false
                     required:
                       - x
                       - y
                       - z
+            additionalProperties: false
             required:
               - id
               - name
               - pos
+additionalProperties: false
 required:
   - id
   - name

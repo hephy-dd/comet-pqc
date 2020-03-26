@@ -17,13 +17,34 @@ properties:
                     type: boolean
                 name:
                     type: string
+                description:
+                    type: string
                 connection:
                     type: string
-                parameters:
-                    type: object
+                measurements:
+                    type: array
+                    items:
+                        type: object
+                        properties:
+                            enabled:
+                                type: boolean
+                            name:
+                                type: string
+                            description:
+                                type: string
+                            type:
+                                type: string
+                            parameters:
+                                type: object
+                        additionalProperties: false
+                        required:
+                          - name
+                          - type
+            additionalProperties: false
             required:
               - name
               - connection
+additionalProperties: false
 required:
   - id
   - name
