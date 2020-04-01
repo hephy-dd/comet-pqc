@@ -17,30 +17,111 @@ class CalibrateProcess(comet.Process, DeviceMixin):
         self.events.message("Calibrating...")
         with self.devices.get('corvus') as corvus:
             corvus.mode = 0
-            self.events.progress(0, 3)
-            self.events.message("Calibrating Z axis...")
+            retries = 16
+            delay = 1.0
+
+            def handle_error():
+                time.sleep(delay)
+                error = corvus.error
+                if error:
+                    raise RuntimeError(f"Corvus: {error}")
+                time.sleep(delay)
+
+            def ncal(axis):
+                axis.ncal()
+                for i in range(retries + 1):
+                    if axis.caldone == 1:
+                        break
+                    time.sleep(delay)
+                return i < retries
+
+            def nrm(axis):
+                axis.nrm()
+                for i in range(retries + 1):
+                    if axis.caldone == 3:
+                        break
+                    time.sleep(delay)
+                return i < retries
+
+            handle_error()
+            self.events.progress(0, 7)
+            self.events.message("Retreating Z axis...")
             if corvus.z.enabled:
-                corvus.z.ncal()
-                while not corvus.z.caldone():
-                    time.sleep(.5)
-            self.events.progress(1, 3)
+                if not ncal(corvus.z):
+                    raise RuntimeError("failed retreating Z axis")
+            time.sleep(delay)
+
+            handle_error()
+            self.events.progress(1, 7)
             self.events.message("Calibrating Y axis...")
             if corvus.y.enabled:
-                corvus.y.ncal()
-                while not corvus.y.caldone():
-                    time.sleep(.5)
-            self.events.progress(2, 3)
+                if not ncal(corvus.y):
+                    raise RuntimeError("failed to calibrate Y axis")
+            time.sleep(delay)
+
+            handle_error()
+            self.events.progress(2, 7)
             self.events.message("Calibrating X axis...")
             if corvus.x.enabled:
-                corvus.x.ncal()
-                while not corvus.x.caldone():
-                    time.sleep(.5)
-            assert corvus.pos == (0, 0, 0)
-            self.events.progress(3, 3)
+                if not ncal(corvus.x):
+                    raise RuntimeError("failed to calibrate Z axis")
+            time.sleep(delay)
+
+            handle_error()
+            self.events.progress(3, 7)
+            self.events.message("Range measure X axis...")
+            if corvus.x.enabled:
+                if not nrm(corvus.x):
+                    raise RuntimeError("failed to ragne measure X axis")
+            time.sleep(delay)
+
+            handle_error()
+            self.events.progress(4, 7)
+            self.events.message("Range measure Y axis...")
+            if corvus.y.enabled:
+                if not nrm(corvus.y):
+                    raise RuntimeError("failed to range measure Y axis")
+            time.sleep(delay)
+
+            handle_error()
+            corvus.rmove(-1000, -1000, 0)
+            for i in range(retries):
+                pos = corvus.pos
+                if pos[:2] == (0, 0):
+                    break
+                time.sleep(delay)
+            if pos[:2] != (0, 0):
+                raise RuntimeError("failed to relative move, current pos: %s", pos)
+
+            handle_error()
+            self.events.progress(5, 7)
+            self.events.message("Calibrating Z axis minimum...")
+            if corvus.z.enabled:
+                if not ncal(corvus.z):
+                    raise RuntimeError("failed to calibrate Z axis")
+            time.sleep(delay)
+
+            handle_error()
+            self.events.progress(6, 7)
+            self.events.message("Range measure Z axis maximum...")
+            if corvus.z.enabled:
+                if not nrm(corvus.z):
+                    raise RuntimeError("failed to range measure Z axis")
+            time.sleep(delay)
+
+            handle_error()
+            corvus.rmove(0, 0, -1000)
+            for i in range(retries):
+                pos = corvus.pos
+                if pos == (0, 0, 0):
+                    break
+                time.sleep(delay)
+            if pos != (0, 0, 0):
+                raise RuntimeError("failed to calibrate axes, current pos: %s", pos)
+
+            handle_error()
+            self.events.progress(7, 7)
             self.events.message(None)
-        error = corvus.error
-        if error:
-            raise RuntimeError(f"Error {error}")
         self.set("success", True)
 
 class MeasureProcess(comet.Process):
