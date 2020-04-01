@@ -19,6 +19,9 @@ jobs:
         pip install -U pip
         pip install -r requirements.txt
         pip install PyInstaller>=3.6
+    - name: Run tests
+      run: |
+        python setup.py test
     - name: Build executable
       run: |
         pyinstaller pyinstaller.spec
