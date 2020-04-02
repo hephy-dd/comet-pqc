@@ -7,7 +7,7 @@ nav_order: 2
 # Configuration
 {: .no_toc }
 
-Measurement sequences, wafer and chuck geometries can be configured using YAML configuration files.
+Measurement sequences, silicon sample and chuck geometries can be configured using YAML configuration files.
 {: .fs-6 .fw-300 }
 
 ## Table of contents
@@ -107,7 +107,7 @@ contacts:
 
 ## Sample
 
-A sample defines available contact points and geometry of a silicon sample (wafer slice with test structures and contact points).
+A sample defines available contact points and geometry of a silicon sample (wafer slice with test structures and needle contact points).
 
 A sample configuration must provide properties `id`, `name` and `contacts`. Optional properties are `description` and `enabled`.
 
