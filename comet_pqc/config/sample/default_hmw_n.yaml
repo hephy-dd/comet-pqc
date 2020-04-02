@@ -1,28 +1,28 @@
-id: default_hme_s
-name: Default HME S
-description: Default wafer, east half-moon, southern structure.
-connections:
+id: default_hmw_n
+name: Default HMW N
+description: Default sample, west half-moon, northern structure.
+contacts:
   - id: flute_1
     name: Flute 1
     pos:
-        x: 69
+        x: 29
         y: 34
         z: 0
   - id: flute_2
     name: Flute 2
     pos:
-        x: 69
+        x: 29
         y: 44
         z: 0
   - id: flute_3
     name: Flute 3
     pos:
-        x: 72
+        x: 32
         y: 34
         z: 0
   - id: flute_4
     name: Flute 4
     pos:
-        x: 72
+        x: 32
         y: 49
         z: 0

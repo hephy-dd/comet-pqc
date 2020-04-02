@@ -21,7 +21,7 @@ from .processes import MeasureProcess
 from .processes import SequenceProcess
 
 from .trees import SequenceTree
-from .trees import ConnectionTreeItem
+from .trees import ContactTreeItem
 from .trees import MeasurementTreeItem
 
 from .panels import IVRampPanel
@@ -93,11 +93,11 @@ def main():
         for name, filename in sorted(config.list_configs(config.CHUCK_DIR)):
             select.append(config.load_chuck(filename))
 
-    def load_wafers():
-        select = app.layout.get("wafer_select")
+    def load_samples():
+        select = app.layout.get("sample_select")
         select.clear()
-        for name, filename in sorted(config.list_configs(config.WAFER_DIR)):
-            select.append(config.load_wafer(filename))
+        for name, filename in sorted(config.list_configs(config.SAMPLE_DIR)):
+            select.append(config.load_sample(filename))
 
     def load_sequences():
         select = app.layout.get("sequence_select")
@@ -105,11 +105,11 @@ def main():
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
             select.append(config.load_sequence(filename))
 
-    def create_output_dir(sample_name, wafer_name):
+    def create_output_dir(sample_name, sample_type):
         """Create new timestamp prefixed output directory."""
         base = app.layout.get("output").value
         iso_timestamp = comet.make_iso()
-        dirname = safe_filename(f"{iso_timestamp}-{sample_name}-{wafer_name}")
+        dirname = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
         output_dir = os.path.join(base, dirname)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -157,8 +157,8 @@ def main():
         tree.clear()
         select = app.layout.get("sequence_select")
         sequence = copy.deepcopy(select.current)
-        for connection in sequence:
-            tree.append(ConnectionTreeItem(connection))
+        for contact in sequence:
+            tree.append(ContactTreeItem(contact))
         tree.fit()
         if len(tree):
             tree.current = tree[0]
@@ -172,7 +172,7 @@ def main():
             panel.visible = False
         panel_controls = app.layout.get("panel_controls")
         panel_controls.visible = False
-        if isinstance(item, ConnectionTreeItem):
+        if isinstance(item, ContactTreeItem):
             pass
         if isinstance(item, MeasurementTreeItem):
             panel = app.layout.get(item.type)
@@ -239,11 +239,11 @@ def main():
             # TODO
             panel.clear_readings()
             sample_name = app.layout.get("sample_text").value
-            wafer_type = app.layout.get("wafer_select").current.name
-            output_dir = create_output_dir(sample_name, wafer_type)
+            sample_type = app.layout.get("sample_select").current.name
+            output_dir = create_output_dir(sample_name, sample_type)
             measure = app.processes.get("measure")
             measure.set("sample_name", sample_name)
-            measure.set("wafer_type", wafer_type)
+            measure.set("sample_type", sample_type)
             measure.set("output_dir", output_dir)
             measure.measurement_item = measurement
             measure.events.reading = panel.append_reading
@@ -291,11 +291,11 @@ def main():
             sequence_tree.lock()
             sequence_tree.reset()
             sample_name = app.layout.get("sample_text").value
-            wafer_type = app.layout.get("wafer_select").current.name
-            output_dir = create_output_dir(sample_name, wafer_type)
+            sample_type = app.layout.get("sample_select").current.name
+            output_dir = create_output_dir(sample_name, sample_type)
             sequence = app.processes.get("sequence")
             sequence.set("sample_name", sample_name)
-            sequence.set("wafer_type", wafer_type)
+            sequence.set("sample_type", sample_type)
             sequence.set("output_dir", output_dir)
             sequence.sequence_tree = sequence_tree
             sequence.start()
@@ -351,19 +351,19 @@ def main():
         sequence = app.processes.get("sequence")
         sequence.set("autopilot", state)
 
-    def on_continue_connection(connection):
+    def on_continue_contact(contact):
         comet.show_info(
-            title=f"Connect {connection.name}",
-            text=f"Please connect with {connection.name}."
+            title=f"Contact {contact.name}",
+            text=f"Please contact with {contact.name}."
         )
         sequence = app.processes.get("sequence")
-        sequence.set("continue_connection", True)
+        sequence.set("continue_contact", True)
 
     def on_continue_measurement(measurement):
         def on_continue():
             if comet.show_question(
                 title="Continue sequence",
-                text=f"Do you want to continue with {measurement.connection.name}, {measurement.name}?"
+                text=f"Do you want to continue with {measurement.contact.name}, {measurement.name}?"
             ):
                 logging.info("Continuing sequence...")
                 app.layout.get("continue_button").enabled = False
@@ -402,7 +402,7 @@ def main():
             failed=on_show_error,
             message=on_message,
             progress=on_progress,
-            continue_connection=on_continue_connection,
+            continue_contact=on_continue_contact,
             continue_measurement=on_continue_measurement,
             measurement_state=on_measurement_state,
             reading=lambda name, x, y: logging.info("READING: %s %s %s", name, x, y)
@@ -421,7 +421,7 @@ def main():
                     comet.Column(
                         comet.Label("Name"),
                         comet.Label("Chuck"),
-                        comet.Label("Wafer Type"),
+                        comet.Label("Sample Type"),
                         comet.Label("Sequence")
                     ),
                     comet.Column(
@@ -431,7 +431,7 @@ def main():
                             changed=on_sample_changed
                         ),
                         comet.Select(id="chuck_select"),
-                        comet.Select(id="wafer_select"),
+                        comet.Select(id="sample_select"),
                         comet.Select(id="sequence_select", changed=on_load_sequence_tree)
                     ),
                     stretch=(0, 1)
@@ -567,7 +567,7 @@ def main():
     app.height = 800
 
     load_chucks()
-    load_wafers()
+    load_samples()
     load_sequences()
 
     # There's no hook, so it's a hack.

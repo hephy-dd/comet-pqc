@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    connections:
+    contacts:
         type: array
         items:
             type: object
@@ -19,7 +19,7 @@ properties:
                     type: string
                 description:
                     type: string
-                connection:
+                contact_id:
                     type: string
                 measurements:
                     type: array
@@ -43,9 +43,9 @@ properties:
             additionalProperties: false
             required:
               - name
-              - connection
+              - contact_id
 additionalProperties: false
 required:
   - id
   - name
-  - connections
+  - contacts
