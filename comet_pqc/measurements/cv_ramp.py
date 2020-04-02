@@ -14,17 +14,17 @@ class CVRampMeasurement(MatrixMeasurement):
 
     def measure(self):
         sample_name = self.sample_name
-        wafer_type = self.wafer_type
+        sample_type = self.sample_type
         output_dir = self.output_dir
-        connection_name =  self.measurement_item.connection.name
+        contact_name =  self.measurement_item.contact.name
         measurement_name =  self.measurement_item.name
 
-        filename = safe_filename(f"{sample_name}-{wafer_type}-{connection_name}-{measurement_name}.txt")
+        filename = safe_filename(f"{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
         with open(os.path.join(output_dir, filename), "w") as f:
             # TODO
             f.write(f"sample_name: {sample_name}\n")
-            f.write(f"wafer_type: {wafer_type}\n")
-            f.write(f"connection_name: {connection_name}\n")
+            f.write(f"sample_type: {sample_type}\n")
+            f.write(f"contact_name: {contact_name}\n")
             f.write(f"measurement_name: {measurement_name}\n")
             f.write(f"measurement_type: {self.type}\n")
             f.flush()

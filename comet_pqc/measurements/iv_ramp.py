@@ -117,9 +117,9 @@ class IVRampMeasurement(MatrixMeasurement):
 
     def measure(self, smu):
         sample_name = self.sample_name
-        wafer_type = self.wafer_type
+        sample_type = self.sample_type
         output_dir = self.output_dir
-        connection_name =  self.measurement_item.connection.name
+        contact_name =  self.measurement_item.contact.name
         measurement_name =  self.measurement_item.name
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
@@ -129,20 +129,20 @@ class IVRampMeasurement(MatrixMeasurement):
         waiting_time = parameters.get("waiting_time").to("s").m
 
         if self.process.running:
-
-            filename = safe_filename(f"{sample_name}-{wafer_type}-{connection_name}-{measurement_name}.txt")
+            iso_timestamp = comet.make_iso()
+            filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
             with open(os.path.join(output_dir, filename), "w") as f:
                 # TODO
                 f.write(f"sample_name: {sample_name}\n")
-                f.write(f"wafer_type: {wafer_type}\n")
-                f.write(f"connection_name: {connection_name}\n")
+                f.write(f"sample_type: {sample_type}\n")
+                f.write(f"contact_name: {contact_name}\n")
                 f.write(f"measurement_name: {measurement_name}\n")
                 f.write(f"measurement_type: {self.type}\n")
                 f.write(f"voltage_start: {voltage_start:E} V\n")
                 f.write(f"voltage_stop: {voltage_stop:E} V\n")
                 f.write(f"voltage_step: {voltage_step:E} V\n")
                 f.write(f"current_compliance: {current_compliance:E} A\n")
-                f.write("timestamp [s],voltage [V],current [A]\n")
+                f.write("timestamp [s],voltage [V],current [A], temperature [°C], humidity [%rH]\n")
                 f.flush()
 
                 voltage = smu.source.voltage.level
@@ -178,7 +178,9 @@ class IVRampMeasurement(MatrixMeasurement):
                     logging.info("SMU reading: %E V %E A", reading_voltage, reading_current)
                     self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
                     # TODO
-                    f.write(f"{timestamp:.3f},{voltage:E},{reading_current:E}\n")
+                    temperature = float('nan')
+                    humidity = float('nan')
+                    f.write(f"{timestamp:.3f},{voltage:E},{reading_current:E},{temperature:E},{humidity:E}\n")
                     f.flush()
                     time.sleep(waiting_time)
                     # Compliance?

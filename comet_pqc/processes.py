@@ -135,12 +135,12 @@ class MeasureProcess(comet.Process):
     def process(self):
         self.events.message("Process measurement...")
         sample_name = self.get("sample_name")
-        wafer_type = self.get("wafer_type")
+        sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
         # TODO
         measurement = measurement_factory(self.measurement_item.type, self)
         measurement.sample_name = sample_name
-        measurement.wafer_type = wafer_type
+        measurement.sample_type = sample_type
         measurement.output_dir = output_dir
         measurement.measurement_item = self.measurement_item
         try:
@@ -176,7 +176,7 @@ class SequenceProcess(comet.Process):
     def process(self):
         self.events.message("Process sequence...")
         sample_name = self.get("sample_name")
-        wafer_type = self.get("wafer_type")
+        sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
         for contact_item in self.sequence_tree:
             if not self.running:
@@ -220,7 +220,7 @@ class SequenceProcess(comet.Process):
                 # TODO
                 measurement = measurement_factory(measurement_item.type, self)
                 measurement.sample_name = sample_name
-                measurement.wafer_type = wafer_type
+                measurement.sample_type = sample_type
                 measurement.output_dir = output_dir
                 measurement.measurement_item = measurement_item
                 try:

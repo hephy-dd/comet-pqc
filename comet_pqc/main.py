@@ -185,6 +185,7 @@ def main():
             title="Calibrate table",
             text="Are you sure to calibrate the table?"
         ):
+            app.layout.get("sample_fieldset").enabled = False
             app.layout.get("calibrate_button").enabled = False
             app.layout.get("start_button").enabled = False
             app.layout.get("autopilot_button").enabled = False
@@ -198,6 +199,7 @@ def main():
         calibrate = app.processes.get("calibrate")
         if calibrate.get("success", False):
             comet.show_info(title="Success", text="Calibrated table successfully.")
+        app.layout.get("sample_fieldset").enabled = True
         app.layout.get("calibrate_button").enabled = True
         app.layout.get("start_button").enabled = True
         app.layout.get("autopilot_button").enabled = True
@@ -240,7 +242,8 @@ def main():
             panel.clear_readings()
             sample_name = app.layout.get("sample_text").value
             sample_type = app.layout.get("sample_select").current.name
-            output_dir = create_output_dir(sample_name, sample_type)
+            #output_dir = create_output_dir(sample_name, sample_type)
+            output_dir = app.layout.get("output").value
             measure = app.processes.get("measure")
             measure.set("sample_name", sample_name)
             measure.set("sample_type", sample_type)
@@ -278,6 +281,7 @@ def main():
             text="Are you sure to start a measurement sequence?"
         )
         if result:
+            app.layout.get("sample_fieldset").enabled = False
             app.layout.get("calibrate_button").enabled = False
             app.layout.get("start_button").enabled = False
             app.layout.get("autopilot_button").enabled = True
@@ -308,6 +312,7 @@ def main():
         sequence.stop()
 
     def on_sequence_finished():
+        app.layout.get("sample_fieldset").enabled = True
         app.layout.get("calibrate_button").enabled = True
         app.layout.get("start_button").enabled = True
         app.layout.get("autopilot_button").enabled = True
