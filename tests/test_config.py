@@ -6,29 +6,35 @@ from comet_pqc import config
 
 class ConfigTest(unittest.TestCase):
 
-    def testChuckConfig(self):
-        logging.info("listing chuck configurations:")
+    def test_dirs(self):
+        os.path.isdir(config.CHUCK_DIR)
+        os.path.isdir(config.SAMPLE_DIR)
+        os.path.isdir(config.SEQUENCE_DIR)
+
+    def test_load_schema(self):
+        config.load_schema('chuck')
+        config.load_schema('sample')
+        config.load_schema('sequence')
+
+    def test_validate_config(self):
+        config.validate_config(dict(id="default", name="Default", positions=[]), 'chuck')
+        config.validate_config(dict(id="default", name="Default", contacts=[]), 'sample')
+        config.validate_config(dict(id="default", name="Default", contacts=[]), 'sequence')
+
+    def test_load_chuck(self):
         results = config.list_configs(config.CHUCK_DIR)
         for name, filename in results:
-            logging.info("name=%s, filename=%s", name, filename)
             chuck = config.load_chuck(filename)
-            logging.info("chuck=%s", chuck.__dict__)
 
-    def testWaferConfig(self):
-        logging.info("listing wafer configurations:")
-        results = config.list_configs(config.WAFER_DIR)
+    def test_load_sample(self):
+        results = config.list_configs(config.SAMPLE_DIR)
         for name, filename in results:
-            logging.info("name=%s, filename=%s", name, filename)
-            wafer= config.load_wafer(filename)
-            logging.info("wafer=%s", wafer)
+            sample = config.load_sample(filename)
 
-    def testSequenceConfig(self):
-        logging.info("listing sequence configurations:")
+    def test_load_sequence(self):
         results = config.list_configs(config.SEQUENCE_DIR)
         for name, filename in results:
-            logging.info("name=%s, filename=%s", name, filename)
-            sequence= config.load_sequence(filename)
-            logging.info("sequence=%s", sequence)
+            sequence = config.load_sequence(filename)
 
 if __name__ == '__main__':
     unittest.main()

@@ -9,16 +9,16 @@ class SequenceTree(Tree):
         self.header = ["Measurement", "State"]
 
     def lock(self):
-        for connection in self:
-            connection.lock()
+        for contact in self:
+            contact.lock()
 
     def unlock(self):
-        for connection in self:
-            connection.unlock()
+        for contact in self:
+            contact.unlock()
 
     def reset(self):
-        for connection in self:
-            connection.reset()
+        for contact in self:
+            contact.reset()
 
 class SequenceTreeItem(TreeItem):
 
@@ -59,22 +59,22 @@ class SequenceTreeItem(TreeItem):
         self[1].color = "red" if value != "Success" else "green"
         self[1].value = value
 
-class ConnectionTreeItem(SequenceTreeItem):
+class ContactTreeItem(SequenceTreeItem):
 
-    def __init__(self, connection):
-        super().__init__([connection.name, None])
-        self.name = connection.name
-        self.enabled = connection.enabled
-        self.connection = connection.connection
-        self.description = connection.description
-        for measurement in connection.measurements:
+    def __init__(self, contact):
+        super().__init__([contact.name, None])
+        self.name = contact.name
+        self.enabled = contact.enabled
+        self.contact_id = contact.contact_id
+        self.description = contact.description
+        for measurement in contact.measurements:
             self.append(MeasurementTreeItem(self, measurement))
 
 class MeasurementTreeItem(SequenceTreeItem):
 
-    def __init__(self, connection, measurement):
+    def __init__(self, contact, measurement):
         super().__init__([measurement.name, None])
-        self.connection = connection
+        self.contact = contact
         self.name = measurement.name
         self.type = measurement.type
         self.enabled = measurement.enabled

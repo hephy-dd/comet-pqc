@@ -178,23 +178,23 @@ class SequenceProcess(comet.Process):
         sample_name = self.get("sample_name")
         wafer_type = self.get("wafer_type")
         output_dir = self.get("output_dir")
-        for connection_item in self.sequence_tree:
+        for contact_item in self.sequence_tree:
             if not self.running:
                 break
-            if not connection_item.enabled:
+            if not contact_item.enabled:
                 continue
-            self.events.measurement_state(connection_item, "Active")
-            self.set("continue_connection", False)
-            self.events.continue_connection(connection_item)
+            self.events.measurement_state(contact_item, "Active")
+            self.set("continue_contact", False)
+            self.events.continue_contact(contact_item)
             while self.running:
-                if self.get("continue_connection", False):
+                if self.get("continue_contact", False):
                     break
                 time.sleep(.100)
-            self.set("continue_connection", False)
+            self.set("continue_contact", False)
             if not self.running:
                 break
-            logging.info(" => %s", connection_item.name)
-            for measurement_item in connection_item.children:
+            logging.info(" => %s", contact_item.name)
+            for measurement_item in contact_item.children:
                 if not self.running:
                     break
                 if not measurement_item.enabled:
@@ -233,7 +233,7 @@ class SequenceProcess(comet.Process):
                 else:
                     logging.info("%s done.", measurement_item.name)
                     self.events.measurement_state(measurement_item, "Success")
-            self.events.measurement_state(connection_item, None)
+            self.events.measurement_state(contact_item, None)
 
     def finalize(self):
         self.events.message("Finalize sequence...")

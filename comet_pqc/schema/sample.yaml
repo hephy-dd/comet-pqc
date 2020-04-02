@@ -8,7 +8,7 @@ properties:
         type: string
     description:
         type: string
-    connections:
+    contacts:
         type: array
         items:
             type: object
@@ -44,4 +44,4 @@ additionalProperties: false
 required:
   - id
   - name
-  - connections
+  - contacts

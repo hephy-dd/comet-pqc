@@ -9,10 +9,12 @@ import pint.errors
 
 import comet
 
+from .utils import Position
+
 __all__ = [
     'load_config',
     'load_chuck',
-    'load_wafer',
+    'load_sample',
     'load_sequence',
     'list_configs'
 ]
@@ -21,30 +23,34 @@ PACKAGE_DIR = os.path.dirname(__file__)
 SCHEMA_DIR = os.path.join(PACKAGE_DIR, 'schema')
 CONFIG_DIR = os.path.join(PACKAGE_DIR, 'config')
 CHUCK_DIR = os.path.join(CONFIG_DIR, 'chuck')
-WAFER_DIR = os.path.join(CONFIG_DIR, 'wafer')
+SAMPLE_DIR = os.path.join(CONFIG_DIR, 'sample')
 SEQUENCE_DIR = os.path.join(CONFIG_DIR, 'sequence')
 
 def load_schema(name):
     """Loads a YAML validation schema from the schema directory.
 
-    >>> load_schema("wafer")
+    >>> load_schema("sample")
     {...}
     """
     with open(os.path.join(SCHEMA_DIR, f'{name}.yaml')) as f:
         return yaml.safe_load(f.read())
 
+def validate_config(data, schema):
+    """Validate config data using schema name."""
+    schema_data = load_schema(schema)
+    jsonschema.validate(data, schema_data)
+
 def load_config(filename, schema=None):
     """Loads a YAML configuration file and optionally validates the content
     using the provided schema.
 
-    >>> load_config("sample.yaml", schema="wafer")
+    >>> load_config("sample.yaml", schema="sample")
     {...}
     """
     with open(filename) as f:
         config_data = yaml.safe_load(f.read())
     if schema is not None:
-        schema_data = load_schema(schema)
-        jsonschema.validate(config_data, schema_data)
+        validate_config(config_data, schema)
     return config_data
 
 def load_chuck(filename):
@@ -55,13 +61,13 @@ def load_chuck(filename):
     """
     return Chuck(**load_config(filename, schema='chuck'))
 
-def load_wafer(filename):
-    """Returns a wafer configuration object, provided for convenience.
+def load_sample(filename):
+    """Returns a sample configuration object, provided for convenience.
 
-    >>> load_chuck("wafer.yaml")
-    <Wafer ...>
+    >>> load_chuck("sample.yaml")
+    <Sample ...>
     """
-    return Wafer(**load_config(filename, schema='wafer'))
+    return Sample(**load_config(filename, schema='sample'))
 
 def load_sequence(filename):
     """Returns a measurement sequence configuration object, provided for
@@ -76,8 +82,8 @@ def list_configs(directory):
     """Retruns list of located configuration files as tuples containing
     configuration name and filename.
 
-    >>> list_configs("config/wafer")
-    [('Default HMW N', 'config/wafer/default_hmw_n.yaml')]
+    >>> list_configs("config/sample")
+    [('Default HMW N', 'config/sample/default_hmw_n.yaml')]
     """
     items = []
     for filename in glob.glob(os.path.join(directory, '*.yaml')):
@@ -85,26 +91,21 @@ def list_configs(directory):
         items.append((data.get('name'), filename))
     return items
 
-class Position:
-
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
 class Chuck:
+    """Chuck configuration."""
 
     def __init__(self, id, name, enabled=True, description="", positions=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.positions = list(map(lambda kwargs: ChuckPosition(**kwargs), positions))
+        self.positions = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions))
 
     def __str__(self):
         return self.name
 
-class ChuckPosition:
+class ChuckSamplePosition:
+    """Chuck sample position."""
 
     def __init__(self, id, name, pos, enabled=True, description=""):
         self.id = id
@@ -113,19 +114,21 @@ class ChuckPosition:
         self.enabled = enabled
         self.description = description
 
-class Wafer:
+class Sample:
+    """Silicon sample."""
 
-    def __init__(self, id, name, enabled=True, description="", connections=[]):
+    def __init__(self, id, name, enabled=True, description="", contacts=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.connections = list(map(lambda kwargs: WaferConnection(**kwargs), connections))
+        self.contacts = list(map(lambda kwargs: SampleContact(**kwargs), contacts))
 
     def __str__(self):
         return self.name
 
-class WaferConnection:
+class SampleContact:
+    """Sample contact geometry."""
 
     def __init__(self, id, name, pos, type=None, enabled=True, description=""):
         self.id = id
@@ -136,28 +139,30 @@ class WaferConnection:
         self.description = description
 
 class Sequence:
+    """Sequence configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", connections=[]):
+    def __init__(self, id, name, enabled=True, description="", contacts=[]):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.connections = list(map(lambda kwargs: SequenceConnection(**kwargs), connections))
+        self.contacts = list(map(lambda kwargs: SequenceContact(**kwargs), contacts))
 
     def __str__(self):
         return self.name
 
     def __iter__(self):
-        return iter(self.connections)
+        return iter(self.contacts)
 
     def __len__(self):
-        return len(self.connections)
+        return len(self.contacts)
 
-class SequenceConnection:
+class SequenceContact:
+    """Sequence contact point."""
 
-    def __init__(self, name, connection, enabled=True, description="", measurements=[]):
+    def __init__(self, name, contact_id, enabled=True, description="", measurements=[]):
         self.name = name
-        self.connection = connection
+        self.contact_id = contact_id
         self.enabled = enabled
         self.description = description
         self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements))
@@ -169,6 +174,7 @@ class SequenceConnection:
         return len(self.measurements)
 
 class SequenceMeasurement:
+    """Sequence measurement configuration."""
 
     def __init__(self, name, type, enabled=True, description="", parameters={}):
         self.name = name
@@ -178,16 +184,18 @@ class SequenceMeasurement:
         self.parameters = {}
         for key, value in parameters.items():
             if isinstance(value, str):
-                try:
-                    value = comet.ureg(value)
-                except pint.errors.UndefinedUnitError:
-                    pass
+                value = self.to_quantity(value)
             if isinstance(value, list):
                 for i in range(len(value)):
                     if isinstance(value[i], str):
-                        try:
-                            value[i] = comet.ureg(value[i])
-                        except pint.errors.UndefinedUnitError:
-                            pass
+                        value[i] = self.to_quantity(value[i])
             self.parameters[key] = value
         self.default_parameters = copy.deepcopy(self.parameters)
+
+    @classmethod
+    def to_quantity(cls, value):
+        """Auto convert to quantity for Pint units."""
+        try:
+            return comet.ureg(value)
+        except pint.errors.UndefinedUnitError:
+            return value
