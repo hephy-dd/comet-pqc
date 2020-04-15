@@ -106,7 +106,7 @@ contacts:
             voltage_step: 10 V
             waiting_time: 1 s
             current_compliance: 1 uA
-            sense_mode: remote
+            sense_mode: local
             route_termination: rear
             average_enabled: true
             average_count: 10
