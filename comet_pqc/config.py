@@ -94,12 +94,12 @@ def list_configs(directory):
 class Chuck:
     """Chuck configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", positions=[]):
+    def __init__(self, id, name, enabled=True, description="", positions=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.positions = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions))
+        self.positions = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions or []))
 
     def __str__(self):
         return self.name
@@ -117,12 +117,12 @@ class ChuckSamplePosition:
 class Sample:
     """Silicon sample."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=[]):
+    def __init__(self, id, name, enabled=True, description="", contacts=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.contacts = list(map(lambda kwargs: SampleContact(**kwargs), contacts))
+        self.contacts = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
 
     def __str__(self):
         return self.name
@@ -141,12 +141,12 @@ class SampleContact:
 class Sequence:
     """Sequence configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=[]):
+    def __init__(self, id, name, enabled=True, description="", contacts=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
-        self.contacts = list(map(lambda kwargs: SequenceContact(**kwargs), contacts))
+        self.contacts = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
 
     def __str__(self):
         return self.name
@@ -160,12 +160,12 @@ class Sequence:
 class SequenceContact:
     """Sequence contact point."""
 
-    def __init__(self, name, contact_id, enabled=True, description="", measurements=[]):
+    def __init__(self, name, contact_id, enabled=True, description="", measurements=None):
         self.name = name
         self.contact_id = contact_id
         self.enabled = enabled
         self.description = description
-        self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements))
+        self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements or []))
 
     def __iter__(self):
         return iter(self.measurements)
@@ -176,13 +176,13 @@ class SequenceContact:
 class SequenceMeasurement:
     """Sequence measurement configuration."""
 
-    def __init__(self, name, type, enabled=True, description="", parameters={}):
+    def __init__(self, name, type, enabled=True, description="", parameters=None):
         self.name = name
         self.type = type
         self.enabled = enabled
         self.description = description
         self.parameters = {}
-        for key, value in parameters.items():
+        for key, value in (parameters or {}).items():
             if isinstance(value, str):
                 value = self.to_quantity(value)
             if isinstance(value, list):
