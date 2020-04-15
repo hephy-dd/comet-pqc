@@ -9,6 +9,12 @@ from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampMeasurement"]
 
+def check_error(smu):
+    error = smu.system.error
+    if error[0]:
+        logging.error(error)
+        raise RuntimeError(f"{error[0]}: {error[1]}")
+
 class IVRampMeasurement(MatrixMeasurement):
     """IV ramp measurement.
 
@@ -32,7 +38,10 @@ class IVRampMeasurement(MatrixMeasurement):
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode")
-
+        route_termination = parameters.get("route_termination")
+        average_enabled = bool(parameters.get("average_enabled"))
+        average_count = int(parameters.get("average_count"))
+        average_type = parameters.get("average_type")
 
         idn = smu.identification
         logging.info("Using SMU: %s", idn)
@@ -40,23 +49,57 @@ class IVRampMeasurement(MatrixMeasurement):
         # Beeper off
         smu.system.beeper.status = False
         smu.clear()
+        check_error(smu)
+
+        # Select rear terminal
+        if route_termination == "front":
+            smu.resource.write(":ROUT:TERM FRONT")
+        elif route_termination == "rear":
+            smu.resource.write(":ROUT:TERM REAR")
+        smu.resource.query("*OPC?")
+        check_error(smu)
 
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
         if sense_mode == "remote":
             smu.resource.write(":SYST:RSEN ON")
-        else:
+        elif sense_mode == "local":
             smu.resource.write(":SYST:RSEN OFF")
+        else:
+            raise ValueError(f"invalid sense mode: {sense_mode}")
         smu.resource.query("*OPC?")
+        check_error(smu)
 
-        # set compliance
+        # Compliance
         logging.info("set compliance: %E A", current_compliance)
         smu.sense.current.protection.level = current_compliance
+        check_error(smu)
 
-        error = smu.system.error
-        if error[0]:
-            logging.error(error)
-            raise RuntimeError(f"{error[0]}: {error[1]}")
+        # Range
+        current_range = 1.05E-6
+        smu.resource.write(":SENS:CURR:RANG:AUTO ON")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+        #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
+        #smu.resource.query("*OPC?")
+        #check_error(smu)
+
+        # Filter
+        if average_enabled:
+            smu.resource.write(":SENS:AVER:STATE ON")
+        else:
+            smu.resource.write(":SENS:AVER:STATE OFF")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+        smu.resource.write(f":SENS:AVER:COUN {average_count:d}")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+        if average_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON REP")
+        elif average_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON MOV")
+        smu.resource.query("*OPC?")
+        check_error(smu)
 
         self.process.events.progress(1, 5)
 
@@ -70,6 +113,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
+                # check_error(smu)
                 time.sleep(.100)
                 if not self.process.running:
                     break
@@ -77,13 +121,10 @@ class IVRampMeasurement(MatrixMeasurement):
         else:
             voltage = 0
             smu.source.voltage.level = voltage
+            check_error(smu)
             smu.output = True
+            check_error(smu)
             time.sleep(.100)
-
-        error = smu.system.error
-        if error[0]:
-            logging.error(error)
-            raise RuntimeError(f"{error[0]}: {error[1]}")
 
         self.process.events.progress(2, 5)
 
@@ -94,12 +135,14 @@ class IVRampMeasurement(MatrixMeasurement):
 
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
+            check_error(smu)
 
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, step)
             for voltage in comet.Range(voltage, voltage_start, step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
+                # check_error(smu)
                 time.sleep(.100)
                 # Returns <elements> comma separated
                 #values = list(map(float, smu.resource.query(":READ?").split(",")))
@@ -150,6 +193,7 @@ class IVRampMeasurement(MatrixMeasurement):
 
                 # Get configured READ/FETCh elements
                 elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
+                check_error(smu)
 
                 logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):
@@ -158,20 +202,11 @@ class IVRampMeasurement(MatrixMeasurement):
                     smu.clear()
                     smu.source.voltage.level = voltage
                     time.sleep(.100)
-                    error = smu.system.error
-                    if error[0]:
-                        logging.error(error)
-                        self.process.events.message(error)
-                        smu.clear()
-                        #raise RuntimeError(f"{error[0]}: {error[1]}")
+                    # check_error(smu)
                     timestamp = time.time()
                     # Returns <elements> comma separated
                     values = list(map(float, smu.resource.query(":READ?").split(",")))
-                    error = smu.system.error
-                    if error[0]:
-                        logging.error(error)
-                        smu.clear()
-                        #raise RuntimeError(f"{error[0]}: {error[1]}")
+                    # check_error(smu)
                     data = dict(zip(elements, values))
                     reading_voltage = data.get("VOLT")
                     reading_current = data.get("CURR")
@@ -188,11 +223,7 @@ class IVRampMeasurement(MatrixMeasurement):
                     if compliance_tripped:
                         logging.error("SMU in compliance")
                         raise ValueError("compliance tripped")
-                    error = smu.system.error
-                    if error[0]:
-                        logging.error(error)
-                        smu.clear()
-                        #raise RuntimeError(f"{error[0]}: {error[1]}")
+                    # check_error(smu)
                     if not self.process.running:
                         break
 
@@ -210,8 +241,10 @@ class IVRampMeasurement(MatrixMeasurement):
             self.process.events.message(f"{voltage:.3f} V")
             smu.source.voltage.level = voltage
             time.sleep(.100)
+            # check_error(smu)
 
         smu.output = False
+        check_error(smu)
 
         self.process.events.progress(5, 5)
 

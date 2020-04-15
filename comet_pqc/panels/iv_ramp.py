@@ -29,40 +29,79 @@ class IVRampPanel(MatrixPanel):
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
         self.sense_mode = comet.Select(values=["local", "remote"])
+        self.route_termination = comet.Select(values=["front", "rear"])
+
+        def toggle_average(enabled):
+            self.average_count.enabled = enabled
+            self.average_count_label.enabled = enabled
+            self.average_type.enabled = enabled
+            self.average_type_label.enabled = enabled
+
+        self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
+        self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.average_count_label = comet.Label(text="Count")
+        self.average_type = comet.Select(values=["repeat", "moving"])
+        self.average_type_label = comet.Label(text="Type")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
-        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
+        self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
+        self.bind("route_termination", self.route_termination, "front")
+        self.bind("average_enabled", self.average_enabled, False)
+        self.bind("average_count", self.average_count, 10)
+        self.bind("average_type", self.average_type, "repeat")
 
         self.controls.append(comet.Row(
             comet.FieldSet(
-                title="SMU",
-                layout=comet.Row(
-                    comet.Column(
+                title="Ramp",
+                layout=comet.Column(
                         comet.Label(text="Start"),
                         self.voltage_start,
                         comet.Label(text="Stop"),
                         self.voltage_stop,
                         comet.Label(text="Step"),
                         self.voltage_step,
-                        comet.Stretch()
-                    ),
-                    comet.Column(
                         comet.Label(text="Waiting Time"),
                         self.waiting_time,
-                        comet.Label(text="Current Compliance"),
+                        comet.Stretch()
+                )
+            ),
+            comet.Column(
+                comet.FieldSet(
+                    title="Compliance",
+                    layout=comet.Column(
+                        comet.Label(text="Current"),
                         self.current_compliance,
+                    )
+                ),
+                comet.FieldSet(
+                    title="Options",
+                    layout=comet.Column(
                         comet.Label(text="Sense Mode"),
                         self.sense_mode,
+                        comet.Label(text="Route Termination"),
+                        self.route_termination,
                         comet.Stretch()
                     )
+                ),
+                stretch=(0, 1)
+            ),
+            comet.FieldSet(
+                title="Average",
+                layout=comet.Column(
+                    self.average_enabled,
+                    self.average_count_label,
+                    self.average_count,
+                    self.average_type_label,
+                    self.average_type,
+                    comet.Stretch()
                 )
             ),
             comet.Stretch(),
-            stretch=(2, 2)
+            stretch=(1, 1, 1, 1)
         ))
 
     def mount(self, measurement):

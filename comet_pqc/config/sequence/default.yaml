@@ -106,7 +106,11 @@ contacts:
             voltage_step: 10 V
             waiting_time: 1 s
             current_compliance: 1 uA
-            sense_mode: local
+            sense_mode: remote
+            route_termination: rear
+            average_enabled: true
+            average_count: 10
+            average_type: repeat
       - name: Diode CV
         type: cv_ramp
         parameters:
