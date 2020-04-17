@@ -98,7 +98,7 @@ contacts:
             lcr_frequency: [1 kHz]
             lcr_amplitude: 250 mV
       - name: Diode IV
-        type: iv_ramp
+        type: iv_ramp_elm
         parameters:
             matrix_channels: []
             voltage_start: 0 V

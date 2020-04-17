@@ -1,19 +1,20 @@
 import comet
 from .matrix import MatrixPanel
 
-__all__ = ["IVRampPanel"]
+__all__ = ["IVRampElmPanel"]
 
-class IVRampPanel(MatrixPanel):
+class IVRampElmPanel(MatrixPanel):
     """Panel for IV ramp measurements."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = "IV Ramp"
+        self.title = "IV Ramp Elm"
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("series", "x", "y", text="SMU", color="red")
+        self.plot.add_series("smu", "x", "y", text="SMU", color="red")
+        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
 
         self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
         self.table.fit()
@@ -56,7 +57,7 @@ class IVRampPanel(MatrixPanel):
 
         self.controls.append(comet.Row(
             comet.FieldSet(
-                title="Ramp",
+                title="SMU Ramp",
                 layout=comet.Column(
                         comet.Label(text="Start"),
                         self.voltage_start,
@@ -71,14 +72,14 @@ class IVRampPanel(MatrixPanel):
             ),
             comet.Column(
                 comet.FieldSet(
-                    title="Compliance",
+                    title="SMU Compliance",
                     layout=comet.Column(
                         comet.Label(text="Current"),
                         self.current_compliance,
                     )
                 ),
                 comet.FieldSet(
-                    title="Options",
+                    title="SMU Options",
                     layout=comet.Column(
                         comet.Label(text="Sense Mode"),
                         self.sense_mode,
@@ -90,7 +91,7 @@ class IVRampPanel(MatrixPanel):
                 stretch=(0, 1)
             ),
             comet.FieldSet(
-                title="Average",
+                title="SMU Average",
                 layout=comet.Column(
                     self.average_enabled,
                     self.average_count_label,
@@ -133,14 +134,17 @@ class IVRampPanel(MatrixPanel):
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
                 self.plot.series.get(name).append(x, current.to('uA').m)
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
             self.table.append([
                 format(voltage.to('V').m, '.3f'),
-                format(current.to('uA').m, '.3f'),
+                format(current.to('uA').m, '.6f'),
             ])
+
+    def update_readings(self):
+        if self.measurement:
+            if self.plot.zoomed:
+                self.plot.update("x")
+            else:
+                self.plot.fit()
 
     def clear_readings(self):
         for series in self.plot.series.values():

@@ -112,6 +112,9 @@ class Panel(comet.Widget):
     def append_reading(self, name, x, y):
         pass
 
+    def update_readings(self):
+        pass
+
     def clear_readings(self):
         pass
 

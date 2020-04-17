@@ -25,6 +25,7 @@ from .trees import ContactTreeItem
 from .trees import MeasurementTreeItem
 
 from .panels import IVRampPanel
+from .panels import IVRampElmPanel
 from .panels import IVRampBiasPanel
 from .panels import IVRamp4WirePanel
 from .panels import CVRampPanel
@@ -68,10 +69,11 @@ def main():
         read_termination="\r\n",
         write_termination="\r\n"
     )))
-    app.devices.add("elm", K6517B(comet.Resource(
+    app.devices.add("k6517", K6517B(comet.Resource(
         resource_name="TCPIP::10.0.0.5::10001::SOCKET",
         read_termination="\r\n",
-        write_termination="\r\n"
+        write_termination="\r\n",
+        timeout=8000.0
     )))
     app.devices.add("k2410", K2410(comet.Resource(
         resource_name="TCPIP::10.0.0.5::10002::SOCKET",
@@ -250,6 +252,7 @@ def main():
             measure.set("output_dir", output_dir)
             measure.measurement_item = measurement
             measure.events.reading = panel.append_reading
+            measure.events.update = panel.update_readings
             # TODO
             measure.start()
 
@@ -519,6 +522,7 @@ def main():
                 layout=comet.Column(
                     comet.Row(
                         IVRampPanel(id="iv_ramp", visible=False),
+                        IVRampElmPanel(id="iv_ramp_elm", visible=False),
                         IVRampBiasPanel(id="bias_iv_ramp", visible=False),
                         CVRampPanel(id="cv_ramp", visible=False),
                         CVRampAltPanel(id="cv_ramp_alt", visible=False),
