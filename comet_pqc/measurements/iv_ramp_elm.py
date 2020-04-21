@@ -182,7 +182,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
         if zero_correction:
-            self.elm_safe_write(":SYST:ZCOR ON") # perform zero correction
+            elm_safe_write(":SYST:ZCOR ON") # perform zero correction
         elm_safe_write(":SENS:CURR:RANG:AUTO ON")
         elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
         elm_safe_write(":SENS:CURR:RANG:AUTO:ULIM 2.000000E-2")
