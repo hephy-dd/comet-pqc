@@ -42,6 +42,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
         average_enabled = bool(parameters.get("average_enabled"))
         average_count = int(parameters.get("average_count"))
         average_type = parameters.get("average_type")
+        zero_correction = parameters.get("zero_correction")
+        integration_rate = parameters.get("integration_rate")
 
         logging.info("Using SMU: %s", smu.identification)
         logging.info("Using Electrometer: %s", elm.identification)
@@ -169,20 +171,24 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_safe_write("*RST")
         elm_safe_write("*CLS")
 
+        nplc = integration_rate / 10.
+        elm_safe_write(f":SENS:VOLT:NPLC {nplc:02f}") # 20pA
+
         elm_safe_write(":SYST:ZCH ON") # enable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '1'
+        assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
 
         elm_safe_write(":SENS:FUNC 'CURR'") # note the quotes!
-        assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"'
+        assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
 
         elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
-        elm_safe_write(":SYST:ZCOR ON") # perform zero correction
+        if zero_correction:
+            self.elm_safe_write(":SYST:ZCOR ON") # perform zero correction
         elm_safe_write(":SENS:CURR:RANG:AUTO ON")
         elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
         elm_safe_write(":SENS:CURR:RANG:AUTO:ULIM 2.000000E-2")
 
         elm_safe_write(":SYST:ZCH OFF") # disable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '0'
+        assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
 
         self.process.events.progress(3, 5)
 

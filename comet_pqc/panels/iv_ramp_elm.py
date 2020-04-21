@@ -16,12 +16,16 @@ class IVRampElmPanel(MatrixPanel):
         self.plot.add_series("smu", "x", "y", text="SMU", color="red")
         self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
 
-        self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
-        self.table.fit()
+        #self.table = comet.Table(header=["Voltage [V]", "Current SMU [uA]", "Current Elm [uA]", ""], stretch=True)
+        #self.table.fit()
+
+        self.logs = comet.Tree(header=["Level", "Message"])
+        self._stream_handler.targets.append(lambda record: self.logs.append([record.levelname, record.message]))
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        self.tabs.append(comet.Tab(title="Table", layout=self.table))
+        #self.tabs.append(comet.Tab(title="Table", layout=self.table))
+        self.tabs.append(comet.Tab(title="Logs", layout=self.logs))
         self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -44,6 +48,9 @@ class IVRampElmPanel(MatrixPanel):
         self.average_type = comet.Select(values=["repeat", "moving"])
         self.average_type_label = comet.Label(text="Type")
 
+        self.zero_correction = comet.CheckBox(text="Zero Correction")
+        self.integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
+
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
@@ -54,6 +61,8 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("average_enabled", self.average_enabled, False)
         self.bind("average_count", self.average_count, 10)
         self.bind("average_type", self.average_type, "repeat")
+        self.bind("zero_correction", self.zero_correction, False)
+        self.bind("integration_rate", self.integration_rate, 50.0)
 
         self.controls.append(comet.Row(
             comet.FieldSet(
@@ -101,13 +110,21 @@ class IVRampElmPanel(MatrixPanel):
                     comet.Stretch()
                 )
             ),
+            comet.FieldSet(
+                title="Electrometer",
+                layout=comet.Column(
+                    self.zero_correction,
+                    comet.Label(text="Integration Rate"),
+                    self.integration_rate,
+                    comet.Stretch()
+                )
+            ),
             comet.Stretch(),
-            stretch=(1, 1, 1, 1)
+            stretch=(1, 1, 1, 1, 1)
         ))
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.table.clear()
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
@@ -115,15 +132,11 @@ class IVRampElmPanel(MatrixPanel):
                 voltage = x * comet.ureg('V')
                 current = y * comet.ureg('A')
                 self.plot.series.get(name).append(x, current.to('uA').m)
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
                 self.table.append([
                     format(voltage.to('V').m, '.3f'),
                     format(current.to('uA').m, '.3f'),
                 ])
-                self.plot.fit()
+        self.update_readings()
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')
@@ -134,10 +147,6 @@ class IVRampElmPanel(MatrixPanel):
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
                 self.plot.series.get(name).append(x, current.to('uA').m)
-            self.table.append([
-                format(voltage.to('V').m, '.3f'),
-                format(current.to('uA').m, '.6f'),
-            ])
 
     def update_readings(self):
         if self.measurement:
@@ -153,4 +162,4 @@ class IVRampElmPanel(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        self.table.clear()
+        self.logs.clear()

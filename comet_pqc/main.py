@@ -590,6 +590,8 @@ def main():
     sequenceMenu.addAction(importAction)
     ui.fileMenu.insertSeparator(ui.quitAction)
 
+    logging.getLogger().addHandler(logging.StreamHandler())
+
     return app.run()
 
 if __name__ == '__main__':

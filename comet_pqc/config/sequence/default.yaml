@@ -111,6 +111,8 @@ contacts:
             average_enabled: true
             average_count: 10
             average_type: repeat
+            zero_correction: true
+            integration_rate: 50
       - name: Diode CV
         type: cv_ramp
         parameters:
