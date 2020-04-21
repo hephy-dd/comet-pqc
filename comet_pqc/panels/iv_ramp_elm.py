@@ -64,64 +64,92 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("zero_correction", self.zero_correction, False)
         self.bind("integration_rate", self.integration_rate, 50.0)
 
-        self.controls.append(comet.Row(
-            comet.FieldSet(
-                title="SMU Ramp",
-                layout=comet.Column(
-                        comet.Label(text="Start"),
-                        self.voltage_start,
-                        comet.Label(text="Stop"),
-                        self.voltage_stop,
-                        comet.Label(text="Step"),
-                        self.voltage_step,
-                        comet.Label(text="Waiting Time"),
-                        self.waiting_time,
-                        comet.Stretch()
-                )
-            ),
-            comet.Column(
-                comet.FieldSet(
-                    title="SMU Compliance",
-                    layout=comet.Column(
-                        comet.Label(text="Current"),
-                        self.current_compliance,
+        self.controls.append(
+            comet.Tabs(
+                comet.Tab(
+                    title="General",
+                    layout=comet.Row(
+                        comet.FieldSet(
+                            title="Ramp",
+                            layout=comet.Column(
+                                    comet.Label(text="Start"),
+                                    self.voltage_start,
+                                    comet.Label(text="Stop"),
+                                    self.voltage_stop,
+                                    comet.Label(text="Step"),
+                                    self.voltage_step,
+                                    comet.Label(text="Waiting Time"),
+                                    self.waiting_time,
+                                    comet.Stretch()
+                            )
+                        ),
+                        comet.Column(
+                            comet.FieldSet(
+                                title="SMU Compliance",
+                                layout=comet.Column(
+                                    self.current_compliance,
+                                    comet.Stretch()
+                                )
+                            )
+                        ),
+                        comet.Stretch(),
+                        stretch=(1, 1, 2)
                     )
                 ),
-                comet.FieldSet(
-                    title="SMU Options",
+                comet.Tab(
+                    title="Matrix",
                     layout=comet.Column(
-                        comet.Label(text="Sense Mode"),
-                        self.sense_mode,
-                        comet.Label(text="Route Termination"),
-                        self.route_termination,
-                        comet.Stretch()
+                        self.controls.children[0],
+                        comet.Stretch(),
+                        stretch=(0, 1)
                     )
                 ),
-                stretch=(0, 1)
-            ),
-            comet.FieldSet(
-                title="SMU Average",
-                layout=comet.Column(
-                    self.average_enabled,
-                    self.average_count_label,
-                    self.average_count,
-                    self.average_type_label,
-                    self.average_type,
-                    comet.Stretch()
+                comet.Tab(
+                    title="SMU",
+                    layout=comet.Row(
+                        comet.FieldSet(
+                            title="Filter",
+                            layout=comet.Column(
+                                self.average_enabled,
+                                self.average_count_label,
+                                self.average_count,
+                                self.average_type_label,
+                                self.average_type,
+                                comet.Stretch()
+                            )
+                        ),
+                        comet.FieldSet(
+                            title="Options",
+                            layout=comet.Column(
+                                comet.Label(text="Sense Mode"),
+                                self.sense_mode,
+                                comet.Label(text="Route Termination"),
+                                self.route_termination,
+                                comet.Stretch()
+                            )
+                        ),
+                        comet.Stretch(),
+                        stretch=(1, 1, 2)
+                    )
+                ),
+                comet.Tab(
+                    title="Electrometer",
+                    layout=comet.Row(
+                        comet.FieldSet(
+                            title="Electrometer",
+                            layout=comet.Column(
+                                self.zero_correction,
+                                comet.Label(text="Integration Rate"),
+                                self.integration_rate,
+                                comet.Stretch()
+                            )
+                        ),
+                        comet.Stretch(),
+                        stretch=(1, 3)
+                    )
                 )
-            ),
-            comet.FieldSet(
-                title="Electrometer",
-                layout=comet.Column(
-                    self.zero_correction,
-                    comet.Label(text="Integration Rate"),
-                    self.integration_rate,
-                    comet.Stretch()
-                )
-            ),
-            comet.Stretch(),
-            stretch=(1, 1, 1, 1, 1)
-        ))
+            )
+        )
 
     def mount(self, measurement):
         super().mount(measurement)
