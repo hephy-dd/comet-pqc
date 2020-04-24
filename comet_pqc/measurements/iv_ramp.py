@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 import os
@@ -187,11 +188,12 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.add_column("humidity", "E")
 
             # Write meta data
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("contact_name", contact_name)
             fmt.write_meta("measurement_name", measurement_name)
             fmt.write_meta("measurement_type", self.type)
+            fmt.write_meta("contact_name", contact_name)
+            fmt.write_meta("sample_name", sample_name)
+            fmt.write_meta("sample_type", sample_type)
+            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
             fmt.write_meta("voltage_start", f"{voltage_start:E} V")
             fmt.write_meta("voltage_stop", f"{voltage_stop:E} V")
             fmt.write_meta("voltage_step", f"{voltage_step:E} V")
@@ -220,7 +222,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 time.sleep(.100)
                 # check_error(smu)
                 td = time.time() - t0
-                reading_current = float(smu.resource.query(":READ?").split(",")[0])
+                reading_current = float(smu.resource.query(":READ?"))
                 logging.info("SMU reading: %E A", reading_current)
                 self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
 

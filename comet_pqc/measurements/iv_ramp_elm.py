@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 import os
@@ -221,6 +222,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 fmt.write_meta("contact_name", contact_name)
                 fmt.write_meta("measurement_name", measurement_name)
                 fmt.write_meta("measurement_type", self.type)
+                fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
                 fmt.write_meta("voltage_start", f"{voltage_start:E} V")
                 fmt.write_meta("voltage_stop", f"{voltage_stop:E} V")
                 fmt.write_meta("voltage_step", f"{voltage_step:E} V")

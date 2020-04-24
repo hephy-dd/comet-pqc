@@ -2,6 +2,7 @@ import random
 import time
 import os
 
+from ..formatter import PQCFormatter
 from ..utils import auto_step, safe_filename
 from .matrix import MatrixMeasurement
 
@@ -20,13 +21,22 @@ class CVRampMeasurement(MatrixMeasurement):
         measurement_name =  self.measurement_item.name
 
         filename = safe_filename(f"{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
-        with open(os.path.join(output_dir, filename), "w") as f:
-            # TODO
-            f.write(f"sample_name: {sample_name}\n")
-            f.write(f"sample_type: {sample_type}\n")
-            f.write(f"contact_name: {contact_name}\n")
-            f.write(f"measurement_name: {measurement_name}\n")
-            f.write(f"measurement_type: {self.type}\n")
+        with open(os.path.join(output_dir, filename), "w", newline="") as f:
+            # Create formatter
+            fmt = PQCFormatter(f)
+            fmt.add_column("timestamp", ".3f")
+            fmt.add_column("voltage", "E")
+            fmt.add_column("current", "E")
+            fmt.add_column("temperature", "E")
+            fmt.add_column("humidity", "E")
+
+            # Write meta data
+            fmt.write_meta("measurement_name", measurement_name)
+            fmt.write_meta("measurement_type", self.type)
+            fmt.write_meta("contact_name", contact_name)
+            fmt.write_meta("sample_name", sample_name)
+            fmt.write_meta("sample_type", sample_type)
+            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
             f.flush()
 
     def code(self, *args, **kwargs):
