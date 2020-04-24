@@ -4,7 +4,7 @@ from .matrix import MatrixPanel
 __all__ = ["IVRampElmPanel"]
 
 class IVRampElmPanel(MatrixPanel):
-    """Panel for IV ramp measurements."""
+    """Panel for IV ramp with electrometer measurements."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -160,10 +160,10 @@ class IVRampElmPanel(MatrixPanel):
                 voltage = x * comet.ureg('V')
                 current = y * comet.ureg('A')
                 self.plot.series.get(name).append(x, current.to('uA').m)
-                self.table.append([
-                    format(voltage.to('V').m, '.3f'),
-                    format(current.to('uA').m, '.3f'),
-                ])
+                # self.table.append([
+                #     format(voltage.to('V').m, '.3f'),
+                #     format(current.to('uA').m, '.3f'),
+                # ])
         self.update_readings()
 
     def append_reading(self, name, x, y):

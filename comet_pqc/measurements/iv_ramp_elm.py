@@ -49,8 +49,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("Using Electrometer: %s", elm.identification)
 
         # Beeper off
-        smu.system.beeper.status = False
+        smu.reset()
         smu.clear()
+        smu.system.beeper.status = False
         check_error(smu)
 
         # Select rear terminal
@@ -80,6 +81,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         # Range
         current_range = 1.05E-6
         smu.resource.write(":SENS:CURR:RANG:AUTO ON")
+        smu.resource.write(":SENS:VOLT:RANG:AUTO ON")
         smu.resource.query("*OPC?")
         check_error(smu)
         #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
@@ -135,10 +137,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
             voltage = smu.source.voltage.level
             step = auto_step(voltage, voltage_start, voltage_step)
 
-            # Get configured READ/FETCh elements
-            elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-            check_error(smu)
-
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, step)
             for voltage in comet.Range(voltage, voltage_start, step):
                 logging.info("set voltage: %E V", voltage)
@@ -146,9 +144,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 smu.source.voltage.level = voltage
                 # check_error(smu)
                 time.sleep(.100)
-                # Returns <elements> comma separated
-                #values = list(map(float, smu.resource.query(":READ?").split(",")))
-                #data = zip(elements, values)
                 time.sleep(waiting_time)
                 # Compliance?
                 compliance_tripped = smu.sense.current.protection.tripped
@@ -159,6 +154,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     break
 
         def elm_safe_write(message):
+            """Write, wait for operation complete, test for errors."""
             elm.resource.write(message)
             elm.resource.query("*OPC?")
             code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
@@ -209,7 +205,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             iso_timestamp = comet.make_iso()
             filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
             with open(os.path.join(output_dir, filename), "w") as f:
-                # TODO
+                # TODO move to method format()
                 f.write(f"sample_name: {sample_name}\n")
                 f.write(f"sample_type: {sample_type}\n")
                 f.write(f"contact_name: {contact_name}\n")
@@ -225,22 +221,13 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 voltage = smu.source.voltage.level
                 step = auto_step(voltage, voltage_stop, voltage_step)
 
-                def read_elements(device):
-                    """Perform READ and return dictionary of elements.
-                    :FROM:ELEM -> A, B, C
-                    :INIT
-                    :FETC? -> 1, 2, 3
-                    Returns {'A': 1, 'B': 2, 'C': 3}
-                    """
-                    elements = list(map(str.strip, device.resource.query(":FORM:ELEM?").split(",")))
-                    logging.info("%s: %s", device.__class__.__name__, elements)
-                    device.resource.write(":INIT")
-                    device.resource.query("*OPC?")
-                    values = list(map(float, device.resource.query(":FETC?").split(",")))
-                    logging.info("%s: %s", device.__class__.__name__, values)
-                    result = dict(zip(elements, values))
-                    logging.info("%s: %s", device.__class__.__name__, result)
-                    return result
+                # SMU reading format: CURR
+                smu.resource.write(":FORM:ELEM CURR")
+                smu.resource.query("*OPC?")
+
+                # Electrometer reading format: READ
+                elm.resource.write(":FORM:ELEM READ")
+                elm.resource.query("*OPC?")
 
                 logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
                 for voltage in comet.Range(voltage, voltage_stop, step):
@@ -253,24 +240,21 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     timestamp = time.time()
 
                     # read SMU
-                    smu_data = read_elements(smu)
-                    reading_voltage = smu_data.get("VOLT")
-                    reading_current = smu_data.get("CURR")
-                    logging.info("SMU reading: %E V %E A", reading_voltage, reading_current)
-                    self.process.events.reading("smu", abs(voltage) if step < 0 else voltage, reading_current)
+                    smu_reading = float(smu.resource.query(":READ?"))
+                    logging.info("SMU reading: %E", smu_reading)
+                    self.process.events.reading("smu", abs(voltage) if step < 0 else voltage, smu_reading)
 
                     # read ELM
-                    elm_data = read_elements(elm)
-                    reading_elm = elm_data.get("READ")# * 1.0E-9
-                    logging.info("ELM reading: %E READ", reading_current)
-                    self.process.events.reading("elm", abs(voltage) if step < 0 else voltage, reading_elm)
+                    elm_reading = float(elm.resource.query(":READ?"))
+                    logging.info("ELM reading: %E", elm_reading)
+                    self.process.events.reading("elm", abs(voltage) if step < 0 else voltage, elm_reading)
 
                     self.process.events.update()
 
                     # TODO
                     temperature = float('nan')
                     humidity = float('nan')
-                    f.write(f"{timestamp:.3f},{voltage:E},{reading_current:E},{reading_elm:E},{temperature:E},{humidity:E}\n")
+                    f.write(f"{timestamp:.3f},{voltage:E},{smu_reading:E},{elm_reading:E},{temperature:E},{humidity:E}\n")
                     f.flush()
                     time.sleep(waiting_time)
                     # Compliance?
