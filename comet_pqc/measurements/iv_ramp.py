@@ -4,6 +4,7 @@ import os
 
 import comet
 
+from ..formatter import PQCFormatter
 from ..utils import auto_step, safe_filename
 from .matrix import MatrixMeasurement
 
@@ -171,61 +172,77 @@ class IVRampMeasurement(MatrixMeasurement):
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
 
-        if self.process.running:
-            iso_timestamp = comet.make_iso()
-            filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
-            with open(os.path.join(output_dir, filename), "w") as f:
-                # TODO
-                f.write(f"sample_name: {sample_name}\n")
-                f.write(f"sample_type: {sample_type}\n")
-                f.write(f"contact_name: {contact_name}\n")
-                f.write(f"measurement_name: {measurement_name}\n")
-                f.write(f"measurement_type: {self.type}\n")
-                f.write(f"voltage_start: {voltage_start:E} V\n")
-                f.write(f"voltage_stop: {voltage_stop:E} V\n")
-                f.write(f"voltage_step: {voltage_step:E} V\n")
-                f.write(f"current_compliance: {current_compliance:E} A\n")
-                f.write("timestamp [s],voltage [V],current [A], temperature [°C], humidity [%rH]\n")
-                f.flush()
+        if not self.process.running:
+            return
 
-                voltage = smu.source.voltage.level
-                step = auto_step(voltage, voltage_stop, voltage_step)
+        iso_timestamp = comet.make_iso()
+        filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
+        with open(os.path.join(output_dir, filename), "w", newline="") as f:
+            # Create formatter
+            fmt = PQCFormatter(f)
+            fmt.add_column("timestamp", ".3f")
+            fmt.add_column("voltage", "E")
+            fmt.add_column("current", "E")
+            fmt.add_column("temperature", "E")
+            fmt.add_column("humidity", "E")
 
-                # Get configured READ/FETCh elements
-                elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-                check_error(smu)
+            # Write meta data
+            fmt.write_meta("sample_name", sample_name)
+            fmt.write_meta("sample_type", sample_type)
+            fmt.write_meta("contact_name", contact_name)
+            fmt.write_meta("measurement_name", measurement_name)
+            fmt.write_meta("measurement_type", self.type)
+            fmt.write_meta("voltage_start", f"{voltage_start:E} V")
+            fmt.write_meta("voltage_stop", f"{voltage_stop:E} V")
+            fmt.write_meta("voltage_step", f"{voltage_step:E} V")
+            fmt.write_meta("current_compliance", f"{current_compliance:E} A")
+            fmt.flush()
 
-                logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
-                for voltage in comet.Range(voltage, voltage_stop, step):
-                    logging.info("set voltage: %E V", voltage)
-                    self.process.events.message(f"{voltage:.3f} V")
-                    smu.clear()
-                    smu.source.voltage.level = voltage
-                    time.sleep(.100)
-                    # check_error(smu)
-                    timestamp = time.time()
-                    # Returns <elements> comma separated
-                    values = list(map(float, smu.resource.query(":READ?").split(",")))
-                    # check_error(smu)
-                    data = dict(zip(elements, values))
-                    reading_voltage = data.get("VOLT")
-                    reading_current = data.get("CURR")
-                    logging.info("SMU reading: %E V %E A", reading_voltage, reading_current)
-                    self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
-                    # TODO
-                    temperature = float('nan')
-                    humidity = float('nan')
-                    f.write(f"{timestamp:.3f},{voltage:E},{reading_current:E},{temperature:E},{humidity:E}\n")
-                    f.flush()
-                    time.sleep(waiting_time)
-                    # Compliance?
-                    compliance_tripped = smu.sense.current.protection.tripped
-                    if compliance_tripped:
-                        logging.error("SMU in compliance")
-                        raise ValueError("compliance tripped")
-                    # check_error(smu)
-                    if not self.process.running:
-                        break
+            # Write header
+            fmt.write_header()
+            fmt.flush()
+
+            voltage = smu.source.voltage.level
+            step = auto_step(voltage, voltage_stop, voltage_step)
+
+            # SMU reading format: CURR
+            smu.resource.write(":FORM:ELEM CURR")
+            smu.resource.query("*OPC?")
+
+            t0 = time.time()
+
+            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
+            for voltage in comet.Range(voltage, voltage_stop, step):
+                logging.info("set voltage: %E V", voltage)
+                self.process.events.message(f"{voltage:.3f} V")
+                smu.clear()
+                smu.source.voltage.level = voltage
+                time.sleep(.100)
+                # check_error(smu)
+                td = time.time() - t0
+                reading_current = float(smu.resource.query(":READ?").split(",")[0])
+                logging.info("SMU reading: %E A", reading_current)
+                self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
+
+                # Write reading
+                fmt.write_row(dict(
+                    timestamp=td,
+                    voltage=voltage,
+                    current=reading_current,
+                    temperature=float('nan'),
+                    humidity=float('nan')
+                ))
+                fmt.flush()
+                time.sleep(waiting_time)
+
+                # Compliance?
+                compliance_tripped = smu.sense.current.protection.tripped
+                if compliance_tripped:
+                    logging.error("SMU in compliance")
+                    raise ValueError("compliance tripped")
+                # check_error(smu)
+                if not self.process.running:
+                    break
 
         self.process.events.progress(4, 5)
 
