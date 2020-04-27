@@ -3,7 +3,6 @@ import time
 import os
 
 from ..formatter import PQCFormatter
-from ..utils import auto_step, safe_filename
 from .matrix import MatrixMeasurement
 
 __all__ = ["CVRampMeasurement"]
@@ -20,7 +19,7 @@ class CVRampMeasurement(MatrixMeasurement):
         contact_name =  self.measurement_item.contact.name
         measurement_name =  self.measurement_item.name
 
-        filename = safe_filename(f"{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
+        filename = comet.safe_filename(f"{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
         with open(os.path.join(output_dir, filename), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)

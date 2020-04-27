@@ -1,15 +1,6 @@
 import re
 
-__all__ = ['auto_step', 'safe_filename', 'Position']
-
-# TODO: integrate into comet.Range
-def auto_step(start, stop, step):
-    """Returns positive/negative step according to start and stop value."""
-    return -abs(step) if start > stop else abs(step)
-
-# TODO: intefgrate into comet.utils
-def safe_filename(filename):
-    return re.sub(r'[^\w\+\-\.\_]+', '_', filename)
+__all__ = ['Position']
 
 class Position:
     """Three-dimensional Cartesian coordinate."""
@@ -27,4 +18,3 @@ class Position:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.x}, {self.y}, {self.z})"
-

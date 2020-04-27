@@ -1,12 +1,13 @@
 import datetime
 import logging
+import math
 import time
 import os
 
 import comet
 
 from ..formatter import PQCFormatter
-from ..utils import auto_step, safe_filename
+from ..estimate import Estimate
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampMeasurement"]
@@ -32,6 +33,7 @@ class IVRampMeasurement(MatrixMeasurement):
     type = "iv_ramp"
 
     def initialize(self, smu):
+        self.process.events.message("Initialize...")
         self.process.events.progress(0, 5)
 
         parameters = self.measurement_item.parameters
@@ -48,10 +50,15 @@ class IVRampMeasurement(MatrixMeasurement):
         idn = smu.identification
         logging.info("Using SMU: %s", idn)
 
-        # Beeper off
-        smu.system.beeper.status = False
+        smu.reset()
+        check_error(smu)
         smu.clear()
         check_error(smu)
+
+        # Beeper off
+        smu.system.beeper.status = False
+        check_error(smu)
+        self.process.events.progress(1, 5)
 
         # Select rear terminal
         if route_termination == "front":
@@ -60,6 +67,7 @@ class IVRampMeasurement(MatrixMeasurement):
             smu.resource.write(":ROUT:TERM REAR")
         smu.resource.query("*OPC?")
         check_error(smu)
+        self.process.events.progress(2, 5)
 
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
@@ -71,6 +79,7 @@ class IVRampMeasurement(MatrixMeasurement):
             raise ValueError(f"invalid sense mode: {sense_mode}")
         smu.resource.query("*OPC?")
         check_error(smu)
+        self.process.events.progress(3, 5)
 
         # Compliance
         logging.info("set compliance: %E A", current_compliance)
@@ -85,7 +94,6 @@ class IVRampMeasurement(MatrixMeasurement):
         #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
         #smu.resource.query("*OPC?")
         #check_error(smu)
-
         # Filter
         if average_enabled:
             smu.resource.write(":SENS:AVER:STATE ON")
@@ -103,15 +111,14 @@ class IVRampMeasurement(MatrixMeasurement):
         smu.resource.query("*OPC?")
         check_error(smu)
 
-        self.process.events.progress(1, 5)
+        self.process.events.progress(5, 5)
 
         # If output enabled
         if smu.output:
             voltage = smu.source.voltage.level
-            step = auto_step(voltage, 0, voltage_step)
 
-            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
-            for voltage in comet.Range(voltage, 0, step):
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
@@ -133,14 +140,13 @@ class IVRampMeasurement(MatrixMeasurement):
         if self.process.running:
 
             voltage = smu.source.voltage.level
-            step = auto_step(voltage, voltage_start, voltage_step)
 
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
             check_error(smu)
 
-            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, step)
-            for voltage in comet.Range(voltage, voltage_start, step):
+            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
+            for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
@@ -158,7 +164,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 if not self.process.running:
                     break
 
-        self.process.events.progress(3, 5)
+        self.process.events.progress(5, 5)
 
     def measure(self, smu):
         sample_name = self.sample_name
@@ -177,7 +183,7 @@ class IVRampMeasurement(MatrixMeasurement):
             return
 
         iso_timestamp = comet.make_iso()
-        filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
+        filename = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
         with open(os.path.join(output_dir, filename), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
@@ -205,7 +211,6 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.flush()
 
             voltage = smu.source.voltage.level
-            step = auto_step(voltage, voltage_stop, voltage_step)
 
             # SMU reading format: CURR
             smu.resource.write(":FORM:ELEM CURR")
@@ -213,18 +218,20 @@ class IVRampMeasurement(MatrixMeasurement):
 
             t0 = time.time()
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
-            for voltage in comet.Range(voltage, voltage_stop, step):
+            ramp = comet.Range(voltage, voltage_stop, voltage_step)
+            est = Estimate(ramp.count)
+            self.process.events.progress(*est.progress)
+
+            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end,  ramp.step)
+            for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
-                self.process.events.message(f"{voltage:.3f} V")
-                smu.clear()
                 smu.source.voltage.level = voltage
                 time.sleep(.100)
                 # check_error(smu)
                 td = time.time() - t0
-                reading_current = float(smu.resource.query(":READ?"))
+                reading_current = float(smu.resource.query(":READ?").split(',')[0])
                 logging.info("SMU reading: %E A", reading_current)
-                self.process.events.reading("series", abs(voltage) if step < 0 else voltage, reading_current)
+                self.process.events.reading("series", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
                 # Write reading
                 fmt.write_row(dict(
@@ -237,6 +244,12 @@ class IVRampMeasurement(MatrixMeasurement):
                 fmt.flush()
                 time.sleep(waiting_time)
 
+                est.next()
+                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+                self.process.events.message(f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
+                self.process.events.progress(*est.progress)
+
                 # Compliance?
                 compliance_tripped = smu.sense.current.protection.tripped
                 if compliance_tripped:
@@ -246,16 +259,15 @@ class IVRampMeasurement(MatrixMeasurement):
                 if not self.process.running:
                     break
 
-        self.process.events.progress(4, 5)
+        self.process.events.progress(0, 0)
 
     def finalize(self, smu):
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
         voltage = smu.source.voltage.level
-        step = auto_step(voltage, 0, voltage_step)
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
-        for voltage in comet.Range(voltage, 0, step):
+        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+        for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.events.message(f"{voltage:.3f} V")
             smu.source.voltage.level = voltage

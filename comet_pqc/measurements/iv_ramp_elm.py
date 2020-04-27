@@ -5,8 +5,8 @@ import os
 
 import comet
 
+from ..estimate import Estimate
 from ..formatter import PQCFormatter
-from ..utils import auto_step, safe_filename
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampElmMeasurement"]
@@ -112,10 +112,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
         # If output enabled
         if smu.output:
             voltage = smu.source.voltage.level
-            step = auto_step(voltage, 0, voltage_step)
 
-            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
-            for voltage in comet.Range(voltage, 0, step):
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
@@ -137,10 +136,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
         if self.process.running:
 
             voltage = smu.source.voltage.level
-            step = auto_step(voltage, voltage_start, voltage_step)
 
-            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, step)
-            for voltage in comet.Range(voltage, voltage_start, step):
+            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
+            for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message(f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
@@ -205,7 +203,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         if self.process.running:
             iso_timestamp = comet.make_iso()
-            filename = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
+            filename = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
             with open(os.path.join(output_dir, filename), "w", newline="") as f:
                 # Create formatter
                 fmt = PQCFormatter(f)
@@ -234,7 +232,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 fmt.flush()
 
                 voltage = smu.source.voltage.level
-                step = auto_step(voltage, voltage_stop, voltage_step)
 
                 # SMU reading format: CURR
                 smu.resource.write(":FORM:ELEM CURR")
@@ -244,27 +241,36 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 elm.resource.write(":FORM:ELEM READ")
                 elm.resource.query("*OPC?")
 
+                ramp = comet.Range(voltage, voltage_stop, voltage_step)
+                est = Estimate(ramp.count)
+                self.process.events.progress(*est.progress)
+
                 t0 = time.time()
 
-                logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, voltage_stop, step)
-                for voltage in comet.Range(voltage, voltage_stop, step):
+                logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+                for voltage in ramp:
                     logging.info("set voltage: %E V", voltage)
-                    self.process.events.message(f"{voltage:.3f} V")
                     smu.clear()
                     smu.source.voltage.level = voltage
                     time.sleep(.100)
                     # check_error(smu)
                     dt = time.time() - t0
 
+                    est.next()
+                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+                    self.process.events.message(f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
+                    self.process.events.progress(*est.progress)
+
                     # read SMU
-                    smu_reading = float(smu.resource.query(":READ?"))
+                    smu_reading = float(smu.resource.query(":READ?").split(',')[0])
                     logging.info("SMU reading: %E", smu_reading)
-                    self.process.events.reading("smu", abs(voltage) if step < 0 else voltage, smu_reading)
+                    self.process.events.reading("smu", abs(voltage) if ramp.step < 0 else voltage, smu_reading)
 
                     # read ELM
-                    elm_reading = float(elm.resource.query(":READ?"))
+                    elm_reading = float(elm.resource.query(":READ?").split(',')[0])
                     logging.info("ELM reading: %E", elm_reading)
-                    self.process.events.reading("elm", abs(voltage) if step < 0 else voltage, elm_reading)
+                    self.process.events.reading("elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
                     self.process.events.update()
 
@@ -298,10 +304,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
         voltage = smu.source.voltage.level
-        step = auto_step(voltage, 0, voltage_step)
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, step)
-        for voltage in comet.Range(voltage, 0, step):
+        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+        for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.events.message(f"{voltage:.3f} V")
             smu.source.voltage.level = voltage

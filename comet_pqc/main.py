@@ -32,8 +32,6 @@ from .panels import CVRampPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
-from .utils import safe_filename
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -111,7 +109,7 @@ def main():
         """Create new timestamp prefixed output directory."""
         base = app.layout.get("output").value
         iso_timestamp = comet.make_iso()
-        dirname = safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
+        dirname = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
         output_dir = os.path.join(base, dirname)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
