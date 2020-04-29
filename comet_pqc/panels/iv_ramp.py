@@ -21,7 +21,7 @@ class IVRampPanel(MatrixPanel):
         #self.table.fit()
 
         self.logview = LogView()
-        self._stream_handler.targets.append(lambda record: self.logview.append(record))
+        self._stream_handler.targets.append(self.logview.append_record)
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))

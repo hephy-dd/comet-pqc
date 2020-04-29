@@ -11,15 +11,15 @@ class LogView(comet.Tree):
         super().__init__()
         self.title = "Logging"
         self.header = "Time", "Level", "Message"
-        self.indentation = 0
+        self.qt.setIndentation(0)
 
-    def append(self, record):
+    def append_record(self, record):
         dt = datetime.datetime.fromtimestamp(record.created).replace(microsecond=0)
-        item = super().append([dt.isoformat(), record.levelname, record.msg])
+        item = self.insert(0, [dt.isoformat(), record.levelname, record.getMessage()])
         for i in range(len(item)):
             if record.levelno == logging.WARNING:
                 item[i].color = "orange"
             if record.levelno == logging.ERROR:
                 item[i].color = "red"
-        self.fit()
-        self.qt.scrollToItem(item.qt)
+        #self.fit()
+        #self.qt.scrollToItem(item.qt)
