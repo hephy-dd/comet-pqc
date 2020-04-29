@@ -1,4 +1,6 @@
 import comet
+
+from ..logview import LogView
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampPanel"]
@@ -15,12 +17,16 @@ class IVRampPanel(MatrixPanel):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="SMU", color="red")
 
-        self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
-        self.table.fit()
+        #self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
+        #self.table.fit()
+
+        self.logview = LogView()
+        self._stream_handler.targets.append(lambda record: self.logview.append(record))
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        self.tabs.append(comet.Tab(title="Table", layout=self.table))
+        #self.tabs.append(comet.Tab(title="Table", layout=self.table))
+        self.tabs.append(comet.Tab(title="Logs", layout=self.logview))
         self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -106,7 +112,7 @@ class IVRampPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.table.clear()
+        #self.table.clear()
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
@@ -118,10 +124,10 @@ class IVRampPanel(MatrixPanel):
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-                self.table.append([
-                    format(voltage.to('V').m, '.3f'),
-                    format(current.to('uA').m, '.3f'),
-                ])
+                # self.table.append([
+                #     format(voltage.to('V').m, '.3f'),
+                #     format(current.to('uA').m, '.3f'),
+                # ])
                 self.plot.fit()
 
     def append_reading(self, name, x, y):
@@ -137,10 +143,10 @@ class IVRampPanel(MatrixPanel):
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-            self.table.append([
-                format(voltage.to('V').m, '.3f'),
-                format(current.to('uA').m, '.3f'),
-            ])
+            # self.table.append([
+            #     format(voltage.to('V').m, '.3f'),
+            #     format(current.to('uA').m, '.3f'),
+            # ])
 
     def clear_readings(self):
         for series in self.plot.series.values():
@@ -149,4 +155,5 @@ class IVRampPanel(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        self.table.clear()
+        #self.table.clear()
+        self.logview.clear()

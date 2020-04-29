@@ -1,5 +1,6 @@
 import comet
 
+from ..logview import LogView
 from ..utils import auto_unit
 from .matrix import MatrixPanel
 
@@ -21,13 +22,13 @@ class IVRampElmPanel(MatrixPanel):
         #self.table = comet.Table(header=["Voltage [V]", "Current SMU [uA]", "Current Elm [uA]", ""], stretch=True)
         #self.table.fit()
 
-        self.logs = comet.Tree(header=["Level", "Message"])
-        self._stream_handler.targets.append(lambda record: self.logs.append([record.levelname, record.message]))
+        self.logview = LogView()
+        self._stream_handler.targets.append(lambda record: self.logview.append(record))
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
         #self.tabs.append(comet.Tab(title="Table", layout=self.table))
-        self.tabs.append(comet.Tab(title="Logs", layout=self.logs))
+        self.tabs.append(comet.Tab(title="Logs", layout=self.logview))
         self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -66,8 +67,8 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("zero_correction", self.zero_correction, False)
         self.bind("integration_rate", self.integration_rate, 50.0)
 
-        self.status_smu_model = comet.Label(text="Model: n/a")
-        self.bind("status_smu_model", self.status_smu_model, "n/a")
+        self.status_smu_model = comet.Label()
+        self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
         self.status_smu_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
         self.status_smu_current = comet.Text(value="---", readonly=True)
@@ -75,8 +76,8 @@ class IVRampElmPanel(MatrixPanel):
         self.status_smu_output = comet.Text(value="---", readonly=True)
         self.bind("status_smu_output", self.status_smu_output, "n/a")
 
-        self.status_elm_model = comet.Label(text="Model: n/a")
-        self.bind("status_elm_model", self.status_elm_model, "n/a")
+        self.status_elm_model = comet.Label()
+        self.bind("status_elm_model", self.status_elm_model, "Model: n/a")
         self.status_elm_current = comet.Text(value="---", readonly=True)
         self.bind("status_elm_current", self.status_elm_current, "n/a")
 
@@ -143,9 +144,9 @@ class IVRampElmPanel(MatrixPanel):
                             comet.Stretch()
                         )
                     ),
-                    self.instrument_status,
-                    comet.Stretch(),
-                    stretch=(2, 2, 3, 1)
+                    # self.instrument_status,
+                    # comet.Stretch(),
+                    # stretch=(1, 1, 3, 1)
                 )
             ),
             comet.Tab(
@@ -201,12 +202,16 @@ class IVRampElmPanel(MatrixPanel):
                 )
             )
         )
-        self.controls.append(self.tabs)
+        self.controls.append(comet.Row(
+            self.tabs,
+            self.instrument_status,
+            stretch=(2, 1)
+        ))
 
     def lock(self):
         for tab in self.tabs.children:
             tab.enabled = False
-        self.instrument_status = True
+        self.instrument_status.enabled = True
         self.tabs.current = 0
 
     def unlock(self):
@@ -230,7 +235,6 @@ class IVRampElmPanel(MatrixPanel):
         self.update_readings()
 
     def state(self, state):
-
         if 'smu_model' in state:
             value = state.get('smu_model', "n/a")
             self.status_smu_model.text = f"Model: {value}"
@@ -275,4 +279,4 @@ class IVRampElmPanel(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        self.logs.clear()
+        self.logview.clear()
