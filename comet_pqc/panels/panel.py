@@ -72,6 +72,8 @@ class Panel(comet.Widget):
                 setattr(element, "checked", value)
             elif isinstance(element, comet.Text):
                 setattr(element, "value", value)
+            elif isinstance(element, comet.Label):
+                setattr(element, "text", format(value))
             else:
                 setattr(element, "value", value)
 
@@ -96,6 +98,8 @@ class Panel(comet.Widget):
                     value = getattr(element, "checked")
                 elif isinstance(element, comet.Text):
                     value = getattr(element, "value")
+                elif isinstance(element, comet.Label):
+                    value = getattr(element, "text")
                 else:
                     value = getattr(element, "value")
                 if unit is not None:
@@ -123,6 +127,9 @@ class Panel(comet.Widget):
                 else:
                     setattr(element, "value", value)
 
+    def state(self, state):
+        pass
+
     def append_reading(self, name, x, y):
         pass
 
@@ -132,12 +139,8 @@ class Panel(comet.Widget):
     def clear_readings(self):
         pass
 
-    @property
-    def locked(self):
-        """Returns True if panel controls are locked."""
-        return self.controls.enabled
+    def lock(self):
+        self.controls.enabled = False
 
-    @locked.setter
-    def locked(self, locked):
-        """Set lcoked state of panel controls."""
-        self.controls.enabled = not locked
+    def unlock(self):
+        self.controls.enabled = True

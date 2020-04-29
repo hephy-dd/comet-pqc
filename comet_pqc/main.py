@@ -231,7 +231,7 @@ def main():
             app.layout.get("output_fieldset").enabled = False
             panels = app.layout.get("panels")
             for panel in panels.children:
-                panel.locked = True
+                panel.lock()
             sequence_tree = app.layout.get("sequence_tree")
             sequence_tree.lock()
             sequence_tree.reset()
@@ -251,6 +251,7 @@ def main():
             measure.measurement_item = measurement
             measure.events.reading = panel.append_reading
             measure.events.update = panel.update_readings
+            measure.events.state = panel.state
             # TODO
             measure.start()
 
@@ -271,7 +272,7 @@ def main():
         app.layout.get("output_fieldset").enabled = True
         panels = app.layout.get("panels")
         for panel in panels.children:
-            panel.locked = False
+            panel.unlock()
         measure = app.processes.get("measure")
         measure.events.reading = lambda data: None
         app.layout.get("sequence_tree").unlock()
@@ -291,7 +292,7 @@ def main():
             app.layout.get("panel_controls").enabled = False
             panels = app.layout.get("panels")
             for panel in panels.children:
-                panel.locked = True
+                panel.lock()
             sequence_tree = app.layout.get("sequence_tree")
             sequence_tree.lock()
             sequence_tree.reset()
@@ -322,7 +323,7 @@ def main():
         app.layout.get("panel_controls").enabled = True
         panels = app.layout.get("panels")
         for panel in panels.children:
-            panel.locked = False
+            panel.unlock()
         sequence_tree = app.layout.get("sequence_tree")
         sequence_tree.unlock()
         sequence = app.processes.get("sequence")

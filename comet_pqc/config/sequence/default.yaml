@@ -153,7 +153,7 @@ contacts:
             current_compliance: 10 uA
             sense_mode: local
       - name: Polysilicon meander
-        type: iv_ramp
+        type: iv_ramp_elm
         parameters:
             matrix_channels: []
             voltage_start: -100 mV

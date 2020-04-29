@@ -1,4 +1,6 @@
 import comet
+
+from ..utils import auto_unit
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampElmPanel"]
@@ -64,92 +66,153 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("zero_correction", self.zero_correction, False)
         self.bind("integration_rate", self.integration_rate, 50.0)
 
-        self.controls.append(
-            comet.Tabs(
-                comet.Tab(
-                    title="General",
-                    layout=comet.Row(
-                        comet.FieldSet(
-                            title="Ramp",
-                            layout=comet.Column(
-                                    comet.Label(text="Start"),
-                                    self.voltage_start,
-                                    comet.Label(text="Stop"),
-                                    self.voltage_stop,
-                                    comet.Label(text="Step"),
-                                    self.voltage_step,
-                                    comet.Label(text="Waiting Time"),
-                                    self.waiting_time,
-                                    comet.Stretch()
-                            )
+        self.status_smu_model = comet.Label(text="Model: n/a")
+        self.bind("status_smu_model", self.status_smu_model, "n/a")
+        self.status_smu_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
+        self.status_smu_current = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_current", self.status_smu_current, "n/a")
+        self.status_smu_output = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_output", self.status_smu_output, "n/a")
+
+        self.status_elm_model = comet.Label(text="Model: n/a")
+        self.bind("status_elm_model", self.status_elm_model, "n/a")
+        self.status_elm_current = comet.Text(value="---", readonly=True)
+        self.bind("status_elm_current", self.status_elm_current, "n/a")
+
+        self.instrument_status = comet.Column(
+            comet.FieldSet(
+                title="SMU Status",
+                layout=comet.Column(
+                    self.status_smu_model,
+                    comet.Row(
+                        comet.Column(
+                            comet.Label("Voltage"),
+                            self.status_smu_voltage
                         ),
                         comet.Column(
-                            comet.FieldSet(
-                                title="SMU Compliance",
-                                layout=comet.Column(
-                                    self.current_compliance,
-                                    comet.Stretch()
-                                )
-                            )
+                            comet.Label("Current"),
+                            self.status_smu_current
+                        ),
+                        comet.Column(
+                            comet.Label("Output"),
+                            self.status_smu_output
+                        )
+                    )
+                )
+            ),
+            comet.FieldSet(
+                title="Electrometer Status",
+                layout=comet.Column(
+                    self.status_elm_model,
+                    comet.Row(
+                        comet.Column(
+                            comet.Label("Current"),
+                            self.status_elm_current
                         ),
                         comet.Stretch(),
-                        stretch=(1, 1, 2)
+                        stretch=(1, 2)
                     )
-                ),
-                comet.Tab(
-                    title="Matrix",
-                    layout=comet.Column(
-                        self.controls.children[0],
-                        comet.Stretch(),
-                        stretch=(0, 1)
-                    )
-                ),
-                comet.Tab(
-                    title="SMU",
-                    layout=comet.Row(
-                        comet.FieldSet(
-                            title="Filter",
-                            layout=comet.Column(
-                                self.average_enabled,
-                                self.average_count_label,
-                                self.average_count,
-                                self.average_type_label,
-                                self.average_type,
+                )
+            ),
+            comet.Stretch()
+        )
+
+        self.tabs = comet.Tabs(
+            comet.Tab(
+                title="General",
+                layout=comet.Row(
+                    comet.FieldSet(
+                        title="Ramp",
+                        layout=comet.Column(
+                                comet.Label(text="Start"),
+                                self.voltage_start,
+                                comet.Label(text="Stop"),
+                                self.voltage_stop,
+                                comet.Label(text="Step"),
+                                self.voltage_step,
+                                comet.Label(text="Waiting Time"),
+                                self.waiting_time,
                                 comet.Stretch()
-                            )
-                        ),
-                        comet.FieldSet(
-                            title="Options",
-                            layout=comet.Column(
-                                comet.Label(text="Sense Mode"),
-                                self.sense_mode,
-                                comet.Label(text="Route Termination"),
-                                self.route_termination,
-                                comet.Stretch()
-                            )
-                        ),
-                        comet.Stretch(),
-                        stretch=(1, 1, 2)
-                    )
-                ),
-                comet.Tab(
-                    title="Electrometer",
-                    layout=comet.Row(
-                        comet.FieldSet(
-                            title="Electrometer",
-                            layout=comet.Column(
-                                self.zero_correction,
-                                comet.Label(text="Integration Rate"),
-                                self.integration_rate,
-                                comet.Stretch()
-                            )
-                        ),
-                        comet.Stretch(),
-                        stretch=(1, 3)
-                    )
+                        )
+                    ),
+                    comet.FieldSet(
+                        title="SMU Compliance",
+                        layout=comet.Column(
+                            self.current_compliance,
+                            comet.Stretch()
+                        )
+                    ),
+                    self.instrument_status,
+                    comet.Stretch(),
+                    stretch=(2, 2, 3, 1)
+                )
+            ),
+            comet.Tab(
+                title="Matrix",
+                layout=comet.Column(
+                    self.controls.children[0],
+                    comet.Stretch(),
+                    stretch=(0, 1)
+                )
+            ),
+            comet.Tab(
+                title="SMU",
+                layout=comet.Row(
+                    comet.FieldSet(
+                        title="Filter",
+                        layout=comet.Column(
+                            self.average_enabled,
+                            self.average_count_label,
+                            self.average_count,
+                            self.average_type_label,
+                            self.average_type,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.FieldSet(
+                        title="Options",
+                        layout=comet.Column(
+                            comet.Label(text="Sense Mode"),
+                            self.sense_mode,
+                            comet.Label(text="Route Termination"),
+                            self.route_termination,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.Stretch(),
+                    stretch=(1, 1, 2)
+                )
+            ),
+            comet.Tab(
+                title="Electrometer",
+                layout=comet.Row(
+                    comet.FieldSet(
+                        title="Electrometer",
+                        layout=comet.Column(
+                            self.zero_correction,
+                            comet.Label(text="Integration Rate"),
+                            self.integration_rate,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.Stretch(),
+                    stretch=(1, 3)
                 )
             )
         )
+        self.controls.append(self.tabs)
+
+    def lock(self):
+        for tab in self.tabs.children:
+            tab.enabled = False
+        self.instrument_status = True
+        self.tabs.current = 0
+
+    def unlock(self):
+        for tab in self.tabs.children:
+            tab.enabled = True
+
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -165,6 +228,28 @@ class IVRampElmPanel(MatrixPanel):
                 #     format(current.to('uA').m, '.3f'),
                 # ])
         self.update_readings()
+
+    def state(self, state):
+
+        if 'smu_model' in state:
+            value = state.get('smu_model', "n/a")
+            self.status_smu_model.text = f"Model: {value}"
+        if 'smu_voltage' in state:
+            value = state.get('smu_voltage')
+            self.status_smu_voltage.value = auto_unit(value, "V")
+        if 'smu_current' in state:
+            value = state.get('smu_current')
+            self.status_smu_current.value = auto_unit(value, "A")
+        if 'smu_output' in state:
+            labels = {False: "OFF", True: "ON", None: "---"}
+            self.status_smu_output.value = labels[state.get('smu_output')]
+        if 'elm_model' in state:
+            value = state.get('elm_model', "n/a")
+            self.status_elm_model.text = f"Model: {value}"
+        if 'elm_current' in state:
+            value = state.get('elm_current')
+            self.status_elm_current.value = auto_unit(value, "A")
+        super().state(state)
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')
