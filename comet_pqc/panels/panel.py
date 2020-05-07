@@ -6,21 +6,11 @@ import comet
 
 __all__ = ["Panel"]
 
-class Handler(logging.Handler):
-
-    targets = []
-
-    def emit(self, record):
-        for target in self.targets:
-            target(record)
-
 class Panel(comet.Widget):
     """Base class for measurement panels."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._stream_handler = Handler()
-        self._stream_handler.setLevel(logging.DEBUG)
         self._bindings = {}
         self.title_label = comet.Label(
             stylesheet="font-size: 16px; font-weight: bold; background-color: white; height: 32px;"
@@ -52,7 +42,6 @@ class Panel(comet.Widget):
     def mount(self, measurement):
         """Mount measurement to panel."""
         self.unmount()
-        logging.getLogger().addHandler(self._stream_handler)
         self.title_label.text = f"{self.title} &rarr; {measurement.name}"
         self.description_label.text = measurement.description
         self.measurement = measurement
@@ -82,7 +71,6 @@ class Panel(comet.Widget):
         self.title_label.text = ""
         self.description_label.text = ""
         self.measurement = None
-        logging.getLogger().removeHandler(self._stream_handler)
 
     def store(self):
         """Store UI element values to measurement parameters."""

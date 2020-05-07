@@ -1,6 +1,8 @@
+import logging
+
 import comet
 
-from ..logview import LogView
+from ..logwindow import LogWidget
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampPanel"]
@@ -17,16 +19,11 @@ class IVRampPanel(MatrixPanel):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="SMU", color="red")
 
-        #self.table = comet.Table(header=["Voltage [V]", "Current [uA]", ""], stretch=True)
-        #self.table.fit()
-
-        self.logview = LogView()
-        self._stream_handler.targets.append(self.logview.append_record)
+        self.logwidget = LogWidget()
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        #self.tabs.append(comet.Tab(title="Table", layout=self.table))
-        self.tabs.append(comet.Tab(title="Logs", layout=self.logview))
+        self.tabs.append(comet.Tab(title="Logs", layout=self.logwidget))
         self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -60,59 +57,127 @@ class IVRampPanel(MatrixPanel):
         self.bind("average_count", self.average_count, 10)
         self.bind("average_type", self.average_type, "repeat")
 
+        # Instruments status
+
+        self.status_smu_model = comet.Label()
+        self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
+        self.status_smu_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
+        self.status_smu_current = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_current", self.status_smu_current, "n/a")
+        self.status_smu_output = comet.Text(value="---", readonly=True)
+        self.bind("status_smu_output", self.status_smu_output, "n/a")
+
+        self.status_instruments = comet.Column(
+            comet.FieldSet(
+                title="SMU Status",
+                layout=comet.Column(
+                    self.status_smu_model,
+                    comet.Row(
+                        comet.Column(
+                            comet.Label("Voltage"),
+                            self.status_smu_voltage
+                        ),
+                        comet.Column(
+                            comet.Label("Current"),
+                            self.status_smu_current
+                        ),
+                        comet.Column(
+                            comet.Label("Output"),
+                            self.status_smu_output
+                        )
+                    )
+                )
+            ),
+            comet.Stretch()
+        )
+
+        self.tabs = comet.Tabs(
+            comet.Tab(
+                title="General",
+                layout=comet.Row(
+                    comet.FieldSet(
+                        title="Ramp",
+                        layout=comet.Column(
+                                comet.Label(text="Start"),
+                                self.voltage_start,
+                                comet.Label(text="Stop"),
+                                self.voltage_stop,
+                                comet.Label(text="Step"),
+                                self.voltage_step,
+                                comet.Label(text="Waiting Time"),
+                                self.waiting_time,
+                                comet.Stretch()
+                        )
+                    ),
+                    comet.FieldSet(
+                        title="SMU Compliance",
+                        layout=comet.Column(
+                            self.current_compliance,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.Stretch(),
+                    stretch=(1, 1, 1)
+                )
+            ),
+            comet.Tab(
+                title="Matrix",
+                layout=comet.Column(
+                    self.controls.children[0],
+                    comet.Stretch(),
+                    stretch=(0, 1)
+                )
+            ),
+            comet.Tab(
+                title="SMU",
+                layout=comet.Row(
+                    comet.FieldSet(
+                        title="Filter",
+                        layout=comet.Column(
+                            self.average_enabled,
+                            self.average_count_label,
+                            self.average_count,
+                            self.average_type_label,
+                            self.average_type,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.FieldSet(
+                        title="Options",
+                        layout=comet.Column(
+                            comet.Label(text="Sense Mode"),
+                            self.sense_mode,
+                            comet.Label(text="Route Termination"),
+                            self.route_termination,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.Stretch(),
+                    stretch=(1, 1, 1)
+                )
+            ),
+        )
+
         self.controls.append(comet.Row(
-            comet.FieldSet(
-                title="Ramp",
-                layout=comet.Column(
-                        comet.Label(text="Start"),
-                        self.voltage_start,
-                        comet.Label(text="Stop"),
-                        self.voltage_stop,
-                        comet.Label(text="Step"),
-                        self.voltage_step,
-                        comet.Label(text="Waiting Time"),
-                        self.waiting_time,
-                        comet.Stretch()
-                )
-            ),
-            comet.Column(
-                comet.FieldSet(
-                    title="Compliance",
-                    layout=comet.Column(
-                        comet.Label(text="Current"),
-                        self.current_compliance,
-                    )
-                ),
-                comet.FieldSet(
-                    title="Options",
-                    layout=comet.Column(
-                        comet.Label(text="Sense Mode"),
-                        self.sense_mode,
-                        comet.Label(text="Route Termination"),
-                        self.route_termination,
-                        comet.Stretch()
-                    )
-                ),
-                stretch=(0, 1)
-            ),
-            comet.FieldSet(
-                title="Average",
-                layout=comet.Column(
-                    self.average_enabled,
-                    self.average_count_label,
-                    self.average_count,
-                    self.average_type_label,
-                    self.average_type,
-                    comet.Stretch()
-                )
-            ),
-            comet.Stretch(),
-            stretch=(1, 1, 1, 1)
+            self.tabs,
+            self.status_instruments,
+            stretch=(2, 1)
         ))
+
+    def lock(self):
+        for tab in self.tabs.children:
+            tab.enabled = False
+        self.status_instruments.enabled = True
+        self.tabs.current = 0
+
+    def unlock(self):
+        for tab in self.tabs.children:
+            tab.enabled = True
 
     def mount(self, measurement):
         super().mount(measurement)
-        #self.table.clear()
+        self.logwidget.add_logger(logging.getLogger())
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
@@ -124,11 +189,26 @@ class IVRampPanel(MatrixPanel):
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-                # self.table.append([
-                #     format(voltage.to('V').m, '.3f'),
-                #     format(current.to('uA').m, '.3f'),
-                # ])
                 self.plot.fit()
+
+    def umount(self):
+        self.logwidget.remove_logger(logging.getLogger())
+        super().umount()
+
+    def state(self, state):
+        if 'smu_model' in state:
+            value = state.get('smu_model', "n/a")
+            self.status_smu_model.text = f"Model: {value}"
+        if 'smu_voltage' in state:
+            value = state.get('smu_voltage')
+            self.status_smu_voltage.value = auto_unit(value, "V")
+        if 'smu_current' in state:
+            value = state.get('smu_current')
+            self.status_smu_current.value = auto_unit(value, "A")
+        if 'smu_output' in state:
+            labels = {False: "OFF", True: "ON", None: "---"}
+            self.status_smu_output.value = labels[state.get('smu_output')]
+        super().state(state)
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')
@@ -143,10 +223,6 @@ class IVRampPanel(MatrixPanel):
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-            # self.table.append([
-            #     format(voltage.to('V').m, '.3f'),
-            #     format(current.to('uA').m, '.3f'),
-            # ])
 
     def clear_readings(self):
         for series in self.plot.series.values():
@@ -155,5 +231,4 @@ class IVRampPanel(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        #self.table.clear()
-        self.logview.clear()
+        self.logwidget.clear()

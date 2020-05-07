@@ -1,6 +1,8 @@
+import logging
+
 import comet
 
-from ..logview import LogView
+from ..logwindow import LogWidget
 from ..utils import auto_unit
 from .matrix import MatrixPanel
 
@@ -19,16 +21,11 @@ class IVRampElmPanel(MatrixPanel):
         self.plot.add_series("smu", "x", "y", text="SMU", color="red")
         self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
 
-        #self.table = comet.Table(header=["Voltage [V]", "Current SMU [uA]", "Current Elm [uA]", ""], stretch=True)
-        #self.table.fit()
-
-        self.logview = LogView()
-        self._stream_handler.targets.append(self.logview.append_record)
+        self.logwidget = LogWidget()
 
         self.tabs = comet.Tabs()
         self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        #self.tabs.append(comet.Tab(title="Table", layout=self.table))
-        self.tabs.append(comet.Tab(title="Logs", layout=self.logview))
+        self.tabs.append(comet.Tab(title="Logs", layout=self.logwidget))
         self.data.append(self.tabs)
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -67,6 +64,8 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("zero_correction", self.zero_correction, False)
         self.bind("integration_rate", self.integration_rate, 50.0)
 
+        # Instruments status
+
         self.status_smu_model = comet.Label()
         self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
         self.status_smu_voltage = comet.Text(value="---", readonly=True)
@@ -81,7 +80,7 @@ class IVRampElmPanel(MatrixPanel):
         self.status_elm_current = comet.Text(value="---", readonly=True)
         self.bind("status_elm_current", self.status_elm_current, "n/a")
 
-        self.instrument_status = comet.Column(
+        self.status_instruments = comet.Column(
             comet.FieldSet(
                 title="SMU Status",
                 layout=comet.Column(
@@ -144,9 +143,8 @@ class IVRampElmPanel(MatrixPanel):
                             comet.Stretch()
                         )
                     ),
-                    # self.instrument_status,
-                    # comet.Stretch(),
-                    # stretch=(1, 1, 3, 1)
+                    comet.Stretch(),
+                    stretch=(1, 1, 1)
                 )
             ),
             comet.Tab(
@@ -182,7 +180,7 @@ class IVRampElmPanel(MatrixPanel):
                         )
                     ),
                     comet.Stretch(),
-                    stretch=(1, 1, 2)
+                    stretch=(1, 1, 1)
                 )
             ),
             comet.Tab(
@@ -198,29 +196,30 @@ class IVRampElmPanel(MatrixPanel):
                         )
                     ),
                     comet.Stretch(),
-                    stretch=(1, 3)
+                    stretch=(1, 2)
                 )
             )
         )
+
         self.controls.append(comet.Row(
             self.tabs,
-            self.instrument_status,
+            self.status_instruments,
             stretch=(2, 1)
         ))
 
     def lock(self):
         for tab in self.tabs.children:
             tab.enabled = False
-        self.instrument_status.enabled = True
+        self.status_instruments.enabled = True
         self.tabs.current = 0
 
     def unlock(self):
         for tab in self.tabs.children:
             tab.enabled = True
 
-
     def mount(self, measurement):
         super().mount(measurement)
+        self.logwidget.add_logger(logging.getLogger())
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
@@ -228,11 +227,11 @@ class IVRampElmPanel(MatrixPanel):
                 voltage = x * comet.ureg('V')
                 current = y * comet.ureg('A')
                 self.plot.series.get(name).append(x, current.to('uA').m)
-                # self.table.append([
-                #     format(voltage.to('V').m, '.3f'),
-                #     format(current.to('uA').m, '.3f'),
-                # ])
         self.update_readings()
+
+    def umount(self):
+        self.logwidget.remove_logger(logging.getLogger())
+        super().umount()
 
     def state(self, state):
         if 'smu_model' in state:
@@ -279,4 +278,4 @@ class IVRampElmPanel(MatrixPanel):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        self.logview.clear()
+        self.logwidget.clear()
