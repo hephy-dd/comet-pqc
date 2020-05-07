@@ -14,7 +14,7 @@ class IVRampBiasPanel(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="IV", color="red")
-        self.data.append(self.plot)
+        self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
         self.bias_current_compliance = comet.Number(decimals=3, suffix="uA")

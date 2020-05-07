@@ -1,8 +1,9 @@
 import logging
+import re
 
 import comet
 
-from ..logwindow import LogWidget
+from ..utils import auto_unit
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampPanel"]
@@ -18,13 +19,7 @@ class IVRampPanel(MatrixPanel):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("series", "x", "y", text="SMU", color="red")
-
-        self.logwidget = LogWidget()
-
-        self.tabs = comet.Tabs()
-        self.tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        self.tabs.append(comet.Tab(title="Logs", layout=self.logwidget))
-        self.data.append(self.tabs)
+        self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -177,7 +172,6 @@ class IVRampPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.logwidget.add_logger(logging.getLogger())
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
@@ -190,10 +184,6 @@ class IVRampPanel(MatrixPanel):
                 else:
                     self.plot.fit()
                 self.plot.fit()
-
-    def umount(self):
-        self.logwidget.remove_logger(logging.getLogger())
-        super().umount()
 
     def state(self, state):
         if 'smu_model' in state:
@@ -225,10 +215,10 @@ class IVRampPanel(MatrixPanel):
                     self.plot.fit()
 
     def clear_readings(self):
+        super().clear_readings()
         for series in self.plot.series.values():
             series.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
         self.plot.fit()
-        self.logwidget.clear()

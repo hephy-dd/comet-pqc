@@ -48,6 +48,9 @@ def main():
         about=f"COMET application for PQC measurements, version {__version__}."
     )
 
+    # Add logging handler
+    logging.getLogger().addHandler(logging.StreamHandler())
+
     # Register devices
 
     app.devices.add("matrix", K707B(comet.Resource(
@@ -234,7 +237,7 @@ def main():
                 panel.lock()
             sequence_tree = app.layout.get("sequence_tree")
             sequence_tree.lock()
-            sequence_tree.reset()
+            #sequence_tree.reset()
             measurement = sequence_tree.current
             panel = app.layout.get(measurement.type)
             panel.store()
@@ -304,6 +307,9 @@ def main():
             sequence.set("sample_type", sample_type)
             sequence.set("output_dir", output_dir)
             sequence.sequence_tree = sequence_tree
+            sequence.events.reading = panel.append_reading
+            sequence.events.update = panel.update_readings
+            sequence.events.state = panel.state
             sequence.start()
 
     def on_sequence_stop():
@@ -375,6 +381,8 @@ def main():
                 logging.info("Continuing sequence...")
                 app.layout.get("continue_button").enabled = False
                 app.layout.get("continue_button").clicked = None
+                sequence_tree = app.layout.get("sequence_tree")
+                sequence_tree.current = measurement
                 sequence = app.processes.get("sequence")
                 sequence.set("continue_measurement", True)
         app.layout.get("continue_button").enabled = True

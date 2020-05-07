@@ -4,6 +4,8 @@ from PyQt5 import QtCore
 
 import comet
 
+
+
 __all__ = ["Panel"]
 
 class Panel(comet.Widget):

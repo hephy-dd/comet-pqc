@@ -1,4 +1,8 @@
+import logging
+
 import comet
+
+from ..logwindow import LogWidget
 from .panel import Panel
 
 __all__ = ["MatrixPanel"]
@@ -29,11 +33,19 @@ class MatrixPanel(Panel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.log_widget = LogWidget()
+
+        self.data_tabs = comet.Tabs()
+        self.data_tabs.append(comet.Tab(title="Logs", layout=self.log_widget))
+        self.data.append(self.data_tabs)
+
         self.matrix_enabled = comet.CheckBox(text="Enable Switching")
+        self.matrix_enabled.enabled = False
         self.matrix_channels = MatrixChannelsText(
             tooltip="Matrix card switching channels, comma separated list."
         )
 
+        self.bind("logs", self.log_widget, [])
         self.bind("matrix_enabled", self.matrix_enabled, False)
         self.bind("matrix_channels", self.matrix_channels, [])
 
@@ -48,3 +60,21 @@ class MatrixPanel(Panel):
                 )
             )
         ))
+
+    def mount(self, measurement):
+        super().mount(measurement)
+        # Show first tab on mount
+        self.data_tabs.qt.setCurrentIndex(0)
+        # Attach logger
+        self.log_widget.add_logger(logging.getLogger())
+        self.log_widget.load(self.measurement.parameters.get("history", []))
+
+    def umount(self):
+        # Detach logger
+        self.log_widget.remove_logger(logging.getLogger())
+        self.measurement.parameters["history"] = self.log_widget.dump()
+        super().umount()
+
+    def clear_readings(self):
+        super().clear_readings()
+        self.log_widget.clear()

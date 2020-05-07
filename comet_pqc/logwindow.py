@@ -38,6 +38,7 @@ class LogTreeWidgetItem(QtWidgets.QTreeWidgetItem):
         self.setFromRecord(record)
 
     def setFromRecord(self, record):
+        self.record = record
         self.setText(self.TimeColumn, self.formatTime(record.created))
         self.setText(self.LevelColumn, record.levelname)
         self.setText(self.MessageColumn, record.getMessage())
@@ -100,3 +101,14 @@ class LogWidget(comet.Widget):
 
     def remove_logger(self, logger):
         self.qt.removeLogger(logger)
+
+    def dump(self):
+        records = []
+        for index in range(self.qt.topLevelItemCount()):
+            item = self.qt.topLevelItem(index)
+            records.append(item.record)
+        return records
+
+    def load(self, records):
+        for record in records:
+            self.qt.appendRecord(record)

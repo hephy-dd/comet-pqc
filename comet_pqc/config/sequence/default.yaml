@@ -47,7 +47,7 @@ contacts:
             waiting_time: 500 ms # TODO 0-500ms
             current_compliance: 10 uA
             sense_mode: local
-      - name: MOS capacitor (LCR)
+      - name: MOS capacitor (SMU)
         type: cv_ramp
         description: Variant using SMU and LCR
         parameters:
@@ -59,10 +59,10 @@ contacts:
             current_compliance: 100 uA
             lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
-      - name: MOS capacitor (SMU)
+      - name: MOS capacitor (LCR)
         type: cv_ramp_alt
         enabled: false
-        description: Variant using one SMU
+        description: Variant using only LCR
         parameters:
             matrix_channels: []
             bias_voltage_start: -5 V
@@ -70,10 +70,13 @@ contacts:
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
             current_compliance: 1 uA
+            sense_mode: local
+            route_termination: rear
             lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (LCR)
+      - name: Capacitor test structure (SMU)
         type: cv_ramp
+        description: Variant using SMU and LCR
         parameters:
             matrix_channels: []
             bias_voltage_start: -5 V
@@ -82,11 +85,13 @@ contacts:
             waiting_time: 100 ms
             current_compliance: 100 uA
             sense_mode: local
+            route_termination: rear
             lcr_frequency: [1 kHz]
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (SMU)
+      - name: Capacitor test structure (LCR)
         type: cv_ramp_alt
         enabled: false
+        description: Variant using only LCR
         parameters:
             matrix_channels: []
             bias_voltage_start: -5 V
@@ -95,6 +100,7 @@ contacts:
             waiting_time: 100 ms
             current_compliance: 100 uA
             sense_mode: local
+            route_termination: rear
             lcr_frequency: [1 kHz]
             lcr_amplitude: 250 mV
       - name: Diode IV
@@ -123,6 +129,7 @@ contacts:
             waiting_time: 500 ms
             current_compliance: 100 uA
             sense_mode: local
+            route_termination: rear
             lcr_frequency: [1 kHz, 10 kHz]
             lcr_amplitude: 250 mV
       - name: Diode Frequency Scan
@@ -133,6 +140,7 @@ contacts:
             bias_voltage: 300 V
             current_compliance: 10 uA
             sense_mode: local
+            route_termination: rear
             lcr_frequency_start: 100 Hz
             lcr_frequency_stop: 2 MHz
             lcr_frequency_steps: 100

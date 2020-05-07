@@ -3,6 +3,7 @@ import logging
 import math
 import time
 import os
+import re
 
 import comet
 
@@ -47,8 +48,17 @@ class IVRampMeasurement(MatrixMeasurement):
         average_count = int(parameters.get("average_count"))
         average_type = parameters.get("average_type")
 
-        idn = smu.identification
-        logging.info("Using SMU: %s", idn)
+        smu_idn = smu.resource.query("*IDN?")
+        logging.info("Detected SMU: %s", smu_idn)
+        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
+        smu_model = ''.join(result) or None
+
+        self.process.events.state(dict(
+            smu_model=smu_model,
+            smu_voltage=smu.source.voltage.level,
+            smu_current=None,
+            smu_output=smu.output
+        ))
 
         smu.reset()
         check_error(smu)

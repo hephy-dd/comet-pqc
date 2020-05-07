@@ -49,14 +49,18 @@ class IVRampElmMeasurement(MatrixMeasurement):
         integration_rate = parameters.get("integration_rate")
 
         smu_idn = smu.identification
-        logging.info("Using SMU: %s", smu_idn)
+        logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
 
+        self.process.events.progress(1, 5)
+
         elm_idn = elm.identification
-        logging.info("Using Electrometer: %s", elm_idn)
+        logging.info("Detected Electrometer: %s", elm_idn)
         result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
         elm_model = ''.join(result) or None
+
+        self.process.events.progress(2, 5)
 
         self.process.events.state(dict(
             smu_model=smu_model,

@@ -2,7 +2,7 @@ import logging
 
 import comet
 
-from ..logwindow import LogWidget
+from ..utils import auto_unit
 from .matrix import MatrixPanel
 
 __all__ = ["CVRampPanel"]
@@ -12,19 +12,13 @@ class CVRampPanel(MatrixPanel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = "CV Ramp (1 SMU)"
+        self.title = "CV Ramp (SMU)"
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Cap.")
         self.plot.add_series("elm", "x", "y", text="LCR", color="blue")
-
-        self.logwidget = LogWidget()
-
-        tabs = comet.Tabs()
-        tabs.append(comet.Tab(title="Plot", layout=self.plot))
-        tabs.append(comet.Tab(title="Logs", layout=self.logwidget))
-        self.data.append(tabs)
+        self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -197,14 +191,6 @@ class CVRampPanel(MatrixPanel):
     def unlock(self):
         for tab in self.tabs.children:
             tab.enabled = True
-
-    def mount(self, measurement):
-        super().mount(measurement)
-        self.logwidget.add_logger(logging.getLogger())
-
-    def umount(self):
-        self.logwidget.remove_logger(logging.getLogger())
-        super().umount()
 
     def state(self, state):
         if 'smu_model' in state:
