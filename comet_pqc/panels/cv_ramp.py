@@ -49,9 +49,9 @@ class CVRampPanel(MatrixPanel):
         self.average_type = comet.Select(values=["repeat", "moving"])
         self.average_type_label = comet.Label(text="Type")
 
-        self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
-        self.bind("voltage_step", self.voltage_step, 1, unit="V")
+        self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
+        self.bind("bias_voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
