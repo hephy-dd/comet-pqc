@@ -65,15 +65,16 @@ class MatrixPanel(Panel):
         super().mount(measurement)
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
-        # Attach logger
-        self.log_widget.add_logger(logging.getLogger())
+        # Load hiostory, attach logger
         self.log_widget.load(self.measurement.parameters.get("history", []))
+        self.log_widget.add_logger(logging.getLogger())
 
-    def umount(self):
+    def unmount(self):
         # Detach logger
         self.log_widget.remove_logger(logging.getLogger())
-        self.measurement.parameters["history"] = self.log_widget.dump()
-        super().umount()
+        if self.measurement:
+            self.measurement.parameters["history"] = self.log_widget.dump()
+        super().unmount()
 
     def clear_readings(self):
         super().clear_readings()

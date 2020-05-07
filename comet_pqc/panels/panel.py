@@ -29,7 +29,7 @@ class Panel(comet.Widget):
             comet.Stretch(),
             stretch=(0, 0, 0, 0, 1)
         )
-        self.unmount()
+        self.measurement = None
 
     def bind(self, key, element, default=None, unit=None):
         """Bind measurement parameter to UI element for syncronization on mount
