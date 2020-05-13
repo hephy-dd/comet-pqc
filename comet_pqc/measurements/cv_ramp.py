@@ -5,6 +5,8 @@ import time
 import os
 import re
 
+import numpy as np
+
 import comet
 
 from ..utils import auto_unit
@@ -29,6 +31,35 @@ def safe_write(device, message):
     device.resource.write(message)
     device.resource.query("*OPC?")
     check_error(device)
+
+def custom_deviation_filter(values, threshold):
+    """Return True if standard deviation (sample) / mean < threshold.
+
+    >>> custom_deviation_filter([4.21e-11, 4.21e-11], threshold=0.005)
+    True
+    """
+    mean = np.mean(values)
+    sample_std_dev = np.std(values, ddof=1)
+    ratio = sample_std_dev / mean
+    logging.info("deviation ratio: %s", ratio)
+    return ratio < threshold
+
+def acquire_reading(lcr, maximum=64, threshold=0.005, size=2):
+    samples = []
+    prim = 0.
+    sec = 0.
+    for _ in range(maximum):
+        safe_write(lcr, "TRIG:IMM")
+        result = lcr.resource.query("FETC?")
+        logging.info("lcr reading: %s", result)
+        prim, sec = [float(value) for value in result.split(",")[:2]]
+        samples.append(prim)
+        samples = samples[-size:]
+        if len(samples) >= size:
+            if custom_deviation_filter(samples, threshold):
+                return prim, sec
+    logging.warning("maximum sample count reached: %d", maximum)
+    return prim, sec
 
 class CVRampMeasurement(MatrixMeasurement):
     """CV ramp measurement."""
@@ -139,11 +170,16 @@ class CVRampMeasurement(MatrixMeasurement):
         # LCR
         safe_write(lcr, "*RST")
         safe_write(lcr, "*CLS")
-        safe_write(lcr, ":FUNC:IMP:TYPE CPRP")
-        safe_write(lcr, ":FUNC:IMP:RANG:AUTO ON")
-        safe_write(lcr, ":FREQ 1000")
-        safe_write(lcr, f":CURR {current_compliance:E}")
         safe_write(lcr, ":AMPL:ALC ON")
+        safe_write(lcr, f":CURR {current_compliance:E}")
+        safe_write(lcr, ":FREQ 1000HZ")
+        safe_write(lcr, ":FUNC:IMP:RANG:AUTO ON")
+        #safe_write(lcr, ":FUNC:IMP:RANG 1000OHM")
+        safe_write(lcr, ":FUNC:IMP:TYPE CPRP")
+        safe_write(lcr, ":APER MED,+0")
+        safe_write(lcr, ":TRIG:SOUR BUS")
+        safe_write(lcr, ":INIT:CONT ON")
+        #safe_write(lcr, ":TRIG:DEL 1")
 
         self.process.events.progress(9, 10)
 
@@ -223,6 +259,8 @@ class CVRampMeasurement(MatrixMeasurement):
             t0 = time.time()
 
             safe_write(smu, "*CLS")
+            # SMU reading format: CURR
+            safe_write(smu, ":FORM:ELEM CURR")
 
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", smu_voltage_level, ramp.end, ramp.step)
             for voltage in ramp:
@@ -237,18 +275,20 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.events.message("Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.events.progress(*est.progress)
 
+                # read SMU
+                smu_reading = float(smu.resource.query(":READ?").split(',')[0])
+                logging.info("SMU reading: %E", smu_reading)
+
+
                 # read LCR
-                safe_write(lcr, ":INIT")
-                lcr_result = lcr.resource.query(":FETC?")
-                logging.info("LCR: %s", lcr_result)
-                lcr_prim, lcr_sec = [float(value) for value in lcr_result.split(",")[:2]]
+                lcr_prim, lcr_sec = acquire_reading(lcr)
                 logging.info("LCR reading: prim: %E, sec: %E", lcr_prim, lcr_sec)
                 self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
 
                 self.process.events.update()
                 self.process.events.state(dict(
                     smu_voltage=voltage,
-                    smu_current=None,
+                    smu_current=smu_reading
                 ))
 
                 # Write reading
