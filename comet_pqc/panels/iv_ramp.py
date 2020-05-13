@@ -29,17 +29,17 @@ class IVRampPanel(MatrixPanel):
         self.sense_mode = comet.Select(values=["local", "remote"])
         self.route_termination = comet.Select(values=["front", "rear"])
 
-        def toggle_average(enabled):
-            self.average_count.enabled = enabled
-            self.average_count_label.enabled = enabled
-            self.average_type.enabled = enabled
-            self.average_type_label.enabled = enabled
+        def toggle_smu_filter(enabled):
+            self.smu_filter_count.enabled = enabled
+            self.smu_filter_count_label.enabled = enabled
+            self.smu_filter_type.enabled = enabled
+            self.smu_filter_type_label.enabled = enabled
 
-        self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
-        self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.average_count_label = comet.Label(text="Count")
-        self.average_type = comet.Select(values=["repeat", "moving"])
-        self.average_type_label = comet.Label(text="Type")
+        self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
+        self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.smu_filter_count_label = comet.Label(text="Count")
+        self.smu_filter_type = comet.Select(values=["repeat", "moving"])
+        self.smu_filter_type_label = comet.Label(text="Type")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
@@ -48,9 +48,9 @@ class IVRampPanel(MatrixPanel):
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
-        self.bind("average_enabled", self.average_enabled, False)
-        self.bind("average_count", self.average_count, 10)
-        self.bind("average_type", self.average_type, "repeat")
+        self.bind("smu_filter_enable", self.smu_filter_enable, False)
+        self.bind("smu_filter_count", self.smu_filter_count, 10)
+        self.bind("smu_filter_type", self.smu_filter_type, "repeat")
 
         # Instruments status
 
@@ -130,11 +130,11 @@ class IVRampPanel(MatrixPanel):
                     comet.FieldSet(
                         title="Filter",
                         layout=comet.Column(
-                            self.average_enabled,
-                            self.average_count_label,
-                            self.average_count,
-                            self.average_type_label,
-                            self.average_type,
+                            self.smu_filter_enable,
+                            self.smu_filter_count_label,
+                            self.smu_filter_count,
+                            self.smu_filter_type_label,
+                            self.smu_filter_type,
                             comet.Stretch()
                         )
                     ),

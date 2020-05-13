@@ -41,11 +41,14 @@ class IVRampElmMeasurement(MatrixMeasurement):
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode")
-        route_termination = parameters.get("route_termination")
-        average_enabled = bool(parameters.get("average_enabled"))
-        average_count = int(parameters.get("average_count"))
-        average_type = parameters.get("average_type")
-        zero_correction = parameters.get("zero_correction")
+        route_termination = parameters.get("route_termination", "front")
+        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
+        smu_filter_count = int(parameters.get("smu_filter_count", 10))
+        smu_filter_type = parameters.get("smu_filter_type", "repeat")
+        elm_filter_enable = bool(parameters.get("elm_filter_enable", False))
+        elm_filter_count = int(parameters.get("elm_filter_count", 10))
+        elm_filter_type = parameters.get("elm_filter_type", "repeat")
+        zero_correction = bool(parameters.get("zero_correction", False))
         integration_rate = parameters.get("integration_rate")
 
         smu_idn = smu.identification
@@ -136,19 +139,21 @@ class IVRampElmMeasurement(MatrixMeasurement):
         #check_error(smu)
 
         # Filter
-        if average_enabled:
+        smu.resource.write(f":SENS:AVER:COUN {smu_filter_count:d}")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+
+        if smu_filter_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON REP")
+        elif smu_filter_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON MOV")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+
+        if smu_filter_enable:
             smu.resource.write(":SENS:AVER:STATE ON")
         else:
             smu.resource.write(":SENS:AVER:STATE OFF")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-        smu.resource.write(f":SENS:AVER:COUN {average_count:d}")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-        if average_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON REP")
-        elif average_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON MOV")
         smu.resource.query("*OPC?")
         check_error(smu)
 
@@ -206,8 +211,21 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_safe_write("*RST")
         elm_safe_write("*CLS")
 
+        # Filter
+        elm_safe_write(f":SENS:CURR:AVER:COUN {elm_filter_count:d}")
+
+        if elm_filter_type == "repeat":
+            elm_safe_write(":SENS:CURR:AVER:TCON REP")
+        elif elm_filter_type == "repeat":
+            elm_safe_write(":SENS:CURR:AVER:TCON MOV")
+
+        if elm_filter_enable:
+            elm_safe_write(":SENS:CURR:AVER:STATE ON")
+        else:
+            elm_safe_write(":SENS:CURR:AVER:STATE OFF")
+
         nplc = integration_rate / 10.
-        elm_safe_write(f":SENS:VOLT:NPLC {nplc:02f}") # 20pA
+        elm_safe_write(f":SENS:CURR:NPLC {nplc:02f}")
 
         elm_safe_write(":SYST:ZCH ON") # enable zero check
         assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"

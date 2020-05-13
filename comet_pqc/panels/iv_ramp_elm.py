@@ -29,17 +29,29 @@ class IVRampElmPanel(MatrixPanel):
         self.sense_mode = comet.Select(values=["local", "remote"])
         self.route_termination = comet.Select(values=["front", "rear"])
 
-        def toggle_average(enabled):
-            self.average_count.enabled = enabled
-            self.average_count_label.enabled = enabled
-            self.average_type.enabled = enabled
-            self.average_type_label.enabled = enabled
+        def toggle_smu_filter(enabled):
+            self.smu_filter_count.enabled = enabled
+            self.smu_filter_count_label.enabled = enabled
+            self.smu_filter_type.enabled = enabled
+            self.smu_filter_type_label.enabled = enabled
 
-        self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
-        self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.average_count_label = comet.Label(text="Count")
-        self.average_type = comet.Select(values=["repeat", "moving"])
-        self.average_type_label = comet.Label(text="Type")
+        self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
+        self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.smu_filter_count_label = comet.Label(text="Count")
+        self.smu_filter_type = comet.Select(values=["repeat", "moving"])
+        self.smu_filter_type_label = comet.Label(text="Type")
+
+        def toggle_elm_filter(enabled):
+            self.elm_filter_count.enabled = enabled
+            self.elm_filter_count_label.enabled = enabled
+            self.elm_filter_type.enabled = enabled
+            self.elm_filter_type_label.enabled = enabled
+
+        self.elm_filter_enable = comet.CheckBox(text="Enable", changed=toggle_elm_filter)
+        self.elm_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.elm_filter_count_label = comet.Label(text="Count")
+        self.elm_filter_type = comet.Select(values=["repeat", "moving"])
+        self.elm_filter_type_label = comet.Label(text="Type")
 
         self.zero_correction = comet.CheckBox(text="Zero Correction")
         self.integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
@@ -51,9 +63,12 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
-        self.bind("average_enabled", self.average_enabled, False)
-        self.bind("average_count", self.average_count, 10)
-        self.bind("average_type", self.average_type, "repeat")
+        self.bind("smu_filter_enable", self.smu_filter_enable, False)
+        self.bind("smu_filter_count", self.smu_filter_count, 10)
+        self.bind("smu_filter_type", self.smu_filter_type, "repeat")
+        self.bind("elm_filter_enable", self.elm_filter_enable, False)
+        self.bind("elm_filter_count", self.elm_filter_count, 10)
+        self.bind("elm_filter_type", self.elm_filter_type, "repeat")
         self.bind("zero_correction", self.zero_correction, False)
         self.bind("integration_rate", self.integration_rate, 50.0)
 
@@ -154,11 +169,11 @@ class IVRampElmPanel(MatrixPanel):
                     comet.FieldSet(
                         title="Filter",
                         layout=comet.Column(
-                            self.average_enabled,
-                            self.average_count_label,
-                            self.average_count,
-                            self.average_type_label,
-                            self.average_type,
+                            self.smu_filter_enable,
+                            self.smu_filter_count_label,
+                            self.smu_filter_count,
+                            self.smu_filter_type_label,
+                            self.smu_filter_type,
                             comet.Stretch()
                         )
                     ),
@@ -180,7 +195,18 @@ class IVRampElmPanel(MatrixPanel):
                 title="Electrometer",
                 layout=comet.Row(
                     comet.FieldSet(
-                        title="Electrometer",
+                        title="Filter",
+                        layout=comet.Column(
+                            self.elm_filter_enable,
+                            self.elm_filter_count_label,
+                            self.elm_filter_count,
+                            self.elm_filter_type_label,
+                            self.elm_filter_type,
+                            comet.Stretch()
+                        )
+                    ),
+                    comet.FieldSet(
+                        title="Options",
                         layout=comet.Column(
                             self.zero_correction,
                             comet.Label(text="Integration Rate"),
@@ -189,7 +215,7 @@ class IVRampElmPanel(MatrixPanel):
                         )
                     ),
                     comet.Stretch(),
-                    stretch=(1, 2)
+                    stretch=(1, 1, 1)
                 )
             )
         )

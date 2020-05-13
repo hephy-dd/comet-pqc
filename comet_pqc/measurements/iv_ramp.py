@@ -43,10 +43,10 @@ class IVRampMeasurement(MatrixMeasurement):
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode")
-        route_termination = parameters.get("route_termination")
-        average_enabled = bool(parameters.get("average_enabled"))
-        average_count = int(parameters.get("average_count"))
-        average_type = parameters.get("average_type")
+        route_termination = parameters.get("route_termination", "rear")
+        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
+        smu_filter_count = int(parameters.get("smu_filter_count", 10))
+        smu_filter_type = parameters.get("smu_filter_type", "repeat")
 
         smu_idn = smu.resource.query("*IDN?")
         logging.info("Detected SMU: %s", smu_idn)
@@ -104,20 +104,24 @@ class IVRampMeasurement(MatrixMeasurement):
         #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
         #smu.resource.query("*OPC?")
         #check_error(smu)
+
         # Filter
-        if average_enabled:
+
+        smu.resource.write(f":SENS:AVER:COUN {smu_filter_count:d}")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+
+        if smu_filter_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON REP")
+        elif smu_filter_type == "repeat":
+            smu.resource.write(":SENS:AVER:TCON MOV")
+        smu.resource.query("*OPC?")
+        check_error(smu)
+
+        if smu_filter_enable:
             smu.resource.write(":SENS:AVER:STATE ON")
         else:
             smu.resource.write(":SENS:AVER:STATE OFF")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-        smu.resource.write(f":SENS:AVER:COUN {average_count:d}")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-        if average_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON REP")
-        elif average_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON MOV")
         smu.resource.query("*OPC?")
         check_error(smu)
 
