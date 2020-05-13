@@ -16,7 +16,7 @@ class CVRampPanel(MatrixPanel):
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Cap.")
+        self.plot.add_axis("y", align="right", text="Capacity [uF]")
         self.plot.add_series("elm", "x", "y", text="LCR", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
 
@@ -28,20 +28,20 @@ class CVRampPanel(MatrixPanel):
         self.sense_mode = comet.Select(values=["local", "remote"])
         self.route_termination = comet.Select(values=["front", "rear"])
 
-        self.lcr_frequency = comet.List(height=64)
-        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
+        self.lcr_frequency = comet.List(height=64, enabled=False)
+        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV", enabled=False)
 
-        def toggle_average(enabled):
-            self.average_count.enabled = enabled
-            self.average_count_label.enabled = enabled
-            self.average_type.enabled = enabled
-            self.average_type_label.enabled = enabled
+        def toggle_smu_filter(enabled):
+            self.smu_filter_count.enabled = enabled
+            self.smu_filter_count_label.enabled = enabled
+            self.smu_filter_type.enabled = enabled
+            self.smu_filter_type_label.enabled = enabled
 
-        self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
-        self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.average_count_label = comet.Label(text="Count")
-        self.average_type = comet.Select(values=["repeat", "moving"])
-        self.average_type_label = comet.Label(text="Type")
+        self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
+        self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.smu_filter_count_label = comet.Label(text="Count")
+        self.smu_filter_type = comet.Select(values=["repeat", "moving"])
+        self.smu_filter_type_label = comet.Label(text="Type")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
@@ -50,9 +50,9 @@ class CVRampPanel(MatrixPanel):
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
-        self.bind("average_enabled", self.average_enabled, False)
-        self.bind("average_count", self.average_count, 10)
-        self.bind("average_type", self.average_type, "repeat")
+        self.bind("smu_filter_enable", self.smu_filter_enable, False)
+        self.bind("smu_filter_count", self.smu_filter_count, 10)
+        self.bind("smu_filter_type", self.smu_filter_type, "repeat")
         self.bind("lcr_frequency", self.lcr_frequency, [])
         self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
@@ -152,11 +152,11 @@ class CVRampPanel(MatrixPanel):
                     comet.FieldSet(
                         title="Filter",
                         layout=comet.Column(
-                            self.average_enabled,
-                            self.average_count_label,
-                            self.average_count,
-                            self.average_type_label,
-                            self.average_type,
+                            self.smu_filter_enable,
+                            self.smu_filter_count_label,
+                            self.smu_filter_count,
+                            self.smu_filter_type_label,
+                            self.smu_filter_type,
                             comet.Stretch()
                         )
                     ),
@@ -209,3 +209,26 @@ class CVRampPanel(MatrixPanel):
             value = state.get('lcr_model', "n/a")
             self.status_lcr_model.text = f"Model: {value}"
         super().state(state)
+
+    def append_reading(self, name, x, y):
+        voltage = x * comet.ureg('V')
+        capacity = y * comet.ureg('F')
+        if self.measurement:
+            if name in self.plot.series:
+                if name not in self.measurement.series:
+                    self.measurement.series[name] = []
+                self.measurement.series[name].append((x, y))
+                self.plot.series.get(name).append(x, current.to('uF').m)
+                if self.plot.zoomed:
+                    self.plot.update("x")
+                else:
+                    self.plot.fit()
+
+    def clear_readings(self):
+        super().clear_readings()
+        for series in self.plot.series.values():
+            series.clear()
+        if self.measurement:
+            for name, points in self.measurement.series.items():
+                self.measurement.series[name] = []
+        self.plot.fit()
