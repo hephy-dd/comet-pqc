@@ -48,6 +48,8 @@ def main():
         about=f"COMET application for PQC measurements, version {__version__}."
     )
 
+    logging.info("PQC version %s", __version__)
+
     # Register devices
 
     app.devices.add("matrix", K707B(comet.Resource(
@@ -63,7 +65,7 @@ def main():
         write_termination="\r\n"
     )))
     app.devices.add("lcr", E4980A(comet.Resource(
-        resource_name="TCPIP::10.0.0.4::5025::SOCKET",
+        resource_name="TCPIP::10.0.0.6::5025::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n"
     )))
@@ -593,8 +595,6 @@ def main():
     importAction.triggered.connect(on_import_sequence)
     sequenceMenu.addAction(importAction)
     ui.fileMenu.insertSeparator(ui.quitAction)
-
-    logging.getLogger().addHandler(logging.StreamHandler())
 
     return app.run()
 
