@@ -48,9 +48,6 @@ def main():
         about=f"COMET application for PQC measurements, version {__version__}."
     )
 
-    # Add logging handler
-    logging.getLogger().addHandler(logging.StreamHandler())
-
     # Register devices
 
     app.devices.add("matrix", K707B(comet.Resource(

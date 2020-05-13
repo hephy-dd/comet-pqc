@@ -16,7 +16,7 @@ __all__ = ["CVRampMeasurement"]
 
 def check_error(device):
     """Test for error."""
-    code, message = elm.resource.query(":SYST:ERR?").split(",", 1)
+    code, message = device.resource.query(":SYST:ERR?").split(",", 1)
     code = int(code)
     if code != 0:
         message = message.strip("\"")
@@ -25,7 +25,7 @@ def check_error(device):
 
 def safe_write(device, message):
     """Write, wait for operation complete, test for error."""
-    logging.info(f"safe write: {device}: {message}")
+    logging.info(f"safe write: {device.__class__.__name__}: {message}")
     device.resource.write(message)
     device.resource.query("*OPC?")
     check_error(device)
@@ -41,6 +41,9 @@ class CVRampMeasurement(MatrixMeasurement):
 
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
+        bias_voltage_start = parameters.get("bias_voltage_start").to("V").m
+        bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
+        bias_voltage_stop = parameters.get("bias_voltage_stop").to("V").m
         sense_mode = parameters.get("sense_mode")
         route_termination = parameters.get("route_termination", "rear")
         smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
@@ -61,7 +64,7 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(2, 10)
 
         smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
-        smu_output_state = bool(int(smu.resource.query(":OUTP:STAT?"))),
+        smu_output_state = bool(int(smu.resource.query(":OUTP:STAT?")))
 
         self.process.events.state(dict(
             smu_model=smu_model,
@@ -99,7 +102,7 @@ class CVRampMeasurement(MatrixMeasurement):
 
         # Compliance
         logging.info("set compliance: %E A", current_compliance)
-        safe_write(smu, ":SENS:CURR:PROT:LEV {current_compliance:E}")
+        safe_write(smu, f":SENS:CURR:PROT:LEV {current_compliance:E}")
 
         self.process.events.progress(6, 10)
 
@@ -136,6 +139,8 @@ class CVRampMeasurement(MatrixMeasurement):
         # LCR
         safe_write(lcr, "*RST")
         safe_write(lcr, "*CLS")
+        safe_write(lcr, ":FUNC:IMP:TYPE CPRP")
+        safe_write(lcr, ":FUNC:IMP:RANG:AUTO ON")
         safe_write(lcr, ":FREQ 1000")
         safe_write(lcr, f":CURR {current_compliance:E}")
         safe_write(lcr, ":AMPL:ALC ON")
@@ -146,19 +151,19 @@ class CVRampMeasurement(MatrixMeasurement):
 
             smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
 
-            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
-            for voltage in comet.Range(voltage, voltage_start, voltage_step):
+            logging.info("ramp to start voltage: from %E V to %E V with step %E V", smu_voltage_level, bias_voltage_start, bias_voltage_step)
+            for voltage in comet.Range(smu_voltage_level, bias_voltage_start, bias_voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.events.message("Ramp to start... {}".format(auto_unit(voltage, "V")))
-                safe_write(smu, ":SOUR:VOLT:LEV {voltage:E}")
+                safe_write(smu, f":SOUR:VOLT:LEV {voltage:E}")
                 time.sleep(.100)
                 time.sleep(waiting_time)
-                smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
+                #smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
                 self.process.events.state(dict(
-                    smu_voltage=smu_voltage_level,
+                    smu_voltage=voltage,
                 ))
                 # Compliance?
-                compliance_tripped = bool(int(smu.resource.query(":SENS:CURR:PROT:TRIP")))
+                compliance_tripped = bool(int(smu.resource.query(":SENS:CURR:PROT:TRIP?")))
                 if compliance_tripped:
                     logging.error("SMU in compliance")
                     raise ValueError("compliance tripped!")
@@ -211,7 +216,7 @@ class CVRampMeasurement(MatrixMeasurement):
 
             smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
 
-            ramp = comet.Range(smu_voltage_level, voltage_stop, voltage_step)
+            ramp = comet.Range(smu_voltage_level, bias_voltage_stop, bias_voltage_step)
             est = Estimate(ramp.count)
             self.process.events.progress(*est.progress)
 
@@ -222,9 +227,9 @@ class CVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", smu_voltage_level, ramp.end, ramp.step)
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
-                safe_write(smu, ":SOUR:VOLT:LEV {voltage:E}")
+                safe_write(smu, f":SOUR:VOLT:LEV {voltage:E}")
                 time.sleep(.100)
-                smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
+                #smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
                 dt = time.time() - t0
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
@@ -233,14 +238,16 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.events.progress(*est.progress)
 
                 # read LCR
-                save_write(lcr, ":INIT")
-                lcr_prim, lcr_sec = [float(value) for value in lcr.resource.query(":FETC?").split(",")]
+                safe_write(lcr, ":INIT")
+                lcr_result = lcr.resource.query(":FETC?")
+                logging.info("LCR: %s", lcr_result)
+                lcr_prim, lcr_sec = [float(value) for value in lcr_result.split(",")[:2]]
                 logging.info("LCR reading: prim: %E, sec: %E", lcr_prim, lcr_sec)
-                self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_sec)
+                self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
 
                 self.process.events.update()
                 self.process.events.state(dict(
-                    smu_voltage=smu_voltage_level,
+                    smu_voltage=voltage,
                     smu_current=None,
                 ))
 
@@ -248,7 +255,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     voltage=voltage,
-                    capacity=lcr_sec,
+                    capacity=lcr_prim,
                     temperature=float('nan'),
                     humidity=float('nan')
                 ))
@@ -256,7 +263,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 # Compliance?
-                compliance_tripped = bool(int(smu.resource.query(":SENS:CURR:PROT:TRIP")))
+                compliance_tripped = bool(int(smu.resource.query(":SENS:CURR:PROT:TRIP?")))
                 if compliance_tripped:
                     logging.error("SMU in compliance")
                     raise ValueError("compliance tripped!")
@@ -266,10 +273,10 @@ class CVRampMeasurement(MatrixMeasurement):
 
     def finalize(self, smu, lcr):
         parameters = self.measurement_item.parameters
-        voltage_step = parameters.get("voltage_step").to("V").m
+        bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
         smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
 
-        progress_max = int(round(abs(smu_voltage_level) / abs(voltage_step)))
+        progress_max = int(round(abs(smu_voltage_level) / abs(bias_voltage_step)))
         progress_step = 0
         self.process.events.progress(progress_step, progress_max)
 
@@ -277,17 +284,17 @@ class CVRampMeasurement(MatrixMeasurement):
             smu_current=None,
         ))
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", smu_voltage_level, 0, voltage_step)
-        for voltage in comet.Range(smu_voltage_level, 0, voltage_step):
+        logging.info("ramp to zero: from %E V to %E V with step %E V", smu_voltage_level, 0, bias_voltage_step)
+        for voltage in comet.Range(smu_voltage_level, 0, bias_voltage_step):
             logging.info("set voltage: %E V", voltage)
             progress_step += 1
             self.process.events.progress(progress_step, progress_max)
-            self.process.events.message("Ramp down... {}".format(auto_unit(smu_voltage_level, "V")))
-            safe_write(smu, ":SOUR:VOLT:LEV {voltage:E}")
+            self.process.events.message("Ramp down... {}".format(auto_unit(voltage, "V")))
+            safe_write(smu, f":SOUR:VOLT:LEV {voltage:E}")
             time.sleep(.100)
-            smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
+            #smu_voltage_level = float(smu.resource.query(":SOUR:VOLT:LEV?"))
             self.process.events.state(dict(
-                smu_voltage=smu_voltage_level,
+                smu_voltage=voltage,
             ))
 
         safe_write(smu, ":OUTP:STAT OFF")

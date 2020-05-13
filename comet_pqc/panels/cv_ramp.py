@@ -16,8 +16,8 @@ class CVRampPanel(MatrixPanel):
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacity [uF]")
-        self.plot.add_series("elm", "x", "y", text="LCR", color="blue")
+        self.plot.add_axis("y", align="right", text="Capacity Cp [uF]")
+        self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -192,6 +192,21 @@ class CVRampPanel(MatrixPanel):
         for tab in self.tabs.children:
             tab.enabled = True
 
+    def mount(self, measurement):
+        super().mount(measurement)
+        for name, points in measurement.series.items():
+            if name in self.plot.series:
+                self.plot.series.clear()
+            for x, y in points:
+                voltage = x * comet.ureg('V')
+                capacity = y * comet.ureg('F')
+                self.plot.series.get(name).append(x, capacity.to('uF').m)
+                if self.plot.zoomed:
+                    self.plot.update("x")
+                else:
+                    self.plot.fit()
+                self.plot.fit()
+
     def state(self, state):
         if 'smu_model' in state:
             value = state.get('smu_model', "n/a")
@@ -218,7 +233,7 @@ class CVRampPanel(MatrixPanel):
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, current.to('uF').m)
+                self.plot.series.get(name).append(x, capacity.to('uF').m)
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
