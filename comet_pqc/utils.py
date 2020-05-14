@@ -1,6 +1,8 @@
 import re
 
-__all__ = ['auto_unit', 'Position']
+import numpy as np
+
+__all__ = ['auto_unit', 'std_mean_filter', 'Position']
 
 def auto_unit(value, unit, decimals=3):
     """Auto format value to proper unit.
@@ -18,6 +20,17 @@ def auto_unit(value, unit, decimals=3):
         if abs(value) >= scale:
             return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
     return f"{value:G} {unit}"
+
+def std_mean_filter(values, threshold):
+    """Return True if standard deviation (sample) / mean < threshold.
+
+    >>> std_mean_filter([0.250, 0.249], threshold=0.005)
+    True
+    """
+    mean = np.mean(values)
+    sample_std_dev = np.std(values, ddof=1) # ddof=1 -> sample (not population)
+    ratio = sample_std_dev / mean
+    return ratio < threshold
 
 class Position:
     """Three-dimensional Cartesian coordinate."""

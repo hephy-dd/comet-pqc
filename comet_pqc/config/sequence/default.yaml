@@ -57,7 +57,7 @@ contacts:
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
             current_compliance: 100 uA
-            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: MOS capacitor (LCR)
         type: cv_ramp_alt
@@ -86,7 +86,7 @@ contacts:
             current_compliance: 100 uA
             sense_mode: local
             route_termination: rear
-            lcr_frequency: [1 kHz]
+            lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
       - name: Capacitor test structure (LCR)
         type: cv_ramp_alt
@@ -133,7 +133,7 @@ contacts:
             current_compliance: 100 uA
             sense_mode: local
             route_termination: rear
-            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode Frequency Scan
         type: frequency_scan
@@ -267,7 +267,7 @@ contacts:
             waiting_time: 500 ms
             current_compliance: 100 uA
             sense_mode: local
-            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode Frequency Scan
         type: frequency_scan

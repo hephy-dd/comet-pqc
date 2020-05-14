@@ -16,9 +16,15 @@ class CVRampPanel(MatrixPanel):
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacity Cp [uF]")
+        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
+
+        self.plot2 = comet.Plot(height=300, legend="right")
+        self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
+        self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/pF²]")
+        self.plot2.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
+        self.data_tabs.insert(1, comet.Tab(title="1/C² Curve", layout=self.plot2))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
@@ -28,8 +34,12 @@ class CVRampPanel(MatrixPanel):
         self.sense_mode = comet.Select(values=["local", "remote"])
         self.route_termination = comet.Select(values=["front", "rear"])
 
-        self.lcr_frequency = comet.List(height=64, enabled=False)
-        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV", enabled=False)
+        self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
+        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
+        self.lcr_integration_time = comet.Select(values=["short", "medium", "long"])
+        self.lcr_averaging_rate = comet.Number(minimum=1, maximum=256, decimals=0)
+        self.lcr_auto_level_control = comet.CheckBox(text="Auto Level Control")
+        self.lcr_soft_filter = comet.CheckBox(text="Filter STD/mean < 0.005")
 
         def toggle_smu_filter(enabled):
             self.smu_filter_count.enabled = enabled
@@ -53,8 +63,12 @@ class CVRampPanel(MatrixPanel):
         self.bind("smu_filter_enable", self.smu_filter_enable, False)
         self.bind("smu_filter_count", self.smu_filter_count, 10)
         self.bind("smu_filter_type", self.smu_filter_type, "repeat")
-        self.bind("lcr_frequency", self.lcr_frequency, [])
-        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
+        self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
+        self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
+        self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
+        self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
+        self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
+        self.bind("lcr_soft_filter", self.lcr_soft_filter, False)
 
         # Instruments status
 
@@ -105,7 +119,7 @@ class CVRampPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.FieldSet(
-                        title="Ramp",
+                        title="SMU Ramp",
                         layout=comet.Column(
                                 comet.Label(text="Start"),
                                 self.voltage_start,
@@ -128,10 +142,16 @@ class CVRampPanel(MatrixPanel):
                     comet.FieldSet(
                         title="LCR",
                         layout=comet.Column(
-                            comet.Label(text="AC Frequencies"),
+                            comet.Label(text="AC Frequency"),
                             self.lcr_frequency,
                             comet.Label(text="AC Amplitude"),
                             self.lcr_amplitude,
+                            comet.Label(text="Integration Time"),
+                            self.lcr_integration_time,
+                            comet.Label(text="Averaging Rate"),
+                            self.lcr_averaging_rate,
+                            self.lcr_auto_level_control,
+                            self.lcr_soft_filter,
                             comet.Stretch()
                         )
                     ),
@@ -197,15 +217,27 @@ class CVRampPanel(MatrixPanel):
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
+                self.plot2.series.clear()
             for x, y in points:
                 voltage = x * comet.ureg('V')
-                capacity = y * comet.ureg('F')
-                self.plot.series.get(name).append(x, capacity.to('uF').m)
+                capacitance = y * comet.ureg('F')
+                self.plot.series.get(name).append(x, capacitance.to('pF').m)
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
                     self.plot.fit()
                 self.plot.fit()
+            for x, y in points:
+                voltage = x * comet.ureg('V')
+                capacitance = y * comet.ureg('F')
+                value = capacitance.to('pF').m
+                self.plot2.series.get(name).append(x, 1.0 / (value * value))
+                if self.plot2.zoomed:
+                    self.plot2.update("x")
+                else:
+                    self.plot2.fit()
+                self.plot2.fit()
+
 
     def state(self, state):
         if 'smu_model' in state:
@@ -227,22 +259,28 @@ class CVRampPanel(MatrixPanel):
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')
-        capacity = y * comet.ureg('F')
+        capacitance = y * comet.ureg('F')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, capacity.to('uF').m)
+                self.plot.series.get(name).append(x, capacitance.to('pF').m)
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
                     self.plot.fit()
+                value = capacitance.to('pF').m
+                self.plot2.series.get(name).append(x, 1.0 / (value * value))
+                if self.plot2.zoomed:
+                    self.plot2.update("x")
+                else:
+                    self.plot2.fit()
 
     def clear_readings(self):
         super().clear_readings()
-        for series in self.plot.series.values():
-            series.clear()
+        self.plot.series.clear()
+        self.plot2.series.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
