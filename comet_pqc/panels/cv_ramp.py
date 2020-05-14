@@ -214,30 +214,25 @@ class CVRampPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
+        for series in self.plot.series.values():
+            series.clear()
+        for series in self.plot2.series.values():
+            series.clear()
         for name, points in measurement.series.items():
-            if name in self.plot.series:
-                self.plot.series.clear()
-                self.plot2.series.clear()
             for x, y in points:
                 voltage = x * comet.ureg('V')
                 capacitance = y * comet.ureg('F')
                 self.plot.series.get(name).append(x, capacitance.to('pF').m)
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
-                self.plot.fit()
             for x, y in points:
                 voltage = x * comet.ureg('V')
                 capacitance = y * comet.ureg('F')
                 value = capacitance.to('pF').m
                 self.plot2.series.get(name).append(x, 1.0 / (value * value))
-                if self.plot2.zoomed:
-                    self.plot2.update("x")
-                else:
-                    self.plot2.fit()
-                self.plot2.fit()
+        self.plot.fit()
+        self.plot2.fit()
 
+    def unmount(self):
+        super().unmount()
 
     def state(self, state):
         if 'smu_model' in state:
@@ -279,8 +274,10 @@ class CVRampPanel(MatrixPanel):
 
     def clear_readings(self):
         super().clear_readings()
-        self.plot.series.clear()
-        self.plot2.series.clear()
+        for series in self.plot.series.values():
+            series.clear()
+        for series in self.plot2.series.values():
+            series.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
