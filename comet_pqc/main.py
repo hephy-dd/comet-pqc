@@ -66,8 +66,9 @@ def main():
     )))
     app.devices.add("lcr", E4980A(comet.Resource(
         resource_name="TCPIP::10.0.0.6::5025::SOCKET",
-        read_termination="\r\n",
-        write_termination="\r\n"
+        read_termination="\n",
+        write_termination="\n",
+        timeout=8000.0
     )))
     app.devices.add("k6517", K6517B(comet.Resource(
         resource_name="TCPIP::10.0.0.5::10001::SOCKET",
