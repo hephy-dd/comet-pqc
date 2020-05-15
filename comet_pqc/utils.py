@@ -28,7 +28,10 @@ def std_mean_filter(values, threshold):
     True
     """
     mean = np.mean(values)
-    sample_std_dev = np.std(values, ddof=1) # ddof=1 -> sample (not population)
+    # Sample standard deviation with ddof=1 (not population standard deviation)
+    # http://stackoverflow.com/questions/34050491/ddg#34050706
+    # https://www.sharpsightlabs.com/blog/numpy-standard-deviation/
+    sample_std_dev = np.std(values, ddof=1)
     ratio = sample_std_dev / mean
     return ratio < threshold
 
