@@ -22,8 +22,8 @@ class CVRampPanel(MatrixPanel):
 
         self.plot2 = comet.Plot(height=300, legend="right")
         self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/pF²]")
-        self.plot2.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
+        self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
+        self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
         self.data_tabs.insert(1, comet.Tab(title="1/C² Curve", layout=self.plot2))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -219,15 +219,13 @@ class CVRampPanel(MatrixPanel):
         for series in self.plot2.series.values():
             series.clear()
         for name, points in measurement.series.items():
-            for x, y in points:
-                voltage = x * comet.ureg('V')
-                capacitance = y * comet.ureg('F')
-                self.plot.series.get(name).append(x, capacitance.to('pF').m)
-            for x, y in points:
-                voltage = x * comet.ureg('V')
-                capacitance = y * comet.ureg('F')
-                value = capacitance.to('pF').m
-                self.plot2.series.get(name).append(x, 1.0 / (value * value))
+            if name == "lcr":
+                for x, y in points:
+                    capacitance = y * comet.ureg('F')
+                    self.plot.series.get(name).append(x, capacitance.to('pF').m)
+            elif name == "lcr2":
+                for x, y in points:
+                    self.plot2.series.get(name).append(x, y)
         self.plot.fit()
         self.plot2.fit()
 
@@ -253,20 +251,22 @@ class CVRampPanel(MatrixPanel):
         super().state(state)
 
     def append_reading(self, name, x, y):
-        voltage = x * comet.ureg('V')
-        capacitance = y * comet.ureg('F')
         if self.measurement:
-            if name in self.plot.series:
+            if name == "lcr":
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
+                capacitance = y * comet.ureg('F')
                 self.plot.series.get(name).append(x, capacitance.to('pF').m)
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
                     self.plot.fit()
-                value = capacitance.to('pF').m
-                self.plot2.series.get(name).append(x, 1.0 / (value * value))
+            elif name == "lcr2":
+                if name not in self.measurement.series:
+                    self.measurement.series[name] = []
+                self.measurement.series[name].append((x, y))
+                self.plot2.series.get(name).append(x, y)
                 if self.plot2.zoomed:
                     self.plot2.update("x")
                 else:

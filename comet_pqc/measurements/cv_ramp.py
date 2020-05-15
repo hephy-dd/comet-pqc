@@ -79,8 +79,10 @@ class CVRampMeasurement(MatrixMeasurement):
             lcr_model=lcr_model
         ))
 
-    def smu_quick_ramp_zero(self, smu):
+    def quick_ramp_zero(self, smu):
         """Ramp to zero voltage without measuring current."""
+        self.process.events.message("Ramp to zero...")
+        self.process.events.progress(0, 1)
         parameters = self.measurement_item.parameters
         bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
         smu_output_state = self.smu_get_output_state(smu)
@@ -90,7 +92,8 @@ class CVRampMeasurement(MatrixMeasurement):
         if smu_output_state:
             smu_voltage_level = self.smu_get_voltage_level(smu)
             ramp = comet.Range(smu_voltage_level, 0, bias_voltage_step)
-            for voltage in ramp:
+            for step, voltage in enumerate(ramp):
+                self.process.events.progress(step + 1, ramp.count)
                 self.smu_set_voltage_level(smu, voltage)
                 self.process.events.state(dict(
                     smu_voltage=voltage
@@ -99,6 +102,8 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.events.state(dict(
             smu_output=smu_output_state
         ))
+        self.process.events.message("")
+        self.process.events.progress(1, 1)
 
     def smu_reset(self, smu):
         safe_write(smu, "*RST")
@@ -193,8 +198,9 @@ class CVRampMeasurement(MatrixMeasurement):
 
         # Bring down SMU voltage if output enabeled
         # Prevents a voltage jump for at device reset.
-        self.smu_quick_ramp_zero(smu)
+        self.quick_ramp_zero(smu)
         self.smu_set_output_state(smu, False)
+        self.process.events.message("Initialize...")
         self.process.events.progress(2, 10)
 
         self.smu_reset(smu)
@@ -282,6 +288,7 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage", "E")
             fmt.add_column("capacitance", "E")
+            fmt.add_column("capacitance2", "E")
             fmt.add_column("temperature", "E")
             fmt.add_column("humidity", "E")
 
@@ -336,8 +343,10 @@ class CVRampMeasurement(MatrixMeasurement):
                     lcr_prim, lcr_sec = self.acquire_filter_reading(lcr)
                 else:
                     lcr_prim, lcr_sec = self.acquire_reading(lcr)
+                lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
 
                 self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
+                self.process.events.reading("lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
                 self.process.events.update()
                 self.process.events.state(dict(
@@ -350,6 +359,7 @@ class CVRampMeasurement(MatrixMeasurement):
                     timestamp=dt,
                     voltage=voltage,
                     capacitance=lcr_prim,
+                    capacitance2=lcr_prim2,
                     temperature=float('nan'),
                     humidity=float('nan')
                 ))
@@ -371,7 +381,7 @@ class CVRampMeasurement(MatrixMeasurement):
             smu_current=None,
         ))
 
-        self.smu_quick_ramp_zero(smu)
+        self.quick_ramp_zero(smu)
         self.smu_set_output_state(smu, False)
 
         self.process.events.progress(2, 2)
