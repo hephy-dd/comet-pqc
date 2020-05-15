@@ -1,6 +1,7 @@
 import logging
 
 import comet
+from comet.device import DeviceMixin
 
 from ..logwindow import LogWidget
 from .panel import Panel
@@ -27,7 +28,7 @@ class MatrixChannelsText(comet.Text):
     def value(self, value):
         self.qt.setText(encode_matrix(value or []))
 
-class MatrixPanel(Panel):
+class MatrixPanel(Panel, DeviceMixin):
     """Base class for matrix switching panels."""
 
     def __init__(self, *args, **kwargs):
@@ -56,10 +57,21 @@ class MatrixPanel(Panel):
                 comet.Label(text="Channels"),
                 comet.Row(
                     self.matrix_channels,
-                    comet.Button(text="Load from Matrix", enabled=False)
+                    comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
                 )
             )
         ))
+
+    def load_matrix_channels(self):
+        """Load closed matrix channels for slot 1 from instrument."""
+        with self.devices.get("matrix") as matrix:
+            # Junk fix
+            matrix.resource.write("print()")
+            matrix.resource.read_raw()
+            result = matrix.resource.query("print(channel.getclose('slot1'))")
+            logging.info("Loaded matrix channels for slot 1: %s", result)
+            channels = result.split(";")
+        self.matrix_channels.value = channels
 
     def mount(self, measurement):
         super().mount(measurement)
