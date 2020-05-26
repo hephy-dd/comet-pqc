@@ -6,6 +6,7 @@ import sys
 import time
 
 import comet
+from comet.driver import Driver
 from comet.driver.keithley import K707B
 from comet.driver.keithley import K2657A
 from comet.driver.keysight import E4980A
@@ -83,6 +84,11 @@ def main():
     )))
     app.devices.add("corvus", Venus1(comet.Resource(
         resource_name="TCPIP::10.0.0.6::23::SOCKET",
+        read_termination="\r\n",
+        write_termination="\r\n"
+    )))
+    app.devices.add("environ", Driver(comet.Resource(
+        resource_name="TCPIP::10.0.0.8::10001::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n"
     )))

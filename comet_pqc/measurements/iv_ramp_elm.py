@@ -32,7 +32,15 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_elm"
 
-    def initialize(self, smu, elm):
+    def env_detect_model(self, env):
+        env_idn = env.resource.query("*IDN?")
+        logging.info("Detected Environment Box: %s", env_idn)
+        # TODO
+        self.process.events.state(dict(
+            lcr_model=env_idn
+        ))
+
+    def initialize(self, smu, elm, env):
         self.process.events.progress(0, 5)
 
         parameters = self.measurement_item.parameters
@@ -62,6 +70,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("Detected Electrometer: %s", elm_idn)
         result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
         elm_model = ''.join(result) or None
+
+        self.env_detect_model(env)
 
         self.process.events.progress(2, 5)
 
@@ -245,7 +255,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.events.progress(3, 5)
 
-    def measure(self, smu, elm):
+    def measure(self, smu, elm, env):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -336,14 +346,24 @@ class IVRampElmMeasurement(MatrixMeasurement):
                         elm_current=elm_reading
                     ))
 
+                    # Environment
+                    pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                    temperature_box = float(pc_data[2])
+                    logging.info("temperature box: %s degC", temperature_box)
+                    temperature_chuck = float(pc_data[33])
+                    logging.info("temperature chuck: %s degC", temperature_chuck)
+                    humidity_box = float(pc_data[1])
+                    logging.info("humidity box: %s degC", humidity_box)
+
                     # Write reading
                     fmt.write_row(dict(
                         timestamp=dt,
                         voltage=voltage,
                         current_smu=smu_reading,
                         current_elm=elm_reading,
-                        temperature=float('nan'),
-                        humidity=float('nan')
+                        temperature_box=temperature_box,
+                        temperature_chuck=temperature_chuck,
+                        humidity_box=humidity_box
                     ))
                     fmt.flush()
                     time.sleep(waiting_time)
@@ -395,8 +415,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
     def code(self, *args, **kwargs):
         with self.devices.get("k2410") as smu:
             with self.devices.get("k6517") as elm:
-                try:
-                    self.initialize(smu, elm)
-                    self.measure(smu, elm)
-                finally:
-                    self.finalize(smu, elm)
+                with self.devices.get("environ") as env:
+                    try:
+                        self.initialize(smu, elm, env)
+                        self.measure(smu, elm, env)
+                    finally:
+                        self.finalize(smu, elm, env)
