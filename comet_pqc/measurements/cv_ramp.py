@@ -256,6 +256,8 @@ class CVRampMeasurement(MatrixMeasurement):
         bias_voltage_stop = parameters.get("bias_voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         lcr_soft_filter = bool(parameters.get("lcr_soft_filter", True))
+        lcr_frequency = parameters.get("lcr_frequency").to("Hz").m
+        lcr_amplitude = parameters.get("lcr_amplitude").to("V").m
 
         # Ramp to start voltage
 
@@ -303,6 +305,8 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:E} V")
             fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:E} V")
             fmt.write_meta("current_compliance", f"{current_compliance:E} A")
+            fmt.write_meta("ac_frequency", f"{lcr_frequency:E} Hz")
+            fmt.write_meta("ac_amplitude", f"{lcr_amplitude:E} V")
             fmt.flush()
 
             # Write header
