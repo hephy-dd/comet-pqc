@@ -37,7 +37,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
         self.process.events.state(dict(
-            lcr_model=env_idn
+            env_model=env_idn
         ))
 
     def initialize(self, smu, elm, env):

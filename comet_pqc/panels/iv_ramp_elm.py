@@ -88,6 +88,9 @@ class IVRampElmPanel(MatrixPanel):
         self.status_elm_current = comet.Text(value="---", readonly=True)
         self.bind("status_elm_current", self.status_elm_current, "n/a")
 
+        self.status_env_model = comet.Label()
+        self.bind("status_env_model", self.status_env_model, "Model: n/a")
+
         self.status_instruments = comet.Column(
             comet.FieldSet(
                 title="SMU Status",
@@ -121,6 +124,12 @@ class IVRampElmPanel(MatrixPanel):
                         comet.Stretch(),
                         stretch=(1, 2)
                     )
+                )
+            ),
+            comet.FieldSet(
+                title="Environment Status",
+                layout=comet.Column(
+                    self.status_env_model
                 )
             ),
             comet.Stretch()
@@ -266,6 +275,9 @@ class IVRampElmPanel(MatrixPanel):
         if 'elm_current' in state:
             value = state.get('elm_current')
             self.status_elm_current.value = auto_unit(value, "A")
+        if 'env_model' in state:
+            value = state.get('env_model', "n/a")
+            self.status_env_model.text = f"Model: {value}"
         super().state(state)
 
     def append_reading(self, name, x, y):

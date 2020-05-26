@@ -84,6 +84,9 @@ class CVRampPanel(MatrixPanel):
         self.status_lcr_model = comet.Label()
         self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
 
+        self.status_env_model = comet.Label()
+        self.bind("status_env_model", self.status_env_model, "Model: n/a")
+
         self.status_instruments = comet.Column(
             comet.FieldSet(
                 title="SMU Status",
@@ -109,6 +112,12 @@ class CVRampPanel(MatrixPanel):
                 title="LCR Status",
                 layout=comet.Column(
                     self.status_lcr_model,
+                )
+            ),
+            comet.FieldSet(
+                title="Environment Status",
+                layout=comet.Column(
+                    self.status_env_model,
                 )
             ),
             comet.Stretch()
@@ -248,6 +257,9 @@ class CVRampPanel(MatrixPanel):
         if 'lcr_model' in state:
             value = state.get('lcr_model', "n/a")
             self.status_lcr_model.text = f"Model: {value}"
+        if 'env_model' in state:
+            value = state.get('env_model', "n/a")
+            self.status_env_model.text = f"Model: {value}"
         super().state(state)
 
     def append_reading(self, name, x, y):

@@ -84,7 +84,7 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
         self.process.events.state(dict(
-            lcr_model=env_idn
+            env_model=env_idn
         ))
 
     def quick_ramp_zero(self, smu):
