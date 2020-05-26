@@ -64,14 +64,19 @@ class MatrixPanel(Panel, DeviceMixin):
 
     def load_matrix_channels(self):
         """Load closed matrix channels for slot 1 from instrument."""
-        with self.devices.get("matrix") as matrix:
-            # Junk fix
-            matrix.resource.write("print()")
-            matrix.resource.read_raw()
-            result = matrix.resource.query("print(channel.getclose('slot1'))")
-            logging.info("Loaded matrix channels for slot 1: %s", result)
-            channels = result.split(";")
-        self.matrix_channels.value = channels
+        self.enabled = False
+        try:
+            with self.devices.get("matrix") as matrix:
+                # Junk fix
+                matrix.resource.write("print()")
+                matrix.resource.read_raw()
+                result = matrix.resource.query("print(channel.getclose('slot1'))")
+                logging.info("Loaded matrix channels for slot 1: %s", result)
+                channels = result.split(";")
+            self.matrix_channels.value = channels
+        except Exception as e:
+            comet.show_exception(e)
+        self.enabled = True
 
     def mount(self, measurement):
         super().mount(measurement)
