@@ -34,8 +34,8 @@ class CVRampAltMeasurement(MatrixMeasurement):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
-        contact_name =  self.measurement_item.contact.name
-        measurement_name =  self.measurement_item.name
+        contact_name = self.measurement_item.contact.name
+        measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
         bias_voltage_start = parameters.get("bias_voltage_start").to("V").m

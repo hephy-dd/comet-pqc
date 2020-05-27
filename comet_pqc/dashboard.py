@@ -1,0 +1,515 @@
+import copy
+import logging
+import os
+
+import comet
+
+from comet.process import ProcessMixin
+from comet.settings import SettingsMixin
+
+from . import config
+
+from .trees import SequenceTree
+from .trees import ContactTreeItem
+from .trees import MeasurementTreeItem
+
+from .panels import IVRampPanel
+from .panels import IVRampElmPanel
+from .panels import IVRampBiasPanel
+from .panels import IVRamp4WirePanel
+from .panels import CVRampPanel
+from .panels import CVRampAltPanel
+from .panels import FrequencyScanPanel
+
+class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
+
+    def __init__(self):
+        super().__init__()
+        self.chuck_select = comet.Select()
+        self.sample_select = comet.Select()
+        self.sequence_select = comet.Select(changed=self.on_load_sequence_tree)
+
+        self.sample_text = comet.Text(
+            value=self.settings.get("sample", "Unnamed"),
+            changed=self.on_sample_changed
+        )
+
+        self.sample_fieldset = comet.FieldSet(
+            title="Sample",
+            layout=comet.Row(
+                comet.Column(
+                    comet.Label("Name"),
+                    comet.Label("Chuck"),
+                    comet.Label("Sample Type"),
+                    comet.Label("Sequence")
+                ),
+                comet.Column(
+                    self.sample_text,
+                    self.chuck_select,
+                    self.sample_select,
+                    self.sequence_select
+                ),
+                stretch=(0, 1)
+            )
+        )
+
+        self.sequence_tree = SequenceTree(selected=self.on_tree_selected)
+
+        self.start_button = comet.Button(
+            text="Start",
+            tooltip="Start measurement sequence.",
+            clicked=self.on_sequence_start
+        )
+
+        self.autopilot_button = comet.Button(
+            text="Autopilot",
+            tooltip="Run next measurement automatically.",
+            checkable=True,
+            checked=False,
+            toggled=self.on_autopilot_toggled
+        )
+
+        self.continue_button = comet.Button(
+            text="Continue",
+            tooltip="Run next measurement manually.",
+            enabled=False
+        )
+
+        self.stop_button = comet.Button(
+            text="Stop",
+            tooltip="Stop measurement sequence.",
+            enabled=False,
+            clicked=self.on_sequence_stop
+        )
+
+        self.sequence_fieldset = comet.FieldSet(
+            title="Sequence",
+            layout=comet.Column(
+                self.sequence_tree,
+                comet.Row(
+                    self.start_button,
+                    self.autopilot_button,
+                    self.continue_button
+                ),
+                self.stop_button
+            )
+        )
+
+        self.calibrate_button = comet.Button(
+            text="Calibrate",
+            tooltip="Calibrate table.",
+            clicked=self.on_calibrate_start
+        )
+
+        self.use_environ_checkbox = comet.CheckBox(
+            text="Use Environment Box",
+            tooltip="Enable use of Environment Box controls and data.",
+            changed=self.on_use_environ_changed,
+            checked=int(self.settings.get("use_environ", True)) # QSettings workaround
+        )
+
+        self.controls_fieldset = comet.FieldSet(
+            title="Controls",
+            layout=comet.Column(
+                comet.Row(
+                    comet.Button(text="Table", enabled=False, checkable=True, checked=True),
+                    comet.Button(text="Joystick", enabled=False, checkable=True, checked=True),
+                    comet.Button(text="Light", enabled=False, checkable=True, checked=True),
+                    comet.Stretch(),
+                    self.calibrate_button
+                ),
+                self.use_environ_checkbox
+            )
+        )
+
+        self.output_text = comet.Text(
+            value=self.settings.get("output_path", os.path.join(os.path.expanduser("~"), "PQC")),
+            changed=self.on_output_changed
+        )
+
+        self.output_fieldset = comet.FieldSet(
+            id="output_fieldset",
+            title="Output",
+            layout=comet.Row(
+                self.output_text,
+                comet.Button(
+                    text="...",
+                    width=32,
+                    clicked=self.on_select_output
+                )
+            )
+        )
+
+        self.control_widget = comet.Column(
+            self.sample_fieldset,
+            self.sequence_fieldset,
+            self.controls_fieldset,
+            self.output_fieldset,
+            stretch=(0, 1, 0, 0)
+        )
+
+        self.panels = comet.Row(
+            IVRampPanel(id="iv_ramp", visible=False),
+            IVRampElmPanel(id="iv_ramp_elm", visible=False),
+            IVRampBiasPanel(id="bias_iv_ramp", visible=False),
+            CVRampPanel(id="cv_ramp", visible=False),
+            CVRampAltPanel(id="cv_ramp_alt", visible=False),
+            IVRamp4WirePanel(id="4wire_iv_ramp", visible=False),
+            FrequencyScanPanel(id="frequency_scan", visible=False),
+        )
+
+        self.measure_restore_button = comet.Button(
+            text="Restore Defaults",
+            tooltip="Restore default measurement parameters.",
+            clicked=self.on_measure_restore
+        )
+
+        self.measure_run_button = comet.Button(
+            text="Run",
+            tooltip="Run current measurement.",
+            clicked=self.on_measure_run
+        )
+
+        self.measure_stop_button = comet.Button(
+            text="Stop",
+            tooltip="Stop current measurement.",
+            clicked=self.on_measure_stop,
+            enabled=False
+        )
+
+        self.measure_controls = comet.Row(
+            self.measure_restore_button,
+            comet.Stretch(),
+            self.measure_run_button,
+            self.measure_stop_button,
+            visible=False
+        )
+
+        self.measurement_tab = comet.Tab(
+            title="Measurement",
+            layout=comet.Column(
+                self.panels,
+                self.measure_controls,
+                stretch=(1, 0)
+            )
+        )
+
+        # self.environment_tab = comet.Tab(
+        #     title="Environment",
+        #     layout=comet.Column()
+        # )
+
+        self.summary_tab = comet.Tab(
+            title="Summary",
+            layout=comet.ScrollArea(
+                layout=comet.Column(
+                    comet.Stretch()
+                )
+            )
+        )
+
+        self.tab_widget = comet.Tabs(
+            self.measurement_tab,
+            # self.environment_tab,
+            self.summary_tab
+        )
+
+        self.append(self.control_widget)
+        self.append(self.tab_widget)
+        self.stretch = 4, 9
+
+
+    def load_chucks(self):
+        """Load available chuck configurations."""
+        self.chuck_select.clear()
+        for name, filename in sorted(config.list_configs(config.CHUCK_DIR)):
+            self.chuck_select.append(config.load_chuck(filename))
+
+    def load_samples(self):
+        """Load available sample configurations."""
+        self.sample_select.clear()
+        for name, filename in sorted(config.list_configs(config.SAMPLE_DIR)):
+            self.sample_select.append(config.load_sample(filename))
+
+    def load_sequences(self):
+        """Load available sequence configurations."""
+        self.sequence_select.clear()
+        for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
+            self.sequence_select.append(config.load_sequence(filename))
+
+    def create_output_dir(self, sample_name, sample_type):
+        """Create new timestamp prefixed output directory."""
+        base = self.output_text.value
+        iso_timestamp = comet.make_iso()
+        dirname = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
+        output_dir = os.path.join(base, dirname)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return output_dir
+
+    # Callbacks
+
+    def on_sample_changed(self, value):
+        self.settings["sample"] = value
+
+    def on_load_sequence_tree(self, index):
+        """Clears current sequence tree and loads new sequence tree from configuration."""
+        for panel in self.panels.children:
+            panel.unmount()
+            panel.visible = False
+        self.sequence_tree.clear()
+        sequence = copy.deepcopy(self.sequence_select.current)
+        for contact in sequence:
+            self.sequence_tree.append(ContactTreeItem(contact))
+        self.sequence_tree.fit()
+        if len(self.sequence_tree):
+            self.sequence_tree.current = self.sequence_tree[0]
+
+    # Sequence control
+
+    def on_tree_selected(self, item):
+        for panel in self.panels.children:
+            panel.store()
+            panel.unmount()
+            panel.clear_readings()
+            panel.visible = False
+        self.measure_controls.visible = False
+        if isinstance(item, ContactTreeItem):
+            pass
+        if isinstance(item, MeasurementTreeItem):
+            panel = self.get(item.type)
+            panel.visible = True
+            panel.mount(item)
+            self.measure_controls.visible = True
+
+    def on_sequence_start(self):
+        if not comet.show_question(
+            title="Start sequence",
+            text="Are you sure to start a measurement sequence?"
+        ): return
+        self.sample_fieldset.enabled = False
+        self.calibrate_button.enabled = False
+        self.use_environ_checkbox.enabled = False
+        self.start_button.enabled = False
+        self.autopilot_button.enabled = True
+        self.continue_button.enabled = False
+        self.stop_button.enabled = True
+        self.measure_controls.enabled = False
+        for panel in self.panels.children:
+            panel.lock()
+        self.sequence_tree.lock()
+        self.sequence_tree.reset()
+        sample_name = self.sample_text.value
+        sample_type = self.sample_select.current.name
+        output_dir = self.create_output_dir(sample_name, sample_type)
+        sequence = self.processes.get("sequence")
+        sequence.set("sample_name", sample_name)
+        sequence.set("sample_type", sample_type)
+        sequence.set("output_dir", output_dir)
+        sequence.set("use_environ", self.use_environ_checkbox.checked)
+        sequence.sequence_tree = self.sequence_tree
+        sequence.events.reading = panel.append_reading
+        sequence.events.update = panel.update_readings
+        sequence.events.state = panel.state
+        sequence.start()
+
+    def on_autopilot_toggled(self, state):
+        sequence = self.processes.get("sequence")
+        sequence.set("autopilot", state)
+
+    def on_continue_measurement(self, measurement):
+        def on_continue():
+            if not comet.show_question(
+                title="Continue sequence",
+                text=f"Do you want to continue with {measurement.contact.name}, {measurement.name}?"
+            ): return
+            logging.info("Continuing sequence...")
+            self.continue_button.enabled = False
+            self.continue_button.clicked = None
+            self.sequence_tree.current = measurement
+            sequence = self.processes.get("sequence")
+            sequence.set("continue_measurement", True)
+        self.continue_button.enabled = True
+        self.continue_button.clicked = on_continue
+
+    def on_continue_contact(self, contact):
+        comet.show_info(
+            title=f"Contact {contact.name}",
+            text=f"Please contact with {contact.name}."
+        )
+        sequence = self.processes.get("sequence")
+        sequence.set("continue_contact", True)
+
+    def on_measurement_state(self, item, state):
+        item.state = state
+
+    def on_sequence_stop(self):
+        self.stop_button.enabled = False
+        self.autopilot_button.enabled = False
+        self.continue_button.enabled = False
+        sequence = self.processes.get("sequence")
+        sequence.stop()
+
+    def on_sequence_finished(self):
+        self.sample_fieldset.enabled = True
+        self.calibrate_button.enabled = True
+        self.use_environ_checkbox.enabled = True
+        self.start_button.enabled = True
+        self.autopilot_button.enabled = True
+        self.continue_button.enabled = False
+        self.stop_button.enabled = False
+        self.measure_controls.enabled = True
+        for panel in self.panels.children:
+            panel.unlock()
+        self.sequence_tree.unlock()
+        sequence = self.processes.get("sequence")
+        sequence.set("sample_name", None)
+        sequence.set("output_dir", None)
+
+    # Table calibration
+
+    def on_calibrate_start(self):
+        if not comet.show_question(
+            title="Calibrate table",
+            text="Are you sure to calibrate the table?"
+        ): return
+        self.sample_fieldset.enabled = False
+        self.calibrate_button.enabled = False
+        self.start_button.enabled = False
+        self.autopilot_button.enabled = False
+        self.continue_button.enabled = False
+        self.stop_button.enabled = False
+        self.enabled = False
+        calibrate = self.processes.get("calibrate")
+        calibrate.start()
+
+    def on_calibrate_finished(self):
+        calibrate = self.processes.get("calibrate")
+        if calibrate.get("success", False):
+            comet.show_info(title="Success", text="Calibrated table successfully.")
+        self.sample_fieldset.enabled = True
+        self.calibrate_button.enabled = True
+        self.start_button.enabled = True
+        self.autopilot_button.enabled = True
+        self.continue_button.enabled = False
+        self.stop_button.enabled = False
+        self.enabled = True
+
+    def on_use_environ_changed(self, value):
+        self.settings["use_environ"] = int(value) # QSettings workaround
+
+    def on_output_changed(self, value):
+        self.settings["output_path"] = value
+
+    def on_select_output(self):
+        value = comet.directory_open(
+            title="Output",
+            path=self.output_text.value
+        )
+        if value:
+            self.output_text.value = value
+
+    # Measurement control
+
+    def on_measure_restore(self):
+        if not comet.show_question(
+            title="Restore Defaults",
+            text="Do you want to restore to default parameters?"
+        ): return
+        measurement = self.sequence_tree.current
+        panel = self.get(measurement.type)
+        panel.restore()
+
+    def on_measure_run(self):
+        if not comet.show_question(
+            title="Run Measurement",
+            text="Do you want to run the current selected measurement?"
+        ): return
+        self.calibrate_button.enabled = False
+        self.use_environ_checkbox.enabled = False
+        self.measure_restore_button.enabled = False
+        self.measure_run_button.enabled = False
+        self.measure_stop_button.enabled = True
+        self.sample_fieldset.enabled = False
+        self.sequence_fieldset.enabled = False
+        self.output_fieldset.enabled = False
+        for panel in self.panels.children:
+            panel.lock()
+        self.sequence_tree.lock()
+        measurement = self.sequence_tree.current
+        panel = self.get(measurement.type)
+        panel.store()
+        # TODO
+        panel.clear_readings()
+        sample_name = self.sample_text.value
+        sample_type = self.sample_select.current.name
+        output_dir = self.output_text.value
+        measure = self.processes.get("measure")
+        measure.set("sample_name", sample_name)
+        measure.set("sample_type", sample_type)
+        measure.set("output_dir", output_dir)
+        measure.set("use_environ", self.use_environ_checkbox.checked)
+        measure.measurement_item = measurement
+        measure.events.reading = panel.append_reading
+        measure.events.update = panel.update_readings
+        measure.events.state = panel.state
+        # TODO
+        measure.start()
+
+    def on_measure_stop(self):
+        self.measure_restore_button.enabled = False
+        self.measure_run_button.enabled = False
+        self.measure_stop_button.enabled = False
+        measure = self.processes.get("measure")
+        measure.stop()
+
+    def on_measure_finished(self):
+        self.calibrate_button.enabled = True
+        self.use_environ_checkbox.enabled = True
+        self.measure_restore_button.enabled = True
+        self.measure_run_button.enabled = True
+        self.measure_stop_button.enabled = False
+        self.sample_fieldset.enabled = True
+        self.sequence_fieldset.enabled = True
+        self.output_fieldset.enabled = True
+        for panel in self.panels.children:
+            panel.unlock()
+        measure = self.processes.get("measure")
+        measure.events.reading = lambda data: None
+        self.sequence_tree.unlock()
+
+    # Menu action callbacks
+
+    def on_import_sequence(self):
+        filename = comet.filename_open(
+            title="Import Sequence",
+            filter="YAML (*.yaml *.yml)"
+        )
+        if filename:
+            try:
+                sequence = config.load_sequence(filename)
+            except Exception as e:
+                logging.error(e)
+                comet.show_error(
+                    title="Import Sequence Error",
+                    text=e.message if hasattr(e, "message") else format(e),
+                    details=format(e)
+                )
+                return
+            # backup callback
+            on_changed = self.sequence_select.changed
+            self.sequence_select.changed = None
+            for item in self.sequence_select.values:
+                if item.id == sequence.id or item.name == sequence.name:
+                    result = comet.show_question(
+                        title="Sequence already loaded",
+                        text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
+                    )
+                    if result:
+                        self.sequence_select.remove(item)
+                    else:
+                        return
+            self.sequence_select.append(sequence)
+            # Restore callback
+            self.sequence_select.changed = on_changed
+            self.sequence_select.current = sequence

@@ -1,7 +1,6 @@
 """Estimate remaining time."""
 
 import datetime
-import math
 
 __all__ = ['Estimate']
 

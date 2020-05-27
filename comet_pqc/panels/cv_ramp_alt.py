@@ -59,15 +59,15 @@ class CVRampAltPanel(MatrixPanel):
                     comet.FieldSet(
                         title="LCR Ramp",
                         layout=comet.Column(
-                                comet.Label(text="Start"),
-                                self.voltage_start,
-                                comet.Label(text="Stop"),
-                                self.voltage_stop,
-                                comet.Label(text="Step"),
-                                self.voltage_step,
-                                comet.Label(text="Waiting Time"),
-                                self.waiting_time,
-                                comet.Stretch()
+                            comet.Label(text="Start"),
+                            self.voltage_start,
+                            comet.Label(text="Stop"),
+                            self.voltage_stop,
+                            comet.Label(text="Step"),
+                            self.voltage_step,
+                            comet.Label(text="Waiting Time"),
+                            self.waiting_time,
+                            comet.Stretch()
                         )
                     ),
                     comet.FieldSet(

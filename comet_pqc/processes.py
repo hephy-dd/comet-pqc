@@ -91,7 +91,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     break
                 time.sleep(delay)
             if pos[:2] != (0, 0):
-                raise RuntimeError("failed to relative move, current pos: %s", pos)
+                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
 
             handle_error()
             self.events.progress(5, 7)
@@ -117,7 +117,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     break
                 time.sleep(delay)
             if pos != (0, 0, 0):
-                raise RuntimeError("failed to calibrate axes, current pos: %s", pos)
+                raise RuntimeError("failed to calibrate axes, current pos: {}".format(pos))
 
             handle_error()
             self.events.progress(7, 7)
@@ -168,7 +168,7 @@ class MeasureProcess(comet.Process):
 class SequenceProcess(comet.Process):
     """Sequence process executing a sequence of measurements."""
 
-    sequence_tree = None
+    sequence_tree = []
 
     def initialize(self):
         self.events.message("Initialize sequence...")
@@ -237,7 +237,7 @@ class SequenceProcess(comet.Process):
 
     def finalize(self):
         self.events.message("Finalize sequence...")
-        self.sequence_tree = None
+        self.sequence_tree = []
 
     def run(self):
         self.events.message("Starting sequence...")

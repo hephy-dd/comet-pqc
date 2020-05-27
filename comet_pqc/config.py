@@ -1,6 +1,5 @@
 import copy
 import glob
-import re
 import os
 
 import jsonschema

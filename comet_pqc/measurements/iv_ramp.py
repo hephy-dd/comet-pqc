@@ -33,6 +33,17 @@ class IVRampMeasurement(MatrixMeasurement):
 
     type = "iv_ramp"
 
+    def env_detect_model(self, env):
+        try:
+            env_idn = env.resource.query("*IDN?")
+        except Exception as e:
+            raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
+        logging.info("Detected Environment Box: %s", env_idn)
+        # TODO
+        self.process.events.state(dict(
+            env_model=env_idn
+        ))
+
     def initialize(self, smu):
         self.process.events.message("Initialize...")
         self.process.events.progress(0, 5)
@@ -52,6 +63,10 @@ class IVRampMeasurement(MatrixMeasurement):
         logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
+
+        if self.process.get("use_environ"):
+            with self.devices.get("environ") as env:
+                self.env_detect_model(env)
 
         self.process.events.state(dict(
             smu_model=smu_model,
@@ -204,8 +219,9 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage", "E")
             fmt.add_column("current", "E")
-            fmt.add_column("temperature", "E")
-            fmt.add_column("humidity", "E")
+            fmt.add_column("temperature_box", "E")
+            fmt.add_column("temperature_chuck", "E")
+            fmt.add_column("humidity_box", "E")
 
             # Write meta data
             fmt.write_meta("measurement_name", measurement_name)
@@ -247,13 +263,29 @@ class IVRampMeasurement(MatrixMeasurement):
                 logging.info("SMU reading: %E A", reading_current)
                 self.process.events.reading("series", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
+                # Environment
+                if self.process.get("use_environ"):
+                    with self.devices.get("environ") as env:
+                        pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                    temperature_box = float(pc_data[2])
+                    logging.info("temperature box: %s degC", temperature_box)
+                    temperature_chuck = float(pc_data[33])
+                    logging.info("temperature chuck: %s degC", temperature_chuck)
+                    humidity_box = float(pc_data[1])
+                    logging.info("humidity box: %s degC", humidity_box)
+                else:
+                    temperature_box = float('nan')
+                    temperature_chuck = float('nan')
+                    humidity_box = float('nan')
+
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=td,
                     voltage=voltage,
                     current=reading_current,
-                    temperature=float('nan'),
-                    humidity=float('nan')
+                    temperature_box=temperature_box,
+                    temperature_chuck=temperature_chuck,
+                    humidity_box=humidity_box
                 ))
                 fmt.flush()
                 time.sleep(waiting_time)

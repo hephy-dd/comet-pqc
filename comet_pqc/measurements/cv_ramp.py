@@ -63,7 +63,10 @@ class CVRampMeasurement(MatrixMeasurement):
         return prim, sec
 
     def smu_detect_model(self, smu):
-        smu_idn = smu.resource.query("*IDN?")
+        try:
+            smu_idn = smu.resource.query("*IDN?")
+        except Exception as e:
+            raise RuntimeError("Failed to access SMU1", smu.resource.resource_name, e)
         logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
@@ -72,7 +75,10 @@ class CVRampMeasurement(MatrixMeasurement):
         ))
 
     def lcr_detect_model(self, lcr):
-        lcr_idn = lcr.resource.query("*IDN?")
+        try:
+            lcr_idn = lcr.resource.query("*IDN?")
+        except Exception as e:
+            raise RuntimeError("Failed to access LCR Meter", lcr.resource.resource_name, e)
         logging.info("Detected LCR Meter: %s", lcr_idn)
         lcr_model = lcr_idn.split(",")[1:][0]
         self.process.events.state(dict(
@@ -80,7 +86,10 @@ class CVRampMeasurement(MatrixMeasurement):
         ))
 
     def env_detect_model(self, env):
-        env_idn = env.resource.query("*IDN?")
+        try:
+            env_idn = env.resource.query("*IDN?")
+        except Exception as e:
+            raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
         self.process.events.state(dict(
@@ -192,7 +201,7 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(lcr, ":INIT:CONT OFF")
         safe_write(lcr, ":TRIG:SOUR BUS")
 
-    def initialize(self, smu, lcr, env):
+    def initialize(self, smu, lcr):
         self.process.events.message("Initialize...")
         self.process.events.progress(0, 10)
 
@@ -200,7 +209,11 @@ class CVRampMeasurement(MatrixMeasurement):
 
         self.smu_detect_model(smu)
         self.lcr_detect_model(lcr)
-        self.env_detect_model(env)
+
+        if self.process.get("use_environ"):
+            with self.devices.get("environ") as env:
+                self.env_detect_model(env)
+
         self.process.events.progress(1, 10)
 
         # Initialize SMU
@@ -252,12 +265,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.lcr_setup(lcr)
         self.process.events.progress(10, 10)
 
-    def measure(self, smu, lcr, env):
+    def measure(self, smu, lcr):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
-        contact_name =  self.measurement_item.contact.name
-        measurement_name =  self.measurement_item.name
+        contact_name = self.measurement_item.contact.name
+        measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
         bias_voltage_start = parameters.get("bias_voltage_start").to("V").m
@@ -369,13 +382,19 @@ class CVRampMeasurement(MatrixMeasurement):
                 ))
 
                 # Environment
-                pc_data = env.resource.query("GET:PC_DATA ?").split(",")
-                temperature_box = float(pc_data[2])
-                logging.info("temperature box: %s degC", temperature_box)
-                temperature_chuck = float(pc_data[33])
-                logging.info("temperature chuck: %s degC", temperature_chuck)
-                humidity_box = float(pc_data[1])
-                logging.info("humidity box: %s degC", humidity_box)
+                if self.process.get("use_environ"):
+                    with self.devices.get("environ") as env:
+                        pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                    temperature_box = float(pc_data[2])
+                    logging.info("temperature box: %s degC", temperature_box)
+                    temperature_chuck = float(pc_data[33])
+                    logging.info("temperature chuck: %s degC", temperature_chuck)
+                    humidity_box = float(pc_data[1])
+                    logging.info("humidity box: %s degC", humidity_box)
+                else:
+                    temperature_box = float('nan')
+                    temperature_chuck = float('nan')
+                    humidity_box = float('nan')
 
                 # Write reading
                 fmt.write_row(dict(
@@ -399,7 +418,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 if not self.process.running:
                     break
 
-    def finalize(self, smu, lcr, env):
+    def finalize(self, smu, lcr):
         self.process.events.progress(1, 2)
         self.process.events.state(dict(
             smu_current=None,
@@ -413,9 +432,8 @@ class CVRampMeasurement(MatrixMeasurement):
     def code(self, *args, **kwargs):
         with self.devices.get("k2410") as smu:
             with self.devices.get("lcr") as lcr:
-                with self.devices.get("environ") as env:
-                    try:
-                        self.initialize(smu, lcr, env)
-                        self.measure(smu, lcr, env)
-                    finally:
-                        self.finalize(smu, lcr, env)
+                try:
+                    self.initialize(smu, lcr)
+                    self.measure(smu, lcr)
+                finally:
+                    self.finalize(smu, lcr)

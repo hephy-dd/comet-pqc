@@ -33,14 +33,17 @@ class IVRampElmMeasurement(MatrixMeasurement):
     type = "iv_ramp_elm"
 
     def env_detect_model(self, env):
-        env_idn = env.resource.query("*IDN?")
+        try:
+            env_idn = env.resource.query("*IDN?")
+        except Exception as e:
+            raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
         self.process.events.state(dict(
             env_model=env_idn
         ))
 
-    def initialize(self, smu, elm, env):
+    def initialize(self, smu, elm):
         self.process.events.progress(0, 5)
 
         parameters = self.measurement_item.parameters
@@ -71,7 +74,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
         result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
         elm_model = ''.join(result) or None
 
-        self.env_detect_model(env)
+        if self.process.get("use_environ"):
+            with self.devices.get("environ") as env:
+                self.env_detect_model(env)
 
         self.process.events.progress(2, 5)
 
@@ -255,12 +260,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.events.progress(3, 5)
 
-    def measure(self, smu, elm, env):
+    def measure(self, smu, elm):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
-        contact_name =  self.measurement_item.contact.name
-        measurement_name =  self.measurement_item.name
+        contact_name = self.measurement_item.contact.name
+        measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
@@ -278,8 +283,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 fmt.add_column("voltage", "E")
                 fmt.add_column("current_smu", "E")
                 fmt.add_column("current_elm", "E")
-                fmt.add_column("temperature", "E")
-                fmt.add_column("humidity", "E")
+                fmt.add_column("temperature_box", "E")
+                fmt.add_column("temperature_chuck", "E")
+                fmt.add_column("humidity_box", "E")
 
                 # Write meta data
                 fmt.write_meta("sample_name", sample_name)
@@ -347,13 +353,19 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     ))
 
                     # Environment
-                    pc_data = env.resource.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
+                    if self.process.get("use_environ"):
+                        with self.devices.get("environ") as env:
+                            pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                        temperature_box = float(pc_data[2])
+                        logging.info("temperature box: %s degC", temperature_box)
+                        temperature_chuck = float(pc_data[33])
+                        logging.info("temperature chuck: %s degC", temperature_chuck)
+                        humidity_box = float(pc_data[1])
+                        logging.info("humidity box: %s degC", humidity_box)
+                    else:
+                        temperature_box = float('nan')
+                        temperature_chuck = float('nan')
+                        humidity_box = float('nan')
 
                     # Write reading
                     fmt.write_row(dict(
@@ -379,7 +391,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.events.progress(4, 5)
 
-    def finalize(self, smu, elm, env):
+    def finalize(self, smu, elm):
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 
@@ -415,9 +427,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
     def code(self, *args, **kwargs):
         with self.devices.get("k2410") as smu:
             with self.devices.get("k6517") as elm:
-                with self.devices.get("environ") as env:
-                    try:
-                        self.initialize(smu, elm, env)
-                        self.measure(smu, elm, env)
-                    finally:
-                        self.finalize(smu, elm, env)
+                try:
+                    self.initialize(smu, elm)
+                    self.measure(smu, elm)
+                finally:
+                    self.finalize(smu, elm)
