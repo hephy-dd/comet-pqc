@@ -379,7 +379,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.events.progress(4, 5)
 
-    def finalize(self, smu, elm):
+    def finalize(self, smu, elm, env):
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 
