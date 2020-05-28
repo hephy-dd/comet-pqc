@@ -57,7 +57,7 @@ class MatrixPanel(Panel, DeviceMixin):
                 comet.Label(text="Channels"),
                 comet.Row(
                     self.matrix_channels,
-                    comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
+                    ## comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
                 )
             )
         ))
@@ -70,9 +70,11 @@ class MatrixPanel(Panel, DeviceMixin):
                 # Junk fix
                 matrix.resource.write("print()")
                 matrix.resource.read_raw()
-                result = matrix.resource.query("print(channel.getclose('slot1'))")
-                logging.info("Loaded matrix channels for slot 1: %s", result)
-                channels = result.split(";")
+                result = matrix.resource.query("print(channel.getclose(\"allslots\"))")
+                logging.info("Loaded matrix channels: %s", result)
+                channels = []
+                if result.strip() != "nil":
+                    channels = result.split(";")
             self.matrix_channels.value = channels
         except Exception as e:
             comet.show_exception(e)

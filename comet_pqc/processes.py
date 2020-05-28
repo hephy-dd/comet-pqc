@@ -17,7 +17,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
         self.events.message("Calibrating...")
         with self.devices.get('corvus') as corvus:
             corvus.mode = 0
-            retries = 16
+            retries = 180
             delay = 1.0
 
             def handle_error():
@@ -30,20 +30,45 @@ class CalibrateProcess(comet.Process, DeviceMixin):
             def ncal(axis):
                 axis.ncal()
                 for i in range(retries + 1):
-                    if axis.caldone == 1:
-                        break
+                    self.events.message("x={}, y={}, z={}".format(*corvus.pos))
+                    if axis is corvus.x:
+                        if corvus.pos[0] == 0.0:
+                            logging.info("caldone -> OK")
+                            break
+                    if axis is corvus.y:
+                        if corvus.pos[1] == 0.0:
+                            logging.info("caldone -> OK")
+                            break
+                    if axis is corvus.z:
+                        if corvus.pos[2] == 0.0:
+                            logging.info("caldone -> OK")
+                            break
                     time.sleep(delay)
                 return i < retries
 
             def nrm(axis):
+                pos = corvus.pos
                 axis.nrm()
+                time.sleep(delay)
                 for i in range(retries + 1):
-                    if axis.caldone == 3:
-                        break
+                    self.events.message("x={}, y={}, z={}".format(*corvus.pos))
+                    if axis is corvus.x:
+                        if corvus.pos[0] == pos[0]:
+                            logging.info("caldone -> OK")
+                            break
+                    if axis is corvus.y:
+                        if corvus.pos[1] == pos[1]:
+                            logging.info("caldone -> OK")
+                            break
+                    if axis is corvus.z:
+                        if corvus.pos[2] == pos[2]:
+                            logging.info("caldone -> OK")
+                            break
                     time.sleep(delay)
+                    pos = corvus.pos
                 return i < retries
 
-            handle_error()
+            #handle_error()
             self.events.progress(0, 7)
             self.events.message("Retreating Z axis...")
             if corvus.z.enabled:
@@ -51,7 +76,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed retreating Z axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             self.events.progress(1, 7)
             self.events.message("Calibrating Y axis...")
             if corvus.y.enabled:
@@ -59,7 +84,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to calibrate Y axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             self.events.progress(2, 7)
             self.events.message("Calibrating X axis...")
             if corvus.x.enabled:
@@ -67,7 +92,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             self.events.progress(3, 7)
             self.events.message("Range measure X axis...")
             if corvus.x.enabled:
@@ -75,7 +100,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to ragne measure X axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             self.events.progress(4, 7)
             self.events.message("Range measure Y axis...")
             if corvus.y.enabled:
@@ -83,17 +108,18 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to range measure Y axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             corvus.rmove(-1000, -1000, 0)
             for i in range(retries):
                 pos = corvus.pos
+                self.events.message("x={}, y={}, z={}".format(*pos))
                 if pos[:2] == (0, 0):
                     break
                 time.sleep(delay)
             if pos[:2] != (0, 0):
                 raise RuntimeError("failed to relative move, current pos: {}".format(pos))
 
-            handle_error()
+            #handle_error()
             self.events.progress(5, 7)
             self.events.message("Calibrating Z axis minimum...")
             if corvus.z.enabled:
@@ -101,7 +127,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             self.events.progress(6, 7)
             self.events.message("Range measure Z axis maximum...")
             if corvus.z.enabled:
@@ -109,28 +135,114 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                     raise RuntimeError("failed to range measure Z axis")
             time.sleep(delay)
 
-            handle_error()
+            #handle_error()
             corvus.rmove(0, 0, -1000)
             for i in range(retries):
                 pos = corvus.pos
+                self.events.message("x={}, y={}, z={}".format(*pos))
                 if pos == (0, 0, 0):
                     break
                 time.sleep(delay)
             if pos != (0, 0, 0):
                 raise RuntimeError("failed to calibrate axes, current pos: {}".format(pos))
 
-            handle_error()
+            #handle_error()
             self.events.progress(7, 7)
             self.events.message(None)
+
+            corvus.joystick = True
+
         self.set("success", True)
 
-class MeasureProcess(comet.Process):
+class BaseProcess(comet.Process, DeviceMixin):
+
+    def safe_initialize_smu1(self, resource):
+        resource.query("*IDN?")
+        if int(resource.query(":OUTP:STAT?")):
+            self.events.message("Ramping down SMU1...")
+            start_voltage = float(resource.query(":SOUR:VOLT:LEV?"))
+            stop_voltage = 0.0
+            step_voltage = min(25.0, max(5.0, start_voltage / 100.))
+            for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
+                resource.write(f":SOUR:VOLT:LEV {voltage:E}")
+                resource.query("*OPC?")
+            self.events.message("Disable output SMU1...")
+            resource.write(":OUTP:STAT OFF")
+            resource.query("*OPC?")
+        self.events.message("Initialized SMU1.")
+
+    def safe_initialize_smu2(self, resource):
+        resource.query("*IDN?")
+        if int(resource.query("print(smua.source.output)")):
+            self.events.message("Ramping down SMU2...")
+            start_voltage = float(resource.query("print(smua.source.levelv)"))
+            stop_voltage = 0.0
+            step_voltage = min(25.0, max(5.0, start_voltage / 100.))
+            for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
+                resource.write(f"smua.source.levelv = {voltage:E}")
+                resource.query("*OPC?")
+            self.events.message("Disable output SMU2...")
+            resource.write("smua.source.output = smua.OUTPUT_OFF")
+            resource.query("*OPC?")
+        self.events.message("Initialized SMU2.")
+
+    def discarge_decoupling(self, resource):
+        resource.query("*IDN?")
+        self.events.message("Auto-discharging decoupling box...")
+        delay = float(resource.query("GET:DISCHARGE_TIME ?")) / 1e3
+        resource.write("SET:DISCHARGE AUTO")
+        time.sleep(delay + .25)
+        resource.read()
+        self.events.message("Auto-discharged decoupling box.")
+
+    def initialize_matrix(self, resource):
+        resource.query("*IDN?")
+        logging.info("matrix: open all channels.")
+        resource.write("channel.open(\"allslots\")")
+        resource.query("*OPC?")
+        channels = resource.query("print(channel.getclose(\"allslots\"))")
+        logging.info("matrix channels: %s", channels)
+        # self.events.message("Initialized Matrix.")
+
+    def safe_initialize(self):
+        with self.devices.get("k2410") as device:
+            self.safe_initialize_smu1(device.resource)
+        try:
+            with self.devices.get("k2657") as device:
+                self.safe_initialize_smu2(device.resource)
+        except Exception:
+            logging.warning("unable to connect with: %s", device.resource.resource_name)
+        if self.get("use_environ"):
+            with self.devices.get("environ") as device:
+                self.discarge_decoupling(device.resource)
+        try:
+            with self.devices.get("matrix") as device:
+                self.initialize_matrix(device.resource)
+        except Exception:
+            logging.warning("unable to connect with: %s", device.resource.resource_name)
+
+    def safe_finalize(self):
+        with self.devices.get("k2410") as device:
+            self.safe_initialize_smu1(device.resource)
+        try:
+            with self.devices.get("k2657") as device:
+                self.safe_initialize_smu2(device.resource)
+        except Exception:
+            logging.warning("unable to connect with: %s", device.resource.resource_name)
+        try:
+            with self.devices.get("matrix") as device:
+                self.initialize_matrix(device.resource)
+        except Exception:
+            logging.warning("unable to connect with: %s", device.resource.resource_name)
+
+class MeasureProcess(BaseProcess):
     """Measure process executing a single measurements."""
 
     measurement_item = None
 
     def initialize(self):
         self.events.message("Initialize measurement...")
+        self.safe_initialize()
 
     def process(self):
         self.events.message("Process measurement...")
@@ -155,6 +267,7 @@ class MeasureProcess(comet.Process):
     def finalize(self):
         self.events.message("Finalize measurement...")
         self.measurement_item = None
+        self.safe_finalize()
 
     def run(self):
         self.events.message("Starting measurement...")
@@ -165,13 +278,14 @@ class MeasureProcess(comet.Process):
             self.finalize()
             self.events.message("Measurement done.")
 
-class SequenceProcess(comet.Process):
+class SequenceProcess(BaseProcess):
     """Sequence process executing a sequence of measurements."""
 
     sequence_tree = []
 
     def initialize(self):
         self.events.message("Initialize sequence...")
+        self.safe_initialize()
 
     def process(self):
         self.events.message("Process sequence...")
@@ -238,6 +352,7 @@ class SequenceProcess(comet.Process):
     def finalize(self):
         self.events.message("Finalize sequence...")
         self.sequence_tree = []
+        self.safe_finalize()
 
     def run(self):
         self.events.message("Starting sequence...")
