@@ -199,6 +199,71 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         #     layout=comet.Column()
         # )
 
+        self.matrix_model_text = comet.Text(readonly=True)
+        self.matrix_channels_text = comet.Text(readonly=True)
+        self.smu1_model_text = comet.Text(readonly=True)
+        self.smu2_model_text = comet.Text(readonly=True)
+        self.lcr_model_text = comet.Text(readonly=True)
+        self.elm_model_text = comet.Text(readonly=True)
+        self.env_model_text = comet.Text(readonly=True)
+        self.reload_status_button = comet.Button("&Reload", clicked=self.on_status_start)
+
+        self.status_tab = comet.Tab(
+            title="Status",
+            layout=comet.Column(
+                comet.FieldSet(
+                    title="Matrix",
+                    layout=comet.Column(
+                        comet.Row(
+                            comet.Label("Model:"),
+                            self.matrix_model_text
+                        ),
+                        comet.Row(
+                            comet.Label("Closed channels:"),
+                            self.matrix_channels_text
+                        )
+                    )
+                ),
+                comet.FieldSet(
+                    title="SMU1",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.smu1_model_text
+                    )
+                ),
+                comet.FieldSet(
+                    title="SMU2",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.smu2_model_text
+                    )
+                ),
+                comet.FieldSet(
+                    title="LCRMeter",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.lcr_model_text
+                    )
+                ),
+                comet.FieldSet(
+                    title="Electrometer",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.elm_model_text
+                    )
+                ),
+                comet.FieldSet(
+                    title="Environment Box",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.env_model_text
+                    )
+                ),
+                comet.Stretch(),
+                self.reload_status_button
+            )
+        )
+
         self.summary_tab = comet.Tab(
             title="Summary",
             layout=comet.ScrollArea(
@@ -211,6 +276,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.tab_widget = comet.Tabs(
             self.measurement_tab,
             # self.environment_tab,
+            self.status_tab,
             self.summary_tab
         )
 
@@ -477,6 +543,31 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         measure = self.processes.get("measure")
         measure.events.reading = lambda data: None
         self.sequence_tree.unlock()
+
+    def on_status_start(self):
+        self.enabled = False
+        self.matrix_model_text.value = ""
+        self.matrix_channels_text.value = ""
+        self.smu1_model_text.value = ""
+        self.smu2_model_text.value = ""
+        self.lcr_model_text.value = ""
+        self.elm_model_text.value = ""
+        self.env_model_text.value = ""
+        self.reload_status_button.enabled = False
+        status = self.processes.get("status")
+        status.start()
+
+    def on_status_finished(self):
+        self.enabled = True
+        self.reload_status_button.enabled = True
+        status = self.processes.get("status")
+        self.matrix_model_text.value = status.get("matrix_model") or "n/a"
+        self.matrix_channels_text.value = status.get("matrix_channels")
+        self.smu1_model_text.value = status.get("smu1_model") or "n/a"
+        self.smu2_model_text.value = status.get("smu2_model") or "n/a"
+        self.lcr_model_text.value = status.get("lcr_model") or "n/a"
+        self.elm_model_text.value = status.get("elm_model") or "n/a"
+        self.env_model_text.value = status.get("env_model") or "n/a"
 
     # Menu action callbacks
 

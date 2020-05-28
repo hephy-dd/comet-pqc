@@ -9,6 +9,70 @@ from comet.device import DeviceMixin
 
 from .measurements import measurement_factory
 
+class StatusProcess(comet.Process, DeviceMixin):
+    """Reload instruments status."""
+
+    def run(self):
+        self.events.message("Read Matrix...")
+        self.events.progress(0, 6)
+        try:
+            with self.devices.get("matrix") as matrix:
+                matrix_model = matrix.resource.query("*IDN?")
+                matrix_channels = matrix.resource.query("print(channel.getclose(\"allslots\"))")
+        except Exception:
+            matrix_model = ""
+            matrix_channels = ""
+        self.set("matrix_model", matrix_model)
+        self.set("matrix_channels", matrix_channels)
+
+        self.events.message("Read SMU1...")
+        self.events.progress(1, 6)
+        try:
+            with self.devices.get("k2410") as smu1:
+                smu1_model = smu1.resource.query("*IDN?")
+        except Exception:
+            smu1_model = ""
+        self.set("smu1_model", smu1_model)
+
+        self.events.message("Read SMU2...")
+        self.events.progress(2, 6)
+        try:
+            with self.devices.get("k2657") as smu2:
+                smu2_model = smu2.resource.query("*IDN?")
+        except Exception:
+            smu2_model = ""
+        self.set("smu2_model", smu2_model)
+
+        self.events.message("Read LCRMeter...")
+        self.events.progress(3, 6)
+        try:
+            with self.devices.get("lcr") as lcr:
+                lcr_model = lcr.resource.query("*IDN?")
+        except Exception:
+            lcr_model = ""
+        self.set("lcr_model", lcr_model)
+
+        self.events.message("Read Electrometer...")
+        self.events.progress(4, 6)
+        try:
+            with self.devices.get("k6517") as elm:
+                elm_model = elm.resource.query("*IDN?")
+        except Exception:
+            elm_model = ""
+        self.set("elm_model", elm_model)
+
+        self.events.message("Read Environment Box...")
+        self.events.progress(5, 6)
+        try:
+            with self.devices.get("environ") as env:
+                env_model = env.resource.query("*IDN?")
+        except Exception:
+            env_model = ""
+        self.set("env_model", env_model)
+
+        self.events.message("")
+        self.events.progress(6, 6)
+
 class CalibrateProcess(comet.Process, DeviceMixin):
     """Calibration process for Corvus table."""
 
@@ -211,7 +275,7 @@ class BaseProcess(comet.Process, DeviceMixin):
             with self.devices.get("k2657") as device:
                 self.safe_initialize_smu2(device.resource)
         except Exception:
-            logging.warning("unable to connect with: %s", device.resource.resource_name)
+            logging.warning("unable to connect with SMU2")
         if self.get("use_environ"):
             with self.devices.get("environ") as device:
                 self.discarge_decoupling(device.resource)
@@ -219,7 +283,7 @@ class BaseProcess(comet.Process, DeviceMixin):
             with self.devices.get("matrix") as device:
                 self.initialize_matrix(device.resource)
         except Exception:
-            logging.warning("unable to connect with: %s", device.resource.resource_name)
+            logging.warning("unable to connect with Matrix")
 
     def safe_finalize(self):
         with self.devices.get("k2410") as device:
@@ -228,12 +292,12 @@ class BaseProcess(comet.Process, DeviceMixin):
             with self.devices.get("k2657") as device:
                 self.safe_initialize_smu2(device.resource)
         except Exception:
-            logging.warning("unable to connect with: %s", device.resource.resource_name)
+            logging.warning("unable to connect with SMU2")
         try:
             with self.devices.get("matrix") as device:
                 self.initialize_matrix(device.resource)
         except Exception:
-            logging.warning("unable to connect with: %s", device.resource.resource_name)
+            logging.warning("unable to connect with: Matrix")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a single measurements."""

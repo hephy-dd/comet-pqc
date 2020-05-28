@@ -5,14 +5,14 @@ from .measurement import Measurement
 __all__ = ["MatrixMeasurement"]
 
 def matrix_channels_closed(resource):
-    result = matrix.resource.query("print(channels.getclose(\"allslots\"))")
+    result = resource.query("print(channel.getclose(\"allslots\"))")
     if result.strip() == "nil":
         return []
     return result.split(";")
 
 def matrix_channels_close(resource, channels):
-    matrix.resource.write(";".join(channels))
-    matrix.resource.query("*OPC?")
+    resource.write("channel.close(\"{}\")".format(",".join(channels)))
+    resource.query("*OPC?")
 
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
@@ -31,11 +31,11 @@ class MatrixMeasurement(Measurement):
                         f"please verify the situation and open closed channels. Closed channels: {closed}")
                 if channels:
                     matrix_channels_close(matrix.resource, channels)
-                    closed = matrix_channels_closed(resource)
+                    closed = matrix_channels_closed(matrix.resource)
                     if sorted(closed) != sorted(channels):
                         raise RuntimeError("mismatch in closed channels")
         except Exception as e:
-            raise RuntimeError(f"Failed to close matrix channels {channels}, {e,args}")
+            raise RuntimeError(f"Failed to close matrix channels {channels}, {e.args}")
 
     def reset_matrix(self):
         """Reset marix switch to a save state."""

@@ -15,6 +15,7 @@ from comet.driver.corvus import Venus1
 
 from . import __version__
 
+from .processes import StatusProcess
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
 from .processes import SequenceProcess
@@ -71,7 +72,8 @@ def main():
     app.devices.add("corvus", Venus1(comet.Resource(
         resource_name="TCPIP::10.0.0.6::23::SOCKET",
         read_termination="\r\n",
-        write_termination="\r\n"
+        write_termination="\r\n",
+        timeout=8000.0
     )))
     app.devices.add("environ", Driver(comet.Resource(
         resource_name="TCPIP::10.0.0.8::10001::SOCKET",
@@ -100,6 +102,14 @@ def main():
 
     # Register processes
 
+    app.processes.add("status", StatusProcess(
+        events=dict(
+            finished=dashboard.on_status_finished,
+            failed=on_show_error,
+            message=on_message,
+            progress=on_progress
+        )
+    ))
     app.processes.add("calibrate", CalibrateProcess(
         events=dict(
             finished=dashboard.on_calibrate_finished,

@@ -41,7 +41,7 @@ class MatrixPanel(Panel, DeviceMixin):
         self.data.append(self.data_tabs)
 
         self.matrix_enabled = comet.CheckBox(text="Enable Switching")
-        self.matrix_enabled.enabled = False
+        ### self.matrix_enabled.enabled = False
         self.matrix_channels = MatrixChannelsText(
             tooltip="Matrix card switching channels, comma separated list."
         )
