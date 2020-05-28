@@ -106,7 +106,7 @@ contacts:
       - name: Diode IV
         type: iv_ramp_elm
         parameters:
-            matrix_channels: []
+            matrix_channels: [1A02, 2C11]
             voltage_start: 0 V
             voltage_stop: -1000 V
             voltage_step: 10 V
@@ -125,7 +125,7 @@ contacts:
       - name: Diode CV
         type: cv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
@@ -196,7 +196,7 @@ contacts:
       - name: Dielectric Breakdown
         type: iv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [1A02, 2C11]
             iterations: 3
             voltage_start: 0 V
             voltage_stop: 250 V
@@ -250,7 +250,7 @@ contacts:
       - name: Diode IV
         type: iv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [1A02, 2C11]
             voltage_start: 0 V
             voltage_stop: -1000 V
             voltage_step: 10 V
