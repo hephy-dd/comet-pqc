@@ -6,6 +6,8 @@ __all__ = ["IVRampBiasPanel"]
 class IVRampBiasPanel(MatrixPanel):
     """Panel for bias IV ramp measurements."""
 
+    type = "bias_iv_ramp"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "Bias + IV Ramp"

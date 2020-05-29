@@ -10,6 +10,8 @@ __all__ = ["IVRampElmPanel"]
 class IVRampElmPanel(MatrixPanel):
     """Panel for IV ramp with electrometer measurements."""
 
+    type = "iv_ramp_elm"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "IV Ramp Elm"

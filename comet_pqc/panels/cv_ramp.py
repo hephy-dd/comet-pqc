@@ -10,6 +10,8 @@ __all__ = ["CVRampPanel"]
 class CVRampPanel(MatrixPanel):
     """Panel for CV ramp measurements."""
 
+    type = "cv_ramp"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "CV Ramp (SMU)"

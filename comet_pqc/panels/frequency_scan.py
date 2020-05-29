@@ -10,6 +10,8 @@ __all__ = ["FrequencyScanPanel"]
 class FrequencyScanPanel(MatrixPanel):
     """Frequency scan with log10 steps."""
 
+    type = "frequency_scan"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "Frequency Scan"

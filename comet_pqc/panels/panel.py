@@ -11,6 +11,8 @@ __all__ = ["Panel"]
 class Panel(comet.Widget):
     """Base class for measurement panels."""
 
+    type = "measurement"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._bindings = {}

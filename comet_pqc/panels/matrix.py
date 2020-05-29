@@ -31,6 +31,8 @@ class MatrixChannelsText(comet.Text):
 class MatrixPanel(Panel, DeviceMixin):
     """Base class for matrix switching panels."""
 
+    type = "matrix"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

@@ -21,6 +21,50 @@ from .panels import CVRampPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
+class PanelStack(comet.Row):
+    """Stack of measurement panels."""
+
+    def __init__(self):
+        super().__init__()
+        self.append(IVRampPanel(visible=False))
+        self.append(IVRampElmPanel(visible=False))
+        self.append(IVRampBiasPanel(visible=False))
+        self.append(CVRampPanel(visible=False))
+        self.append(CVRampAltPanel(visible=False))
+        self.append(IVRamp4WirePanel(visible=False))
+        self.append(FrequencyScanPanel(visible=False))
+
+    def store(self):
+        for child in self.children:
+            child.store()
+
+    def unmount(self):
+        for child in self.children:
+            child.unmount()
+
+    def clear_readings(self):
+        for child in self.children:
+            child.clear_readings()
+
+    def hide(self):
+        for child in self.children:
+            child.visible = False
+
+    def lock(self):
+        for child in self.children:
+            child.lock()
+
+    def unlock(self):
+        for child in self.children:
+            child.unlock()
+
+    def get(self, type):
+        """Get panel by type."""
+        for child in self.children:
+            if child.type == type:
+                return child
+        return None
+
 class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
     def __init__(self):
@@ -128,7 +172,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         )
 
         self.output_fieldset = comet.FieldSet(
-            id="output_fieldset",
             title="Output",
             layout=comet.Row(
                 self.output_text,
@@ -148,15 +191,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             stretch=(0, 1, 0, 0)
         )
 
-        self.panels = comet.Row(
-            IVRampPanel(id="iv_ramp", visible=False),
-            IVRampElmPanel(id="iv_ramp_elm", visible=False),
-            IVRampBiasPanel(id="bias_iv_ramp", visible=False),
-            CVRampPanel(id="cv_ramp", visible=False),
-            CVRampAltPanel(id="cv_ramp_alt", visible=False),
-            IVRamp4WirePanel(id="4wire_iv_ramp", visible=False),
-            FrequencyScanPanel(id="frequency_scan", visible=False),
-        )
+        self.panels = PanelStack()
 
         self.measure_restore_button = comet.Button(
             text="Restore Defaults",
@@ -320,9 +355,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
     def on_load_sequence_tree(self, index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
-        for panel in self.panels.children:
-            panel.unmount()
-            panel.visible = False
+        self.panels.unmount()
+        self.panels.hide()
         self.sequence_tree.clear()
         sequence = copy.deepcopy(self.sequence_select.current)
         for contact in sequence:
@@ -334,16 +368,15 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
     # Sequence control
 
     def on_tree_selected(self, item):
-        for panel in self.panels.children:
-            panel.store()
-            panel.unmount()
-            panel.clear_readings()
-            panel.visible = False
+        self.panels.store()
+        self.panels.unmount()
+        self.panels.clear_readings()
+        self.panels.hide()
         self.measure_controls.visible = False
         if isinstance(item, ContactTreeItem):
             pass
         if isinstance(item, MeasurementTreeItem):
-            panel = self.get(item.type)
+            panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
             self.measure_controls.visible = True
@@ -361,8 +394,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.continue_button.enabled = False
         self.stop_button.enabled = True
         self.measure_controls.enabled = False
-        for panel in self.panels.children:
-            panel.lock()
+        self.panels.lock()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
         sample_name = self.sample_text.value
@@ -425,8 +457,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.continue_button.enabled = False
         self.stop_button.enabled = False
         self.measure_controls.enabled = True
-        for panel in self.panels.children:
-            panel.unlock()
+        self.panels.unlock()
         self.sequence_tree.unlock()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
@@ -483,7 +514,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             text="Do you want to restore to default parameters?"
         ): return
         measurement = self.sequence_tree.current
-        panel = self.get(measurement.type)
+        panel = self.panels.get(measurement.type)
         panel.restore()
 
     def on_measure_run(self):
@@ -499,11 +530,10 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.sample_fieldset.enabled = False
         self.sequence_fieldset.enabled = False
         self.output_fieldset.enabled = False
-        for panel in self.panels.children:
-            panel.lock()
+        self.panels.lock()
         self.sequence_tree.lock()
         measurement = self.sequence_tree.current
-        panel = self.get(measurement.type)
+        panel = self.panels.get(measurement.type)
         panel.store()
         # TODO
         panel.clear_readings()
@@ -538,8 +568,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.sample_fieldset.enabled = True
         self.sequence_fieldset.enabled = True
         self.output_fieldset.enabled = True
-        for panel in self.panels.children:
-            panel.unlock()
+        self.panels.unlock()
         measure = self.processes.get("measure")
         measure.events.reading = lambda data: None
         self.sequence_tree.unlock()
