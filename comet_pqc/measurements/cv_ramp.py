@@ -1,6 +1,5 @@
 import logging
 import datetime
-import random
 import time
 import os
 import re
@@ -313,6 +312,7 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.add_column("voltage", "E")
             fmt.add_column("capacitance", "E")
             fmt.add_column("capacitance2", "E")
+            fmt.add_column("resistance", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -370,7 +370,10 @@ class CVRampMeasurement(MatrixMeasurement):
                     lcr_prim, lcr_sec = self.acquire_filter_reading(lcr)
                 else:
                     lcr_prim, lcr_sec = self.acquire_reading(lcr)
-                lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
+                try:
+                    lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
+                except ZeroDivisionError:
+                    lcr_prim2 = 0.0
 
                 self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.events.reading("lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
@@ -402,6 +405,7 @@ class CVRampMeasurement(MatrixMeasurement):
                     voltage=voltage,
                     capacitance=lcr_prim,
                     capacitance2=lcr_prim2,
+                    resistance=lcr_sec,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
