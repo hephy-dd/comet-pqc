@@ -56,7 +56,12 @@ class SequenceTreeItem(TreeItem):
     @state.setter
     def state(self, value):
         self[0].bold = (value == "Active")
-        self[1].color = "red" if value != "Success" else "green"
+        if value == "Success":
+            self[1].color = "green"
+        elif value == "Active":
+            self[1].color = "blue"
+        else:
+            self[1].color = "red"
         self[1].value = value
 
 class ContactTreeItem(SequenceTreeItem):

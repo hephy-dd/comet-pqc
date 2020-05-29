@@ -90,6 +90,12 @@ class IVRampElmPanel(MatrixPanel):
 
         self.status_env_model = comet.Label()
         self.bind("status_env_model", self.status_env_model, "Model: n/a")
+        self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
+        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "n/a")
+        self.status_env_box_temperature = comet.Text(value="---", readonly=True)
+        self.bind("status_env_box_temperature", self.status_env_box_temperature, "n/a")
+        self.status_env_box_humidity = comet.Text(value="---", readonly=True)
+        self.bind("status_env_box_humidity", self.status_env_box_humidity, "n/a")
 
         self.status_instruments = comet.Column(
             comet.FieldSet(
@@ -129,7 +135,21 @@ class IVRampElmPanel(MatrixPanel):
             comet.FieldSet(
                 title="Environment Status",
                 layout=comet.Column(
-                    self.status_env_model
+                    self.status_env_model,
+                    comet.Row(
+                        comet.Column(
+                            comet.Label("Chuck temp."),
+                            self.status_env_chuck_temperature
+                        ),
+                        comet.Column(
+                            comet.Label("Box temp."),
+                            self.status_env_box_temperature
+                        ),
+                        comet.Column(
+                            comet.Label("Box humid."),
+                            self.status_env_box_humidity
+                        )
+                    )
                 )
             ),
             comet.Stretch()
@@ -278,6 +298,15 @@ class IVRampElmPanel(MatrixPanel):
         if 'env_model' in state:
             value = state.get('env_model', "n/a")
             self.status_env_model.text = f"Model: {value}"
+        if 'env_chuck_temperature' in state:
+            value = state.get('env_chuck_temperature', "n/a")
+            self.status_env_chuck_temperature.value = auto_unit(value, "°C", decimals=2)
+        if 'env_box_temperature' in state:
+            value = state.get('env_box_temperature', "n/a")
+            self.status_env_box_temperature.value = auto_unit(value, "°C", decimals=2)
+        if 'env_box_humidity' in state:
+            value = state.get('env_box_humidity', "n/a")
+            self.status_env_box_humidity.value = auto_unit(value, "%rH", decimals=2)
         super().state(state)
 
     def append_reading(self, name, x, y):

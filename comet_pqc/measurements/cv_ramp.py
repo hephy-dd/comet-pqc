@@ -399,6 +399,12 @@ class CVRampMeasurement(MatrixMeasurement):
                     temperature_chuck = float('nan')
                     humidity_box = float('nan')
 
+                self.process.events.state(dict(
+                    env_chuck_temperature=temperature_chuck,
+                    env_box_temperature=temperature_box,
+                    env_box_humidity=humidity_box
+                ))
+
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=dt,
@@ -430,6 +436,16 @@ class CVRampMeasurement(MatrixMeasurement):
 
         self.quick_ramp_zero(smu)
         self.smu_set_output_state(smu, False)
+        smu_output_state = self.smu_get_output_state(smu)
+        self.process.events.state(dict(
+            smu_output=smu_output_state,
+        ))
+
+        self.process.events.state(dict(
+            env_chuck_temperature=None,
+            env_box_temperature=None,
+            env_box_humidity=None
+        ))
 
         self.process.events.progress(2, 2)
 

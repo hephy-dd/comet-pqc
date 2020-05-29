@@ -367,6 +367,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
                         temperature_chuck = float('nan')
                         humidity_box = float('nan')
 
+                    self.process.events.state(dict(
+                        env_chuck_temperature=temperature_chuck,
+                        env_box_temperature=temperature_box,
+                        env_box_humidity=humidity_box
+                    ))
+
                     # Write reading
                     fmt.write_row(dict(
                         timestamp=dt,
@@ -420,6 +426,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.events.state(dict(
             smu_output=smu.output,
+            env_chuck_temperature=None,
+            env_box_temperature=None,
+            env_box_humidity=None
         ))
 
         self.process.events.progress(5, 5)

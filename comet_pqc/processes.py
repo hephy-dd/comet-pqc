@@ -269,8 +269,12 @@ class BaseProcess(comet.Process, DeviceMixin):
         # self.events.message("Initialized Matrix.")
 
     def safe_initialize(self):
-        with self.devices.get("k2410") as device:
-            self.safe_initialize_smu1(device.resource)
+        try:
+            with self.devices.get("k2410") as device:
+                self.safe_initialize_smu1(device.resource)
+        except Exception:
+            logging.error("unable to connect with SMU1")
+            raise RuntimeError("Failed to connect with SMU1")
         try:
             with self.devices.get("k2657") as device:
                 self.safe_initialize_smu2(device.resource)
@@ -283,7 +287,8 @@ class BaseProcess(comet.Process, DeviceMixin):
             with self.devices.get("matrix") as device:
                 self.initialize_matrix(device.resource)
         except Exception:
-            logging.warning("unable to connect with Matrix")
+            logging.error("unable to connect with Matrix")
+            raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
         with self.devices.get("k2410") as device:
