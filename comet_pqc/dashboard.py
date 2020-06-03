@@ -408,9 +408,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.use_environ_checkbox.checked)
         sequence.sequence_tree = self.sequence_tree
-        sequence.reading = panel.append_reading
-        sequence.update = panel.update_readings
-        sequence.state = panel.state
         sequence.start()
 
     def on_autopilot_toggled(self, state):
