@@ -34,7 +34,7 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("message", "Read SMU1...")
         self.emit("progress", 1, 6)
         try:
-            with self.resources.get("k2410") as smu1:
+            with self.resources.get("smu1") as smu1:
                 smu1_model = smu1.query("*IDN?")
         except (ResourceError, OSError):
             smu1_model = ""
@@ -43,7 +43,7 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("message", "Read SMU2...")
         self.emit("progress", 2, 6)
         try:
-            with self.resources.get("k2657") as smu2:
+            with self.resources.get("smu2") as smu2:
                 smu2_model = smu2.query("*IDN?")
         except (ResourceError, OSError):
             smu2_model = ""
@@ -61,7 +61,7 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("message", "Read Electrometer...")
         self.emit("progress", 4, 6)
         try:
-            with self.resources.get("k6517") as elm:
+            with self.resources.get("elm") as elm:
                 elm_model = elm.query("*IDN?")
         except (ResourceError, OSError):
             elm_model = ""
@@ -282,13 +282,13 @@ class BaseProcess(comet.Process, ResourceMixin):
 
     def safe_initialize(self):
         try:
-            with self.resources.get("k2410") as smu1:
+            with self.resources.get("smu1") as smu1:
                 self.safe_initialize_smu1(smu1)
         except Exception:
             logging.error("unable to connect with SMU1")
             raise RuntimeError("Failed to connect with SMU1")
         try:
-            with self.resources.get("k2657") as smu2:
+            with self.resources.get("smu2") as smu2:
                 self.safe_initialize_smu2(smu2)
         except Exception:
             logging.warning("unable to connect with SMU2")
@@ -303,10 +303,10 @@ class BaseProcess(comet.Process, ResourceMixin):
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
-        with self.resources.get("k2410") as smu1:
+        with self.resources.get("smu1") as smu1:
             self.safe_initialize_smu1(smu1)
         try:
-            with self.resources.get("k2657") as smu2:
+            with self.resources.get("smu2") as smu2:
                 self.safe_initialize_smu2(smu2)
         except Exception:
             logging.warning("unable to connect with SMU2")

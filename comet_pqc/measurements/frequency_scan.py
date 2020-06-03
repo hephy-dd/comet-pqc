@@ -55,7 +55,7 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.events.progress(1, 1)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("k2410") as smu1_resource:
+        with self.resources.get("smu1") as smu1_resource:
             with self.resources.get("lcr") as lcr_resource:
                 smu1 = K2410(smu1_resource)
                 lcr = E4980A(lcr_resource)

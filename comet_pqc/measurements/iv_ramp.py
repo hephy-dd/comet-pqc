@@ -327,8 +327,8 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("k2410") as resource:
-            smu1 = K2410(resource)
+        with self.resources.get("smu1") as smu1_resource:
+            smu1 = K2410(smu1_resource)
             try:
                 self.initialize(smu1)
                 self.measure(smu1)

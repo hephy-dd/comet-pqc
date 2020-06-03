@@ -39,7 +39,7 @@ def main():
         read_termination="\r\n",
         write_termination="\r\n"
     ))
-    app.resources.add("k2657", comet.Resource(
+    app.resources.add("smu2", comet.Resource(
         resource_name="TCPIP::10.0.0.3::23::SOCKET",
         encoding='latin1',
         read_termination="\r\n",
@@ -49,24 +49,25 @@ def main():
         resource_name="TCPIP::10.0.0.6::5025::SOCKET",
         read_termination="\n",
         write_termination="\n",
-        timeout=8000.0
+        timeout=8000
     ))
-    app.resources.add("k6517", comet.Resource(
+    app.resources.add("elm", comet.Resource(
         resource_name="TCPIP::10.0.0.5::10001::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n",
-        timeout=8000.0
+        timeout=8000
     ))
-    app.resources.add("k2410", comet.Resource(
+    app.resources.add("smu1", comet.Resource(
         resource_name="TCPIP::10.0.0.5::10002::SOCKET",
         read_termination="\r\n",
-        write_termination="\r\n"
+        write_termination="\r\n",
+        timeout=4000
     ))
     app.resources.add("corvus", comet.Resource(
         resource_name="TCPIP::10.0.0.6::23::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n",
-        timeout=8000.0
+        timeout=8000
     ))
     app.resources.add("environ", comet.Resource(
         resource_name="TCPIP::10.0.0.8::10001::SOCKET",

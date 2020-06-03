@@ -453,12 +453,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(2, 2)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("k2410") as smu_resource:
+        with self.resources.get("smu1") as smu1_resource:
             with self.resources.get("lcr") as lcr_resource:
-                smu = K2410(smu_resource)
+                smu1 = K2410(smu1_resource)
                 lcr = E4980A(lcr_resource)
                 try:
-                    self.initialize(smu, lcr)
-                    self.measure(smu, lcr)
+                    self.initialize(smu1, lcr)
+                    self.measure(smu1, lcr)
                 finally:
-                    self.finalize(smu, lcr)
+                    self.finalize(smu1, lcr)
