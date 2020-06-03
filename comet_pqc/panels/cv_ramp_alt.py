@@ -45,20 +45,20 @@ class CVRampAltPanel(MatrixPanel):
         self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
 
         self.status_instruments = comet.Column(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
                     self.status_lcr_model,
                 )
             ),
-            comet.Stretch()
+            comet.Spacer()
         )
 
         self.tabs = comet.Tabs(
             comet.Tab(
                 title="General",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="LCR Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
@@ -69,24 +69,24 @@ class CVRampAltPanel(MatrixPanel):
                             self.voltage_step,
                             comet.Label(text="Waiting Time"),
                             self.waiting_time,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="LCR Compliance",
                         layout=comet.Column(
                             self.current_compliance,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="LCR Freq.",
                         layout=comet.Column(
                             comet.Label(text="AC Frequencies"),
                             self.lcr_frequency,
                             comet.Label(text="AC Amplitude"),
                             self.lcr_amplitude,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
                     stretch=(1, 1, 1)
@@ -95,8 +95,8 @@ class CVRampAltPanel(MatrixPanel):
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls.children[0],
-                    comet.Stretch(),
+                    self.controls[0],
+                    comet.Spacer(),
                     stretch=(0, 1)
                 )
             )
@@ -109,13 +109,14 @@ class CVRampAltPanel(MatrixPanel):
         ))
 
     def lock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = False
         self.status_instruments.enabled = True
-        self.tabs.current = 0
+        if len(self.tabs):
+            self.tabs.current = self.tabs[0]
 
     def unlock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = True
 
     def state(self, state):

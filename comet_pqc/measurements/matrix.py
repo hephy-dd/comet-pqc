@@ -24,14 +24,14 @@ class MatrixMeasurement(Measurement):
         channels = self.measurement_item.parameters.get("matrix_channels", [])
         logging.info("close matrix channels: %s", channels)
         try:
-            with self.devices.get("matrix") as matrix:
-                closed = matrix_channels_closed(matrix.resource)
+            with self.resources.get("matrix") as matrix:
+                closed = matrix_channels_closed(matrix)
                 if closed:
                     raise RuntimeError("Some matrix channels are still closed, " \
                         f"please verify the situation and open closed channels. Closed channels: {closed}")
                 if channels:
-                    matrix_channels_close(matrix.resource, channels)
-                    closed = matrix_channels_closed(matrix.resource)
+                    matrix_channels_close(matrix, channels)
+                    closed = matrix_channels_closed(matrix)
                     if sorted(closed) != sorted(channels):
                         raise RuntimeError("mismatch in closed channels")
         except Exception as e:

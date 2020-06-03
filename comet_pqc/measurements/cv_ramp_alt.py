@@ -5,6 +5,7 @@ import time
 import os
 
 import comet
+from comet.driver.keysight import E4980A
 
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -75,7 +76,8 @@ class CVRampAltMeasurement(MatrixMeasurement):
         pass
 
     def code(self, *args, **kwargs):
-        with self.devices.get("lcr") as lcr:
+        with self.resources.get("lcr") as lcr_resource:
+            lcr = E4980A(lcr_resource)
             try:
                 self.initialize(lcr)
                 self.measure(lcr)

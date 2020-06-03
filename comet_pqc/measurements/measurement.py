@@ -1,8 +1,8 @@
-from comet.device import DeviceMixin
+from comet.resource import ResourceMixin
 
 __all__ = ["Measurement"]
 
-class Measurement(DeviceMixin):
+class Measurement(ResourceMixin):
     """Base measurement class."""
 
     type = "measurement"

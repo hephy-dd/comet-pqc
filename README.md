@@ -14,13 +14,14 @@ This COMET application provides PQC sensor measurements.
 - Keithley 2657A Source Meter
 - Keithley 2410 Source Meter
 - Corvus TT positioning controller
+- HEPHY Environment Box
 
 ## Install
 
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.2.0
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.4.0
 comet-pqc
 ```
 

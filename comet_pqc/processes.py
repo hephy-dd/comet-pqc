@@ -5,81 +5,93 @@ import threading
 import os
 
 import comet
-from comet.device import DeviceMixin
+from comet.resource import ResourceMixin, ResourceError
+from comet.driver.corvus import Venus1
 
 from .measurements import measurement_factory
 
-class StatusProcess(comet.Process, DeviceMixin):
+class StatusProcess(comet.Process, ResourceMixin):
     """Reload instruments status."""
 
+    def __init__(self, message, progress, **kwargs):
+        super().__init__(**kwargs)
+        self.message = message
+        self.progress = progress
+
     def run(self):
-        self.events.message("Read Matrix...")
-        self.events.progress(0, 6)
+        self.emit("message", "Read Matrix...")
+        self.emit("progress", 0, 6)
         try:
-            with self.devices.get("matrix") as matrix:
-                matrix_model = matrix.resource.query("*IDN?")
-                matrix_channels = matrix.resource.query("print(channel.getclose(\"allslots\"))")
-        except Exception:
+            with self.resources.get("matrix") as matrix:
+                matrix_model = matrix.query("*IDN?")
+                matrix_channels = matrix.query("print(channel.getclose(\"allslots\"))")
+        except (ResourceError, OSError):
             matrix_model = ""
             matrix_channels = ""
         self.set("matrix_model", matrix_model)
         self.set("matrix_channels", matrix_channels)
 
-        self.events.message("Read SMU1...")
-        self.events.progress(1, 6)
+        self.emit("message", "Read SMU1...")
+        self.emit("progress", 1, 6)
         try:
-            with self.devices.get("k2410") as smu1:
-                smu1_model = smu1.resource.query("*IDN?")
-        except Exception:
+            with self.resources.get("k2410") as smu1:
+                smu1_model = smu1.query("*IDN?")
+        except (ResourceError, OSError):
             smu1_model = ""
         self.set("smu1_model", smu1_model)
 
-        self.events.message("Read SMU2...")
-        self.events.progress(2, 6)
+        self.emit("message", "Read SMU2...")
+        self.emit("progress", 2, 6)
         try:
-            with self.devices.get("k2657") as smu2:
-                smu2_model = smu2.resource.query("*IDN?")
-        except Exception:
+            with self.resources.get("k2657") as smu2:
+                smu2_model = smu2.query("*IDN?")
+        except (ResourceError, OSError):
             smu2_model = ""
         self.set("smu2_model", smu2_model)
 
-        self.events.message("Read LCRMeter...")
-        self.events.progress(3, 6)
+        self.emit("message", "Read LCRMeter...")
+        self.emit("progress", 3, 6)
         try:
-            with self.devices.get("lcr") as lcr:
-                lcr_model = lcr.resource.query("*IDN?")
-        except Exception:
+            with self.resources.get("lcr") as lcr:
+                lcr_model = lcr.query("*IDN?")
+        except (ResourceError, OSError):
             lcr_model = ""
         self.set("lcr_model", lcr_model)
 
-        self.events.message("Read Electrometer...")
-        self.events.progress(4, 6)
+        self.emit("message", "Read Electrometer...")
+        self.emit("progress", 4, 6)
         try:
-            with self.devices.get("k6517") as elm:
-                elm_model = elm.resource.query("*IDN?")
-        except Exception:
+            with self.resources.get("k6517") as elm:
+                elm_model = elm.query("*IDN?")
+        except (ResourceError, OSError):
             elm_model = ""
         self.set("elm_model", elm_model)
 
-        self.events.message("Read Environment Box...")
-        self.events.progress(5, 6)
+        self.emit("message", "Read Environment Box...")
+        self.emit("progress", 5, 6)
         try:
-            with self.devices.get("environ") as env:
-                env_model = env.resource.query("*IDN?")
-        except Exception:
+            with self.resources.get("environ") as environ:
+                env_model = environ.query("*IDN?")
+        except (ResourceError, OSError):
             env_model = ""
         self.set("env_model", env_model)
 
-        self.events.message("")
-        self.events.progress(6, 6)
+        self.emit("message", "")
+        self.emit("progress", 6, 6)
 
-class CalibrateProcess(comet.Process, DeviceMixin):
+class CalibrateProcess(comet.Process, ResourceMixin):
     """Calibration process for Corvus table."""
+
+    def __init__(self, message, progress, **kwargs):
+        super().__init__(**kwargs)
+        self.message = message
+        self.progress = progress
 
     def run(self):
         self.set("success", False)
-        self.events.message("Calibrating...")
-        with self.devices.get('corvus') as corvus:
+        self.emit("message", "Calibrating...")
+        with self.resources.get('corvus') as resource:
+            corvus = Venus1(resource)
             corvus.mode = 0
             retries = 180
             delay = 1.0
@@ -94,7 +106,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
             def ncal(axis):
                 axis.ncal()
                 for i in range(retries + 1):
-                    self.events.message("x={}, y={}, z={}".format(*corvus.pos))
+                    self.emit("message", "x={}, y={}, z={}".format(*corvus.pos))
                     if axis is corvus.x:
                         if corvus.pos[0] == 0.0:
                             logging.info("caldone -> OK")
@@ -115,7 +127,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                 axis.nrm()
                 time.sleep(delay)
                 for i in range(retries + 1):
-                    self.events.message("x={}, y={}, z={}".format(*corvus.pos))
+                    self.emit("message", "x={}, y={}, z={}".format(*corvus.pos))
                     if axis is corvus.x:
                         if corvus.pos[0] == pos[0]:
                             logging.info("caldone -> OK")
@@ -133,40 +145,40 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                 return i < retries
 
             #handle_error()
-            self.events.progress(0, 7)
-            self.events.message("Retreating Z axis...")
+            self.emit("progress", 0, 7)
+            self.emit("message", "Retreating Z axis...")
             if corvus.z.enabled:
                 if not ncal(corvus.z):
                     raise RuntimeError("failed retreating Z axis")
             time.sleep(delay)
 
             #handle_error()
-            self.events.progress(1, 7)
-            self.events.message("Calibrating Y axis...")
+            self.emit("progress", 1, 7)
+            self.emit("message", "Calibrating Y axis...")
             if corvus.y.enabled:
                 if not ncal(corvus.y):
                     raise RuntimeError("failed to calibrate Y axis")
             time.sleep(delay)
 
             #handle_error()
-            self.events.progress(2, 7)
-            self.events.message("Calibrating X axis...")
+            self.emit("progress", 2, 7)
+            self.emit("message", "Calibrating X axis...")
             if corvus.x.enabled:
                 if not ncal(corvus.x):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
 
             #handle_error()
-            self.events.progress(3, 7)
-            self.events.message("Range measure X axis...")
+            self.emit("progress", 3, 7)
+            self.emit("message", "Range measure X axis...")
             if corvus.x.enabled:
                 if not nrm(corvus.x):
                     raise RuntimeError("failed to ragne measure X axis")
             time.sleep(delay)
 
             #handle_error()
-            self.events.progress(4, 7)
-            self.events.message("Range measure Y axis...")
+            self.emit("progress", 4, 7)
+            self.emit("message", "Range measure Y axis...")
             if corvus.y.enabled:
                 if not nrm(corvus.y):
                     raise RuntimeError("failed to range measure Y axis")
@@ -176,7 +188,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
             corvus.rmove(-1000, -1000, 0)
             for i in range(retries):
                 pos = corvus.pos
-                self.events.message("x={}, y={}, z={}".format(*pos))
+                self.emit("message", "x={}, y={}, z={}".format(*pos))
                 if pos[:2] == (0, 0):
                     break
                 time.sleep(delay)
@@ -184,16 +196,16 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                 raise RuntimeError("failed to relative move, current pos: {}".format(pos))
 
             #handle_error()
-            self.events.progress(5, 7)
-            self.events.message("Calibrating Z axis minimum...")
+            self.emit("progress", 5, 7)
+            self.emit("message", "Calibrating Z axis minimum...")
             if corvus.z.enabled:
                 if not ncal(corvus.z):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
 
             #handle_error()
-            self.events.progress(6, 7)
-            self.events.message("Range measure Z axis maximum...")
+            self.emit("progress", 6, 7)
+            self.emit("message", "Range measure Z axis maximum...")
             if corvus.z.enabled:
                 if not nrm(corvus.z):
                     raise RuntimeError("failed to range measure Z axis")
@@ -203,7 +215,7 @@ class CalibrateProcess(comet.Process, DeviceMixin):
             corvus.rmove(0, 0, -1000)
             for i in range(retries):
                 pos = corvus.pos
-                self.events.message("x={}, y={}, z={}".format(*pos))
+                self.emit("message", "x={}, y={}, z={}".format(*pos))
                 if pos == (0, 0, 0):
                     break
                 time.sleep(delay)
@@ -211,53 +223,53 @@ class CalibrateProcess(comet.Process, DeviceMixin):
                 raise RuntimeError("failed to calibrate axes, current pos: {}".format(pos))
 
             #handle_error()
-            self.events.progress(7, 7)
-            self.events.message(None)
+            self.emit("progress", 7, 7)
+            self.emit("message", None)
 
             corvus.joystick = True
 
         self.set("success", True)
 
-class BaseProcess(comet.Process, DeviceMixin):
+class BaseProcess(comet.Process, ResourceMixin):
 
     def safe_initialize_smu1(self, resource):
         resource.query("*IDN?")
         if int(resource.query(":OUTP:STAT?")):
-            self.events.message("Ramping down SMU1...")
+            self.emit("message", "Ramping down SMU1...")
             start_voltage = float(resource.query(":SOUR:VOLT:LEV?"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f":SOUR:VOLT:LEV {voltage:E}")
                 resource.query("*OPC?")
-            self.events.message("Disable output SMU1...")
+            self.emit("message", "Disable output SMU1...")
             resource.write(":OUTP:STAT OFF")
             resource.query("*OPC?")
-        self.events.message("Initialized SMU1.")
+        self.emit("message", "Initialized SMU1.")
 
     def safe_initialize_smu2(self, resource):
         resource.query("*IDN?")
         if int(resource.query("print(smua.source.output)")):
-            self.events.message("Ramping down SMU2...")
+            self.emit("message", "Ramping down SMU2...")
             start_voltage = float(resource.query("print(smua.source.levelv)"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f"smua.source.levelv = {voltage:E}")
                 resource.query("*OPC?")
-            self.events.message("Disable output SMU2...")
+            self.emit("message", "Disable output SMU2...")
             resource.write("smua.source.output = smua.OUTPUT_OFF")
             resource.query("*OPC?")
-        self.events.message("Initialized SMU2.")
+        self.emit("message", "Initialized SMU2.")
 
     def discarge_decoupling(self, resource):
         resource.query("*IDN?")
-        self.events.message("Auto-discharging decoupling box...")
+        self.emit("message", "Auto-discharging decoupling box...")
         delay = float(resource.query("GET:DISCHARGE_TIME ?")) / 1e3
         resource.write("SET:DISCHARGE AUTO")
         time.sleep(delay + .25)
         resource.read()
-        self.events.message("Auto-discharged decoupling box.")
+        self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
         resource.query("*IDN?")
@@ -266,41 +278,41 @@ class BaseProcess(comet.Process, DeviceMixin):
         resource.query("*OPC?")
         channels = resource.query("print(channel.getclose(\"allslots\"))")
         logging.info("matrix channels: %s", channels)
-        # self.events.message("Initialized Matrix.")
+        # self.emit("message", "Initialized Matrix.")
 
     def safe_initialize(self):
         try:
-            with self.devices.get("k2410") as device:
-                self.safe_initialize_smu1(device.resource)
+            with self.resources.get("k2410") as smu1:
+                self.safe_initialize_smu1(smu1)
         except Exception:
             logging.error("unable to connect with SMU1")
             raise RuntimeError("Failed to connect with SMU1")
         try:
-            with self.devices.get("k2657") as device:
-                self.safe_initialize_smu2(device.resource)
+            with self.resources.get("k2657") as smu2:
+                self.safe_initialize_smu2(smu2)
         except Exception:
             logging.warning("unable to connect with SMU2")
         if self.get("use_environ"):
-            with self.devices.get("environ") as device:
-                self.discarge_decoupling(device.resource)
+            with self.resources.get("environ") as environ:
+                self.discarge_decoupling(environ)
         try:
-            with self.devices.get("matrix") as device:
-                self.initialize_matrix(device.resource)
+            with self.resources.get("matrix") as matrix:
+                self.initialize_matrix(matrix)
         except Exception:
             logging.error("unable to connect with Matrix")
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
-        with self.devices.get("k2410") as device:
-            self.safe_initialize_smu1(device.resource)
+        with self.resources.get("k2410") as smu1:
+            self.safe_initialize_smu1(smu1)
         try:
-            with self.devices.get("k2657") as device:
-                self.safe_initialize_smu2(device.resource)
+            with self.resources.get("k2657") as smu2:
+                self.safe_initialize_smu2(smu2)
         except Exception:
             logging.warning("unable to connect with SMU2")
         try:
-            with self.devices.get("matrix") as device:
-                self.initialize_matrix(device.resource)
+            with self.resources.get("matrix") as matrix:
+                self.initialize_matrix(matrix)
         except Exception:
             logging.warning("unable to connect with: Matrix")
 
@@ -309,12 +321,19 @@ class MeasureProcess(BaseProcess):
 
     measurement_item = None
 
+    def __init__(self, message, progress, measurement_state, reading, **kwargs):
+        super().__init__(**kwargs)
+        self.message = message
+        self.progress = progress
+        self.measurement_state = measurement_state
+        self.reading = reading
+
     def initialize(self):
-        self.events.message("Initialize measurement...")
+        self.emit("message", "Initialize measurement...")
         self.safe_initialize()
 
     def process(self):
-        self.events.message("Process measurement...")
+        self.emit("message", "Process measurement...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
@@ -325,39 +344,49 @@ class MeasureProcess(BaseProcess):
         measurement.output_dir = output_dir
         measurement.measurement_item = self.measurement_item
         try:
-            self.events.measurement_state(self.measurement_item, "Active")
+            self.emit("measurement_state", self.measurement_item, "Active")
             measurement.run()
         except Exception:
-            self.events.measurement_state(self.measurement_item, "Failed")
+            self.emit("measurement_state", self.measurement_item, "Failed")
             raise
         else:
-            self.events.measurement_state(self.measurement_item, "Success")
+            self.emit("measurement_state", self.measurement_item, "Success")
 
     def finalize(self):
-        self.events.message("Finalize measurement...")
+        self.emit("message", "Finalize measurement...")
         self.measurement_item = None
         self.safe_finalize()
 
     def run(self):
-        self.events.message("Starting measurement...")
+        self.emit("message", "Starting measurement...")
         try:
             self.initialize()
             self.process()
         finally:
             self.finalize()
-            self.events.message("Measurement done.")
+            self.emit("message", "Measurement done.")
 
 class SequenceProcess(BaseProcess):
     """Sequence process executing a sequence of measurements."""
 
     sequence_tree = []
 
+    def __init__(self, message, progress, continue_contact, continue_measurement,
+                 measurement_state, reading, **kwargs):
+        super().__init__(**kwargs)
+        self.message = message
+        self.progress = progress
+        self.continue_contact = continue_contact
+        self.continue_measurement = continue_measurement
+        self.measurement_state = measurement_state
+        self.reading = reading
+
     def initialize(self):
-        self.events.message("Initialize sequence...")
+        self.emit("message", "Initialize sequence...")
         self.safe_initialize()
 
     def process(self):
-        self.events.message("Process sequence...")
+        self.emit("message", "Process sequence...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
@@ -366,9 +395,9 @@ class SequenceProcess(BaseProcess):
                 break
             if not contact_item.enabled:
                 continue
-            self.events.measurement_state(contact_item, "Active")
+            self.emit("measurement_state", contact_item, "Active")
             self.set("continue_contact", False)
-            self.events.continue_contact(contact_item)
+            self.emit("continue_contact", contact_item)
             while self.running:
                 if self.get("continue_contact", False):
                     break
@@ -381,25 +410,25 @@ class SequenceProcess(BaseProcess):
                 if not self.running:
                     break
                 if not measurement_item.enabled:
-                    self.events.measurement_state(measurement_item, "Skipped")
+                    self.emit("measurement_state", measurement_item, "Skipped")
                     continue
                 autopilot = self.get("autopilot", False)
                 logging.info("Autopilot: %s", ["OFF", "ON"][autopilot])
                 if not autopilot:
                     logging.info("Waiting for %s", measurement_item.name)
-                    self.events.measurement_state(measurement_item, "Waiting")
+                    self.emit("measurement_state", measurement_item, "Waiting")
                     self.set("continue_measurement", False)
-                    self.events.continue_measurement(measurement_item)
+                    self.emit("continue_measurement", measurement_item)
                     while self.running:
                         if self.get("continue_measurement", False):
                             break
                         time.sleep(.100)
                     self.set("continue_measurement", False)
                 if not self.running:
-                    self.events.measurement_state(measurement_item, "Aborted")
+                    self.emit("measurement_state", measurement_item, "Aborted")
                     break
                 logging.info("Run %s", measurement_item.name)
-                self.events.measurement_state(measurement_item, "Active")
+                self.emit("measurement_state", measurement_item, "Active")
                 # TODO
                 measurement = measurement_factory(measurement_item.type, self)
                 measurement.sample_name = sample_name
@@ -411,23 +440,23 @@ class SequenceProcess(BaseProcess):
                 except Exception as e:
                     logging.error(format(e))
                     logging.error("%s failed.", measurement_item.name)
-                    self.events.measurement_state(measurement_item, "Failed")
+                    self.emit("measurement_state", measurement_item, "Failed")
                     ## raise
                 else:
                     logging.info("%s done.", measurement_item.name)
-                    self.events.measurement_state(measurement_item, "Success")
-            self.events.measurement_state(contact_item, None)
+                    self.emit("measurement_state", measurement_item, "Success")
+            self.emit("measurement_state", contact_item, None)
 
     def finalize(self):
-        self.events.message("Finalize sequence...")
+        self.emit("message", "Finalize sequence...")
         self.sequence_tree = []
         self.safe_finalize()
 
     def run(self):
-        self.events.message("Starting sequence...")
+        self.emit("message", "Starting sequence...")
         try:
             self.initialize()
             self.process()
         finally:
             self.finalize()
-            self.events.message("Sequence done.")
+            self.emit("message", "Sequence done.")

@@ -24,8 +24,8 @@ class FrequencyScanPanel(MatrixPanel):
 
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.Select(values=["local", "remote"])
-        self.route_termination = comet.Select(values=["front", "rear"])
+        self.sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.route_termination = comet.ComboBox(items=["front", "rear"])
 
         self.lcr_frequency_start = comet.Number(minimum=0, decimals=3, suffix="Hz")
         self.lcr_frequency_stop = comet.Number(minimum=0, decimals=3, suffix="MHz")
@@ -41,7 +41,7 @@ class FrequencyScanPanel(MatrixPanel):
         self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
         self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
         self.average_count_label = comet.Label(text="Count")
-        self.average_type = comet.Select(values=["repeat", "moving"])
+        self.average_type = comet.ComboBox(items=["repeat", "moving"])
         self.average_type_label = comet.Label(text="Type")
 
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
@@ -71,7 +71,7 @@ class FrequencyScanPanel(MatrixPanel):
         self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
 
         self.status_instruments = comet.Column(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="SMU Status",
                 layout=comet.Column(
                     self.status_smu_model,
@@ -91,20 +91,20 @@ class FrequencyScanPanel(MatrixPanel):
                     )
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
                     self.status_lcr_model,
                 )
             ),
-            comet.Stretch()
+            comet.Spacer()
         )
 
         self.tabs = comet.Tabs(
             comet.Tab(
                 title="General",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="SMU",
                         layout=comet.Column(
                             comet.Label(text="Bias Voltage"),
@@ -113,10 +113,10 @@ class FrequencyScanPanel(MatrixPanel):
                             self.current_compliance,
                             comet.Label(text="Sense Mode"),
                             self.sense_mode,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="LCR",
                         layout=comet.Column(
                             comet.Label(text="AC Frequency Start"),
@@ -127,25 +127,25 @@ class FrequencyScanPanel(MatrixPanel):
                             self.lcr_frequency_steps,
                             comet.Label(text="AC Amplitude"),
                             self.lcr_amplitude,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 2)
                 )
             ),
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls.children[0],
-                    comet.Stretch(),
+                    self.controls[0],
+                    comet.Spacer(),
                     stretch=(0, 1)
                 )
             ),
             comet.Tab(
                 title="SMU",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
                             self.average_enabled,
@@ -153,20 +153,20 @@ class FrequencyScanPanel(MatrixPanel):
                             self.average_count,
                             self.average_type_label,
                             self.average_type,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
                             self.sense_mode,
                             comet.Label(text="Route Termination"),
                             self.route_termination,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 1)
                 )
             )
@@ -179,13 +179,14 @@ class FrequencyScanPanel(MatrixPanel):
         ))
 
     def lock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = False
         self.status_instruments.enabled = True
-        self.tabs.current = 0
+        if len(self.tabs):
+            self.tabs.current = self.tabs[0]
 
     def unlock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = True
 
     def state(self, state):

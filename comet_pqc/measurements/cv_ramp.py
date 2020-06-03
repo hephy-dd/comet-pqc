@@ -5,6 +5,9 @@ import os
 import re
 
 import comet
+from comet.driver.keithley import K2410
+from comet.driver.keithley import K2657A
+from comet.driver.keysight import E4980A
 
 from ..utils import auto_unit
 from ..utils import std_mean_filter
@@ -210,7 +213,7 @@ class CVRampMeasurement(MatrixMeasurement):
         self.lcr_detect_model(lcr)
 
         if self.process.get("use_environ"):
-            with self.devices.get("environ") as env:
+            with self.resources.get("environ") as env:
                 self.env_detect_model(env)
 
         self.process.events.progress(1, 10)
@@ -386,7 +389,7 @@ class CVRampMeasurement(MatrixMeasurement):
 
                 # Environment
                 if self.process.get("use_environ"):
-                    with self.devices.get("environ") as env:
+                    with self.resources.get("environ") as env:
                         pc_data = env.resource.query("GET:PC_DATA ?").split(",")
                     temperature_box = float(pc_data[2])
                     logging.info("temperature box: %s degC", temperature_box)
@@ -450,8 +453,10 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(2, 2)
 
     def code(self, *args, **kwargs):
-        with self.devices.get("k2410") as smu:
-            with self.devices.get("lcr") as lcr:
+        with self.resources.get("k2410") as smu_resource:
+            with self.resources.get("lcr") as lcr_resource:
+                smu = K2410(smu_resource)
+                lcr = E4980A(lcr_resource)
                 try:
                     self.initialize(smu, lcr)
                     self.measure(smu, lcr)

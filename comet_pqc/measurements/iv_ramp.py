@@ -6,6 +6,7 @@ import os
 import re
 
 import comet
+from comet.driver.keithley import K2410
 
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
@@ -65,8 +66,8 @@ class IVRampMeasurement(MatrixMeasurement):
         smu_model = ''.join(result) or None
 
         if self.process.get("use_environ"):
-            with self.devices.get("environ") as env:
-                self.env_detect_model(env)
+            with self.resources.get("environ") as environ:
+                self.env_detect_model(environ)
 
         self.process.events.state(dict(
             smu_model=smu_model,
@@ -265,8 +266,8 @@ class IVRampMeasurement(MatrixMeasurement):
 
                 # Environment
                 if self.process.get("use_environ"):
-                    with self.devices.get("environ") as env:
-                        pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                    with self.resources.get("environ") as environ:
+                        pc_data = environ.query("GET:PC_DATA ?").split(",")
                     temperature_box = float(pc_data[2])
                     logging.info("temperature box: %s degC", temperature_box)
                     temperature_chuck = float(pc_data[33])
@@ -326,9 +327,10 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.events.progress(5, 5)
 
     def code(self, *args, **kwargs):
-        with self.devices.get("k2410") as smu:
+        with self.resources.get("k2410") as resource:
+            smu1 = K2410(resource)
             try:
-                self.initialize(smu)
-                self.measure(smu)
+                self.initialize(smu1)
+                self.measure(smu1)
             finally:
-                self.finalize(smu)
+                self.finalize(smu1)

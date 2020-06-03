@@ -28,8 +28,8 @@ class IVRampElmPanel(MatrixPanel):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.Select(values=["local", "remote"])
-        self.route_termination = comet.Select(values=["front", "rear"])
+        self.sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.route_termination = comet.ComboBox(items=["front", "rear"])
 
         def toggle_smu_filter(enabled):
             self.smu_filter_count.enabled = enabled
@@ -40,7 +40,7 @@ class IVRampElmPanel(MatrixPanel):
         self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
         self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
         self.smu_filter_count_label = comet.Label(text="Count")
-        self.smu_filter_type = comet.Select(values=["repeat", "moving"])
+        self.smu_filter_type = comet.ComboBox(items=["repeat", "moving"])
         self.smu_filter_type_label = comet.Label(text="Type")
 
         def toggle_elm_filter(enabled):
@@ -52,7 +52,7 @@ class IVRampElmPanel(MatrixPanel):
         self.elm_filter_enable = comet.CheckBox(text="Enable", changed=toggle_elm_filter)
         self.elm_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
         self.elm_filter_count_label = comet.Label(text="Count")
-        self.elm_filter_type = comet.Select(values=["repeat", "moving"])
+        self.elm_filter_type = comet.ComboBox(items=["repeat", "moving"])
         self.elm_filter_type_label = comet.Label(text="Type")
 
         self.zero_correction = comet.CheckBox(text="Zero Correction")
@@ -100,7 +100,7 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("status_env_box_humidity", self.status_env_box_humidity, "n/a")
 
         self.status_instruments = comet.Column(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="SMU Status",
                 layout=comet.Column(
                     self.status_smu_model,
@@ -120,7 +120,7 @@ class IVRampElmPanel(MatrixPanel):
                     )
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="Electrometer Status",
                 layout=comet.Column(
                     self.status_elm_model,
@@ -129,12 +129,12 @@ class IVRampElmPanel(MatrixPanel):
                             comet.Label("Current"),
                             self.status_elm_current
                         ),
-                        comet.Stretch(),
+                        comet.Spacer(),
                         stretch=(1, 2)
                     )
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="Environment Status",
                 layout=comet.Column(
                     self.status_env_model,
@@ -154,14 +154,14 @@ class IVRampElmPanel(MatrixPanel):
                     )
                 )
             ),
-            comet.Stretch()
+            comet.Spacer()
         )
 
         self.tabs = comet.Tabs(
             comet.Tab(
                 title="General",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
@@ -172,32 +172,32 @@ class IVRampElmPanel(MatrixPanel):
                             self.voltage_step,
                             comet.Label(text="Waiting Time"),
                             self.waiting_time,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="SMU Compliance",
                         layout=comet.Column(
                             self.current_compliance,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 1)
                 )
             ),
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls.children[0],
-                    comet.Stretch(),
+                    self.controls[0],
+                    comet.Spacer(),
                     stretch=(0, 1)
                 )
             ),
             comet.Tab(
                 title="SMU",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
                             self.smu_filter_enable,
@@ -205,27 +205,27 @@ class IVRampElmPanel(MatrixPanel):
                             self.smu_filter_count,
                             self.smu_filter_type_label,
                             self.smu_filter_type,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
                             self.sense_mode,
                             comet.Label(text="Route Termination"),
                             self.route_termination,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 1)
                 )
             ),
             comet.Tab(
                 title="Electrometer",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
                             self.elm_filter_enable,
@@ -233,19 +233,19 @@ class IVRampElmPanel(MatrixPanel):
                             self.elm_filter_count,
                             self.elm_filter_type_label,
                             self.elm_filter_type,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Options",
                         layout=comet.Column(
                             self.zero_correction,
                             comet.Label(text="Integration Rate"),
                             self.integration_rate,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 1)
                 )
             )
@@ -258,13 +258,14 @@ class IVRampElmPanel(MatrixPanel):
         ))
 
     def lock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = False
         self.status_instruments.enabled = True
-        self.tabs.current = 0
+        if len(self.tabs):
+            self.tabs.current = self.tabs[0]
 
     def unlock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = True
 
     def mount(self, measurement):

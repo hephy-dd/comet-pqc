@@ -27,7 +27,7 @@ class IVRamp4WirePanel(MatrixPanel):
         self.bind("current_step", self.current_step, 0, unit="uA")
 
         self.controls.append(comet.Row(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="SMU",
                 layout=comet.Column(
                     comet.Label(text="Start"),
@@ -38,6 +38,6 @@ class IVRamp4WirePanel(MatrixPanel):
                     self.current_step
                 )
             ),
-            comet.Stretch(),
+            comet.Spacer(),
             stretch=(1, 3)
         ))

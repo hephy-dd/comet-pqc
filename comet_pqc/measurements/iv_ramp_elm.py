@@ -5,6 +5,8 @@ import os
 import re
 
 import comet
+from comet.driver.keithley import K2410
+from comet.driver.keithley import K6517B
 
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
@@ -75,8 +77,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_model = ''.join(result) or None
 
         if self.process.get("use_environ"):
-            with self.devices.get("environ") as env:
-                self.env_detect_model(env)
+            with self.resources.get("environ") as environ:
+                self.env_detect_model(environ)
 
         self.process.events.progress(2, 5)
 
@@ -354,8 +356,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
                     # Environment
                     if self.process.get("use_environ"):
-                        with self.devices.get("environ") as env:
-                            pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                        with self.resources.get("environ") as environ:
+                            pc_data = environ.resource.query("GET:PC_DATA ?").split(",")
                         temperature_box = float(pc_data[2])
                         logging.info("temperature box: %s degC", temperature_box)
                         temperature_chuck = float(pc_data[33])
@@ -434,10 +436,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.events.progress(5, 5)
 
     def code(self, *args, **kwargs):
-        with self.devices.get("k2410") as smu:
-            with self.devices.get("k6517") as elm:
+        with self.resources.get("k2410") as smu1_resource:
+            smu1 = K2410(smu1_resource)
+            with self.resources.get("k6517") as elm_resource:
+                elm = K6517B(elm_resource)
                 try:
-                    self.initialize(smu, elm)
-                    self.measure(smu, elm)
+                    self.initialize(smu1, elm)
+                    self.measure(smu1, elm)
                 finally:
-                    self.finalize(smu, elm)
+                    self.finalize(smu1, elm)

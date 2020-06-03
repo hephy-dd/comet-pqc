@@ -1,7 +1,8 @@
 import logging
 
 import comet
-from comet.device import DeviceMixin
+from comet.resource import ResourceMixin
+from comet.driver.keithley import K707B
 
 from ..logwindow import LogWidget
 from .panel import Panel
@@ -28,7 +29,7 @@ class MatrixChannelsText(comet.Text):
     def value(self, value):
         self.qt.setText(encode_matrix(value or []))
 
-class MatrixPanel(Panel, DeviceMixin):
+class MatrixPanel(Panel, ResourceMixin):
     """Base class for matrix switching panels."""
 
     type = "matrix"
@@ -45,14 +46,14 @@ class MatrixPanel(Panel, DeviceMixin):
         self.matrix_enabled = comet.CheckBox(text="Enable Switching")
         ### self.matrix_enabled.enabled = False
         self.matrix_channels = MatrixChannelsText(
-            tooltip="Matrix card switching channels, comma separated list."
+            tool_tip="Matrix card switching channels, comma separated list."
         )
 
         self.bind("logs", self.log_widget, [])
         self.bind("matrix_enabled", self.matrix_enabled, False)
         self.bind("matrix_channels", self.matrix_channels, [])
 
-        self.controls.append(comet.FieldSet(
+        self.controls.append(comet.GroupBox(
             title="Matrix",
             layout=comet.Column(
                 self.matrix_enabled,
@@ -68,10 +69,8 @@ class MatrixPanel(Panel, DeviceMixin):
         """Load closed matrix channels for slot 1 from instrument."""
         self.enabled = False
         try:
-            with self.devices.get("matrix") as matrix:
-                # Junk fix
-                matrix.resource.write("print()")
-                matrix.resource.read_raw()
+            with self.resources.get("matrix") as matrix_resource:
+                matrix = K707B(matrix_resource)
                 result = matrix.resource.query("print(channel.getclose(\"allslots\"))")
                 logging.info("Loaded matrix channels: %s", result)
                 channels = []

@@ -9,17 +9,16 @@ import comet
 
 __all__ = ['LogWidget']
 
-class LogHandler(QtCore.QObject, logging.Handler):
+class LogHandler(logging.Handler):
 
-    message = QtCore.pyqtSignal(object)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, context=None):
+        super().__init__()
+        self.context = context
 
     def emit(self, record):
-        self.message.emit(record)
+        self.context.emit('message', record)
 
-class LogTreeWidgetItem(QtWidgets.QTreeWidgetItem):
+class LogItem(comet.TreeItem):
 
     TimeColumn = 0
     LevelColumn = 1
@@ -33,81 +32,63 @@ class LogTreeWidgetItem(QtWidgets.QTreeWidgetItem):
     }
 
     def __init__(self, record):
-        super().__init__()
-        self.setFromRecord(record)
+        super().__init__([])
+        self.load_record(record)
 
-    def setFromRecord(self, record):
+    def load_record(self, record):
         self.record = record
-        self.setText(self.TimeColumn, self.formatTime(record.created))
-        self.setText(self.LevelColumn, record.levelname)
-        self.setText(self.MessageColumn, record.getMessage())
-        brush = QtGui.QBrush(QtGui.QColor(self.Colors.get(record.levelno)))
-        self.setForeground(self.TimeColumn, brush)
-        self.setForeground(self.LevelColumn, brush)
-        self.setForeground(self.MessageColumn, brush)
+        self[self.TimeColumn].value = self.format_time(record.created)
+        self[self.LevelColumn].value = record.levelname
+        self[self.MessageColumn].value = record.getMessage()
+        color = self.Colors.get(record.levelno)
+        self[self.TimeColumn].color = color
+        self[self.LevelColumn].color = color
+        self[self.MessageColumn].color = color
 
     @classmethod
-    def formatTime(cls, seconds):
+    def format_time(cls, seconds):
         dt = QtCore.QDateTime.fromMSecsSinceEpoch(seconds * 1000)
         return dt.toString("yyyy-MM-dd hh:mm:ss")
 
-class LogTreeWidget(QtWidgets.QTreeWidget):
+class LogWidget(comet.Tree):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
+        self.header = "Time", "Level", "Message"
+        self.indentation = 0
         self.mutex = threading.RLock()
-        self.handler = LogHandler(self)
-        self.handler.message.connect(self.appendRecord)
-        self.setLevel(logging.INFO)
-        self.setIndentation(0)
-        self.headerItem().setText(0, self.tr("Time"))
-        self.headerItem().setText(1, self.tr("Level"))
-        self.headerItem().setText(2, self.tr("Message"))
-        self.setColumnWidth(0, 128)
-        self.setColumnWidth(1, 64)
+        self.message = self.append_record
+        self.handler = LogHandler(context=self)
+        self.level = logging.INFO
+        self.qt.setColumnWidth(0, 128)
+        self.qt.setColumnWidth(1, 64)
 
-    def setLevel(self, level):
-        self.handler.setLevel(level)
+    @property
+    def level(self):
+        return self.handler.level()
 
-    def addLogger(self, logger):
-        logger.addHandler(self.handler)
-
-    def removeLogger(self, logger):
-        logger.removeHandler(self.handler)
-
-    @QtCore.pyqtSlot(object)
-    def appendRecord(self, record):
-        item = LogTreeWidgetItem(record)
-        with self.mutex:
-            self.addTopLevelItem(item)
-            self.scrollToItem(item)
-
-class LogWidget(comet.Widget):
-
-    QtBaseClass = LogTreeWidget
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def clear(self):
-        self.qt.clear()
-
-    def set_level(self, level):
-        self.qt.setLevel(level)
+    @level.setter
+    def level(self, value):
+        self.handler.setLevel(value)
 
     def add_logger(self, logger):
-        self.qt.addLogger(logger)
+        logger.addHandler(self.handler)
 
     def remove_logger(self, logger):
-        self.qt.removeLogger(logger)
+        logger.removeHandler(self.handler)
+
+    def append_record(self, record):
+        with self.mutex:
+            item = LogItem(record)
+            self.append(item)
+            self.scroll_to(item)
 
     def dump(self):
         records = []
-        for index in range(self.qt.topLevelItemCount()):
-            item = self.qt.topLevelItem(index)
+        for item in self:
             records.append(item.record)
         return records
 
     def load(self, records):
         for record in records:
-            self.qt.appendRecord(record)
+            self.append_record(record)

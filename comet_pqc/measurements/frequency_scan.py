@@ -6,6 +6,8 @@ import os
 import re
 
 import comet
+from comet.driver.keithley import K2410
+from comet.driver.keysight import E4980A
 
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -53,8 +55,10 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.events.progress(1, 1)
 
     def code(self, *args, **kwargs):
-        with self.devices.get("k2410") as smu:
-            with self.devices.get("lcr") as lcr:
+        with self.resources.get("k2410") as smu1_resource:
+            with self.resources.get("lcr") as lcr_resource:
+                smu1 = K2410(smu1_resource)
+                lcr = E4980A(lcr_resource)
                 try:
                     self.initialize(smu, lcr)
                     self.measure(smu, lcr)

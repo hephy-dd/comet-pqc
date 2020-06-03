@@ -69,16 +69,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
     def __init__(self):
         super().__init__()
-        self.chuck_select = comet.Select()
-        self.sample_select = comet.Select()
-        self.sequence_select = comet.Select(changed=self.on_load_sequence_tree)
+        self.chuck_select = comet.ComboBox()
+        self.sample_select = comet.ComboBox()
+        self.sequence_select = comet.ComboBox(changed=self.on_load_sequence_tree)
 
         self.sample_text = comet.Text(
             value=self.settings.get("sample", "Unnamed"),
             changed=self.on_sample_changed
         )
 
-        self.sample_fieldset = comet.FieldSet(
+        self.sample_fieldset = comet.GroupBox(
             title="Sample",
             layout=comet.Row(
                 comet.Column(
@@ -101,13 +101,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
         self.start_button = comet.Button(
             text="Start",
-            tooltip="Start measurement sequence.",
+            tool_tip="Start measurement sequence.",
             clicked=self.on_sequence_start
         )
 
         self.autopilot_button = comet.Button(
             text="Autopilot",
-            tooltip="Run next measurement automatically.",
+            tool_tip="Run next measurement automatically.",
             checkable=True,
             checked=False,
             toggled=self.on_autopilot_toggled
@@ -115,18 +115,18 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
         self.continue_button = comet.Button(
             text="Continue",
-            tooltip="Run next measurement manually.",
+            tool_tip="Run next measurement manually.",
             enabled=False
         )
 
         self.stop_button = comet.Button(
             text="Stop",
-            tooltip="Stop measurement sequence.",
+            tool_tip="Stop measurement sequence.",
             enabled=False,
             clicked=self.on_sequence_stop
         )
 
-        self.sequence_fieldset = comet.FieldSet(
+        self.sequence_fieldset = comet.GroupBox(
             title="Sequence",
             layout=comet.Column(
                 self.sequence_tree,
@@ -141,25 +141,25 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
         self.calibrate_button = comet.Button(
             text="Calibrate",
-            tooltip="Calibrate table.",
+            tool_tip="Calibrate table.",
             clicked=self.on_calibrate_start
         )
 
         self.use_environ_checkbox = comet.CheckBox(
             text="Use Environment Box",
-            tooltip="Enable use of Environment Box controls and data.",
+            tool_tip="Enable use of Environment Box controls and data.",
             changed=self.on_use_environ_changed,
             checked=int(self.settings.get("use_environ", True)) # QSettings workaround
         )
 
-        self.controls_fieldset = comet.FieldSet(
+        self.controls_fieldset = comet.GroupBox(
             title="Controls",
             layout=comet.Column(
                 comet.Row(
                     comet.Button(text="Table", enabled=False, checkable=True, checked=True),
                     comet.Button(text="Joystick", enabled=False, checkable=True, checked=True),
                     comet.Button(text="Light", enabled=False, checkable=True, checked=True),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     self.calibrate_button
                 ),
                 self.use_environ_checkbox
@@ -171,7 +171,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             changed=self.on_output_changed
         )
 
-        self.output_fieldset = comet.FieldSet(
+        self.output_fieldset = comet.GroupBox(
             title="Output",
             layout=comet.Row(
                 self.output_text,
@@ -195,26 +195,26 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
 
         self.measure_restore_button = comet.Button(
             text="Restore Defaults",
-            tooltip="Restore default measurement parameters.",
+            tool_tip="Restore default measurement parameters.",
             clicked=self.on_measure_restore
         )
 
         self.measure_run_button = comet.Button(
             text="Run",
-            tooltip="Run current measurement.",
+            tool_tip="Run current measurement.",
             clicked=self.on_measure_run
         )
 
         self.measure_stop_button = comet.Button(
             text="Stop",
-            tooltip="Stop current measurement.",
+            tool_tip="Stop current measurement.",
             clicked=self.on_measure_stop,
             enabled=False
         )
 
         self.measure_controls = comet.Row(
             self.measure_restore_button,
-            comet.Stretch(),
+            comet.Spacer(),
             self.measure_run_button,
             self.measure_stop_button,
             visible=False
@@ -246,7 +246,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.status_tab = comet.Tab(
             title="Status",
             layout=comet.Column(
-                comet.FieldSet(
+                comet.GroupBox(
                     title="Matrix",
                     layout=comet.Column(
                         comet.Row(
@@ -259,42 +259,42 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
                         )
                     )
                 ),
-                comet.FieldSet(
+                comet.GroupBox(
                     title="SMU1",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.smu1_model_text
                     )
                 ),
-                comet.FieldSet(
+                comet.GroupBox(
                     title="SMU2",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.smu2_model_text
                     )
                 ),
-                comet.FieldSet(
+                comet.GroupBox(
                     title="LCRMeter",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.lcr_model_text
                     )
                 ),
-                comet.FieldSet(
+                comet.GroupBox(
                     title="Electrometer",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.elm_model_text
                     )
                 ),
-                comet.FieldSet(
+                comet.GroupBox(
                     title="Environment Box",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.env_model_text
                     )
                 ),
-                comet.Stretch(),
+                comet.Spacer(),
                 self.reload_status_button
             )
         )
@@ -303,7 +303,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             title="Summary",
             layout=comet.ScrollArea(
                 layout=comet.Column(
-                    comet.Stretch()
+                    comet.Spacer()
                 )
             )
         )
@@ -380,6 +380,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             panel.visible = True
             panel.mount(item)
             self.measure_controls.visible = True
+        # Show measurement tab
+        self.tab_widget.current = self.measurement_tab
 
     def on_sequence_start(self):
         if not comet.show_question(
@@ -406,9 +408,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.use_environ_checkbox.checked)
         sequence.sequence_tree = self.sequence_tree
-        sequence.events.reading = panel.append_reading
-        sequence.events.update = panel.update_readings
-        sequence.events.state = panel.state
+        sequence.reading = panel.append_reading
+        sequence.update = panel.update_readings
+        sequence.state = panel.state
         sequence.start()
 
     def on_autopilot_toggled(self, state):
@@ -546,9 +548,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         measure.set("output_dir", output_dir)
         measure.set("use_environ", self.use_environ_checkbox.checked)
         measure.measurement_item = measurement
-        measure.events.reading = panel.append_reading
-        measure.events.update = panel.update_readings
-        measure.events.state = panel.state
+        measure.reading = panel.append_reading
+        measure.update = panel.update_readings
+        measure.state = panel.state
         # TODO
         measure.start()
 
@@ -570,7 +572,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.output_fieldset.enabled = True
         self.panels.unlock()
         measure = self.processes.get("measure")
-        measure.events.reading = lambda data: None
+        measure.reading = lambda data: None
         self.sequence_tree.unlock()
 
     def on_status_start(self):

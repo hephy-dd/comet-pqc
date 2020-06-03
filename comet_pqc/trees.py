@@ -1,6 +1,6 @@
 import copy
 
-from comet.ui.tree import Tree, TreeItem
+from comet.ui import Tree, TreeItem
 
 class SequenceTree(Tree):
 

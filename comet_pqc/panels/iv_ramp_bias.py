@@ -31,17 +31,17 @@ class IVRampBiasPanel(MatrixPanel):
         self.bind("voltage_step", self.voltage_step, 0, unit="V")
 
         self.controls.append(comet.Row(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="Bias",
                 layout=comet.Column(
                     comet.Label(text="Voltage"),
                     self.bias_voltage,
                     comet.Label(text="Current Compliance"),
                     self.bias_current_compliance,
-                    comet.Stretch()
+                    comet.Spacer()
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="SMU",
                 layout=comet.Column(
                     comet.Label(text="Start"),
@@ -52,6 +52,6 @@ class IVRampBiasPanel(MatrixPanel):
                     self.voltage_step
                 )
             ),
-            comet.Stretch(),
+            comet.Spacer(),
             stretch=(1, 1, 2)
         ))

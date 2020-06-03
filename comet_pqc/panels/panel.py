@@ -28,7 +28,7 @@ class Panel(comet.Widget):
             self.description_label,
             self.data,
             self.controls,
-            comet.Stretch(),
+            comet.Spacer(),
             stretch=(0, 0, 0, 0, 1)
         )
         self.measurement = None
@@ -59,7 +59,7 @@ class Panel(comet.Widget):
                     value = value.to(unit).m
             if isinstance(element, comet.List):
                 setattr(element, "values", value)
-            elif isinstance(element, comet.Select):
+            elif isinstance(element, comet.ComboBox):
                 setattr(element, "current", value)
             elif isinstance(element, comet.CheckBox):
                 setattr(element, "checked", value)
@@ -84,7 +84,7 @@ class Panel(comet.Widget):
                 element, default, unit = item
                 if isinstance(element, comet.List):
                     value = getattr(element, "values")
-                elif isinstance(element, comet.Select):
+                elif isinstance(element, comet.ComboBox):
                     value = getattr(element, "current")
                 elif isinstance(element, comet.CheckBox):
                     value = getattr(element, "checked")
@@ -110,7 +110,7 @@ class Panel(comet.Widget):
                         value = value.to(unit).m
                 if isinstance(element, comet.List):
                     setattr(element, "values", value)
-                elif isinstance(element, comet.Select):
+                elif isinstance(element, comet.ComboBox):
                     setattr(element, "current", value)
                 elif isinstance(element, comet.CheckBox):
                     setattr(element, "checked", value)

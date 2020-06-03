@@ -33,12 +33,12 @@ class CVRampPanel(MatrixPanel):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.Select(values=["local", "remote"])
-        self.route_termination = comet.Select(values=["front", "rear"])
+        self.sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.route_termination = comet.ComboBox(items=["front", "rear"])
 
         self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
-        self.lcr_integration_time = comet.Select(values=["short", "medium", "long"])
+        self.lcr_integration_time = comet.ComboBox(items=["short", "medium", "long"])
         self.lcr_averaging_rate = comet.Number(minimum=1, maximum=256, decimals=0)
         self.lcr_auto_level_control = comet.CheckBox(text="Auto Level Control")
         self.lcr_soft_filter = comet.CheckBox(text="Filter STD/mean < 0.005")
@@ -52,7 +52,7 @@ class CVRampPanel(MatrixPanel):
         self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
         self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
         self.smu_filter_count_label = comet.Label(text="Count")
-        self.smu_filter_type = comet.Select(values=["repeat", "moving"])
+        self.smu_filter_type = comet.ComboBox(items=["repeat", "moving"])
         self.smu_filter_type_label = comet.Label(text="Type")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
@@ -96,7 +96,7 @@ class CVRampPanel(MatrixPanel):
         self.bind("status_env_box_humidity", self.status_env_box_humidity, "n/a")
 
         self.status_instruments = comet.Column(
-            comet.FieldSet(
+            comet.GroupBox(
                 title="SMU Status",
                 layout=comet.Column(
                     self.status_smu_model,
@@ -116,13 +116,13 @@ class CVRampPanel(MatrixPanel):
                     )
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
                     self.status_lcr_model,
                 )
             ),
-            comet.FieldSet(
+            comet.GroupBox(
                 title="Environment Status",
                 layout=comet.Column(
                     self.status_env_model,
@@ -142,14 +142,14 @@ class CVRampPanel(MatrixPanel):
                     )
                 )
             ),
-            comet.Stretch()
+            comet.Spacer()
         )
 
         self.tabs = comet.Tabs(
             comet.Tab(
                 title="General",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="SMU Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
@@ -160,17 +160,17 @@ class CVRampPanel(MatrixPanel):
                             self.voltage_step,
                             comet.Label(text="Waiting Time"),
                             self.waiting_time,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="SMU Compliance",
                         layout=comet.Column(
                             self.current_compliance,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="LCR",
                         layout=comet.Column(
                             comet.Label(text="AC Frequency"),
@@ -183,7 +183,7 @@ class CVRampPanel(MatrixPanel):
                             self.lcr_averaging_rate,
                             self.lcr_auto_level_control,
                             self.lcr_soft_filter,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
                     stretch=(1, 1, 1)
@@ -192,15 +192,15 @@ class CVRampPanel(MatrixPanel):
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls.children[0],
-                    comet.Stretch(),
+                    self.controls[0],
+                    comet.Spacer(),
                     stretch=(0, 1)
                 )
             ),
             comet.Tab(
                 title="SMU",
                 layout=comet.Row(
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
                             self.smu_filter_enable,
@@ -208,20 +208,20 @@ class CVRampPanel(MatrixPanel):
                             self.smu_filter_count,
                             self.smu_filter_type_label,
                             self.smu_filter_type,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.FieldSet(
+                    comet.GroupBox(
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
                             self.sense_mode,
                             comet.Label(text="Route Termination"),
                             self.route_termination,
-                            comet.Stretch()
+                            comet.Spacer()
                         )
                     ),
-                    comet.Stretch(),
+                    comet.Spacer(),
                     stretch=(1, 1, 1)
                 )
             )
@@ -234,13 +234,14 @@ class CVRampPanel(MatrixPanel):
         ))
 
     def lock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = False
         self.status_instruments.enabled = True
-        self.tabs.current = 0
+        if len(self.tabs):
+            self.tabs.current = self.tabs[0]
 
     def unlock(self):
-        for tab in self.tabs.children:
+        for tab in self.tabs:
             tab.enabled = True
 
     def mount(self, measurement):
