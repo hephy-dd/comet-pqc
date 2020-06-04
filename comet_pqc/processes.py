@@ -10,6 +10,7 @@ from comet.driver.corvus import Venus1
 
 from .utils import auto_unit
 from .measurements import measurement_factory
+from.driver import EnvironmentBox
 
 class StatusProcess(comet.Process, ResourceMixin):
     """Reload instruments status."""
@@ -71,24 +72,15 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("message", "Read Environment Box...")
         self.emit("progress", 5, 6)
         try:
-            with self.resources.get("environ") as environ:
-                env_model = environ.query("*IDN?")
-                pc_data = environ.query("GET:PC_DATA ?").split(",")
-            env_box_temperature = auto_unit(float(pc_data[2]), "degC", decimals=1)
-            env_box_humidity = auto_unit(float(pc_data[1]), "%rH", decimals=1)
-            env_chuck_temperature = auto_unit(float(pc_data[34]), "degC", decimals=1)
-            env_lux = auto_unit(float(pc_data[32]), "lux", decimals=1)
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                env_model = environ.identification
+                env_pc_data = environ.pc_data
         except (ResourceError, OSError):
             env_model = ""
-            env_box_temperature = ""
-            env_box_humidity = ""
-            env_chuck_temperature = ""
-            env_lux = ""
+            env_pc_data = None
         self.set("env_model", env_model)
-        self.set("env_box_temperature", env_box_temperature)
-        self.set("env_box_humidity", env_box_humidity)
-        self.set("env_chuck_temperature", env_chuck_temperature)
-        self.set("env_lux", env_lux)
+        self.set("env_pc_data", env_pc_data)
 
         self.emit("message", "")
         self.emit("progress", 6, 6)
@@ -276,13 +268,10 @@ class BaseProcess(comet.Process, ResourceMixin):
             resource.query("*OPC?")
         self.emit("message", "Initialized SMU2.")
 
-    def discarge_decoupling(self, resource):
-        resource.query("*IDN?")
+    def discarge_decoupling(self, device):
+        device.identification
         self.emit("message", "Auto-discharging decoupling box...")
-        delay = float(resource.query("GET:DISCHARGE_TIME ?")) / 1e3
-        resource.write("SET:DISCHARGE AUTO")
-        time.sleep(delay + .25)
-        resource.read()
+        device.discharge()
         self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
@@ -307,7 +296,8 @@ class BaseProcess(comet.Process, ResourceMixin):
         except Exception:
             logging.warning("unable to connect with SMU2")
         if self.get("use_environ"):
-            with self.resources.get("environ") as environ:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
                 self.discarge_decoupling(environ)
         try:
             with self.resources.get("matrix") as matrix:

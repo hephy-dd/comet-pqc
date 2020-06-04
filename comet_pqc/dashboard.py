@@ -161,12 +161,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_box_light_clicked
         )
 
-        self.mic_light_button = comet.Button(
+        self.microscope_light_button = comet.Button(
             text="Mic Light",
             enabled=self.use_environ_checkbox.checked,
             checkable=True,
             checked=False,
-            toggled=self.on_mic_light_toggled
+            toggled=self.on_microscope_light_toggled
         )
 
         self.probe_light_button = comet.Button(
@@ -183,7 +183,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.use_environ_checkbox,
                 comet.Row(
                     self.box_light_button,
-                    self.mic_light_button,
+                    self.microscope_light_button,
                     self.probe_light_button,
                     comet.Spacer(),
                     self.calibrate_button
@@ -270,6 +270,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_box_humidity_text = comet.Text(readonly=True)
         self.env_chuck_temperature_text = comet.Text(readonly=True)
         self.env_lux_text = comet.Text(readonly=True)
+        self.env_light_text = comet.Text(readonly=True)
+        self.env_door_text = comet.Text(readonly=True)
         self.reload_status_button = comet.Button("&Reload", clicked=self.on_status_start)
 
         self.status_tab = comet.Tab(
@@ -348,6 +350,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                         comet.Row(
                             comet.Label("Box Lux:"),
                             self.env_lux_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Box Light State:"),
+                            self.env_light_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Box Door State:"),
+                            self.env_door_text,
                             stretch=(1, 7)
                         ),
                     )
@@ -552,32 +564,28 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_use_environ_changed(self, state):
         self.settings["use_environ"] = state
         self.box_light_button.enabled = state
-        self.mic_light_button.enabled = state
+        self.microscope_light_button.enabled = state
         self.probe_light_button.enabled = state
 
     def on_box_light_clicked(self):
         # TODO run in thread
         self.enabled = False
         state = self.box_light_button.checked
-        value = {True: "ON", False: "OFF"}[state]
         try:
-            with self.resources.get("environ") as environ:
-                result = environ.query(f"SET:BOX_LIGHT {value}")
-            if result == "90":
-                raise RuntimeError("Failed to set box light.")
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.box_light = state
         except Exception as exc:
             comet.show_exception(exc)
         self.enabled = True
 
-    def on_mic_light_toggled(self, state):
+    def on_microscope_light_toggled(self, state):
         # TODO run in thread
         self.enabled = False
-        value = {True: "ON", False: "OFF"}[state]
         try:
-            with self.resources.get("environ") as environ:
-                result = environ.query(f"SET:MICROSCOPE_LIGHT {value}")
-            if result == "90":
-                raise RuntimeError("Failed to set microscope light.")
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.microscope_light = state
         except Exception as exc:
             comet.show_exception(exc)
         self.enabled = True
@@ -585,12 +593,10 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_probe_light_toggled(self, state):
         # TODO run in thread
         self.enabled = False
-        value = {True: "ON", False: "OFF"}[state]
         try:
-            with self.resources.get("environ") as environ:
-                result = environ.query(f"SET:PROBCARD_LIGHT {value}")
-            if result == "90":
-                raise RuntimeError("Failed to set probe card light.")
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.probecard_light = state
         except Exception as exc:
             comet.show_exception(exc)
         self.enabled = True
@@ -686,6 +692,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_box_humidity_text.value = ""
         self.env_chuck_temperature_text.value = ""
         self.env_lux_text.value = ""
+        self.env_light_text.value = ""
+        self.env_door_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
         status.start()
@@ -701,10 +709,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
         self.env_model_text.value = status.get("env_model") or "n/a"
-        self.env_box_temperature_text.value = status.get("env_box_temperature") or "n/a"
-        self.env_box_humidity_text.value = status.get("env_box_humidity") or "n/a"
-        self.env_chuck_temperature_text.value = status.get("env_chuck_temperature") or "n/a"
-        self.env_lux_text.value = status.get("env_lux") or "n/a"
+        pc_data = status.get("env_pc_data")
+        if pc_data:
+            self.env_box_temperature_text.value = f"{pc_data.box_temperature:.1f} °C"
+            self.env_box_humidity_text.value = f"{pc_data.box_humidity:.1f} %rH"
+            self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
+            self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
+            self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
+            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
 
     # Menu action callbacks
 

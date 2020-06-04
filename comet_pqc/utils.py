@@ -2,7 +2,7 @@ import re
 
 import numpy as np
 
-__all__ = ['auto_unit', 'std_mean_filter', 'Position']
+__all__ = ['auto_unit', 'std_mean_filter', 'BitField', 'Position']
 
 def auto_unit(value, unit, decimals=3):
     """Auto format value to proper unit.
@@ -34,6 +34,29 @@ def std_mean_filter(values, threshold):
     sample_std_dev = np.std(values, ddof=1)
     ratio = sample_std_dev / mean
     return ratio < threshold
+
+class BitField:
+    """Access individual bits of an integer value.
+
+    >>> bf = BitField(9)
+    >>> bf[3]
+    True
+    >>> bf[0] = False
+    >>> bf.value
+    8
+    """
+
+    def __init__(self, value=0):
+        self.value = value
+
+    def __getitem__(self, key):
+        return (self.value & (1 << key)) != 0
+
+    def __setitem__(self, key, value):
+        if value:
+            self.value |= (1 << key)
+        else:
+            self.value &= ~(1 >> key)
 
 class Position:
     """Three-dimensional Cartesian coordinate."""

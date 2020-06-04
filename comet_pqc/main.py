@@ -29,24 +29,31 @@ def main():
     app.title = f"PQC {__version__}"
     app.about = f"COMET application for PQC measurements, version {__version__}."
 
+    logging.getLogger().setLevel(logging.INFO)
     logging.info("PQC version %s", __version__)
 
     # Register devices
 
     app.resources.add("matrix", comet.Resource(
-        resource_name="TCPIP::10.0.0.2::23::SOCKET",
+        resource_name="TCPIP::10.0.0.2::5025::SOCKET",
         encoding='latin1',
+        read_termination="\n",
+        write_termination="\n"
+    ))
+    app.resources.add("smu1", comet.Resource(
+        resource_name="TCPIP::10.0.0.5::10002::SOCKET",
         read_termination="\r\n",
-        write_termination="\r\n"
+        write_termination="\r\n",
+        timeout=4000
     ))
     app.resources.add("smu2", comet.Resource(
-        resource_name="TCPIP::10.0.0.3::23::SOCKET",
+        resource_name="TCPIP::10.0.0.3::5025::SOCKET",
         encoding='latin1',
-        read_termination="\r\n",
-        write_termination="\r\n"
+        read_termination="\n",
+        write_termination="\n"
     ))
     app.resources.add("lcr", comet.Resource(
-        resource_name="TCPIP::10.0.0.6::5025::SOCKET",
+        resource_name="TCPIP::10.0.0.4::5025::SOCKET",
         read_termination="\n",
         write_termination="\n",
         timeout=8000
@@ -56,12 +63,6 @@ def main():
         read_termination="\r\n",
         write_termination="\r\n",
         timeout=8000
-    ))
-    app.resources.add("smu1", comet.Resource(
-        resource_name="TCPIP::10.0.0.5::10002::SOCKET",
-        read_termination="\r\n",
-        write_termination="\r\n",
-        timeout=4000
     ))
     app.resources.add("corvus", comet.Resource(
         resource_name="TCPIP::10.0.0.6::23::SOCKET",
