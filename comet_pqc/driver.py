@@ -75,7 +75,7 @@ class EnvironmentBox(Driver):
         >>> device.identification
         'ENV Box V1.1'
         """
-        return self.resource.query("*IDN?")
+        return self.resource.query('*IDN?')
 
     @Property(values=[False, True])
     def test_led(self):
@@ -85,12 +85,14 @@ class EnvironmentBox(Driver):
         >>> device.test_led
         True
         """
-        return bool(int(self.resource.query("GET:TEST_LED ?")))
+        return bool(int(self.resource.query('GET:TEST_LED ?')))
 
     @test_led.setter
     def test_led(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:TEST_LED {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:TEST_LED {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Action()
     def discharge(self):
@@ -99,9 +101,11 @@ class EnvironmentBox(Driver):
         >>> device.discarge()
         """
         discarge_time = self.discarge_time
-        self.resource.write("SET:DISCHARGE AUTO")
+        self.resource.write('SET:DISCHARGE AUTO')
         time.sleep(discarge_time)
-        self.resource.read()
+        result = self.resource.read()
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(minimum=0.0, maximum=9.999)
     def discharge_time(self):
@@ -111,12 +115,14 @@ class EnvironmentBox(Driver):
         >>> device.discarge_time
         60.0
         """
-        return float(self.resource.query("GET:DISCHARGE_TIME ?")) / 1e3 # from milliseconds
+        return float(self.resource.query('GET:DISCHARGE_TIME ?')) / 1e3 # from milliseconds
 
     @discharge_time.setter
     def discharge_time(self, value):
         millisec = int(value * 1e3) # to milliseconds
-        self.resource.query(f"SET:DISCHARGE_TIME {millisec:d}")
+        result = self.resource.query(f'SET:DISCHARGE_TIME {millisec:d}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(values=[False, True])
     def pid_control(self):
@@ -126,12 +132,14 @@ class EnvironmentBox(Driver):
         >>> device.pid_control
         True
         """
-        return bool(int(self.resource.query("GET:CTRL ?")))
+        return bool(int(self.resource.query('GET:CTRL ?')))
 
     @pid_control.setter
     def pid_control(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:CTRL {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:CTRL {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(values=['HUM', 'DEW'])
     def pid_mode(self):
@@ -145,7 +153,9 @@ class EnvironmentBox(Driver):
 
     @pid_mode.setter
     def pid_mode(self, value):
-        self.resource.query(f"SET:CTRL_MODE {value:s}")
+        result = self.resource.query(f'SET:CTRL_MODE {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(values=[False, True])
     def microscope_control(self):
@@ -159,8 +169,10 @@ class EnvironmentBox(Driver):
 
     @microscope_control.setter
     def microscope_control(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:MICROSCOPE_CTRL {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:MICROSCOPE_CTRL {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(values=[False, True])
     def microscope_light(self):
@@ -175,7 +187,9 @@ class EnvironmentBox(Driver):
     @microscope_light.setter
     def microscope_light(self, value):
         value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:MICROSCOPE_LIGHT {value:s}")
+        result = self.resource.query(f"SET:MICROSCOPE_LIGHT {value:s}")
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property(values=[False, True])
     def microscope_camera(self):
@@ -189,8 +203,10 @@ class EnvironmentBox(Driver):
 
     @microscope_camera.setter
     def microscope_camera(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:MICROSCOPE_CAM {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:MICROSCOPE_CAM {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property()
     def probecard_light(self):
@@ -204,8 +220,10 @@ class EnvironmentBox(Driver):
 
     @probecard_light.setter
     def probecard_light(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:PROBCARD_LIGHT {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:PROBCARD_LIGHT {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property()
     def probecard_camera(self):
@@ -219,8 +237,10 @@ class EnvironmentBox(Driver):
 
     @probecard_camera.setter
     def probecard_camera(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:PROBCARD_CAM {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:PROBCARD_CAM {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @property
     def box_light(self):
@@ -234,17 +254,19 @@ class EnvironmentBox(Driver):
 
     @box_light.setter
     def box_light(self, value):
-        value = {False: "OFF", True: "ON"}[value]
-        self.resource.query(f"SET:BOX_LIGHT {value:s}")
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:BOX_LIGHT {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
 
     @Property()
     def uptime(self):
         """CPU uptime in seconds.
 
         >>> device.uptime
-        54373.0
+        54373
         """
-        dd, hh, mm, ss = self.resource.query("GET:UPTIME ?").split(",")
+        dd, hh, mm, ss = self.resource.query('GET:UPTIME ?').split(',')
         dt = datetime.timedelta(
             days=int(dd),
             hours=int(hh),
@@ -260,7 +282,7 @@ class EnvironmentBox(Driver):
         >>> device.log
         []
         """
-        return self.resource.query("GET:LOG ?")
+        return self.resource.query('GET:LOG ?')
 
     @Property()
     def version(self):
@@ -269,7 +291,7 @@ class EnvironmentBox(Driver):
         >>> device.version
         '1.1'
         """
-        return self.resource.query("GET:VERSION ?")
+        return self.resource.query('GET:VERSION ?')
 
     @Property()
     def pc_data(self):
@@ -278,5 +300,5 @@ class EnvironmentBox(Driver):
         >>> device.pc_data.box_temperature
         23.5
         """
-        pc_data = self.resource.query("GET:PC_DATA ?").split(",")
+        pc_data = self.resource.query('GET:PC_DATA ?').split(',')
         return PCData(pc_data)
