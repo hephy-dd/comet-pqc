@@ -8,6 +8,7 @@ import comet
 from comet.resource import ResourceMixin, ResourceError
 from comet.driver.corvus import Venus1
 
+from .utils import auto_unit
 from .measurements import measurement_factory
 
 class StatusProcess(comet.Process, ResourceMixin):
@@ -72,9 +73,19 @@ class StatusProcess(comet.Process, ResourceMixin):
         try:
             with self.resources.get("environ") as environ:
                 env_model = environ.query("*IDN?")
+                pc_data = environ.query("GET:PC_DATA ?").split(",")
+            env_box_temperature = auto_unit(float(pc_data[2]), "degC", decimals=1)
+            env_box_humidity = auto_unit(float(pc_data[1]), "%rH", decimals=1)
+            env_chuck_temperature = auto_unit(float(pc_data[34]), "degC", decimals=1)
         except (ResourceError, OSError):
             env_model = ""
+            env_box_temperature = ""
+            env_box_humidity = ""
+            env_chuck_temperature = ""
         self.set("env_model", env_model)
+        self.set("env_box_temperature", env_box_temperature)
+        self.set("env_box_humidity", env_box_humidity)
+        self.set("env_chuck_temperature", env_chuck_temperature)
 
         self.emit("message", "")
         self.emit("progress", 6, 6)

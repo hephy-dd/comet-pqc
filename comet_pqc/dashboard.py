@@ -6,6 +6,7 @@ import comet
 
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
+from comet.resource import ResourceMixin
 
 from . import config
 
@@ -65,7 +66,7 @@ class PanelStack(comet.Row):
                 return child
         return None
 
-class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
+class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def __init__(self):
         super().__init__()
@@ -140,7 +141,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         )
 
         self.calibrate_button = comet.Button(
-            text="Calibrate",
+            text="Calibrate Table",
             tool_tip="Calibrate table.",
             clicked=self.on_calibrate_start
         )
@@ -149,20 +150,44 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
             text="Use Environment Box",
             tool_tip="Enable use of Environment Box controls and data.",
             changed=self.on_use_environ_changed,
-            checked=int(self.settings.get("use_environ", True)) # QSettings workaround
+            checked=self.settings.get("use_environ", True)
+        )
+
+        self.box_light_button = comet.Button(
+            text="Box Light",
+            enabled=self.use_environ_checkbox.checked,
+            checkable=True,
+            checked=False,
+            clicked=self.on_box_light_clicked
+        )
+
+        self.mic_light_button = comet.Button(
+            text="Mic Light",
+            enabled=self.use_environ_checkbox.checked,
+            checkable=True,
+            checked=False,
+            toggled=self.on_mic_light_toggled
+        )
+
+        self.probe_light_button = comet.Button(
+            text="Probe Light",
+            enabled=self.use_environ_checkbox.checked,
+            checkable=True,
+            checked=False,
+            toggled=self.on_probe_light_toggled
         )
 
         self.controls_fieldset = comet.GroupBox(
             title="Controls",
             layout=comet.Column(
+                self.use_environ_checkbox,
                 comet.Row(
-                    comet.Button(text="Table", enabled=False, checkable=True, checked=True),
-                    comet.Button(text="Joystick", enabled=False, checkable=True, checked=True),
-                    comet.Button(text="Light", enabled=False, checkable=True, checked=True),
+                    self.box_light_button,
+                    self.mic_light_button,
+                    self.probe_light_button,
                     comet.Spacer(),
                     self.calibrate_button
-                ),
-                self.use_environ_checkbox
+                )
             )
         )
 
@@ -241,6 +266,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.lcr_model_text = comet.Text(readonly=True)
         self.elm_model_text = comet.Text(readonly=True)
         self.env_model_text = comet.Text(readonly=True)
+        self.env_box_temperature_text = comet.Text(readonly=True)
+        self.env_box_humidity_text = comet.Text(readonly=True)
+        self.env_chuck_temperature_text = comet.Text(readonly=True)
         self.reload_status_button = comet.Button("&Reload", clicked=self.on_status_start)
 
         self.status_tab = comet.Tab(
@@ -251,11 +279,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
                     layout=comet.Column(
                         comet.Row(
                             comet.Label("Model:"),
-                            self.matrix_model_text
+                            self.matrix_model_text,
+                            stretch=(1, 7)
                         ),
                         comet.Row(
                             comet.Label("Closed channels:"),
-                            self.matrix_channels_text
+                            self.matrix_channels_text,
+                            stretch=(1, 7)
                         )
                     )
                 ),
@@ -263,35 +293,57 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
                     title="SMU1",
                     layout=comet.Row(
                         comet.Label("Model:"),
-                        self.smu1_model_text
+                        self.smu1_model_text,
+                        stretch=(1, 7)
                     )
                 ),
                 comet.GroupBox(
                     title="SMU2",
                     layout=comet.Row(
                         comet.Label("Model:"),
-                        self.smu2_model_text
+                        self.smu2_model_text,
+                        stretch=(1, 7)
                     )
                 ),
                 comet.GroupBox(
                     title="LCRMeter",
                     layout=comet.Row(
                         comet.Label("Model:"),
-                        self.lcr_model_text
+                        self.lcr_model_text,
+                        stretch=(1, 7)
                     )
                 ),
                 comet.GroupBox(
                     title="Electrometer",
                     layout=comet.Row(
                         comet.Label("Model:"),
-                        self.elm_model_text
+                        self.elm_model_text,
+                        stretch=(1, 7)
                     )
                 ),
                 comet.GroupBox(
                     title="Environment Box",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
-                        self.env_model_text
+                    layout=comet.Column(
+                        comet.Row(
+                            comet.Label("Model:"),
+                            self.env_model_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Box Temperat.:"),
+                            self.env_box_temperature_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Box Humidity:"),
+                            self.env_box_humidity_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Chuck Temperat.:"),
+                            self.env_chuck_temperature_text,
+                            stretch=(1, 7)
+                        ),
                     )
                 ),
                 comet.Spacer(),
@@ -491,8 +543,51 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.stop_button.enabled = False
         self.enabled = True
 
-    def on_use_environ_changed(self, value):
-        self.settings["use_environ"] = int(value) # QSettings workaround
+    def on_use_environ_changed(self, state):
+        self.settings["use_environ"] = state
+        self.box_light_button.enabled = state
+        self.mic_light_button.enabled = state
+        self.probe_light_button.enabled = state
+
+    def on_box_light_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.box_light_button.checked
+        value = {True: "ON", False: "OFF"}[state]
+        try:
+            with self.resources.get("environ") as environ:
+                result = environ.query(f"SET:BOX_LIGHT {value}")
+            if result == "90":
+                raise RuntimeError("Failed to set box light.")
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def on_mic_light_toggled(self, state):
+        # TODO run in thread
+        self.enabled = False
+        value = {True: "ON", False: "OFF"}[state]
+        try:
+            with self.resources.get("environ") as environ:
+                result = environ.query(f"SET:MICROSCOPE_LIGHT {value}")
+            if result == "90":
+                raise RuntimeError("Failed to set microscope light.")
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def on_probe_light_toggled(self, state):
+        # TODO run in thread
+        self.enabled = False
+        value = {True: "ON", False: "OFF"}[state]
+        try:
+            with self.resources.get("environ") as environ:
+                result = environ.query(f"SET:PROBCARD_LIGHT {value}")
+            if result == "90":
+                raise RuntimeError("Failed to set probe card light.")
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
 
     def on_output_changed(self, value):
         self.settings["output_path"] = value
@@ -581,6 +676,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.lcr_model_text.value = ""
         self.elm_model_text.value = ""
         self.env_model_text.value = ""
+        self.env_box_temperature_text.value = ""
+        self.env_box_humidity_text.value = ""
+        self.env_chuck_temperature_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
         status.start()
@@ -596,6 +694,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin):
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
         self.env_model_text.value = status.get("env_model") or "n/a"
+        self.env_box_temperature_text.value = status.get("env_box_temperature") or "n/a"
+        self.env_box_humidity_text.value = status.get("env_box_humidity") or "n/a"
+        self.env_chuck_temperature_text.value = status.get("env_chuck_temperature") or "n/a"
 
     # Menu action callbacks
 
