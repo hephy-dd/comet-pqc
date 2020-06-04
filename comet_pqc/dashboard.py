@@ -22,6 +22,8 @@ from .panels import CVRampPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
+from .driver import EnvironmentBox
+
 class PanelStack(comet.Row):
     """Stack of measurement panels."""
 

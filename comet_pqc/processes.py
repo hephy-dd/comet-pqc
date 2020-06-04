@@ -10,7 +10,7 @@ from comet.driver.corvus import Venus1
 
 from .utils import auto_unit
 from .measurements import measurement_factory
-from.driver import EnvironmentBox
+from .driver import EnvironmentBox
 
 class StatusProcess(comet.Process, ResourceMixin):
     """Reload instruments status."""

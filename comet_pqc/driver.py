@@ -14,6 +14,19 @@ class EnvironmentBox(Driver):
     class PCData:
         """Environment box status snapshot."""
 
+        class PowerRelayStates:
+            """State of power relays."""
+
+            def __init__(self, value):
+                value = BitField(value)
+                self.microscope_control = value[0]
+                self.box_light = value[1]
+                self.probecard_light = value[2]
+                self.laser_sensor = value[3]
+                self.probecard_camera = value[4]
+                self.microscope_camera = value[5]
+                self.microscope_light = value[6]
+
         def __init__(self, data):
             self.n_sensors = int(data[0])
             self.box_humidity = float(data[1])
@@ -38,7 +51,7 @@ class EnvironmentBox(Driver):
             self.pid_threshold = float(data[20])
             self.current = float(data[21]) * 1e3 # mA to A
             self.value_on = int(data[22])
-            self.relay_states = PowerRelayStates(int(data[23]))
+            self.relay_states = self.PowerRelayStates(int(data[23]))
             self.box_light_state = bool(int(data[24]))
             self.box_door_state = bool(int(data[25]))
             self.safety_alert = int(data[26])
@@ -54,19 +67,6 @@ class EnvironmentBox(Driver):
             self.pid_pon_state = int(data[36])
             self.chuck_temperature_state = int(data[37])
             self.chuck_block_temperature_state = int(data[38])
-
-    class PowerRelayStates:
-        """State of power relays."""
-
-        def __init__(self, value):
-            value = BitField(value)
-            self.microscope_control = value[0]
-            self.box_light = value[1]
-            self.probecard_light = value[2]
-            self.laser_sensor = value[3]
-            self.probecard_camera = value[4]
-            self.microscope_camera = value[5]
-            self.microscope_light = value[6]
 
     @Property()
     def identification(self):
@@ -100,7 +100,7 @@ class EnvironmentBox(Driver):
 
         >>> device.discarge()
         """
-        discarge_time = self.discarge_time
+        discarge_time = self.discharge_time
         self.resource.write('SET:DISCHARGE AUTO')
         time.sleep(discarge_time)
         result = self.resource.read()
@@ -301,4 +301,4 @@ class EnvironmentBox(Driver):
         23.5
         """
         pc_data = self.resource.query('GET:PC_DATA ?').split(',')
-        return PCData(pc_data)
+        return self.PCData(pc_data)
