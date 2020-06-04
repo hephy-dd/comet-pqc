@@ -77,15 +77,18 @@ class StatusProcess(comet.Process, ResourceMixin):
             env_box_temperature = auto_unit(float(pc_data[2]), "degC", decimals=1)
             env_box_humidity = auto_unit(float(pc_data[1]), "%rH", decimals=1)
             env_chuck_temperature = auto_unit(float(pc_data[34]), "degC", decimals=1)
+            env_lux = auto_unit(float(pc_data[32]), "lux", decimals=1)
         except (ResourceError, OSError):
             env_model = ""
             env_box_temperature = ""
             env_box_humidity = ""
             env_chuck_temperature = ""
+            env_lux = ""
         self.set("env_model", env_model)
         self.set("env_box_temperature", env_box_temperature)
         self.set("env_box_humidity", env_box_humidity)
         self.set("env_chuck_temperature", env_chuck_temperature)
+        self.set("env_lux", env_lux)
 
         self.emit("message", "")
         self.emit("progress", 6, 6)

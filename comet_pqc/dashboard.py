@@ -269,6 +269,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_box_temperature_text = comet.Text(readonly=True)
         self.env_box_humidity_text = comet.Text(readonly=True)
         self.env_chuck_temperature_text = comet.Text(readonly=True)
+        self.env_lux_text = comet.Text(readonly=True)
         self.reload_status_button = comet.Button("&Reload", clicked=self.on_status_start)
 
         self.status_tab = comet.Tab(
@@ -342,6 +343,11 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                         comet.Row(
                             comet.Label("Chuck Temperat.:"),
                             self.env_chuck_temperature_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("Box Lux:"),
+                            self.env_lux_text,
                             stretch=(1, 7)
                         ),
                     )
@@ -679,6 +685,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_box_temperature_text.value = ""
         self.env_box_humidity_text.value = ""
         self.env_chuck_temperature_text.value = ""
+        self.env_lux_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
         status.start()
@@ -697,6 +704,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_box_temperature_text.value = status.get("env_box_temperature") or "n/a"
         self.env_box_humidity_text.value = status.get("env_box_humidity") or "n/a"
         self.env_chuck_temperature_text.value = status.get("env_chuck_temperature") or "n/a"
+        self.env_lux_text.value = status.get("env_lux") or "n/a"
 
     # Menu action callbacks
 
