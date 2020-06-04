@@ -390,7 +390,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 # Environment
                 if self.process.get("use_environ"):
                     with self.resources.get("environ") as env:
-                        pc_data = env.resource.query("GET:PC_DATA ?").split(",")
+                        pc_data = env.query("GET:PC_DATA ?").split(",")
                     temperature_box = float(pc_data[2])
                     logging.info("temperature box: %s degC", temperature_box)
                     temperature_chuck = float(pc_data[33])
