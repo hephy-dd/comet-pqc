@@ -36,9 +36,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
     def env_detect_model(self, env):
         try:
-            env_idn = env.resource.query("*IDN?")
+            env_idn = env.query("*IDN?")
         except Exception as e:
-            raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
+            raise RuntimeError("Failed to access Environment Box", env.resource_name, e)
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
         self.process.emit("state", dict(
