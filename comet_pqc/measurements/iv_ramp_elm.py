@@ -41,12 +41,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
             raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             env_model=env_idn
         ))
 
     def initialize(self, smu, elm):
-        self.process.events.progress(0, 5)
+        self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
@@ -69,7 +69,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
 
-        self.process.events.progress(1, 5)
+        self.process.emit("progress", 1, 5)
 
         elm_idn = elm.identification
         logging.info("Detected Electrometer: %s", elm_idn)
@@ -80,9 +80,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
             with self.resources.get("environ") as environ:
                 self.env_detect_model(environ)
 
-        self.process.events.progress(2, 5)
+        self.process.emit("progress", 2, 5)
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_model=smu_model,
             smu_voltage=smu.source.voltage.level,
             smu_current=None,
@@ -98,11 +98,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
-                self.process.events.message(f"{voltage:.3f} V")
+                self.process.emit("message", f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
                 # check_error(smu)
                 time.sleep(.100)
-                self.process.events.state(dict(
+                self.process.emit("state", dict(
                     smu_voltage=voltage
                 ))
                 if not self.process.running:
@@ -114,7 +114,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         smu.system.beeper.status = False
         check_error(smu)
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_voltage=smu.source.voltage.level,
             smu_current=None,
             smu_output=smu.output,
@@ -174,7 +174,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         smu.resource.query("*OPC?")
         check_error(smu)
 
-        self.process.events.progress(1, 5)
+        self.process.emit("progress", 1, 5)
 
         # If output disabled
         voltage = 0
@@ -184,11 +184,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
         check_error(smu)
         time.sleep(.100)
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu.output
         ))
 
-        self.process.events.progress(2, 5)
+        self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
@@ -197,13 +197,13 @@ class IVRampElmMeasurement(MatrixMeasurement):
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
-                self.process.events.message(f"{voltage:.3f} V")
+                self.process.emit("message", f"{voltage:.3f} V")
                 smu.source.voltage.level = voltage
                 # check_error(smu)
                 time.sleep(.100)
                 time.sleep(waiting_time)
 
-                self.process.events.state(dict(
+                self.process.emit("state", dict(
                     smu_voltage=voltage,
                 ))
                 # Compliance?
@@ -260,7 +260,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_safe_write(":SYST:ZCH OFF") # disable zero check
         assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
 
-        self.process.events.progress(3, 5)
+        self.process.emit("progress", 3, 5)
 
     def measure(self, smu, elm):
         sample_name = self.sample_name
@@ -318,7 +318,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
                 ramp = comet.Range(voltage, voltage_stop, voltage_step)
                 est = Estimate(ramp.count)
-                self.process.events.progress(*est.progress)
+                self.process.emit("progress", *est.progress)
 
                 t0 = time.time()
 
@@ -334,21 +334,21 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     est.next()
                     elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                     remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                    self.process.events.message(f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
-                    self.process.events.progress(*est.progress)
+                    self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
+                    self.process.emit("progress", *est.progress)
 
                     # read SMU
                     smu_reading = float(smu.resource.query(":READ?").split(',')[0])
                     logging.info("SMU reading: %E", smu_reading)
-                    self.process.events.reading("smu", abs(voltage) if ramp.step < 0 else voltage, smu_reading)
+                    self.process.emit("reading", "smu", abs(voltage) if ramp.step < 0 else voltage, smu_reading)
 
                     # read ELM
                     elm_reading = float(elm.resource.query(":READ?").split(',')[0])
                     logging.info("ELM reading: %E", elm_reading)
-                    self.process.events.reading("elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                    self.process.events.update()
-                    self.process.events.state(dict(
+                    self.process.emit("update", )
+                    self.process.emit("state", dict(
                         smu_voltage=voltage,
                         smu_current=smu_reading,
                         elm_current=elm_reading
@@ -369,7 +369,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                         temperature_chuck = float('nan')
                         humidity_box = float('nan')
 
-                    self.process.events.state(dict(
+                    self.process.emit("state", dict(
                         env_chuck_temperature=temperature_chuck,
                         env_box_temperature=temperature_box,
                         env_box_humidity=humidity_box
@@ -397,13 +397,13 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     if not self.process.running:
                         break
 
-        self.process.events.progress(4, 5)
+        self.process.emit("progress", 4, 5)
 
     def finalize(self, smu, elm):
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_current=None,
             elm_current=None
         ))
@@ -415,25 +415,25 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.events.message(f"{voltage:.3f} V")
+            self.process.emit("message", f"{voltage:.3f} V")
             smu.source.voltage.level = voltage
             time.sleep(.100)
             # check_error(smu)
-            self.process.events.state(dict(
+            self.process.emit("state", dict(
                 smu_voltage=voltage,
             ))
 
         smu.output = False
         check_error(smu)
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu.output,
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
         ))
 
-        self.process.events.progress(5, 5)
+        self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
         with self.resources.get("smu1") as smu1_resource:

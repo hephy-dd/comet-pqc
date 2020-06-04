@@ -72,7 +72,7 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_model=smu_model,
         ))
 
@@ -83,7 +83,7 @@ class CVRampMeasurement(MatrixMeasurement):
             raise RuntimeError("Failed to access LCR Meter", lcr.resource.resource_name, e)
         logging.info("Detected LCR Meter: %s", lcr_idn)
         lcr_model = lcr_idn.split(",")[1:][0]
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             lcr_model=lcr_model
         ))
 
@@ -94,35 +94,35 @@ class CVRampMeasurement(MatrixMeasurement):
             raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
         logging.info("Detected Environment Box: %s", env_idn)
         # TODO
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             env_model=env_idn
         ))
 
     def quick_ramp_zero(self, smu):
         """Ramp to zero voltage without measuring current."""
-        self.process.events.message("Ramp to zero...")
-        self.process.events.progress(0, 1)
+        self.process.emit("message", "Ramp to zero...")
+        self.process.emit("progress", 0, 1)
         parameters = self.measurement_item.parameters
         bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
         smu_output_state = self.smu_get_output_state(smu)
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu_output_state
         ))
         if smu_output_state:
             smu_voltage_level = self.smu_get_voltage_level(smu)
             ramp = comet.Range(smu_voltage_level, 0, bias_voltage_step)
             for step, voltage in enumerate(ramp):
-                self.process.events.progress(step + 1, ramp.count)
+                self.process.emit("progress", step + 1, ramp.count)
                 self.smu_set_voltage_level(smu, voltage)
-                self.process.events.state(dict(
+                self.process.emit("state", dict(
                     smu_voltage=voltage
                 ))
         smu_output_state = self.smu_get_output_state(smu)
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu_output_state
         ))
-        self.process.events.message("")
-        self.process.events.progress(1, 1)
+        self.process.emit("message", "")
+        self.process.emit("progress", 1, 1)
 
     def smu_reset(self, smu):
         safe_write(smu, "*RST")
@@ -204,8 +204,8 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(lcr, ":TRIG:SOUR BUS")
 
     def initialize(self, smu, lcr):
-        self.process.events.message("Initialize...")
-        self.process.events.progress(0, 10)
+        self.process.emit("message", "Initialize...")
+        self.process.emit("progress", 0, 10)
 
         parameters = self.measurement_item.parameters
 
@@ -216,7 +216,7 @@ class CVRampMeasurement(MatrixMeasurement):
             with self.resources.get("environ") as env:
                 self.env_detect_model(env)
 
-        self.process.events.progress(1, 10)
+        self.process.emit("progress", 1, 10)
 
         # Initialize SMU
 
@@ -224,26 +224,26 @@ class CVRampMeasurement(MatrixMeasurement):
         # Prevents a voltage jump for at device reset.
         self.quick_ramp_zero(smu)
         self.smu_set_output_state(smu, False)
-        self.process.events.message("Initialize...")
-        self.process.events.progress(2, 10)
+        self.process.emit("message", "Initialize...")
+        self.process.emit("progress", 2, 10)
 
         self.smu_reset(smu)
-        self.process.events.progress(3, 10)
+        self.process.emit("progress", 3, 10)
 
         route_termination = parameters.get("route_termination", "rear")
         self.smu_set_route_termination(smu, route_termination)
-        self.process.events.progress(4, 10)
+        self.process.emit("progress", 4, 10)
 
         sense_mode = parameters.get("sense_mode", "local")
         self.smu_set_sense_mode(smu, sense_mode)
-        self.process.events.progress(5, 10)
+        self.process.emit("progress", 5, 10)
 
         current_compliance = parameters.get("current_compliance").to("A").m
         self.smu_set_compliance(smu, current_compliance)
-        self.process.events.progress(6, 10)
+        self.process.emit("progress", 6, 10)
 
         self.smu_set_auto_range(smu, True)
-        self.process.events.progress(7, 10)
+        self.process.emit("progress", 7, 10)
 
         smu_filter_type = parameters.get("smu_filter_type", "repeat")
         self.smu_set_filter_type(smu, smu_filter_type)
@@ -251,21 +251,21 @@ class CVRampMeasurement(MatrixMeasurement):
         self.smu_set_filter_count(smu, smu_filter_count)
         smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
         self.smu_set_filter_enable(smu, smu_filter_enable)
-        self.process.events.progress(8, 10)
+        self.process.emit("progress", 8, 10)
 
         self.smu_set_output_state(smu, True)
         smu_output_state = self.smu_get_output_state(smu)
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu_output_state,
         ))
 
         # Initialize LCR
 
         self.lcr_reset(lcr)
-        self.process.events.progress(9, 10)
+        self.process.emit("progress", 9, 10)
 
         self.lcr_setup(lcr)
-        self.process.events.progress(10, 10)
+        self.process.emit("progress", 10, 10)
 
     def measure(self, smu, lcr):
         sample_name = self.sample_name
@@ -290,11 +290,11 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.info("ramp to start voltage: from %E V to %E V with step %E V", smu_voltage_level, bias_voltage_start, bias_voltage_step)
         for voltage in comet.Range(smu_voltage_level, bias_voltage_start, bias_voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.events.message("Ramp to start... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
             self.smu_set_voltage_level(smu, voltage)
             time.sleep(.100)
             time.sleep(waiting_time)
-            self.process.events.state(dict(
+            self.process.emit("state", dict(
                 smu_voltage=voltage,
             ))
             # Compliance?
@@ -343,7 +343,7 @@ class CVRampMeasurement(MatrixMeasurement):
 
             ramp = comet.Range(smu_voltage_level, bias_voltage_stop, bias_voltage_step)
             est = Estimate(ramp.count)
-            self.process.events.progress(*est.progress)
+            self.process.emit("progress", *est.progress)
 
             t0 = time.time()
 
@@ -360,8 +360,8 @@ class CVRampMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.events.message("Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
-                self.process.events.progress(*est.progress)
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
+                self.process.emit("progress", *est.progress)
 
                 # read SMU
                 smu_reading = float(smu.resource.query(":READ?").split(',')[0])
@@ -378,11 +378,11 @@ class CVRampMeasurement(MatrixMeasurement):
                 except ZeroDivisionError:
                     lcr_prim2 = 0.0
 
-                self.process.events.reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
-                self.process.events.reading("lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
+                self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
+                self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
-                self.process.events.update()
-                self.process.events.state(dict(
+                self.process.emit("update", )
+                self.process.emit("state", dict(
                     smu_voltage=voltage,
                     smu_current=smu_reading
                 ))
@@ -402,7 +402,7 @@ class CVRampMeasurement(MatrixMeasurement):
                     temperature_chuck = float('nan')
                     humidity_box = float('nan')
 
-                self.process.events.state(dict(
+                self.process.emit("state", dict(
                     env_chuck_temperature=temperature_chuck,
                     env_box_temperature=temperature_box,
                     env_box_humidity=humidity_box
@@ -432,25 +432,25 @@ class CVRampMeasurement(MatrixMeasurement):
                     break
 
     def finalize(self, smu, lcr):
-        self.process.events.progress(1, 2)
-        self.process.events.state(dict(
+        self.process.emit("progress", 1, 2)
+        self.process.emit("state", dict(
             smu_current=None,
         ))
 
         self.quick_ramp_zero(smu)
         self.smu_set_output_state(smu, False)
         smu_output_state = self.smu_get_output_state(smu)
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_output=smu_output_state,
         ))
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
         ))
 
-        self.process.events.progress(2, 2)
+        self.process.emit("progress", 2, 2)
 
     def code(self, *args, **kwargs):
         with self.resources.get("smu1") as smu1_resource:

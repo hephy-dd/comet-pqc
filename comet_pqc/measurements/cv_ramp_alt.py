@@ -18,18 +18,18 @@ class CVRampAltMeasurement(MatrixMeasurement):
     type = "cv_ramp_alt"
 
     def initialize(self, lcr):
-        self.process.events.message("Initialize...")
-        self.process.events.progress(0, 1)
+        self.process.emit("message", "Initialize...")
+        self.process.emit("progress", 0, 1)
 
         lcr_idn = lcr.resource.query("*IDN?")
         logging.info("Detected LCR Meter: %s", lcr_idn)
         lcr_model = lcr_idn.split(",")[1:][0]
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             lcr_model=lcr_model
         ))
 
-        self.process.events.progress(1, 1)
+        self.process.emit("progress", 1, 1)
 
     def measure(self, lcr):
         sample_name = self.sample_name

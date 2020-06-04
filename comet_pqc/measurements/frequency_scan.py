@@ -20,21 +20,21 @@ class FrequencyScanMeasurement(MatrixMeasurement):
     type = "frequency_scan"
 
     def initialize(self, smu, lcr):
-        self.process.events.message("Initialize...")
-        self.process.events.progress(0, 2)
+        self.process.emit("message", "Initialize...")
+        self.process.emit("progress", 0, 2)
 
         smu_idn = smu.resource.query("*IDN?")
         logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
 
-        self.process.events.progress(1, 2)
+        self.process.emit("progress", 1, 2)
 
         lcr_idn = lcr.resource.query("*IDN?")
         logging.info("Detected LCR Meter: %s", lcr_idn)
         lcr_model = lcr_idn.split(",")[1:][0]
 
-        self.process.events.state(dict(
+        self.process.emit("state", dict(
             smu_model=smu_model,
             smu_voltage=smu.source.voltage.level,
             smu_current=None,
@@ -42,17 +42,17 @@ class FrequencyScanMeasurement(MatrixMeasurement):
             lcr_model=lcr_model
         ))
 
-        self.process.events.progress(2, 2)
+        self.process.emit("progress", 2, 2)
 
     def measure(self, smu, lcr):
         pass
 
     def finalize(self, smu, lcr):
-        self.process.events.progress(0, 0)
+        self.process.emit("progress", 0, 0)
 
         smu.output = False
 
-        self.process.events.progress(1, 1)
+        self.process.emit("progress", 1, 1)
 
     def code(self, *args, **kwargs):
         with self.resources.get("smu1") as smu1_resource:
