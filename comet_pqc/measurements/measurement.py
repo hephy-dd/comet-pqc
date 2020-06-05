@@ -6,6 +6,9 @@ class Measurement(ResourceMixin):
     """Base measurement class."""
 
     type = "measurement"
+    sample_name = ""
+    sample_type = ""
+    output_dir = ""
 
     def __init__(self, process):
         self.process = process

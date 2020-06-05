@@ -436,10 +436,10 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_resource:
-            smu1 = K2410(smu1_resource)
-            with self.resources.get("elm") as elm_resource:
-                elm = K6517B(elm_resource)
+        with self.resources.get("smu1") as smu1_res:
+            with self.resources.get("elm") as elm_res:
+                smu1 = K2410(smu1_res)
+                elm = K6517B(elm_res)
                 try:
                     self.initialize(smu1, elm)
                     self.measure(smu1, elm)

@@ -6,7 +6,6 @@ import re
 
 import comet
 from comet.driver.keithley import K2410
-from comet.driver.keithley import K2657A
 from comet.driver.keysight import E4980A
 
 from ..utils import auto_unit
@@ -453,10 +452,10 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 2)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_resource:
-            with self.resources.get("lcr") as lcr_resource:
-                smu1 = K2410(smu1_resource)
-                lcr = E4980A(lcr_resource)
+        with self.resources.get("smu1") as smu1_res:
+            with self.resources.get("lcr") as lcr_res:
+                smu1 = K2410(smu1_res)
+                lcr = E4980A(lcr_res)
                 try:
                     self.initialize(smu1, lcr)
                     self.measure(smu1, lcr)

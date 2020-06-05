@@ -200,8 +200,8 @@ class IVRampMeasurement(MatrixMeasurement):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
-        contact_name =  self.measurement_item.contact.name
-        measurement_name =  self.measurement_item.name
+        contact_name = self.measurement_item.contact.name
+        measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
         current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
@@ -253,7 +253,7 @@ class IVRampMeasurement(MatrixMeasurement):
             est = Estimate(ramp.count)
             self.process.emit("progress", *est.progress)
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end,  ramp.step)
+            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
                 smu.source.voltage.level = voltage
@@ -327,8 +327,8 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_resource:
-            smu1 = K2410(smu1_resource)
+        with self.resources.get("smu1") as smu1_res:
+            smu1 = K2410(smu1_res)
             try:
                 self.initialize(smu1)
                 self.measure(smu1)

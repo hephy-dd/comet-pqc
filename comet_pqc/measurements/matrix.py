@@ -17,13 +17,13 @@ class MatrixMeasurement(Measurement):
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = K707B(matrix_res)
-                closed_channels = matrix.channel_getclose()
+                closed_channels = matrix.channel.getclose()
                 if closed_channels:
                     raise RuntimeError("Some matrix channels are still closed, " \
-                        f"please verify the situation and open closed channels. Closed channels: {closed}")
+                        f"please verify the situation and open closed channels. Closed channels: {closed_channels}")
                 if channels:
-                    matrix.channel_close(channels)
-                    closed_channels = matrix.channel_getclose()
+                    matrix.channel.close(channels)
+                    closed_channels = matrix.channel.getclose()
                     if sorted(closed_channels) != sorted(channels):
                         raise RuntimeError("mismatch in closed channels")
         except Exception as e:

@@ -71,7 +71,7 @@ class MatrixPanel(Panel, ResourceMixin):
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = K707B(matrix_res)
-                closed_channels = matrix.channel_getclose()
+                closed_channels = matrix.channel.getclose()
             self.matrix_channels.value = closed_channels
         except Exception as e:
             comet.show_exception(e)

@@ -29,7 +29,7 @@ class StatusProcess(comet.Process, ResourceMixin):
                 matrix = K707B(matrix_res)
                 model = matrix.identification
                 self.set("matrix_model", model)
-                channels = matrix.channel_getclose()
+                channels = matrix.channel.getclose()
                 self.set("matrix_channels", ','.join(channels))
         except (ResourceError, OSError):
             pass
@@ -79,7 +79,7 @@ class StatusProcess(comet.Process, ResourceMixin):
                 model = environ.identification
                 self.set("env_model", model)
                 pc_data = environ.pc_data
-                self.set("env_pc_data", epc_data)
+                self.set("env_pc_data", pc_data)
         except (ResourceError, OSError):
             pass
 
@@ -304,8 +304,8 @@ class BaseProcess(comet.Process, ResourceMixin):
         matrix = K707B(resource)
         matrix.identification
         logging.info("matrix: open all channels.")
-        matrix.channel_open()
-        channels = matrix.channel_getclose()
+        matrix.channel.open()
+        channels = matrix.channel.getclose()
         logging.info("matrix channels: %s", channels)
         # self.emit("message", "Initialized Matrix.")
 

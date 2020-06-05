@@ -7,7 +7,6 @@ import logging
 
 from comet.emulator.emulator import message, run
 from comet.emulator.iec60488 import IEC60488Handler
-from comet.emulator.keithley.k2400 import SystemMixin
 
 __all__ = ['K707BHandler']
 

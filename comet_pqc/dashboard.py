@@ -732,16 +732,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 sequence = config.load_sequence(filename)
             except Exception as e:
                 logging.error(e)
-                comet.show_error(
-                    title="Import Sequence Error",
-                    text=e.message if hasattr(e, "message") else format(e),
-                    details=format(e)
-                )
+                comet.show_exception(e)
                 return
             # backup callback
             on_changed = self.sequence_select.changed
             self.sequence_select.changed = None
-            for item in self.sequence_select.values:
+            for item in self.sequence_select:
                 if item.id == sequence.id or item.name == sequence.name:
                     result = comet.show_question(
                         title="Sequence already loaded",

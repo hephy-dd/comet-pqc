@@ -55,12 +55,12 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.emit("progress", 1, 1)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_resource:
-            with self.resources.get("lcr") as lcr_resource:
-                smu1 = K2410(smu1_resource)
-                lcr = E4980A(lcr_resource)
+        with self.resources.get("smu1") as smu1_res:
+            with self.resources.get("lcr") as lcr_res:
+                smu1 = K2410(smu1_res)
+                lcr = E4980A(lcr_res)
                 try:
-                    self.initialize(smu, lcr)
-                    self.measure(smu, lcr)
+                    self.initialize(smu1, lcr)
+                    self.measure(smu1, lcr)
                 finally:
-                    self.finalize(smu, lcr)
+                    self.finalize(smu1, lcr)
