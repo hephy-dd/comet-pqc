@@ -4,10 +4,36 @@ import time
 
 from comet.driver import Driver
 from comet.driver import lock, Property, Action
+from comet.driver import IEC60488
 
 from .utils import BitField
 
-__all__ = ['EnvironmentBox']
+__all__ = ['K707B', 'EnvironmentBox']
+
+class K707B(IEC60488):
+    """Keithley Models 707B Switching Matrix."""
+
+    @Action()
+    def channel_getclose(self):
+        result = self.resource.query('print(channel.getclose("allslots"))')
+        if result == 'nil':
+            return []
+        return result.split(';')
+
+    @Action()
+    def channel_close(self, channels):
+        channels = ','.join(channels)
+        self.resource.write(f'channel.close("{channels}")')
+        self.resource.query('*OPC?')
+
+    @Action()
+    def channel_open(self, channels=None):
+        if channels is None:
+            channels = 'allslots'
+        else:
+            channels = ','.join(channels)
+        self.resource.write(f'channel.open("{channels}")')
+        self.resource.query('*OPC?')
 
 class EnvironmentBox(Driver):
 

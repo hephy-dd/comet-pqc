@@ -1,18 +1,9 @@
 import logging
 
+from ..driver import K707B
 from .measurement import Measurement
 
 __all__ = ["MatrixMeasurement"]
-
-def matrix_channels_closed(resource):
-    result = resource.query("print(channel.getclose(\"allslots\"))")
-    if result.strip() == "nil":
-        return []
-    return result.split(";")
-
-def matrix_channels_close(resource, channels):
-    resource.write("channel.close(\"{}\")".format(",".join(channels)))
-    resource.query("*OPC?")
 
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
@@ -24,15 +15,16 @@ class MatrixMeasurement(Measurement):
         channels = self.measurement_item.parameters.get("matrix_channels", [])
         logging.info("close matrix channels: %s", channels)
         try:
-            with self.resources.get("matrix") as matrix:
-                closed = matrix_channels_closed(matrix)
-                if closed:
+            with self.resources.get("matrix") as matrix_res:
+                matrix = K707B(matrix_res)
+                closed_channels = matrix.channel_getclose()
+                if closed_channels:
                     raise RuntimeError("Some matrix channels are still closed, " \
                         f"please verify the situation and open closed channels. Closed channels: {closed}")
                 if channels:
-                    matrix_channels_close(matrix, channels)
-                    closed = matrix_channels_closed(matrix)
-                    if sorted(closed) != sorted(channels):
+                    matrix.channel_close(channels)
+                    closed_channels = matrix.channel_getclose()
+                    if sorted(closed_channels) != sorted(channels):
                         raise RuntimeError("mismatch in closed channels")
         except Exception as e:
             raise RuntimeError(f"Failed to close matrix channels {channels}, {e.args}")

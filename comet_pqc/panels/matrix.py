@@ -2,8 +2,8 @@ import logging
 
 import comet
 from comet.resource import ResourceMixin
-from comet.driver.keithley import K707B
 
+from ..driver import K707B
 from ..logwindow import LogWidget
 from .panel import Panel
 
@@ -69,14 +69,10 @@ class MatrixPanel(Panel, ResourceMixin):
         """Load closed matrix channels for slot 1 from instrument."""
         self.enabled = False
         try:
-            with self.resources.get("matrix") as matrix_resource:
-                matrix = K707B(matrix_resource)
-                result = matrix.resource.query("print(channel.getclose(\"allslots\"))")
-                logging.info("Loaded matrix channels: %s", result)
-                channels = []
-                if result.strip() != "nil":
-                    channels = result.split(";")
-            self.matrix_channels.value = channels
+            with self.resources.get("matrix") as matrix_res:
+                matrix = K707B(matrix_res)
+                closed_channels = matrix.channel_getclose()
+            self.matrix_channels.value = closed_channels
         except Exception as e:
             comet.show_exception(e)
         self.enabled = True

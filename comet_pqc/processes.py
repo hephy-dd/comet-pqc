@@ -11,6 +11,7 @@ from comet.driver.corvus import Venus1
 from .utils import auto_unit
 from .measurements import measurement_factory
 from .driver import EnvironmentBox
+from .driver import K707B
 
 class StatusProcess(comet.Process, ResourceMixin):
     """Reload instruments status."""
@@ -20,67 +21,92 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.message = message
         self.progress = progress
 
-    def run(self):
-        self.emit("message", "Read Matrix...")
-        self.emit("progress", 0, 6)
+    def read_matrix(self):
+        self.set("matrix_model", "")
+        self.set("matrix_channels", "")
         try:
-            with self.resources.get("matrix") as matrix:
-                matrix_model = matrix.query("*IDN?")
-                matrix_channels = matrix.query("print(channel.getclose(\"allslots\"))")
+            with self.resources.get("matrix") as matrix_res:
+                matrix = K707B(matrix_res)
+                model = matrix.identification
+                self.set("matrix_model", model)
+                channels = matrix.channel_getclose()
+                self.set("matrix_channels", ','.join(channels))
         except (ResourceError, OSError):
-            matrix_model = ""
-            matrix_channels = ""
-        self.set("matrix_model", matrix_model)
-        self.set("matrix_channels", matrix_channels)
+            pass
 
-        self.emit("message", "Read SMU1...")
-        self.emit("progress", 1, 6)
+    def read_smu1(self):
+        self.set("smu1_model", "")
         try:
-            with self.resources.get("smu1") as smu1:
-                smu1_model = smu1.query("*IDN?")
+            with self.resources.get("smu1") as smu1_res:
+                model = smu1_res.query("*IDN?")
+                self.set("smu1_model", model)
         except (ResourceError, OSError):
-            smu1_model = ""
-        self.set("smu1_model", smu1_model)
+            pass
+
+    def read_smu2(self):
+        self.set("smu2_model", "")
+        try:
+            with self.resources.get("smu2") as smu2_res:
+                model = smu2_res.query("*IDN?")
+                self.set("smu2_model", model)
+        except (ResourceError, OSError):
+            pass
+
+    def read_lcr(self):
+        self.set("lcr_model", "")
+        try:
+            with self.resources.get("lcr") as lcr_res:
+                model = lcr_res.query("*IDN?")
+                self.set("lcr_model", model)
+        except (ResourceError, OSError):
+            pass
+
+    def read_elm(self):
+        self.set("elm_model", "")
+        try:
+            with self.resources.get("elm") as elm_res:
+                model = elm_res.query("*IDN?")
+                self.set("elm_model", model)
+        except (ResourceError, OSError):
+            pass
+
+    def read_environ(self):
+        self.set("env_model", "")
+        self.set("env_pc_data", None)
+        try:
+            with self.resources.get("environ") as environ_res:
+                environ = EnvironmentBox(environ_res)
+                model = environ.identification
+                self.set("env_model", model)
+                pc_data = environ.pc_data
+                self.set("env_pc_data", epc_data)
+        except (ResourceError, OSError):
+            pass
+
+    def run(self):
+        self.emit("message", "Reading Matrix...")
+        self.emit("progress", 0, 6)
+        self.read_matrix()
+
+        self.emit("message", "Reading SMU1...")
+        self.emit("progress", 1, 6)
+        self.read_smu1()
 
         self.emit("message", "Read SMU2...")
         self.emit("progress", 2, 6)
-        try:
-            with self.resources.get("smu2") as smu2:
-                smu2_model = smu2.query("*IDN?")
-        except (ResourceError, OSError):
-            smu2_model = ""
-        self.set("smu2_model", smu2_model)
+        self.read_smu2()
 
         self.emit("message", "Read LCRMeter...")
         self.emit("progress", 3, 6)
-        try:
-            with self.resources.get("lcr") as lcr:
-                lcr_model = lcr.query("*IDN?")
-        except (ResourceError, OSError):
-            lcr_model = ""
-        self.set("lcr_model", lcr_model)
+        self.read_lcr()
 
         self.emit("message", "Read Electrometer...")
         self.emit("progress", 4, 6)
-        try:
-            with self.resources.get("elm") as elm:
-                elm_model = elm.query("*IDN?")
-        except (ResourceError, OSError):
-            elm_model = ""
-        self.set("elm_model", elm_model)
+        self.read_elm()
 
         self.emit("message", "Read Environment Box...")
         self.emit("progress", 5, 6)
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                env_model = environ.identification
-                env_pc_data = environ.pc_data
-        except (ResourceError, OSError):
-            env_model = ""
-            env_pc_data = None
-        self.set("env_model", env_model)
-        self.set("env_pc_data", env_pc_data)
+        self.read_environ()
 
         self.emit("message", "")
         self.emit("progress", 6, 6)
@@ -275,11 +301,11 @@ class BaseProcess(comet.Process, ResourceMixin):
         self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
-        resource.query("*IDN?")
+        matrix = K707B(resource)
+        matrix.identification
         logging.info("matrix: open all channels.")
-        resource.write("channel.open(\"allslots\")")
-        resource.query("*OPC?")
-        channels = resource.query("print(channel.getclose(\"allslots\"))")
+        matrix.channel_open()
+        channels = matrix.channel_getclose()
         logging.info("matrix channels: %s", channels)
         # self.emit("message", "Initialized Matrix.")
 
