@@ -29,6 +29,9 @@ class IVRamp4WirePanel(MatrixPanel):
         self.sense_mode = comet.ComboBox(items=["local", "remote"])
         self.route_termination = comet.ComboBox(items=["front", "rear"])
 
+        self.zero_correction = comet.CheckBox(text="Zero Correction")
+        self.integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
+
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
@@ -36,6 +39,8 @@ class IVRamp4WirePanel(MatrixPanel):
         self.bind("voltage_compliance", self.voltage_compliance, 0, unit="V")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
+        self.bind("zero_correction", self.zero_correction, False)
+        self.bind("integration_rate", self.integration_rate, 50.0)
 
         # Instruments status
 
@@ -163,7 +168,19 @@ class IVRamp4WirePanel(MatrixPanel):
             ),
             comet.Tab(
                 title="Electrometer",
-                layout=comet.Row()
+                layout=comet.Row(
+                    comet.GroupBox(
+                        title="Options",
+                        layout=comet.Column(
+                            self.zero_correction,
+                            comet.Label(text="Integration Rate"),
+                            self.integration_rate,
+                            comet.Spacer()
+                        )
+                    ),
+                    comet.Spacer(),
+                    stretch=(1, 1)
+                )
             )
         )
 

@@ -53,7 +53,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         current_start = parameters.get("current_start").to("A").m
         current_step = parameters.get("current_step").to("A").m
         waiting_time = parameters.get("waiting_time").to("s").m
-        sense_mode = parameters.get("sense_mode")
+        sense_mode = parameters.get("sense_mode", "remote")
         route_termination = parameters.get("route_termination", "front")
         smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
         smu_filter_count = int(parameters.get("smu_filter_count", 10))
