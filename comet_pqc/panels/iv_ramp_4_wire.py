@@ -206,8 +206,7 @@ class IVRamp4WirePanel(MatrixPanel):
             value = state.get('smu_current')
             self.status_smu_current.value = auto_unit(value, "A")
         if 'smu_output' in state:
-            labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_smu_output.value = labels[state.get('smu_output')]
+            self.status_smu_output.value = state.get('smu_output') or '---'
         if 'elm_model' in state:
             value = state.get('elm_model', "n/a")
             self.status_elm_model.text = f"Model: {value}"

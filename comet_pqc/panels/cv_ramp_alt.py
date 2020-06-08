@@ -28,7 +28,7 @@ class CVRampAltPanel(MatrixPanel):
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.current_compliance = comet.Number(decimals=3, suffix="uA")
 
-        self.lcr_frequency = comet.List(height=64)
+        self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
@@ -36,7 +36,7 @@ class CVRampAltPanel(MatrixPanel):
         self.bind("bias_voltage_step", self.voltage_step, 0, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("lcr_frequency", self.lcr_frequency, [])
+        self.bind("lcr_frequency", self.lcr_frequency, 1, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
         # Instruments status
@@ -82,7 +82,7 @@ class CVRampAltPanel(MatrixPanel):
                     comet.GroupBox(
                         title="LCR Freq.",
                         layout=comet.Column(
-                            comet.Label(text="AC Frequencies"),
+                            comet.Label(text="AC Frequency"),
                             self.lcr_frequency,
                             comet.Label(text="AC Amplitude"),
                             self.lcr_amplitude,

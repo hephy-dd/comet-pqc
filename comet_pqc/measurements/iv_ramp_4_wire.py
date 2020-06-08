@@ -107,17 +107,15 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
         if sense_mode == "remote":
-            smu.resource.write('smua.sense = smua.SENSE_REMOTE')
+            smu.sense = 'REMOTE'
         elif sense_mode == "local":
-            smu.resource.write('smua.sense = smua.SENSE_LOCAL')
+            smu.sense = 'LOCAL'
         else:
             raise ValueError(f"invalid sense mode: {sense_mode}")
-        smu.resource.query("*OPC?")
         check_error(smu)
 
         # Current source
-        smu.resource.write('smua.source.func = smua.OUTPUT_DCAMPS')
-        smu.resource.query('*OPC?')
+        smu.source.func = 'DCAMPS'
         check_error(smu)
 
         # Compliance
@@ -126,40 +124,27 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         check_error(smu)
 
         # Range
-        # current_range = 1.05E-6
-        # smu.resource.write(":SENS:CURR:RANG:AUTO ON")
-        # smu.resource.write(":SENS:VOLT:RANG:AUTO ON")
-        # smu.resource.query("*OPC?")
-        # check_error(smu)
-        #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #smu.resource.query("*OPC?")
-        #check_error(smu)
+        # TODO
 
         # Filter
-        # smu.resource.write(f":SENS:AVER:COUN {smu_filter_count:d}")
-        # smu.resource.query("*OPC?")
-        # check_error(smu)
-        #
-        # if smu_filter_type == "repeat":
-        #     smu.resource.write(":SENS:AVER:TCON REP")
-        # elif smu_filter_type == "repeat":
-        #     smu.resource.write(":SENS:AVER:TCON MOV")
-        # smu.resource.query("*OPC?")
-        # check_error(smu)
-        #
-        # if smu_filter_enable:
-        #     smu.resource.write(":SENS:AVER:STATE ON")
-        # else:
-        #     smu.resource.write(":SENS:AVER:STATE OFF")
-        # smu.resource.query("*OPC?")
-        # check_error(smu)
+        smu.measure.filter.count = smu_filter_count
+        check_error(smu)
+
+        if smu_filter_type == "repeat":
+            smu.measure.filter.type = 'REPEAT'
+        elif smu_filter_type == "moving":
+            smu.measure.filter.type = 'MOVING'
+        check_error(smu)
+
+        smu.measure.filter.enable = smu_filter_enable
+        check_error(smu)
 
         self.process.emit("progress", 1, 5)
 
         # Enable output
         smu.source.leveli = 0
         check_error(smu)
-        smu.source.output = True
+        smu.source.output = 'ON'
         check_error(smu)
         time.sleep(.100)
 
@@ -318,9 +303,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                     self.process.emit("progress", *est.progress)
 
                     # read SMU
-                    # TODO
-                    smu_reading = float(smu.resource.query(":READ?").split(',')[0])
-                    logging.info("SMU reading: %E", smu_reading)
+                    smu_reading = smu.measure.v()
+                    logging.info("SMU reading: %E V", smu_reading)
                     self.process.emit("reading", "smu", smu_reading, current)
 
                     # read ELM
@@ -404,7 +388,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 smu_current=current,
             ))
 
-        smu.source.output = False
+        smu.source.output = 'OFF'
         check_error(smu)
 
         self.process.emit("state", dict(
