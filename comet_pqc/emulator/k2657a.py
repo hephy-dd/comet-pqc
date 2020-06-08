@@ -111,7 +111,7 @@ class SourceMixin:
 
     @message(r'print\(smua\.source\.compliance\)')
     def query_source_compliance(self, message):
-        return format(int(type(self).compliance), 'E')
+        return format(type(self).compliance)).lower()
 
     @message(r'print\(smua\.source\.func\)')
     def query_source_func(self, message):

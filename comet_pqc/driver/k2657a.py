@@ -113,7 +113,7 @@ class K2657A(IEC60488):
 
         @Property()
         def compliance(self):
-            return bool(float(self.resource.query('print(smua.source.compliance)')))
+            return {'false': False, 'true': True}[self.resource.query('print(smua.source.compliance)')]
 
         @Property()
         def func(self):
