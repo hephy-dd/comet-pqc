@@ -66,13 +66,15 @@ class K2657A(IEC60488):
                 self.resource.write(f'smua.measure.filter.enable = {value:d}')
                 self.resource.query('*OPC?')
 
-            @Property(keys={'MOVING': 0, 'REPEAT': 1, 'MEDIAN': 2})
+            @Property()
             def type(self):
-                return int(self.resource.query('print(smua.measure.filter.type)'))
+                value = int(float(self.resource.query('print(smua.measure.filter.type)')))
+                return {0: 'MOVING', 1: 'REPEAT', 2: 'MEDIAN'}[value]
 
             @type.setter
             @lock
             def type(self, value):
+                value = {'MOVING': 0, 'REPEAT': 1, 'MEDIAN': 2}[value]
                 self.resource.write(f'smua.measure.filter.type = {value:d}')
                 self.resource.query('*OPC?')
 
@@ -113,14 +115,16 @@ class K2657A(IEC60488):
         def compliance(self):
             return bool(float(self.resource.query('print(smua.source.compliance)')))
 
-        @Property(keys={'DCAMPS': 0, 'DCVOLTS': 1})
+        @Property()
         def func(self):
-            return float(self.resource.query('print(smua.source.func)'))
+            value = int(float(self.resource.query('print(smua.source.func)')))
+            return {0: 'DCAMPS', 1: 'DCVOLTS'}[value]
 
         @func.setter
         @lock
         def func(self, value):
-            self.resource.write(f'smua.source.func = {value:E}')
+            value = {'DCAMPS': 0, 'DCVOLTS': 1}[value]
+            self.resource.write(f'smua.source.func = {value:d}')
             self.resource.query('*OPC?')
 
         @Property(values=[False, True])
@@ -173,13 +177,15 @@ class K2657A(IEC60488):
             self.resource.write(f'smua.source.limitv = {value:E}')
             self.resource.query('*OPC?')
 
-        @Property(keys={'OFF': 0, 'ON': 1, 'HIGH_Z': 2})
+        @Property()
         def output(self):
-            return bool(float(self.resource.query('print(smua.source.output)')))
+            value = int(float(self.resource.query('print(smua.source.output)')))
+            return {0: 'OFF', 1: 'ON', 2: 'HIGH_Z'}[value]
 
         @output.setter
         @lock
         def output(self, value):
+            value = {'OFF': 0, 'ON': 1, 'HIGH_Z': 2}[value]
             self.resource.write(f'smua.source.output = {value:d}')
             self.resource.query('*OPC?')
 
@@ -196,12 +202,14 @@ class K2657A(IEC60488):
         self.resource.write('smua.reset()')
         self.resource.query('*OPC?')
 
-    @Property(keys={'LOCAL': 0, 'REMOTE': 1, 'CALA': 2})
+    @Property()
     def sense(self):
-        return int(float(self.resource.query('print(smua.sense)')))
+        value = int(float(self.resource.query('print(smua.sense)')))
+        return {0: 'LOCAL', 1: 'REMOTE', 2: 'CALA'}[value]
 
     @sense.setter
     @lock
     def sense(self, value):
+        value = {'LOCAL': 0, 'REMOTE': 1, 'CALA': 2}[value]
         self.resource.write(f'smua.sense = {value:d}')
         self.resource.query('*OPC?')
