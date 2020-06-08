@@ -145,6 +145,9 @@ def main():
     sequenceMenu.addAction(importAction)
     ui.fileMenu.insertSeparator(ui.quitAction)
 
+    # Set contents URL
+    app.qt.window.setProperty('contentsUrl', 'https://hephy-dd.github.io/comet-pqc/')
+
     # Load configurations
 
     dashboard.load_chucks()

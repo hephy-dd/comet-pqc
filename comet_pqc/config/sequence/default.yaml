@@ -8,7 +8,7 @@ contacts:
       - name: Polysilicon Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -18,7 +18,7 @@ contacts:
       - name: N+ Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -28,7 +28,7 @@ contacts:
       - name: P-stop Van-der-Pauw cross
         type: 4wire_iv_ramp
         parameters:
-            matrix_channels: []
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -72,7 +72,7 @@ contacts:
             current_compliance: 1 uA
             sense_mode: local
             route_termination: rear
-            lcr_frequency: [1 kHz, 10 kHz]
+            lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Capacitor test structure (SMU)
         type: cv_ramp
@@ -101,7 +101,7 @@ contacts:
             current_compliance: 100 uA
             sense_mode: local
             route_termination: rear
-            lcr_frequency: [1 kHz]
+            lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
       - name: Diode IV
         type: iv_ramp_elm
