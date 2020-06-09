@@ -5,9 +5,9 @@ import os
 import re
 
 import comet
-from comet.driver.keithley import K2410
 from comet.driver.keithley import K6517B
 
+from ..driver import K2410
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement

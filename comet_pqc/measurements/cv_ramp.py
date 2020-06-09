@@ -5,9 +5,9 @@ import os
 import re
 
 import comet
-from comet.driver.keithley import K2410
 from comet.driver.keysight import E4980A
 
+from ..driver import K2410
 from ..utils import auto_unit
 from ..utils import std_mean_filter
 from ..formatter import PQCFormatter

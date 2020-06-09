@@ -6,19 +6,14 @@ import os
 import re
 
 import comet
-from comet.driver.keithley import K2410
+from ..driver import K2410
 
+from ..proxy import create_proxy
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampMeasurement"]
-
-def check_error(smu):
-    error = smu.system.error
-    if error[0]:
-        logging.error(error)
-        raise RuntimeError(f"{error[0]}: {error[1]}")
 
 class IVRampMeasurement(MatrixMeasurement):
     """IV ramp measurement.
@@ -60,7 +55,9 @@ class IVRampMeasurement(MatrixMeasurement):
         smu_filter_count = int(parameters.get("smu_filter_count", 10))
         smu_filter_type = parameters.get("smu_filter_type", "repeat")
 
-        smu_idn = smu.resource.query("*IDN?")
+        smu_proxy = create_proxy(smu)
+
+        smu_idn = smu_proxy.identification
         logging.info("Detected SMU: %s", smu_idn)
         result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
         smu_model = ''.join(result) or None
@@ -71,19 +68,19 @@ class IVRampMeasurement(MatrixMeasurement):
 
         self.process.emit("state", dict(
             smu_model=smu_model,
-            smu_voltage=smu.source.voltage.level,
+            smu_voltage=smu_proxy.source_voltage_level,
             smu_current=None,
-            smu_output=smu.output
+            smu_output=smu_proxy.output_enable
         ))
 
-        smu.reset()
-        check_error(smu)
-        smu.clear()
-        check_error(smu)
+        smu_proxy.reset()
+        smu_proxy.assert_success()
+        smu_proxy.clear()
+        smu_proxy.assert_success()
 
         # Beeper off
-        smu.system.beeper.status = False
-        check_error(smu)
+        smu_proxy.beeper_enable = False
+        smu_proxy.assert_success()
         self.process.emit("progress", 1, 5)
 
         # Select rear terminal
@@ -92,7 +89,7 @@ class IVRampMeasurement(MatrixMeasurement):
         elif route_termination == "rear":
             smu.resource.write(":ROUT:TERM REAR")
         smu.resource.query("*OPC?")
-        check_error(smu)
+        smu_proxy.assert_success()
         self.process.emit("progress", 2, 5)
 
         # set sense mode
@@ -104,83 +101,72 @@ class IVRampMeasurement(MatrixMeasurement):
         else:
             raise ValueError(f"invalid sense mode: {sense_mode}")
         smu.resource.query("*OPC?")
-        check_error(smu)
+        smu_proxy.assert_success()
         self.process.emit("progress", 3, 5)
 
         # Compliance
         logging.info("set compliance: %E A", current_compliance)
         smu.sense.current.protection.level = current_compliance
-        check_error(smu)
+        smu_proxy.assert_success()
 
         # Range
         current_range = 1.05E-6
         smu.resource.write(":SENS:CURR:RANG:AUTO ON")
         smu.resource.query("*OPC?")
-        check_error(smu)
+        smu_proxy.assert_success()
         #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
         #smu.resource.query("*OPC?")
-        #check_error(smu)
+        #smu_proxy.assert_success()
 
         # Filter
 
-        smu.resource.write(f":SENS:AVER:COUN {smu_filter_count:d}")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-
-        if smu_filter_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON REP")
-        elif smu_filter_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON MOV")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-
-        if smu_filter_enable:
-            smu.resource.write(":SENS:AVER:STATE ON")
-        else:
-            smu.resource.write(":SENS:AVER:STATE OFF")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+        smu_proxy.filter_count = smu_filter_count
+        smu_proxy.assert_success()
+        smu_proxy.filter_type = smu_filter_type.upper()
+        smu_proxy.assert_success()
+        smu_proxy.filter_enable = smu_filter_enable
+        smu_proxy.assert_success()
 
         self.process.emit("progress", 5, 5)
 
         # If output enabled
-        if smu.output:
-            voltage = smu.source.voltage.level
+        if smu_proxy.output_enable:
+            voltage = smu_proxy.source_voltage_level
 
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu.source.voltage.level = voltage
-                # check_error(smu)
+                smu_proxy.source_voltage_level = voltage
+                # smu_proxy.assert_success()
                 time.sleep(.100)
                 if not self.process.running:
                     break
         # If output disabled
         else:
             voltage = 0
-            smu.source.voltage.level = voltage
-            check_error(smu)
-            smu.output = True
-            check_error(smu)
+            smu_proxy.source_voltage_level = voltage
+            smu_proxy.assert_success()
+            smu_proxy.output_enable = True
+            smu_proxy.assert_success()
             time.sleep(.100)
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            voltage = smu.source.voltage.level
+            voltage = smu_proxy.source_voltage_level
 
             # Get configured READ/FETCh elements
             elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-            check_error(smu)
+            smu_proxy.assert_success()
 
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu.source.voltage.level = voltage
-                # check_error(smu)
+                smu_proxy.source_voltage_level = voltage
+                # smu_proxy.assert_success()
                 time.sleep(.100)
                 # Returns <elements> comma separated
                 #values = list(map(float, smu.resource.query(":READ?").split(",")))
@@ -208,6 +194,8 @@ class IVRampMeasurement(MatrixMeasurement):
         voltage_step = parameters.get("voltage_step").to("V").m
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
+
+        smu_proxy = create_proxy(smu)
 
         if not self.process.running:
             return
@@ -241,7 +229,7 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            voltage = smu.source.voltage.level
+            voltage = smu_proxy.source_voltage_level
 
             # SMU reading format: CURR
             smu.resource.write(":FORM:ELEM CURR")
@@ -256,9 +244,9 @@ class IVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
-                smu.source.voltage.level = voltage
+                smu_proxy.source_voltage_level = voltage
                 time.sleep(.100)
-                # check_error(smu)
+                # smu_proxy.assert_success()
                 td = time.time() - t0
                 reading_current = float(smu.resource.query(":READ?").split(',')[0])
                 logging.info("SMU reading: %E A", reading_current)
@@ -302,7 +290,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 if compliance_tripped:
                     logging.error("SMU in compliance")
                     raise ValueError("compliance tripped")
-                # check_error(smu)
+                # smu_proxy.assert_success()
                 if not self.process.running:
                     break
 
@@ -311,18 +299,21 @@ class IVRampMeasurement(MatrixMeasurement):
     def finalize(self, smu):
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
-        voltage = smu.source.voltage.level
+
+        smu_proxy = create_proxy(smu)
+
+        voltage = smu_proxy.source_voltage_level
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", f"{voltage:.3f} V")
-            smu.source.voltage.level = voltage
+            smu_proxy.source_voltage_level = voltage
             time.sleep(.100)
-            # check_error(smu)
+            # smu_proxy.assert_success()
 
-        smu.output = False
-        check_error(smu)
+        smu_proxy.output_enable = False
+        smu_proxy.assert_success()
 
         self.process.emit("progress", 5, 5)
 
