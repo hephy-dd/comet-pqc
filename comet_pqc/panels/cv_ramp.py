@@ -14,7 +14,7 @@ class CVRampPanel(MatrixPanel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = "CV Ramp (SMU)"
+        self.title = "CV Ramp (VSrc)"
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
@@ -43,17 +43,17 @@ class CVRampPanel(MatrixPanel):
         self.lcr_auto_level_control = comet.CheckBox(text="Auto Level Control")
         self.lcr_soft_filter = comet.CheckBox(text="Filter STD/mean < 0.005")
 
-        def toggle_smu_filter(enabled):
-            self.smu_filter_count.enabled = enabled
-            self.smu_filter_count_label.enabled = enabled
-            self.smu_filter_type.enabled = enabled
-            self.smu_filter_type_label.enabled = enabled
+        def toggle_vsrc_filter(enabled):
+            self.vsrc_filter_count.enabled = enabled
+            self.vsrc_filter_count_label.enabled = enabled
+            self.vsrc_filter_type.enabled = enabled
+            self.vsrc_filter_type_label.enabled = enabled
 
-        self.smu_filter_enable = comet.CheckBox(text="Enable", changed=toggle_smu_filter)
-        self.smu_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.smu_filter_count_label = comet.Label(text="Count")
-        self.smu_filter_type = comet.ComboBox(items=["repeat", "moving"])
-        self.smu_filter_type_label = comet.Label(text="Type")
+        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.vsrc_filter_count_label = comet.Label(text="Count")
+        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
+        self.vsrc_filter_type_label = comet.Label(text="Type")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
@@ -62,9 +62,9 @@ class CVRampPanel(MatrixPanel):
         self.bind("current_compliance", self.current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
-        self.bind("smu_filter_enable", self.smu_filter_enable, False)
-        self.bind("smu_filter_count", self.smu_filter_count, 10)
-        self.bind("smu_filter_type", self.smu_filter_type, "repeat")
+        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
+        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
+        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
         self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
         self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
@@ -74,14 +74,14 @@ class CVRampPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_smu_model = comet.Label()
-        self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
-        self.status_smu_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
-        self.status_smu_current = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_current", self.status_smu_current, "n/a")
-        self.status_smu_output = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_output", self.status_smu_output, "n/a")
+        self.status_vsrc_model = comet.Label()
+        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
+        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "n/a")
+        self.status_vsrc_current = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_current", self.status_vsrc_current, "n/a")
+        self.status_vsrc_output = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_output", self.status_vsrc_output, "n/a")
 
         self.status_lcr_model = comet.Label()
         self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
@@ -97,21 +97,21 @@ class CVRampPanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="SMU Status",
+                title="VSource Status",
                 layout=comet.Column(
-                    self.status_smu_model,
+                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
-                            self.status_smu_voltage
+                            self.status_vsrc_voltage
                         ),
                         comet.Column(
                             comet.Label("Current"),
-                            self.status_smu_current
+                            self.status_vsrc_current
                         ),
                         comet.Column(
                             comet.Label("Output"),
-                            self.status_smu_output
+                            self.status_vsrc_output
                         )
                     )
                 )
@@ -150,7 +150,7 @@ class CVRampPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.GroupBox(
-                        title="SMU Ramp",
+                        title="VSource Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
                             self.voltage_start,
@@ -164,7 +164,7 @@ class CVRampPanel(MatrixPanel):
                         )
                     ),
                     comet.GroupBox(
-                        title="SMU Compliance",
+                        title="VSource Compliance",
                         layout=comet.Column(
                             self.current_compliance,
                             comet.Spacer()
@@ -198,16 +198,16 @@ class CVRampPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="SMU",
+                title="VSource",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
-                            self.smu_filter_enable,
-                            self.smu_filter_count_label,
-                            self.smu_filter_count,
-                            self.smu_filter_type_label,
-                            self.smu_filter_type,
+                            self.vsrc_filter_enable,
+                            self.vsrc_filter_count_label,
+                            self.vsrc_filter_count,
+                            self.vsrc_filter_type_label,
+                            self.vsrc_filter_type,
                             comet.Spacer()
                         )
                     ),
@@ -265,18 +265,18 @@ class CVRampPanel(MatrixPanel):
         super().unmount()
 
     def state(self, state):
-        if 'smu_model' in state:
-            value = state.get('smu_model', "n/a")
-            self.status_smu_model.text = f"Model: {value}"
-        if 'smu_voltage' in state:
-            value = state.get('smu_voltage')
-            self.status_smu_voltage.value = auto_unit(value, "V")
-        if 'smu_current' in state:
-            value = state.get('smu_current')
-            self.status_smu_current.value = auto_unit(value, "A")
-        if 'smu_output' in state:
+        if 'vsrc_model' in state:
+            value = state.get('vsrc_model', "n/a")
+            self.status_vsrc_model.text = f"Model: {value}"
+        if 'vsrc_voltage' in state:
+            value = state.get('vsrc_voltage')
+            self.status_vsrc_voltage.value = auto_unit(value, "V")
+        if 'vsrc_current' in state:
+            value = state.get('vsrc_current')
+            self.status_vsrc_current.value = auto_unit(value, "A")
+        if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_smu_output.value = labels[state.get('smu_output')]
+            self.status_vsrc_output.value = labels[state.get('vsrc_output')]
         if 'lcr_model' in state:
             value = state.get('lcr_model', "n/a")
             self.status_lcr_model.text = f"Model: {value}"

@@ -15,7 +15,7 @@ class IVRampBiasPanel(MatrixPanel):
         self.plot = comet.Plot(height=300)
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("series", "x", "y", text="IV", color="red")
+        self.plot.add_series("series", "x", "y", text="VSrc", color="red")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
@@ -32,7 +32,7 @@ class IVRampBiasPanel(MatrixPanel):
 
         self.controls.append(comet.Row(
             comet.GroupBox(
-                title="Bias",
+                title="HVSource",
                 layout=comet.Column(
                     comet.Label(text="Voltage"),
                     self.bias_voltage,
@@ -42,7 +42,7 @@ class IVRampBiasPanel(MatrixPanel):
                 )
             ),
             comet.GroupBox(
-                title="SMU",
+                title="VSource",
                 layout=comet.Column(
                     comet.Label(text="Start"),
                     self.voltage_start,

@@ -13,9 +13,9 @@ from .matrix import MatrixMeasurement
 
 __all__ = ["IVRamp4WireMeasurement"]
 
-def check_error(smu):
-    if smu.errorqueue.count:
-        error = smu.errorqueue.next()
+def check_error(hvsrc):
+    if hvsrc.errorqueue.count:
+        error = hvsrc.errorqueue.next()
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
@@ -31,7 +31,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
     In case of compliance, stop requests or errors ramps to zero before exit.
     """
 
-    type = "4wire_iv_ramp"
+    type = "iv_ramp_4_wire"
 
     def env_detect_model(self, env):
         try:
@@ -44,7 +44,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             env_model=env_idn
         ))
 
-    def initialize(self, smu):
+    def initialize(self, hvsrc):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
@@ -54,14 +54,14 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode", "remote")
         route_termination = parameters.get("route_termination", "front")
-        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
-        smu_filter_count = int(parameters.get("smu_filter_count", 10))
-        smu_filter_type = parameters.get("smu_filter_type", "repeat")
+        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", False))
+        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", 10))
+        hvsrc_filter_type = parameters.get("hvsrc_filter_type", "repeat")
 
-        smu_idn = smu.identification
-        logging.info("Detected SMU: %s", smu_idn)
-        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
-        smu_model = ''.join(result) or None
+        hvsrc_idn = hvsrc.identification
+        logging.info("Detected HVSrc: %s", hvsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', hvsrc_idn, re.IGNORECASE).groups()
+        hvsrc_model = ''.join(result) or None
 
         self.process.emit("progress", 1, 5)
 
@@ -72,101 +72,101 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            smu_model=smu_model,
-            smu_voltage=smu.source.levelv,
-            smu_current=smu.source.leveli,
-            smu_output=smu.source.output
+            hvsrc_model=hvsrc_model,
+            hvsrc_voltage=hvsrc.source.levelv,
+            hvsrc_current=hvsrc.source.leveli,
+            hvsrc_output=hvsrc.source.output
         ))
 
         # Beeper off
-        smu.reset()
-        smu.clear()
-        smu.beeper.enable = False
-        check_error(smu)
+        hvsrc.reset()
+        hvsrc.clear()
+        hvsrc.beeper.enable = False
+        check_error(hvsrc)
 
         self.process.emit("state", dict(
-            smu_voltage=smu.source.levelv,
-            smu_current=smu.source.leveli,
-            smu_output=smu.source.output
+            hvsrc_voltage=hvsrc.source.levelv,
+            hvsrc_current=hvsrc.source.leveli,
+            hvsrc_output=hvsrc.source.output
         ))
 
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
         if sense_mode == "remote":
-            smu.sense = 'REMOTE'
+            hvsrc.sense = 'REMOTE'
         elif sense_mode == "local":
-            smu.sense = 'LOCAL'
+            hvsrc.sense = 'LOCAL'
         else:
             raise ValueError(f"invalid sense mode: {sense_mode}")
-        check_error(smu)
+        check_error(hvsrc)
 
         # Current source
-        smu.source.func = 'DCAMPS'
-        check_error(smu)
+        hvsrc.source.func = 'DCAMPS'
+        check_error(hvsrc)
 
         # Compliance
         logging.info("set compliance: %E V", voltage_compliance)
-        smu.source.limitv = voltage_compliance
-        check_error(smu)
+        hvsrc.source.limitv = voltage_compliance
+        check_error(hvsrc)
 
         # Range
         # TODO
 
         # Filter
-        smu.measure.filter.count = smu_filter_count
-        check_error(smu)
+        hvsrc.measure.filter.count = hvsrc_filter_count
+        check_error(hvsrc)
 
-        if smu_filter_type == "repeat":
-            smu.measure.filter.type = 'REPEAT'
-        elif smu_filter_type == "moving":
-            smu.measure.filter.type = 'MOVING'
-        check_error(smu)
+        if hvsrc_filter_type == "repeat":
+            hvsrc.measure.filter.type = 'REPEAT'
+        elif hvsrc_filter_type == "moving":
+            hvsrc.measure.filter.type = 'MOVING'
+        check_error(hvsrc)
 
-        smu.measure.filter.enable = smu_filter_enable
-        check_error(smu)
+        hvsrc.measure.filter.enable = hvsrc_filter_enable
+        check_error(hvsrc)
 
         self.process.emit("progress", 1, 5)
 
         # Enable output
-        smu.source.leveli = 0
-        check_error(smu)
-        smu.source.output = 'ON'
-        check_error(smu)
+        hvsrc.source.leveli = 0
+        check_error(hvsrc)
+        hvsrc.source.output = 'ON'
+        check_error(hvsrc)
         time.sleep(.100)
 
         self.process.emit("state", dict(
-            smu_output=smu.source.output
+            hvsrc_output=hvsrc.source.output
         ))
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            current = smu.source.leveli
+            current = hvsrc.source.leveli
 
             logging.info("ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
             for current in comet.Range(current, current_start, current_step):
                 logging.info("set current: %E A", current)
                 self.process.emit("message", f"{current:.3f} A")
-                smu.source.leveli = current
-                # check_error(smu)
+                hvsrc.source.leveli = current
+                # check_error(hvsrc)
                 time.sleep(.100)
                 time.sleep(waiting_time)
 
                 self.process.emit("state", dict(
-                    smu_current=current,
+                    hvsrc_current=current,
                 ))
                 # Compliance?
-                compliance_tripped = smu.source.compliance
+                compliance_tripped = hvsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("HVSrc in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 3, 5)
 
-    def measure(self, smu):
+    def measure(self, hvsrc):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -187,7 +187,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("current", "E")
-            fmt.add_column("voltage_smu", "E")
+            fmt.add_column("voltage_hvsrc", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -210,11 +210,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            current = smu.source.leveli
+            current = hvsrc.source.leveli
 
-            # # SMU reading format: VOLT
-            # smu.resource.write(":FORM:ELEM VOLT")
-            # smu.resource.query("*OPC?")
+            # # HVSrc reading format: VOLT
+            # hvsrc.resource.write(":FORM:ELEM VOLT")
+            # hvsrc.resource.query("*OPC?")
 
             ramp = comet.Range(current, current_stop, current_step)
             est = Estimate(ramp.count)
@@ -225,10 +225,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
             for current in ramp:
                 logging.info("set current: %E A", current)
-                smu.clear()
-                smu.source.leveli = current
+                hvsrc.clear()
+                hvsrc.source.leveli = current
                 time.sleep(.100)
-                # check_error(smu)
+                # check_error(hvsrc)
                 dt = time.time() - t0
 
                 est.next()
@@ -237,15 +237,15 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {current:.3f} V")
                 self.process.emit("progress", *est.progress)
 
-                # read SMU
-                smu_reading = smu.measure.v()
-                logging.info("SMU reading: %E V", smu_reading)
-                self.process.emit("reading", "smu", abs(current) if ramp.step < 0 else current, smu_reading)
+                # read HVSrc
+                hvsrc_reading = hvsrc.measure.v()
+                logging.info("HVSrc reading: %E V", hvsrc_reading)
+                self.process.emit("reading", "hvsrc", abs(current) if ramp.step < 0 else current, hvsrc_reading)
 
                 self.process.emit("update", )
                 self.process.emit("state", dict(
-                    smu_current=current,
-                    smu_voltage=smu_reading
+                    hvsrc_current=current,
+                    hvsrc_voltage=hvsrc_reading
                 ))
 
                 # Environment
@@ -273,7 +273,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     current=current,
-                    voltage_smu=smu_reading,
+                    voltage_hvsrc=hvsrc_reading,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
@@ -282,41 +282,41 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 # Compliance?
-                compliance_tripped = smu.source.compliance
+                compliance_tripped = hvsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("HVSrc in compliance")
                     raise ValueError("compliance tripped")
-                # check_error(smu)
+                # check_error(hvsrc)
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 4, 5)
 
-    def finalize(self, smu):
+    def finalize(self, hvsrc):
         self.process.emit("state", dict(
-            smu_voltage=None
+            hvsrc_voltage=None
         ))
 
         parameters = self.measurement_item.parameters
         current_step = parameters.get("current_step").to("A").m
-        current = smu.source.leveli
+        current = hvsrc.source.leveli
 
         logging.info("ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
         for current in comet.Range(current, 0, current_step):
             logging.info("set current: %E A", current)
             self.process.emit("message", f"{current:.3f} A")
-            smu.source.leveli = current
+            hvsrc.source.leveli = current
             time.sleep(.100)
-            # check_error(smu)
+            # check_error(hvsrc)
             self.process.emit("state", dict(
-                smu_current=current,
+                hvsrc_current=current,
             ))
 
-        smu.source.output = 'OFF'
-        check_error(smu)
+        hvsrc.source.output = 'OFF'
+        check_error(hvsrc)
 
         self.process.emit("state", dict(
-            smu_output=smu.source.output,
+            hvsrc_output=hvsrc.source.output,
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
@@ -325,10 +325,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu2") as smu2_res:
-            smu2 = K2657A(smu2_res)
+        with self.resources.get("hvsrc") as hvsrc_res:
+            hvsrc = K2657A(hvsrc_res)
             try:
-                self.initialize(smu2)
-                self.measure(smu2)
+                self.initialize(hvsrc)
+                self.measure(hvsrc)
             finally:
-                self.finalize(smu2)
+                self.finalize(hvsrc)

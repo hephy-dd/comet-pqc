@@ -68,7 +68,7 @@ Property `parameters` defines default values specified by an individual measurem
 ...
     measurements:
       - name: Polysilicon Van-der-Pauw cross
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
             current_start: -10 uA
             current_stop: 10 uA

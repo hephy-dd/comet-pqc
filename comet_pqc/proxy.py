@@ -12,8 +12,8 @@ def create_proxy(context):
 
     Raises a `TypeError` on error.
 
-    >>> smu = create_proxy(device)
-    >>> smu.identification
+    >>> vsrc = create_proxy(device)
+    >>> vsrc.identification
     'Keithley Inc., Model 2410, 1234567, r1'
     """
     assert isinstance(context, Driver)

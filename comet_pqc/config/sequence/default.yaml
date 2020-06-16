@@ -6,8 +6,9 @@ contacts:
     contact_id: flute_1
     measurements:
       - name: Polysilicon Van-der-Pauw cross
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
+            matrix_enabled: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -16,8 +17,9 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: N+ Van-der-Pauw cross
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
+            matrix_enabled: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
@@ -26,8 +28,9 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: P-stop Van-der-Pauw cross
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
+            matrix_enabled: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
@@ -44,14 +47,15 @@ contacts:
             voltage_start: -5 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
-            waiting_time: 500 ms # TODO 0-500ms
+            waiting_time: 500 ms
             current_compliance: 10 uA
             sense_mode: local
-      - name: MOS capacitor (SMU)
+      - name: MOS capacitor (VSrc)
         type: cv_ramp
-        description: Variant using SMU and LCR
+        description: Variant using VSource and LCR
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
@@ -74,11 +78,12 @@ contacts:
             route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (SMU)
+      - name: Capacitor test structure (VSrc)
         type: cv_ramp
-        description: Variant using SMU and LCR
+        description: Variant using VSource and LCR
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 5 V
             bias_voltage_step: 0.1 V
@@ -106,6 +111,7 @@ contacts:
       - name: Diode IV
         type: iv_ramp_elm
         parameters:
+            matrix_enabled: true
             matrix_channels: [1A02, 2C11]
             voltage_start: 0 V
             voltage_stop: -1000 V
@@ -114,9 +120,9 @@ contacts:
             current_compliance: 1 uA
             sense_mode: local
             route_termination: rear
-            smu_filter_enabled: true
-            smu_filter_count: 10
-            smu_filter_type: repeat
+            vsrc_filter_enabled: true
+            vsrc_filter_count: 10
+            vsrc_filter_type: repeat
             elm_filter_enabled: false
             elm_filter_count: 10
             elm_filter_type: repeat
@@ -125,6 +131,7 @@ contacts:
       - name: Diode CV
         type: cv_ramp
         parameters:
+            matrix_enabled: true
             matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
@@ -135,6 +142,23 @@ contacts:
             route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
+      - name: Diode CV 10kHz Test
+        type: cv_ramp
+        enabled: false
+        parameters:
+            matrix_enabled: true
+            matrix_channels: [1A01, 1B02, 2H11, 2G12]
+            bias_voltage_start: 0 V
+            bias_voltage_stop: 200 V
+            bias_voltage_step: 2.5 V
+            waiting_time: 500 ms
+            current_compliance: 25 uA
+            sense_mode: local
+            route_termination: rear
+            lcr_frequency: 10 kHz
+            lcr_amplitude: 250 mV
+            lcr_integration_time: "long"
+            lcr_averaging_rate: 8
       - name: Diode Frequency Scan
         type: frequency_scan
         enabled: false
@@ -160,7 +184,7 @@ contacts:
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
-            waiting_time: 500 ms # TODO 0-500ms
+            waiting_time: 500 ms
             current_compliance: 10 uA
             sense_mode: local
       - name: Polysilicon meander
@@ -174,9 +198,10 @@ contacts:
             current_compliance: 10 uA
             sense_mode: local
       - name: N+ linewidth structure
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -184,9 +209,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: P-stop linewidth structure
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -194,23 +220,24 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Dielectric Breakdown
-        type: iv_ramp
+        type: iv_ramp_elm
         parameters:
             matrix_channels: [1A02, 2C11]
             iterations: 3
             voltage_start: 0 V
             voltage_stop: 250 V
             voltage_step: 10 V
-            waiting_time: 500 ms # TODO 0-500ms
+            waiting_time: 500 ms
             current_compliance: 1 uA
             sense_mode: local
   - name: PQC Flute 3
     contact_id: flute_3
     measurements:
       - name: Metal meander
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -218,19 +245,21 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Metal clover leaf Van-der-Pauw
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
-            current_start: -10 mA # TODO -10 mA, -100 mA
-            current_stop: 10 mA # TODO 10 mA, 100 mA
-            current_step: 500 uA # TODO 500 uA, 5 mA
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
+            current_start: -10 mA
+            current_stop: 10 mA
+            current_step: 500 uA
             waiting_time: 200 ms
             voltage_compliance: 20 V
             sense_mode: remote
       - name: P+ cross-bridge Van-der-Pauw
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -238,9 +267,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Bulk cross
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: 0 nA
             current_stop: 500 nA
             current_step: 5 nA
@@ -248,7 +278,7 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Diode IV
-        type: iv_ramp
+        type: iv_ramp_elm
         parameters:
             matrix_channels: [1A02, 2C11]
             voltage_start: 0 V
@@ -260,7 +290,8 @@ contacts:
       - name: Diode CV
         type: cv_ramp
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
@@ -296,9 +327,10 @@ contacts:
             current_compliance: 10 uA
             sense_mode: local
       - name: N+ CBKR
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -306,9 +338,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Polysilicon CBKR
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -316,9 +349,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: Polysilicon contact chain
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -326,9 +360,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: P+ contact chain
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA
@@ -336,9 +371,10 @@ contacts:
             voltage_compliance: 20 V
             sense_mode: remote
       - name: N+ contact chain
-        type: 4wire_iv_ramp
+        type: iv_ramp_4_wire
         parameters:
-            matrix_channels: []
+            matrix_enabled: true
+            matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 100 nA

@@ -20,7 +20,7 @@ Available measurements for PQC.
 
 ## IV Ramp
 
-IV ramp using SMU1 (Keithley 2410) as source and for taking current measurements.
+IV ramp using VSource as source and for taking current measurements.
 
 ### Parameters
 
@@ -32,12 +32,12 @@ IV ramp using SMU1 (Keithley 2410) as source and for taking current measurements
 |`voltage_stop` |`volt` |`10 V` |End voltage for ramp. (`-1 kV` to `1 kV`). |
 |`voltage_step` |`volt` |`1 V` |Step voltage for ramp (`1 mV` to `100 V`). |
 |`waiting_time` |`second` |`1 s` |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
-|`current_compliance` |`ampere` |`1 uA` |SMU1 current compliance |
-|`sense_mode` |`str` |`local` |SMU1 sense mode |
-|`route_termination` |`str` |`rear` |SMU1 route termination. Possible values are: `front`, `rear`. |
-|`smu_filter_enable` |`bool` |`false` |Enable SMU1 filter |
-|`smu_filter_count` |`int` |`10` |SMU1 filter count (`1` to `100`). |
-|`smu_filter_type` |`str` |`moving` |Type of applied SMU1 filter.  Possible values are: `moving`, `repeat`. |
+|`current_compliance` |`ampere` |`1 uA` |VSource current compliance |
+|`sense_mode` |`str` |`local` |VSource sense mode |
+|`route_termination` |`str` |`rear` |VSource route termination. Possible values are: `front`, `rear`. |
+|`vsrc_filter_enable` |`bool` |`false` |Enable VSource filter |
+|`vsrc_filter_count` |`int` |`10` |VSource filter count (`1` to `100`). |
+|`vsrc_filter_type` |`str` |`moving` |Type of applied VSource filter.  Possible values are: `moving`, `repeat`. |
 
 ### Example configuration
 
@@ -54,14 +54,14 @@ IV ramp using SMU1 (Keithley 2410) as source and for taking current measurements
       current_compliance: 1 uA
       sense_mode: local
       route_termination: rear
-      smu_filter_enable: true
-      smu_filter_count: 10
-      smu_filter_type: moving
+      vsrc_filter_enable: true
+      vsrc_filter_count: 10
+      vsrc_filter_type: moving
 ```
 
 ## IV Ramp with Electrometer
 
-IV ramp using SMU1 (Keithley 2410) and ELM (Keithley 6517B) for measurements.
+IV ramp using VSource and ELM (Keithley 6517B) for measurements.
 
 ### Parameters
 
@@ -72,7 +72,7 @@ IV ramp using SMU1 (Keithley 2410) and ELM (Keithley 6517B) for measurements.
 
 ## IV Ramp 4-Wire
 
-IV ramp using SMU2 (Keithley 2657A) and ELM (Keithley 6517B) for measurements.
+IV ramp using HVSource and ELM (Keithley 6517B) for measurements.
 
 ### Parameters
 
@@ -92,9 +92,9 @@ Available in future releases.
 |`matrix_enabled` |`bool` |`false` |enable matrix configuration. |
 |`matrix_channels` |`list[str]` |`[]` | List of matrix channels to be closed. All matrix slots can be addressed. |
 
-## CV Ramp (SMU1 and LCR)
+## CV Ramp (VSource and LCR)
 
-CV ramp using SMU1 (Keithley 2410) and LCR (Keysight E4980A) for CpRp measurements.
+CV ramp using VSource and LCR (Keysight E4980A) for CpRp measurements.
 
 ### Parameters
 
@@ -109,9 +109,9 @@ CV ramp using SMU1 (Keithley 2410) and LCR (Keysight E4980A) for CpRp measuremen
 | `route_termination` | `str` | `rear` | |
 | `sense_mode` | `str` | `local` | Possible values are: `local`, `remote`.
 | `current_compliance` | `ampere` | `1 uA` | |
-| `smu_filter_type` | `str` | `repeat` | Possible values are: `moving`, `repeat`. |
-| `smu_filter_count` | `int` | `10` | |
-| `smu_filter_enable` | `bool` | `false` | |
+| `vsrc_filter_type` | `str` | `repeat` | Possible values are: `moving`, `repeat`. |
+| `vsrc_filter_count` | `int` | `10` | |
+| `vsrc_filter_enable` | `bool` | `false` | |
 | `lcr_soft_filter` | `bool` | `true` | Apply software STD/mean<0.005 filter. |
 | `lcr_frequency` | `herz` | `1 kHz` | Possible range from `1 Hz` to `25 kHz`. |
 | `lcr_amplitude` | `volt` | `250 mV`| |

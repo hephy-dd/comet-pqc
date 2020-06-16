@@ -40,7 +40,7 @@ class IVRampMeasurement(MatrixMeasurement):
             env_model=env_idn
         ))
 
-    def initialize(self, smu):
+    def initialize(self, vsrc):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 5)
 
@@ -51,138 +51,138 @@ class IVRampMeasurement(MatrixMeasurement):
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode")
         route_termination = parameters.get("route_termination", "rear")
-        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
-        smu_filter_count = int(parameters.get("smu_filter_count", 10))
-        smu_filter_type = parameters.get("smu_filter_type", "repeat")
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
 
-        smu_proxy = create_proxy(smu)
+        vsrc_proxy = create_proxy(vsrc)
 
-        smu_idn = smu_proxy.identification
-        logging.info("Detected SMU: %s", smu_idn)
-        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
-        smu_model = ''.join(result) or None
+        vsrc_idn = vsrc_proxy.identification
+        logging.info("Detected VSrc: %s", vsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
+        vsrc_model = ''.join(result) or None
 
         if self.process.get("use_environ"):
             with self.resources.get("environ") as environ:
                 self.env_detect_model(environ)
 
         self.process.emit("state", dict(
-            smu_model=smu_model,
-            smu_voltage=smu_proxy.source_voltage_level,
-            smu_current=None,
-            smu_output=smu_proxy.output_enable
+            vsrc_model=vsrc_model,
+            vsrc_voltage=vsrc_proxy.source_voltage_level,
+            vsrc_current=None,
+            vsrc_output=vsrc_proxy.output_enable
         ))
 
-        smu_proxy.reset()
-        smu_proxy.assert_success()
-        smu_proxy.clear()
-        smu_proxy.assert_success()
+        vsrc_proxy.reset()
+        vsrc_proxy.assert_success()
+        vsrc_proxy.clear()
+        vsrc_proxy.assert_success()
 
         # Beeper off
-        smu_proxy.beeper_enable = False
-        smu_proxy.assert_success()
+        vsrc_proxy.beeper_enable = False
+        vsrc_proxy.assert_success()
         self.process.emit("progress", 1, 5)
 
         # Select rear terminal
         if route_termination == "front":
-            smu.resource.write(":ROUT:TERM FRONT")
+            vsrc.resource.write(":ROUT:TERM FRONT")
         elif route_termination == "rear":
-            smu.resource.write(":ROUT:TERM REAR")
-        smu.resource.query("*OPC?")
-        smu_proxy.assert_success()
+            vsrc.resource.write(":ROUT:TERM REAR")
+        vsrc.resource.query("*OPC?")
+        vsrc_proxy.assert_success()
         self.process.emit("progress", 2, 5)
 
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
         if sense_mode == "remote":
-            smu.resource.write(":SYST:RSEN ON")
+            vsrc.resource.write(":SYST:RSEN ON")
         elif sense_mode == "local":
-            smu.resource.write(":SYST:RSEN OFF")
+            vsrc.resource.write(":SYST:RSEN OFF")
         else:
             raise ValueError(f"invalid sense mode: {sense_mode}")
-        smu.resource.query("*OPC?")
-        smu_proxy.assert_success()
+        vsrc.resource.query("*OPC?")
+        vsrc_proxy.assert_success()
         self.process.emit("progress", 3, 5)
 
         # Compliance
         logging.info("set compliance: %E A", current_compliance)
-        smu.sense.current.protection.level = current_compliance
-        smu_proxy.assert_success()
+        vsrc.sense.current.protection.level = current_compliance
+        vsrc_proxy.assert_success()
 
         # Range
         current_range = 1.05E-6
-        smu.resource.write(":SENS:CURR:RANG:AUTO ON")
-        smu.resource.query("*OPC?")
-        smu_proxy.assert_success()
-        #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #smu.resource.query("*OPC?")
-        #smu_proxy.assert_success()
+        vsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
+        vsrc.resource.query("*OPC?")
+        vsrc_proxy.assert_success()
+        #vsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
+        #vsrc.resource.query("*OPC?")
+        #vsrc_proxy.assert_success()
 
         # Filter
 
-        smu_proxy.filter_count = smu_filter_count
-        smu_proxy.assert_success()
-        smu_proxy.filter_type = smu_filter_type.upper()
-        smu_proxy.assert_success()
-        smu_proxy.filter_enable = smu_filter_enable
-        smu_proxy.assert_success()
+        vsrc_proxy.filter_count = vsrc_filter_count
+        vsrc_proxy.assert_success()
+        vsrc_proxy.filter_type = vsrc_filter_type.upper()
+        vsrc_proxy.assert_success()
+        vsrc_proxy.filter_enable = vsrc_filter_enable
+        vsrc_proxy.assert_success()
 
         self.process.emit("progress", 5, 5)
 
         # If output enabled
-        if smu_proxy.output_enable:
-            voltage = smu_proxy.source_voltage_level
+        if vsrc_proxy.output_enable:
+            voltage = vsrc_proxy.source_voltage_level
 
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu_proxy.source_voltage_level = voltage
-                # smu_proxy.assert_success()
+                vsrc_proxy.source_voltage_level = voltage
+                # vsrc_proxy.assert_success()
                 time.sleep(.100)
                 if not self.process.running:
                     break
         # If output disabled
         else:
             voltage = 0
-            smu_proxy.source_voltage_level = voltage
-            smu_proxy.assert_success()
-            smu_proxy.output_enable = True
-            smu_proxy.assert_success()
+            vsrc_proxy.source_voltage_level = voltage
+            vsrc_proxy.assert_success()
+            vsrc_proxy.output_enable = True
+            vsrc_proxy.assert_success()
             time.sleep(.100)
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            voltage = smu_proxy.source_voltage_level
+            voltage = vsrc_proxy.source_voltage_level
 
             # Get configured READ/FETCh elements
-            elements = list(map(str.strip, smu.resource.query(":FORM:ELEM?").split(",")))
-            smu_proxy.assert_success()
+            elements = list(map(str.strip, vsrc.resource.query(":FORM:ELEM?").split(",")))
+            vsrc_proxy.assert_success()
 
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu_proxy.source_voltage_level = voltage
-                # smu_proxy.assert_success()
+                vsrc_proxy.source_voltage_level = voltage
+                # vsrc_proxy.assert_success()
                 time.sleep(.100)
                 # Returns <elements> comma separated
-                #values = list(map(float, smu.resource.query(":READ?").split(",")))
+                #values = list(map(float, vsrc.resource.query(":READ?").split(",")))
                 #data = zip(elements, values)
                 time.sleep(waiting_time)
                 # Compliance?
-                compliance_tripped = smu.sense.current.protection.tripped
+                compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("VSrc in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 5, 5)
 
-    def measure(self, smu):
+    def measure(self, vsrc):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -195,7 +195,7 @@ class IVRampMeasurement(MatrixMeasurement):
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
 
-        smu_proxy = create_proxy(smu)
+        vsrc_proxy = create_proxy(vsrc)
 
         if not self.process.running:
             return
@@ -228,11 +228,11 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            voltage = smu_proxy.source_voltage_level
+            voltage = vsrc_proxy.source_voltage_level
 
-            # SMU reading format: CURR
-            smu.resource.write(":FORM:ELEM CURR")
-            smu.resource.query("*OPC?")
+            # VSrc reading format: CURR
+            vsrc.resource.write(":FORM:ELEM CURR")
+            vsrc.resource.query("*OPC?")
 
             t0 = time.time()
 
@@ -243,13 +243,13 @@ class IVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
-                smu_proxy.source_voltage_level = voltage
+                vsrc_proxy.source_voltage_level = voltage
                 time.sleep(.100)
-                # smu_proxy.assert_success()
+                # vsrc_proxy.assert_success()
                 td = time.time() - t0
-                reading_current = float(smu.resource.query(":READ?").split(',')[0])
-                logging.info("SMU reading: %E A", reading_current)
-                self.process.emit("reading", "series", abs(voltage) if ramp.step < 0 else voltage, reading_current)
+                reading_current = float(vsrc.resource.query(":READ?").split(',')[0])
+                logging.info("VSrc reading: %E A", reading_current)
+                self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
                 # Environment
                 if self.process.get("use_environ"):
@@ -285,42 +285,42 @@ class IVRampMeasurement(MatrixMeasurement):
                 self.process.emit("progress", *est.progress)
 
                 # Compliance?
-                compliance_tripped = smu.sense.current.protection.tripped
+                compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("VSrc in compliance")
                     raise ValueError("compliance tripped")
-                # smu_proxy.assert_success()
+                # vsrc_proxy.assert_success()
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 0, 0)
 
-    def finalize(self, smu):
+    def finalize(self, vsrc):
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
 
-        smu_proxy = create_proxy(smu)
+        vsrc_proxy = create_proxy(vsrc)
 
-        voltage = smu_proxy.source_voltage_level
+        voltage = vsrc_proxy.source_voltage_level
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", f"{voltage:.3f} V")
-            smu_proxy.source_voltage_level = voltage
+            vsrc_proxy.source_voltage_level = voltage
             time.sleep(.100)
-            # smu_proxy.assert_success()
+            # vsrc_proxy.assert_success()
 
-        smu_proxy.output_enable = False
-        smu_proxy.assert_success()
+        vsrc_proxy.output_enable = False
+        vsrc_proxy.assert_success()
 
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_res:
-            smu1 = K2410(smu1_res)
+        with self.resources.get("vsrc") as vsrc_res:
+            vsrc = K2410(vsrc_res)
             try:
-                self.initialize(smu1)
-                self.measure(smu1)
+                self.initialize(vsrc)
+                self.measure(vsrc)
             finally:
-                self.finalize(smu1)
+                self.finalize(vsrc)

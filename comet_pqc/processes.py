@@ -34,21 +34,21 @@ class StatusProcess(comet.Process, ResourceMixin):
         except (ResourceError, OSError):
             pass
 
-    def read_smu1(self):
-        self.set("smu1_model", "")
+    def read_vsrc(self):
+        self.set("vsrc_model", "")
         try:
-            with self.resources.get("smu1") as smu1_res:
-                model = smu1_res.query("*IDN?")
-                self.set("smu1_model", model)
+            with self.resources.get("vsrc") as vsrc_res:
+                model = vsrc_res.query("*IDN?")
+                self.set("vsrc_model", model)
         except (ResourceError, OSError):
             pass
 
-    def read_smu2(self):
-        self.set("smu2_model", "")
+    def read_hvsrc(self):
+        self.set("hvsrc_model", "")
         try:
-            with self.resources.get("smu2") as smu2_res:
-                model = smu2_res.query("*IDN?")
-                self.set("smu2_model", model)
+            with self.resources.get("hvsrc") as hvsrc_res:
+                model = hvsrc_res.query("*IDN?")
+                self.set("hvsrc_model", model)
         except (ResourceError, OSError):
             pass
 
@@ -88,13 +88,13 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("progress", 0, 6)
         self.read_matrix()
 
-        self.emit("message", "Reading SMU1...")
+        self.emit("message", "Reading VSource...")
         self.emit("progress", 1, 6)
-        self.read_smu1()
+        self.read_vsrc()
 
-        self.emit("message", "Read SMU2...")
+        self.emit("message", "Read HVSource...")
         self.emit("progress", 2, 6)
-        self.read_smu2()
+        self.read_hvsrc()
 
         self.emit("message", "Read LCRMeter...")
         self.emit("progress", 3, 6)
@@ -264,35 +264,35 @@ class CalibrateProcess(comet.Process, ResourceMixin):
 
 class BaseProcess(comet.Process, ResourceMixin):
 
-    def safe_initialize_smu1(self, resource):
+    def safe_initialize_vsrc(self, resource):
         resource.query("*IDN?")
         if int(resource.query(":OUTP:STAT?")):
-            self.emit("message", "Ramping down SMU1...")
+            self.emit("message", "Ramping down VSource...")
             start_voltage = float(resource.query(":SOUR:VOLT:LEV?"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f":SOUR:VOLT:LEV {voltage:E}")
                 resource.query("*OPC?")
-            self.emit("message", "Disable output SMU1...")
+            self.emit("message", "Disable output VSource...")
             resource.write(":OUTP:STAT OFF")
             resource.query("*OPC?")
-        self.emit("message", "Initialized SMU1.")
+        self.emit("message", "Initialized VSource.")
 
-    def safe_initialize_smu2(self, resource):
+    def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
         if int(resource.query("print(smua.source.output)")):
-            self.emit("message", "Ramping down SMU2...")
+            self.emit("message", "Ramping down HVSource...")
             start_voltage = float(resource.query("print(smua.source.levelv)"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f"smua.source.levelv = {voltage:E}")
                 resource.query("*OPC?")
-            self.emit("message", "Disable output SMU2...")
+            self.emit("message", "Disable output HVSource...")
             resource.write("smua.source.output = smua.OUTPUT_OFF")
             resource.query("*OPC?")
-        self.emit("message", "Initialized SMU2.")
+        self.emit("message", "Initialized HVSource.")
 
     def discarge_decoupling(self, device):
         device.identification
@@ -311,16 +311,16 @@ class BaseProcess(comet.Process, ResourceMixin):
 
     def safe_initialize(self):
         try:
-            with self.resources.get("smu1") as smu1:
-                self.safe_initialize_smu1(smu1)
+            with self.resources.get("vsrc") as vsrc:
+                self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.error("unable to connect with SMU1")
-            raise RuntimeError("Failed to connect with SMU1")
+            logging.error("unable to connect with VSource")
+            raise RuntimeError("Failed to connect with VSource")
         try:
-            with self.resources.get("smu2") as smu2:
-                self.safe_initialize_smu2(smu2)
+            with self.resources.get("hvsrc") as hvsrc:
+                self.safe_initialize_hvsrc(hvsrc)
         except Exception:
-            logging.warning("unable to connect with SMU2")
+            logging.warning("unable to connect with HVSource")
         if self.get("use_environ"):
             with self.resources.get("environ") as environ_resource:
                 environ = EnvironmentBox(environ_resource)
@@ -333,13 +333,13 @@ class BaseProcess(comet.Process, ResourceMixin):
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
-        with self.resources.get("smu1") as smu1:
-            self.safe_initialize_smu1(smu1)
+        with self.resources.get("vsrc") as vsrc:
+            self.safe_initialize_vsrc(vsrc)
         try:
-            with self.resources.get("smu2") as smu2:
-                self.safe_initialize_smu2(smu2)
+            with self.resources.get("hvsrc") as hvsrc:
+                self.safe_initialize_hvsrc(hvsrc)
         except Exception:
-            logging.warning("unable to connect with SMU2")
+            logging.warning("unable to connect with HVSource")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)

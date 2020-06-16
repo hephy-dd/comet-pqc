@@ -58,35 +58,35 @@ class FrequencyScanPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_smu_model = comet.Label()
-        self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
-        self.status_smu_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
-        self.status_smu_current = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_current", self.status_smu_current, "n/a")
-        self.status_smu_output = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_output", self.status_smu_output, "n/a")
+        self.status_vsrc_model = comet.Label()
+        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
+        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "n/a")
+        self.status_vsrc_current = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_current", self.status_vsrc_current, "n/a")
+        self.status_vsrc_output = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_output", self.status_vsrc_output, "n/a")
 
         self.status_lcr_model = comet.Label()
         self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="SMU Status",
+                title="VSource Status",
                 layout=comet.Column(
-                    self.status_smu_model,
+                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
-                            self.status_smu_voltage
+                            self.status_vsrc_voltage
                         ),
                         comet.Column(
                             comet.Label("Current"),
-                            self.status_smu_current
+                            self.status_vsrc_current
                         ),
                         comet.Column(
                             comet.Label("Output"),
-                            self.status_smu_output
+                            self.status_vsrc_output
                         )
                     )
                 )
@@ -105,7 +105,7 @@ class FrequencyScanPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.GroupBox(
-                        title="SMU",
+                        title="VSource",
                         layout=comet.Column(
                             comet.Label(text="Bias Voltage"),
                             self.bias_voltage,
@@ -143,7 +143,7 @@ class FrequencyScanPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="SMU",
+                title="VSource",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",
@@ -190,18 +190,18 @@ class FrequencyScanPanel(MatrixPanel):
             tab.enabled = True
 
     def state(self, state):
-        if 'smu_model' in state:
-            value = state.get('smu_model', "n/a")
-            self.status_smu_model.text = f"Model: {value}"
-        if 'smu_voltage' in state:
-            value = state.get('smu_voltage')
-            self.status_smu_voltage.value = auto_unit(value, "V")
-        if 'smu_current' in state:
-            value = state.get('smu_current')
-            self.status_smu_current.value = auto_unit(value, "A")
-        if 'smu_output' in state:
+        if 'vsrc_model' in state:
+            value = state.get('vsrc_model', "n/a")
+            self.status_vsrc_model.text = f"Model: {value}"
+        if 'vsrc_voltage' in state:
+            value = state.get('vsrc_voltage')
+            self.status_vsrc_voltage.value = auto_unit(value, "V")
+        if 'vsrc_current' in state:
+            value = state.get('vsrc_current')
+            self.status_vsrc_current.value = auto_unit(value, "A")
+        if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_smu_output.value = labels[state.get('smu_output')]
+            self.status_vsrc_output.value = labels[state.get('vsrc_output')]
         if 'lcr_model' in state:
             value = state.get('lcr_model', "n/a")
             self.status_lcr_model.text = f"Model: {value}"

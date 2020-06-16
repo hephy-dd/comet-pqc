@@ -8,7 +8,7 @@ __all__ = ["IVRamp4WirePanel"]
 class IVRamp4WirePanel(MatrixPanel):
     """Panel for 4 wire IV ramp measurements."""
 
-    type = "4wire_iv_ramp"
+    type = "iv_ramp_4_wire"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,7 +17,7 @@ class IVRamp4WirePanel(MatrixPanel):
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
         self.plot.add_axis("y", align="right", text="Voltage [V]")
-        self.plot.add_series("smu", "x", "y", text="SMU2", color="red")
+        self.plot.add_series("hvsrc", "x", "y", text="HVSource", color="red")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
@@ -38,14 +38,14 @@ class IVRamp4WirePanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_smu_model = comet.Label()
-        self.bind("status_smu_model", self.status_smu_model, "Model: n/a")
-        self.status_smu_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_voltage", self.status_smu_voltage, "n/a")
-        self.status_smu_current = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_current", self.status_smu_current, "n/a")
-        self.status_smu_output = comet.Text(value="---", readonly=True)
-        self.bind("status_smu_output", self.status_smu_output, "n/a")
+        self.status_hvsrc_model = comet.Label()
+        self.bind("status_hvsrc_model", self.status_hvsrc_model, "Model: n/a")
+        self.status_hvsrc_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, "n/a")
+        self.status_hvsrc_current = comet.Text(value="---", readonly=True)
+        self.bind("status_hvsrc_current", self.status_hvsrc_current, "n/a")
+        self.status_hvsrc_output = comet.Text(value="---", readonly=True)
+        self.bind("status_hvsrc_output", self.status_hvsrc_output, "n/a")
 
         self.status_env_model = comet.Label()
         self.bind("status_env_model", self.status_env_model, "Model: n/a")
@@ -58,21 +58,21 @@ class IVRamp4WirePanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="SMU Status",
+                title="HVSource Status",
                 layout=comet.Column(
-                    self.status_smu_model,
+                    self.status_hvsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
-                            self.status_smu_voltage
+                            self.status_hvsrc_voltage
                         ),
                         comet.Column(
                             comet.Label("Current"),
-                            self.status_smu_current
+                            self.status_hvsrc_current
                         ),
                         comet.Column(
                             comet.Label("Output"),
-                            self.status_smu_output
+                            self.status_hvsrc_output
                         )
                     )
                 )
@@ -119,7 +119,7 @@ class IVRamp4WirePanel(MatrixPanel):
                         )
                     ),
                     comet.GroupBox(
-                        title="SMU Compliance",
+                        title="HVSource Compliance",
                         layout=comet.Column(
                             self.voltage_compliance,
                             comet.Spacer()
@@ -138,7 +138,7 @@ class IVRamp4WirePanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="SMU",
+                title="HVSource",
                 layout=comet.Row()
             )
         )
@@ -172,17 +172,17 @@ class IVRamp4WirePanel(MatrixPanel):
         self.update_readings()
 
     def state(self, state):
-        if 'smu_model' in state:
-            value = state.get('smu_model', "n/a")
-            self.status_smu_model.text = f"Model: {value}"
-        if 'smu_voltage' in state:
-            value = state.get('smu_voltage')
-            self.status_smu_voltage.value = auto_unit(value, "V")
-        if 'smu_current' in state:
-            value = state.get('smu_current')
-            self.status_smu_current.value = auto_unit(value, "A")
-        if 'smu_output' in state:
-            self.status_smu_output.value = state.get('smu_output') or '---'
+        if 'hvsrc_model' in state:
+            value = state.get('hvsrc_model', "n/a")
+            self.status_hvsrc_model.text = f"Model: {value}"
+        if 'hvsrc_voltage' in state:
+            value = state.get('hvsrc_voltage')
+            self.status_hvsrc_voltage.value = auto_unit(value, "V")
+        if 'hvsrc_current' in state:
+            value = state.get('hvsrc_current')
+            self.status_hvsrc_current.value = auto_unit(value, "A")
+        if 'hvsrc_output' in state:
+            self.status_hvsrc_output.value = state.get('hvsrc_output') or '---'
         if 'env_model' in state:
             value = state.get('env_model', "n/a")
             self.status_env_model.text = f"Model: {value}"

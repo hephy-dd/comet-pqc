@@ -19,14 +19,14 @@ class FrequencyScanMeasurement(MatrixMeasurement):
 
     type = "frequency_scan"
 
-    def initialize(self, smu, lcr):
+    def initialize(self, vsrc, lcr):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 2)
 
-        smu_idn = smu.resource.query("*IDN?")
-        logging.info("Detected SMU: %s", smu_idn)
-        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
-        smu_model = ''.join(result) or None
+        vsrc_idn = vsrc.resource.query("*IDN?")
+        logging.info("Detected VSrc: %s", vsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
+        vsrc_model = ''.join(result) or None
 
         self.process.emit("progress", 1, 2)
 
@@ -35,32 +35,32 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         lcr_model = lcr_idn.split(",")[1:][0]
 
         self.process.emit("state", dict(
-            smu_model=smu_model,
-            smu_voltage=smu.source.voltage.level,
-            smu_current=None,
-            smu_output=smu.output,
+            vsrc_model=vsrc_model,
+            vsrc_voltage=vsrc.source.voltage.level,
+            vsrc_current=None,
+            vsrc_output=vsrc.output,
             lcr_model=lcr_model
         ))
 
         self.process.emit("progress", 2, 2)
 
-    def measure(self, smu, lcr):
+    def measure(self, vsrc, lcr):
         pass
 
-    def finalize(self, smu, lcr):
+    def finalize(self, vsrc, lcr):
         self.process.emit("progress", 0, 0)
 
-        smu.output = False
+        vsrc.output = False
 
         self.process.emit("progress", 1, 1)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_res:
+        with self.resources.get("vsrc") as vsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                smu1 = K2410(smu1_res)
+                vsrc = K2410(vsrc_res)
                 lcr = E4980A(lcr_res)
                 try:
-                    self.initialize(smu1, lcr)
-                    self.measure(smu1, lcr)
+                    self.initialize(vsrc, lcr)
+                    self.measure(vsrc, lcr)
                 finally:
-                    self.finalize(smu1, lcr)
+                    self.finalize(vsrc, lcr)

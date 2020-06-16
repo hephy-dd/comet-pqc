@@ -14,8 +14,8 @@ from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampElmMeasurement"]
 
-def check_error(smu):
-    error = smu.system.error
+def check_error(vsrc):
+    error = vsrc.system.error
     if error[0]:
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
@@ -45,7 +45,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             env_model=env_idn
         ))
 
-    def initialize(self, smu, elm):
+    def initialize(self, vsrc, elm):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
@@ -55,19 +55,19 @@ class IVRampElmMeasurement(MatrixMeasurement):
         waiting_time = parameters.get("waiting_time").to("s").m
         sense_mode = parameters.get("sense_mode")
         route_termination = parameters.get("route_termination", "front")
-        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
-        smu_filter_count = int(parameters.get("smu_filter_count", 10))
-        smu_filter_type = parameters.get("smu_filter_type", "repeat")
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
         elm_filter_enable = bool(parameters.get("elm_filter_enable", False))
         elm_filter_count = int(parameters.get("elm_filter_count", 10))
         elm_filter_type = parameters.get("elm_filter_type", "repeat")
         zero_correction = bool(parameters.get("zero_correction", False))
         integration_rate = parameters.get("integration_rate")
 
-        smu_idn = smu.identification
-        logging.info("Detected SMU: %s", smu_idn)
-        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
-        smu_model = ''.join(result) or None
+        vsrc_idn = vsrc.identification
+        logging.info("Detected VSrc: %s", vsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
+        vsrc_model = ''.join(result) or None
 
         self.process.emit("progress", 1, 5)
 
@@ -83,133 +83,133 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            smu_model=smu_model,
-            smu_voltage=smu.source.voltage.level,
-            smu_current=None,
-            smu_output=smu.output,
+            vsrc_model=vsrc_model,
+            vsrc_voltage=vsrc.source.voltage.level,
+            vsrc_current=None,
+            vsrc_output=vsrc.output,
             elm_model=elm_model,
             elm_current=None,
         ))
 
         # If output enabled
-        if smu.output:
-            voltage = smu.source.voltage.level
+        if vsrc.output:
+            voltage = vsrc.source.voltage.level
 
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu.source.voltage.level = voltage
-                # check_error(smu)
+                vsrc.source.voltage.level = voltage
+                # check_error(vsrc)
                 time.sleep(.100)
                 self.process.emit("state", dict(
-                    smu_voltage=voltage
+                    vsrc_voltage=voltage
                 ))
                 if not self.process.running:
                     break
 
         # Beeper off
-        smu.reset()
-        smu.clear()
-        smu.system.beeper.status = False
-        check_error(smu)
+        vsrc.reset()
+        vsrc.clear()
+        vsrc.system.beeper.status = False
+        check_error(vsrc)
 
         self.process.emit("state", dict(
-            smu_voltage=smu.source.voltage.level,
-            smu_current=None,
-            smu_output=smu.output,
+            vsrc_voltage=vsrc.source.voltage.level,
+            vsrc_current=None,
+            vsrc_output=vsrc.output,
             elm_current=None
         ))
 
         # Select rear terminal
         if route_termination == "front":
-            smu.resource.write(":ROUT:TERM FRONT")
+            vsrc.resource.write(":ROUT:TERM FRONT")
         elif route_termination == "rear":
-            smu.resource.write(":ROUT:TERM REAR")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+            vsrc.resource.write(":ROUT:TERM REAR")
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
 
         # set sense mode
         logging.info("set sense mode: '%s'", sense_mode)
         if sense_mode == "remote":
-            smu.resource.write(":SYST:RSEN ON")
+            vsrc.resource.write(":SYST:RSEN ON")
         elif sense_mode == "local":
-            smu.resource.write(":SYST:RSEN OFF")
+            vsrc.resource.write(":SYST:RSEN OFF")
         else:
             raise ValueError(f"invalid sense mode: {sense_mode}")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
 
         # Compliance
         logging.info("set compliance: %E A", current_compliance)
-        smu.sense.current.protection.level = current_compliance
-        check_error(smu)
+        vsrc.sense.current.protection.level = current_compliance
+        check_error(vsrc)
 
         # Range
         current_range = 1.05E-6
-        smu.resource.write(":SENS:CURR:RANG:AUTO ON")
-        smu.resource.write(":SENS:VOLT:RANG:AUTO ON")
-        smu.resource.query("*OPC?")
-        check_error(smu)
-        #smu.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #smu.resource.query("*OPC?")
-        #check_error(smu)
+        vsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
+        vsrc.resource.write(":SENS:VOLT:RANG:AUTO ON")
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
+        #vsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
+        #vsrc.resource.query("*OPC?")
+        #check_error(vsrc)
 
         # Filter
-        smu.resource.write(f":SENS:AVER:COUN {smu_filter_count:d}")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+        vsrc.resource.write(f":SENS:AVER:COUN {vsrc_filter_count:d}")
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
 
-        if smu_filter_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON REP")
-        elif smu_filter_type == "repeat":
-            smu.resource.write(":SENS:AVER:TCON MOV")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+        if vsrc_filter_type == "repeat":
+            vsrc.resource.write(":SENS:AVER:TCON REP")
+        elif vsrc_filter_type == "repeat":
+            vsrc.resource.write(":SENS:AVER:TCON MOV")
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
 
-        if smu_filter_enable:
-            smu.resource.write(":SENS:AVER:STATE ON")
+        if vsrc_filter_enable:
+            vsrc.resource.write(":SENS:AVER:STATE ON")
         else:
-            smu.resource.write(":SENS:AVER:STATE OFF")
-        smu.resource.query("*OPC?")
-        check_error(smu)
+            vsrc.resource.write(":SENS:AVER:STATE OFF")
+        vsrc.resource.query("*OPC?")
+        check_error(vsrc)
 
         self.process.emit("progress", 1, 5)
 
         # If output disabled
         voltage = 0
-        smu.source.voltage.level = voltage
-        check_error(smu)
-        smu.output = True
-        check_error(smu)
+        vsrc.source.voltage.level = voltage
+        check_error(vsrc)
+        vsrc.output = True
+        check_error(vsrc)
         time.sleep(.100)
 
         self.process.emit("state", dict(
-            smu_output=smu.output
+            vsrc_output=vsrc.output
         ))
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            voltage = smu.source.voltage.level
+            voltage = vsrc.source.voltage.level
 
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                smu.source.voltage.level = voltage
-                # check_error(smu)
+                vsrc.source.voltage.level = voltage
+                # check_error(vsrc)
                 time.sleep(.100)
                 time.sleep(waiting_time)
 
                 self.process.emit("state", dict(
-                    smu_voltage=voltage,
+                    vsrc_voltage=voltage,
                 ))
                 # Compliance?
-                compliance_tripped = smu.sense.current.protection.tripped
+                compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("VSrc in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -262,7 +262,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 3, 5)
 
-    def measure(self, smu, elm):
+    def measure(self, vsrc, elm):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -285,7 +285,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage", "E")
-            fmt.add_column("current_smu", "E")
+            fmt.add_column("current_vsrc", "E")
             fmt.add_column("current_elm", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
@@ -309,11 +309,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            voltage = smu.source.voltage.level
+            voltage = vsrc.source.voltage.level
 
-            # SMU reading format: CURR
-            smu.resource.write(":FORM:ELEM CURR")
-            smu.resource.query("*OPC?")
+            # VSrc reading format: CURR
+            vsrc.resource.write(":FORM:ELEM CURR")
+            vsrc.resource.query("*OPC?")
 
             # Electrometer reading format: READ
             elm.resource.write(":FORM:ELEM READ")
@@ -328,10 +328,10 @@ class IVRampElmMeasurement(MatrixMeasurement):
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
-                smu.clear()
-                smu.source.voltage.level = voltage
+                vsrc.clear()
+                vsrc.source.voltage.level = voltage
                 time.sleep(.100)
-                # check_error(smu)
+                # check_error(vsrc)
                 dt = time.time() - t0
 
                 est.next()
@@ -340,10 +340,10 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
                 self.process.emit("progress", *est.progress)
 
-                # read SMU
-                smu_reading = float(smu.resource.query(":READ?").split(',')[0])
-                logging.info("SMU reading: %E", smu_reading)
-                self.process.emit("reading", "smu", abs(voltage) if ramp.step < 0 else voltage, smu_reading)
+                # read VSrc
+                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
+                logging.info("VSrc reading: %E", vsrc_reading)
+                self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
                 # read ELM
                 elm_reading = float(elm.resource.query(":READ?").split(',')[0])
@@ -352,8 +352,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
                 self.process.emit("update", )
                 self.process.emit("state", dict(
-                    smu_voltage=voltage,
-                    smu_current=smu_reading,
+                    vsrc_voltage=voltage,
+                    vsrc_current=vsrc_reading,
                     elm_current=elm_reading
                 ))
 
@@ -382,7 +382,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     voltage=voltage,
-                    current_smu=smu_reading,
+                    current_vsrc=vsrc_reading,
                     current_elm=elm_reading,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
@@ -392,45 +392,45 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 # Compliance?
-                compliance_tripped = smu.sense.current.protection.tripped
+                compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("VSrc in compliance")
                     raise ValueError("compliance tripped")
-                # check_error(smu)
+                # check_error(vsrc)
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 4, 5)
 
-    def finalize(self, smu, elm):
+    def finalize(self, vsrc, elm):
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 
         self.process.emit("state", dict(
-            smu_current=None,
+            vsrc_current=None,
             elm_current=None
         ))
 
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
-        voltage = smu.source.voltage.level
+        voltage = vsrc.source.voltage.level
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", f"{voltage:.3f} V")
-            smu.source.voltage.level = voltage
+            vsrc.source.voltage.level = voltage
             time.sleep(.100)
-            # check_error(smu)
+            # check_error(vsrc)
             self.process.emit("state", dict(
-                smu_voltage=voltage,
+                vsrc_voltage=voltage,
             ))
 
-        smu.output = False
-        check_error(smu)
+        vsrc.output = False
+        check_error(vsrc)
 
         self.process.emit("state", dict(
-            smu_output=smu.output,
+            vsrc_output=vsrc.output,
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
@@ -439,12 +439,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_res:
+        with self.resources.get("vsrc") as vsrc_res:
             with self.resources.get("elm") as elm_res:
-                smu1 = K2410(smu1_res)
+                vsrc = K2410(vsrc_res)
                 elm = K6517B(elm_res)
                 try:
-                    self.initialize(smu1, elm)
-                    self.measure(smu1, elm)
+                    self.initialize(vsrc, elm)
+                    self.measure(vsrc, elm)
                 finally:
-                    self.finalize(smu1, elm)
+                    self.finalize(vsrc, elm)

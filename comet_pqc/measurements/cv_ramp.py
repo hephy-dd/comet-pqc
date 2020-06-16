@@ -63,16 +63,16 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
 
-    def smu_detect_model(self, smu):
+    def vsrc_detect_model(self, vsrc):
         try:
-            smu_idn = smu.resource.query("*IDN?")
+            vsrc_idn = vsrc.resource.query("*IDN?")
         except Exception as e:
-            raise RuntimeError("Failed to access SMU1", smu.resource.resource_name, e)
-        logging.info("Detected SMU: %s", smu_idn)
-        result = re.search(r'model\s+([\d\w]+)', smu_idn, re.IGNORECASE).groups()
-        smu_model = ''.join(result) or None
+            raise RuntimeError("Failed to access VSrc", vsrc.resource.resource_name, e)
+        logging.info("Detected VSrc: %s", vsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
+        vsrc_model = ''.join(result) or None
         self.process.emit("state", dict(
-            smu_model=smu_model,
+            vsrc_model=vsrc_model,
         ))
 
     def lcr_detect_model(self, lcr):
@@ -97,87 +97,87 @@ class CVRampMeasurement(MatrixMeasurement):
             env_model=env_idn
         ))
 
-    def quick_ramp_zero(self, smu):
+    def quick_ramp_zero(self, vsrc):
         """Ramp to zero voltage without measuring current."""
         self.process.emit("message", "Ramp to zero...")
         self.process.emit("progress", 0, 1)
         parameters = self.measurement_item.parameters
         bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
-        smu_output_state = self.smu_get_output_state(smu)
+        vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
-            smu_output=smu_output_state
+            vsrc_output=vsrc_output_state
         ))
-        if smu_output_state:
-            smu_voltage_level = self.smu_get_voltage_level(smu)
-            ramp = comet.Range(smu_voltage_level, 0, bias_voltage_step)
+        if vsrc_output_state:
+            vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+            ramp = comet.Range(vsrc_voltage_level, 0, bias_voltage_step)
             for step, voltage in enumerate(ramp):
                 self.process.emit("progress", step + 1, ramp.count)
-                self.smu_set_voltage_level(smu, voltage)
+                self.vsrc_set_voltage_level(vsrc, voltage)
                 self.process.emit("state", dict(
-                    smu_voltage=voltage
+                    vsrc_voltage=voltage
                 ))
-        smu_output_state = self.smu_get_output_state(smu)
+        vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
-            smu_output=smu_output_state
+            vsrc_output=vsrc_output_state
         ))
         self.process.emit("message", "")
         self.process.emit("progress", 1, 1)
 
-    def smu_reset(self, smu):
-        safe_write(smu, "*RST")
-        safe_write(smu, "*CLS")
-        safe_write(smu, ":SYST:BEEP:STAT OFF")
+    def vsrc_reset(self, vsrc):
+        safe_write(vsrc, "*RST")
+        safe_write(vsrc, "*CLS")
+        safe_write(vsrc, ":SYST:BEEP:STAT OFF")
 
-    def smu_get_voltage_level(self, smu):
-        return float(smu.resource.query(":SOUR:VOLT:LEV?"))
+    def vsrc_get_voltage_level(self, vsrc):
+        return float(vsrc.resource.query(":SOUR:VOLT:LEV?"))
 
-    def smu_set_voltage_level(self, smu, voltage):
-        logging.info("set SMU voltage level: %s", auto_unit(voltage, "V"))
-        safe_write(smu, f":SOUR:VOLT:LEV {voltage:E}")
+    def vsrc_set_voltage_level(self, vsrc, voltage):
+        logging.info("set VSrc voltage level: %s", auto_unit(voltage, "V"))
+        safe_write(vsrc, f":SOUR:VOLT:LEV {voltage:E}")
 
-    def smu_set_route_termination(self, smu, route_termination):
-        logging.info("set SMU route termination: '%s'", route_termination)
+    def vsrc_set_route_termination(self, vsrc, route_termination):
+        logging.info("set VSrc route termination: '%s'", route_termination)
         value = {"front": "FRON", "rear": "REAR"}[route_termination]
-        safe_write(smu, f":ROUT:TERM {value:s}")
+        safe_write(vsrc, f":ROUT:TERM {value:s}")
 
-    def smu_set_sense_mode(self, smu, sense_mode):
-        logging.info("set SMU sense mode: '%s'", sense_mode)
+    def vsrc_set_sense_mode(self, vsrc, sense_mode):
+        logging.info("set VSrc sense mode: '%s'", sense_mode)
         value = {"remote": "ON", "local": "OFF"}[sense_mode]
-        safe_write(smu, f":SYST:RSEN {value:s}")
+        safe_write(vsrc, f":SYST:RSEN {value:s}")
 
-    def smu_set_compliance(self, smu, compliance):
-        logging.info("set SMU compliance: %s", auto_unit(compliance, "A"))
-        safe_write(smu, f":SENS:CURR:PROT:LEV {compliance:E}")
+    def vsrc_set_compliance(self, vsrc, compliance):
+        logging.info("set VSrc compliance: %s", auto_unit(compliance, "A"))
+        safe_write(vsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
 
-    def smu_compliance_tripped(self, smu):
-        return bool(int(smu.resource.query(":SENS:CURR:PROT:TRIP?")))
+    def vsrc_compliance_tripped(self, svsrcmu):
+        return bool(int(vsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
 
-    def smu_set_auto_range(self, smu, enabled):
-        logging.info("set SMU auto range (current): %s", enabled)
+    def vsrc_set_auto_range(self, vsrc, enabled):
+        logging.info("set VSrc auto range (current): %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(smu, f"SENS:CURR:RANG:AUTO {value:s}")
+        safe_write(vsrc, f"SENS:CURR:RANG:AUTO {value:s}")
 
-    def smu_set_filter_enable(self, smu, enabled):
-        logging.info("set SMU filter enable: %s", enabled)
+    def vsrc_set_filter_enable(self, vsrc, enabled):
+        logging.info("set VSrc filter enable: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(smu, f":SENS:AVER:STATE {value:s}")
+        safe_write(vsrc, f":SENS:AVER:STATE {value:s}")
 
-    def smu_set_filter_count(self, smu, count):
-        logging.info("set SMU filter count: %s", count)
-        safe_write(smu, f":SENS:AVER:COUN {count:d}")
+    def vsrc_set_filter_count(self, vsrc, count):
+        logging.info("set VSrc filter count: %s", count)
+        safe_write(vsrc, f":SENS:AVER:COUN {count:d}")
 
-    def smu_set_filter_type(self, smu, type):
-        logging.info("set SMU filter type: %s", type)
+    def vsrc_set_filter_type(self, vsrc, type):
+        logging.info("set VSrc filter type: %s", type)
         value = {"repeat": "REP", "moving": "MOV"}[type]
-        safe_write(smu, f":SENS:AVER:TCON {value:s}")
+        safe_write(vsrc, f":SENS:AVER:TCON {value:s}")
 
-    def smu_get_output_state(self, smu):
-        return bool(int(smu.resource.query(":OUTP:STAT?")))
+    def vsrc_get_output_state(self, vsrc):
+        return bool(int(vsrc.resource.query(":OUTP:STAT?")))
 
-    def smu_set_output_state(self, smu, enabled):
-        logging.info("set SMU output state: %s", enabled)
+    def vsrc_set_output_state(self, vsrc, enabled):
+        logging.info("set VSrc output state: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(smu, f":OUTP:STAT {value:s}")
+        safe_write(vsrc, f":OUTP:STAT {value:s}")
 
     def lcr_reset(self, lcr):
         safe_write(lcr, "*RST")
@@ -202,13 +202,13 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(lcr, ":INIT:CONT OFF")
         safe_write(lcr, ":TRIG:SOUR BUS")
 
-    def initialize(self, smu, lcr):
+    def initialize(self, vsrc, lcr):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 10)
 
         parameters = self.measurement_item.parameters
 
-        self.smu_detect_model(smu)
+        self.vsrc_detect_model(vsrc)
         self.lcr_detect_model(lcr)
 
         if self.process.get("use_environ"):
@@ -217,45 +217,45 @@ class CVRampMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 1, 10)
 
-        # Initialize SMU
+        # Initialize VSrc
 
-        # Bring down SMU voltage if output enabeled
+        # Bring down VSrc voltage if output enabeled
         # Prevents a voltage jump for at device reset.
-        self.quick_ramp_zero(smu)
-        self.smu_set_output_state(smu, False)
+        self.quick_ramp_zero(vsrc)
+        self.vsrc_set_output_state(vsrc, False)
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 2, 10)
 
-        self.smu_reset(smu)
+        self.vsrc_reset(vsrc)
         self.process.emit("progress", 3, 10)
 
         route_termination = parameters.get("route_termination", "rear")
-        self.smu_set_route_termination(smu, route_termination)
+        self.vsrc_set_route_termination(vsrc, route_termination)
         self.process.emit("progress", 4, 10)
 
         sense_mode = parameters.get("sense_mode", "local")
-        self.smu_set_sense_mode(smu, sense_mode)
+        self.vsrc_set_sense_mode(vsrc, sense_mode)
         self.process.emit("progress", 5, 10)
 
         current_compliance = parameters.get("current_compliance").to("A").m
-        self.smu_set_compliance(smu, current_compliance)
+        self.vsrc_set_compliance(vsrc, current_compliance)
         self.process.emit("progress", 6, 10)
 
-        self.smu_set_auto_range(smu, True)
+        self.vsrc_set_auto_range(vsrc, True)
         self.process.emit("progress", 7, 10)
 
-        smu_filter_type = parameters.get("smu_filter_type", "repeat")
-        self.smu_set_filter_type(smu, smu_filter_type)
-        smu_filter_count = int(parameters.get("smu_filter_count", 10))
-        self.smu_set_filter_count(smu, smu_filter_count)
-        smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
-        self.smu_set_filter_enable(smu, smu_filter_enable)
+        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
+        self.vsrc_set_filter_type(vsrc, vsrc_filter_type)
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
+        self.vsrc_set_filter_count(vsrc, vsrc_filter_count)
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
+        self.vsrc_set_filter_enable(vsrc, vsrc_filter_enable)
         self.process.emit("progress", 8, 10)
 
-        self.smu_set_output_state(smu, True)
-        smu_output_state = self.smu_get_output_state(smu)
+        self.vsrc_set_output_state(vsrc, True)
+        vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
-            smu_output=smu_output_state,
+            vsrc_output=vsrc_output_state,
         ))
 
         # Initialize LCR
@@ -266,7 +266,7 @@ class CVRampMeasurement(MatrixMeasurement):
         self.lcr_setup(lcr)
         self.process.emit("progress", 10, 10)
 
-    def measure(self, smu, lcr):
+    def measure(self, vsrc, lcr):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -284,22 +284,22 @@ class CVRampMeasurement(MatrixMeasurement):
 
         # Ramp to start voltage
 
-        smu_voltage_level = self.smu_get_voltage_level(smu)
+        vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", smu_voltage_level, bias_voltage_start, bias_voltage_step)
-        for voltage in comet.Range(smu_voltage_level, bias_voltage_start, bias_voltage_step):
+        logging.info("ramp to start voltage: from %E V to %E V with step %E V", vsrc_voltage_level, bias_voltage_start, bias_voltage_step)
+        for voltage in comet.Range(vsrc_voltage_level, bias_voltage_start, bias_voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
-            self.smu_set_voltage_level(smu, voltage)
+            self.vsrc_set_voltage_level(vsrc, voltage)
             time.sleep(.100)
             time.sleep(waiting_time)
             self.process.emit("state", dict(
-                smu_voltage=voltage,
+                vsrc_voltage=voltage,
             ))
             # Compliance?
-            compliance_tripped = self.smu_compliance_tripped(smu)
+            compliance_tripped = self.vsrc_compliance_tripped(vsrc)
             if compliance_tripped:
-                logging.error("SMU in compliance")
+                logging.error("VSrc in compliance")
                 raise ValueError("compliance tripped!")
 
             if not self.process.running:
@@ -312,7 +312,7 @@ class CVRampMeasurement(MatrixMeasurement):
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
-            fmt.add_column("voltage", "E")
+            fmt.add_column("voltage_vsrc", "E")
             fmt.add_column("capacitance", "E")
             fmt.add_column("capacitance2", "E")
             fmt.add_column("resistance", "E")
@@ -340,23 +340,23 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            smu_voltage_level = self.smu_get_voltage_level(smu)
+            vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 
-            ramp = comet.Range(smu_voltage_level, bias_voltage_stop, bias_voltage_step)
+            ramp = comet.Range(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
             est = Estimate(ramp.count)
             self.process.emit("progress", *est.progress)
 
             t0 = time.time()
 
-            safe_write(smu, "*CLS")
-            # SMU reading format: CURR
-            safe_write(smu, ":FORM:ELEM CURR")
+            safe_write(vsrc, "*CLS")
+            # VSrc reading format: CURR
+            safe_write(vsrc, ":FORM:ELEM CURR")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", smu_voltage_level, ramp.end, ramp.step)
+            logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
             for voltage in ramp:
-                self.smu_set_voltage_level(smu, voltage)
+                self.vsrc_set_voltage_level(vsrc, voltage)
                 time.sleep(.100)
-                # smu_voltage_level = self.smu_get_voltage_level(smu)
+                # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                 dt = time.time() - t0
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
@@ -364,9 +364,9 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
-                # read SMU
-                smu_reading = float(smu.resource.query(":READ?").split(',')[0])
-                logging.info("SMU reading: %E", smu_reading)
+                # read VSrc
+                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
+                logging.info("VSrc reading: %E", vsrc_reading)
 
 
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
@@ -384,8 +384,8 @@ class CVRampMeasurement(MatrixMeasurement):
 
                 self.process.emit("update", )
                 self.process.emit("state", dict(
-                    smu_voltage=voltage,
-                    smu_current=smu_reading
+                    vsrc_voltage=voltage,
+                    vsrc_current=vsrc_reading
                 ))
 
                 # Environment
@@ -412,7 +412,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=dt,
-                    voltage=voltage,
+                    voltage_vsrc=voltage,
                     capacitance=lcr_prim,
                     capacitance2=lcr_prim2,
                     resistance=lcr_sec,
@@ -424,25 +424,25 @@ class CVRampMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 # Compliance?
-                compliance_tripped = self.smu_compliance_tripped(smu)
+                compliance_tripped = self.vsrc_compliance_tripped(vsrc)
                 if compliance_tripped:
-                    logging.error("SMU in compliance")
+                    logging.error("VSrc in compliance")
                     raise ValueError("compliance tripped!")
 
                 if not self.process.running:
                     break
 
-    def finalize(self, smu, lcr):
+    def finalize(self, vsrc, lcr):
         self.process.emit("progress", 1, 2)
         self.process.emit("state", dict(
-            smu_current=None,
+            vsrc_current=None,
         ))
 
-        self.quick_ramp_zero(smu)
-        self.smu_set_output_state(smu, False)
-        smu_output_state = self.smu_get_output_state(smu)
+        self.quick_ramp_zero(vsrc)
+        self.vsrc_set_output_state(vsrc, False)
+        vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
-            smu_output=smu_output_state,
+            vsrc_output=vsrc_output_state,
         ))
 
         self.process.emit("state", dict(
@@ -454,12 +454,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 2)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("smu1") as smu1_res:
+        with self.resources.get("vsrc") as vsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                smu1 = K2410(smu1_res)
+                vsrc = K2410(vsrc_res)
                 lcr = E4980A(lcr_res)
                 try:
-                    self.initialize(smu1, lcr)
-                    self.measure(smu1, lcr)
+                    self.initialize(vsrc, lcr)
+                    self.measure(vsrc, lcr)
                 finally:
-                    self.finalize(smu1, lcr)
+                    self.finalize(vsrc, lcr)
