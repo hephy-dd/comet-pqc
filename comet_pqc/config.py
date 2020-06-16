@@ -175,7 +175,7 @@ class SequenceContact:
 class SequenceMeasurement:
     """Sequence measurement configuration."""
 
-    key_blacklist = ["matrix_enabled", "matrix_channels"]
+    key_ignorelist = ["matrix_enabled", "matrix_channels"]
 
     def __init__(self, name, type, enabled=True, description="", parameters=None):
         self.name = name
@@ -184,7 +184,7 @@ class SequenceMeasurement:
         self.description = description
         self.parameters = {}
         for key, value in (parameters or {}).items():
-            if key not in self.key_blacklist:
+            if key not in self.key_ignorelist:
                 if isinstance(value, str):
                     value = self.to_quantity(value)
                 if isinstance(value, list):
