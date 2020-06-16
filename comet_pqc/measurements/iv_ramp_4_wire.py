@@ -240,127 +240,127 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         current_stop = parameters.get("current_stop").to("A").m
         waiting_time = parameters.get("waiting_time").to("s").m
 
-        if self.process.running:
-            iso_timestamp = comet.make_iso()
-            filename = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
-            with open(os.path.join(output_dir, filename), "w", newline="") as f:
-                # Create formatter
-                fmt = PQCFormatter(f)
-                fmt.add_column("timestamp", ".3f")
-                fmt.add_column("current", "E")
-                fmt.add_column("voltage_smu", "E")
-                fmt.add_column("voltage_elm", "E")
-                fmt.add_column("temperature_box", "E")
-                fmt.add_column("temperature_chuck", "E")
-                fmt.add_column("humidity_box", "E")
+        if not self.process.running:
+            return
 
-                # Write meta data
-                fmt.write_meta("sample_name", sample_name)
-                fmt.write_meta("sample_type", sample_type)
-                fmt.write_meta("contact_name", contact_name)
-                fmt.write_meta("measurement_name", measurement_name)
-                fmt.write_meta("measurement_type", self.type)
-                fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-                fmt.write_meta("current_start", f"{current_start:E} A")
-                fmt.write_meta("current_stop", f"{current_stop:E} A")
-                fmt.write_meta("current_step", f"{current_step:E} A")
-                fmt.write_meta("voltage_compliance", f"{voltage_compliance:E} V")
-                fmt.flush()
+        with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
+            # Create formatter
+            fmt = PQCFormatter(f)
+            fmt.add_column("timestamp", ".3f")
+            fmt.add_column("current", "E")
+            fmt.add_column("voltage_smu", "E")
+            fmt.add_column("voltage_elm", "E")
+            fmt.add_column("temperature_box", "E")
+            fmt.add_column("temperature_chuck", "E")
+            fmt.add_column("humidity_box", "E")
 
-                # Write header
-                fmt.write_header()
-                fmt.flush()
+            # Write meta data
+            fmt.write_meta("sample_name", sample_name)
+            fmt.write_meta("sample_type", sample_type)
+            fmt.write_meta("contact_name", contact_name)
+            fmt.write_meta("measurement_name", measurement_name)
+            fmt.write_meta("measurement_type", self.type)
+            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("current_start", f"{current_start:E} A")
+            fmt.write_meta("current_stop", f"{current_stop:E} A")
+            fmt.write_meta("current_step", f"{current_step:E} A")
+            fmt.write_meta("voltage_compliance", f"{voltage_compliance:E} V")
+            fmt.flush()
 
-                current = smu.source.leveli
+            # Write header
+            fmt.write_header()
+            fmt.flush()
 
-                # # SMU reading format: VOLT
-                # smu.resource.write(":FORM:ELEM VOLT")
-                # smu.resource.query("*OPC?")
+            current = smu.source.leveli
 
-                # Electrometer reading format: READ
-                elm.resource.write(":FORM:ELEM READ")
-                elm.resource.query("*OPC?")
+            # # SMU reading format: VOLT
+            # smu.resource.write(":FORM:ELEM VOLT")
+            # smu.resource.query("*OPC?")
 
-                ramp = comet.Range(current, current_stop, current_step)
-                est = Estimate(ramp.count)
+            # Electrometer reading format: READ
+            elm.resource.write(":FORM:ELEM READ")
+            elm.resource.query("*OPC?")
+
+            ramp = comet.Range(current, current_stop, current_step)
+            est = Estimate(ramp.count)
+            self.process.emit("progress", *est.progress)
+
+            t0 = time.time()
+
+            logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
+            for current in ramp:
+                logging.info("set current: %E A", current)
+                smu.clear()
+                smu.source.leveli = current
+                time.sleep(.100)
+                # check_error(smu)
+                dt = time.time() - t0
+
+                est.next()
+                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+                self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {current:.3f} V")
                 self.process.emit("progress", *est.progress)
 
-                t0 = time.time()
+                # read SMU
+                smu_reading = smu.measure.v()
+                logging.info("SMU reading: %E V", smu_reading)
+                self.process.emit("reading", "smu", smu_reading, current)
 
-                logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
-                for current in ramp:
-                    logging.info("set current: %E A", current)
-                    smu.clear()
-                    smu.source.leveli = current
-                    time.sleep(.100)
-                    # check_error(smu)
-                    dt = time.time() - t0
+                # read ELM
+                elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                logging.info("ELM reading: %E", elm_reading)
+                self.process.emit("reading", "elm", elm_reading, current)
 
-                    est.next()
-                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                    self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {current:.3f} V")
-                    self.process.emit("progress", *est.progress)
+                self.process.emit("update", )
+                self.process.emit("state", dict(
+                    smu_current=current,
+                    smu_voltage=smu_reading,
+                    elm_voltage=elm_reading
+                ))
 
-                    # read SMU
-                    smu_reading = smu.measure.v()
-                    logging.info("SMU reading: %E V", smu_reading)
-                    self.process.emit("reading", "smu", smu_reading, current)
+                # Environment
+                if self.process.get("use_environ"):
+                    with self.resources.get("environ") as environ:
+                        pc_data = environ.query("GET:PC_DATA ?").split(",")
+                    temperature_box = float(pc_data[2])
+                    logging.info("temperature box: %s degC", temperature_box)
+                    temperature_chuck = float(pc_data[33])
+                    logging.info("temperature chuck: %s degC", temperature_chuck)
+                    humidity_box = float(pc_data[1])
+                    logging.info("humidity box: %s degC", humidity_box)
+                else:
+                    temperature_box = float('nan')
+                    temperature_chuck = float('nan')
+                    humidity_box = float('nan')
 
-                    # read ELM
-                    elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                    logging.info("ELM reading: %E", elm_reading)
-                    self.process.emit("reading", "elm", elm_reading, current)
+                self.process.emit("state", dict(
+                    env_chuck_temperature=temperature_chuck,
+                    env_box_temperature=temperature_box,
+                    env_box_humidity=humidity_box
+                ))
 
-                    self.process.emit("update", )
-                    self.process.emit("state", dict(
-                        smu_current=current,
-                        smu_voltage=smu_reading,
-                        elm_voltage=elm_reading
-                    ))
+                # Write reading
+                fmt.write_row(dict(
+                    timestamp=dt,
+                    current=current,
+                    voltage_smu=smu_reading,
+                    voltage_elm=elm_reading,
+                    temperature_box=temperature_box,
+                    temperature_chuck=temperature_chuck,
+                    humidity_box=humidity_box
+                ))
+                fmt.flush()
+                time.sleep(waiting_time)
 
-                    # Environment
-                    if self.process.get("use_environ"):
-                        with self.resources.get("environ") as environ:
-                            pc_data = environ.query("GET:PC_DATA ?").split(",")
-                        temperature_box = float(pc_data[2])
-                        logging.info("temperature box: %s degC", temperature_box)
-                        temperature_chuck = float(pc_data[33])
-                        logging.info("temperature chuck: %s degC", temperature_chuck)
-                        humidity_box = float(pc_data[1])
-                        logging.info("humidity box: %s degC", humidity_box)
-                    else:
-                        temperature_box = float('nan')
-                        temperature_chuck = float('nan')
-                        humidity_box = float('nan')
-
-                    self.process.emit("state", dict(
-                        env_chuck_temperature=temperature_chuck,
-                        env_box_temperature=temperature_box,
-                        env_box_humidity=humidity_box
-                    ))
-
-                    # Write reading
-                    fmt.write_row(dict(
-                        timestamp=dt,
-                        current=current,
-                        voltage_smu=smu_reading,
-                        voltage_elm=elm_reading,
-                        temperature_box=temperature_box,
-                        temperature_chuck=temperature_chuck,
-                        humidity_box=humidity_box
-                    ))
-                    fmt.flush()
-                    time.sleep(waiting_time)
-
-                    # Compliance?
-                    compliance_tripped = smu.source.compliance
-                    if compliance_tripped:
-                        logging.error("SMU in compliance")
-                        raise ValueError("compliance tripped")
-                    # check_error(smu)
-                    if not self.process.running:
-                        break
+                # Compliance?
+                compliance_tripped = smu.source.compliance
+                if compliance_tripped:
+                    logging.error("SMU in compliance")
+                    raise ValueError("compliance tripped")
+                # check_error(smu)
+                if not self.process.running:
+                    break
 
         self.process.emit("progress", 4, 5)
 

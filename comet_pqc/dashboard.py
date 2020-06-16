@@ -72,28 +72,28 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def __init__(self):
         super().__init__()
-        self.chuck_select = comet.ComboBox()
-        self.sample_select = comet.ComboBox()
-        self.sequence_select = comet.ComboBox(changed=self.on_load_sequence_tree)
 
-        self.sample_text = comet.Text(
-            value=self.settings.get("sample", "Unnamed"),
-            changed=self.on_sample_changed
+        self.sample_name_text = comet.Text(
+            value=self.settings.get("sample_name", "Unnamed"),
+            changed=self.on_sample_name_changed
         )
+        self.sample_type_text = comet.Text(
+            value=self.settings.get("sample_type", ""),
+            changed=self.on_sample_type_changed
+        )
+        self.sequence_select = comet.ComboBox(changed=self.on_load_sequence_tree)
 
         self.sample_groupbox = comet.GroupBox(
             title="Sample",
             layout=comet.Row(
                 comet.Column(
                     comet.Label("Name"),
-                    comet.Label("Chuck"),
-                    comet.Label("Sample Type"),
+                    comet.Label("Type"),
                     comet.Label("Sequence")
                 ),
                 comet.Column(
-                    self.sample_text,
-                    self.chuck_select,
-                    self.sample_select,
+                    self.sample_name_text,
+                    self.sample_type_text,
                     self.sequence_select
                 ),
                 stretch=(0, 1)
@@ -169,6 +169,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Environment Box",
             checkable=True,
             checked=self.settings.get("use_environ", True),
+            toggled=self.on_environment_groupbox_toggled,
             layout=comet.Row(
                 self.box_light_button,
                 self.microscope_light_button,
@@ -189,6 +190,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Table",
             checkable=True,
             checked=self.settings.get("use_table", False),
+            toggled=self.on_table_groupbox_toggled,
             layout=comet.Row(
                 comet.Spacer(vertical=False),
                 self.calibrate_button
@@ -404,18 +406,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.append(self.tab_widget)
         self.stretch = 4, 9
 
-    def load_chucks(self):
-        """Load available chuck configurations."""
-        self.chuck_select.clear()
-        for name, filename in sorted(config.list_configs(config.CHUCK_DIR)):
-            self.chuck_select.append(config.load_chuck(filename))
-
-    def load_samples(self):
-        """Load available sample configurations."""
-        self.sample_select.clear()
-        for name, filename in sorted(config.list_configs(config.SAMPLE_DIR)):
-            self.sample_select.append(config.load_sample(filename))
-
     def load_sequences(self):
         """Load available sequence configurations."""
         self.sequence_select.clear()
@@ -434,8 +424,11 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Callbacks
 
-    def on_sample_changed(self, value):
-        self.settings["sample"] = value
+    def on_sample_name_changed(self, value):
+        self.settings["sample_name"] = value
+
+    def on_sample_type_changed(self, value):
+        self.settings["sample_type"] = value
 
     def on_load_sequence_tree(self, index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
@@ -479,12 +472,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
         self.stop_button.enabled = True
+        self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
         self.panels.lock()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
-        sample_name = self.sample_text.value
-        sample_type = self.sample_select.current.name
+        sample_name = self.sample_name_text.value
+        sample_type = self.sample_type_text.value
         output_dir = self.create_output_dir(sample_name, sample_type)
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
@@ -539,6 +533,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
         self.stop_button.enabled = False
+        self.reload_status_button.enabled = True
         self.measure_controls.enabled = True
         self.panels.unlock()
         self.sequence_tree.unlock()
@@ -615,6 +610,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
+    def on_environment_groupbox_toggled(self, state):
+        self.settings["use_environ"] = state
+
+    def on_table_groupbox_toggled(self, state):
+        self.settings["use_table"] = state
+
     def on_output_changed(self, value):
         self.settings["output_path"] = value
 
@@ -650,6 +651,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sample_groupbox.enabled = False
         self.sequence_groupbox.enabled = False
         self.output_groupbox.enabled = False
+        self.reload_status_button.enabled = False
         self.panels.lock()
         self.sequence_tree.lock()
         measurement = self.sequence_tree.current
@@ -657,8 +659,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.store()
         # TODO
         panel.clear_readings()
-        sample_name = self.sample_text.value
-        sample_type = self.sample_select.current.name
+        sample_name = self.sample_name_text.value
+        sample_type = self.sample_type_text.value
         output_dir = self.output_text.value
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
@@ -688,6 +690,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sample_groupbox.enabled = True
         self.sequence_groupbox.enabled = True
         self.output_groupbox.enabled = True
+        self.reload_status_button.enabled = True
         self.panels.unlock()
         measure = self.processes.get("measure")
         measure.reading = lambda data: None

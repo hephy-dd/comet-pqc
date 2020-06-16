@@ -132,7 +132,7 @@ def main():
 
     app.layout = dashboard
     app.width = 1280
-    app.height = 800
+    app.height = 920
 
     # Tweaks
 
@@ -149,9 +149,6 @@ def main():
     app.qt.window.setProperty('contentsUrl', 'https://hephy-dd.github.io/comet-pqc/')
 
     # Load configurations
-
-    dashboard.load_chucks()
-    dashboard.load_samples()
     dashboard.load_sequences()
 
     return app.run()
