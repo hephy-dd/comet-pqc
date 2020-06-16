@@ -10,6 +10,9 @@ from comet.emulator.iec60488 import IEC60488Handler
 
 __all__ = ['K2657AHandler']
 
+def split_message(message):
+    return [value.strip() for value in message.split('=')]
+
 class BeeperMixin:
 
     enable = True
@@ -20,7 +23,7 @@ class BeeperMixin:
 
     @message(r'beeper\.enable\s*\=\s*(\d+)')
     def write_beeper_enable(self, message):
-        type(self).enable = bool(int(message.split('=')[-1]))
+        type(self).enable = bool(int(split_message(message)[-1]))
 
 class ErrorQueueMixin:
 
@@ -51,7 +54,7 @@ class MeasureMixin:
 
     @message(r'smua\.measure\.filter\.count\s*\=\s*(\d+)')
     def write_measure_filter_count(self, message):
-        type(self).filter_count = int(message.split('=')[-1])
+        type(self).filter_count = int(split_message(message)[-1])
 
     @message(r'print\(smua\.measure\.filter\.enable\)')
     def query_measure_filter_enable(self, message):
@@ -59,7 +62,7 @@ class MeasureMixin:
 
     @message(r'smua\.measure\.filter\.enable\s*\=\s*(\d+)')
     def write_measure_filter_enable(self, message):
-        type(self).filter_enable = bool(int(message.split('=')[-1]))
+        type(self).filter_enable = bool(int(split_message(message)[-1]))
 
     @message(r'print\(smua\.measure\.filter\.type\)')
     def query_measure_filter_type(self, message):
@@ -68,7 +71,10 @@ class MeasureMixin:
     @message(r'smua\.measure\.filter\.type\s*\=\s*(.*)')
     def write_measure_filter_type(self, message):
         d = {'MOVING': 0, 'REPEAT': 1, 'MEDIAN': 2}
-        type(self).filter_type = d[message.split('=')[-1]]
+        value = split_message(message)[-1]
+        if value in d:
+            value = d[value]
+        type(self).filter_type = value
 
     @message(r'print\(smua\.measure\.nplc\)')
     def query_measure_nplc(self, message):
@@ -76,27 +82,36 @@ class MeasureMixin:
 
     @message(r'smua\.measure\.nplc\s*\=\s*(.*)')
     def write_measure_nplc(self, message):
-        type(self).nplc = float(message.split('=')[-1])
+        type(self).nplc = float(split_message(message)[-1])
 
     @message(r'print\(smua\.measure\.i\(\)\)')
     def query_measure_i(self, message):
-        return format(float(random.uniform(0.001, 0.01), 'E'))
+        if SourceMixin.func == 0:
+            return format(SourceMixin.leveli, 'E')
+        else:
+            return format(random.uniform(0.001, 0.01), 'E')
 
     @message(r'print\(smua\.measure\.v\(\)\)')
     def query_measure_v(self, message):
-        return format(float(random.uniform(1.0, 10.0), 'E'))
+        if SourceMixin.func == 1:
+            return format(SourceMixin.levelv, 'E')
+        else:
+            return format(random.uniform(1.0, 10.0), 'E')
 
     @message(r'print\(smua\.measure\.r\(\)\)')
     def query_measure_r(self, message):
-        return format(float(random.random(), 'E'))
+        return format(random.random(), 'E')
 
     @message(r'print\(smua\.measure\.p\(\)\)')
     def query_measure_p(self, message):
-        return format(float(random.random(), 'E'))
+        return format(random.random(), 'E')
 
     @message(r'print\(smua\.measure\.iv\(\)\)')
     def query_measure_iv(self, message):
-        return '{},{}'.format(random.uniform(0.001, 0.01), random.uniform(1.0, 10.0))
+        if SourceMixin.func == 0:
+            return '{},{}'.format(SourceMixin.leveli, random.uniform(1.0, 10.0))
+        else:
+            return '{},{}'.format(random.uniform(0.001, 0.01), SourceMixin.levelv)
 
 class SourceMixin:
 
@@ -111,7 +126,7 @@ class SourceMixin:
 
     @message(r'print\(smua\.source\.compliance\)')
     def query_source_compliance(self, message):
-        return format(type(self).compliance)).lower()
+        return format(type(self).compliance).lower()
 
     @message(r'print\(smua\.source\.func\)')
     def query_source_func(self, message):
@@ -120,7 +135,10 @@ class SourceMixin:
     @message(r'smua\.source\.func\s*\=\s*(.*)')
     def write_source_func(self, message):
         d = {'DCAMPS': 0, 'DCVOLTS': 1}
-        type(self).func = d[message.split('=')[-1]]
+        value = split_message(message)[-1]
+        if value in d:
+            value = d[value]
+        type(self).func = value
 
     @message(r'print\(smua\.source\.highc\)')
     def query_source_highc(self, message):
@@ -128,7 +146,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.highc\s*\=\s*(\d+)')
     def write_source_highc(self, message):
-        type(self).highc = bool(int(message.split('=')[-1]))
+        type(self).highc = bool(int(split_message(message)[-1]))
 
     @message(r'print\(smua\.source\.leveli\)')
     def query_source_leveli(self, message):
@@ -136,7 +154,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.leveli\s*\=\s*(.*)')
     def write_source_leveli(self, message):
-        type(self).leveli = float(message.split('=')[-1])
+        type(self).leveli = float(split_message(message)[-1])
 
     @message(r'print\(smua\.source\.levelv\)')
     def query_source_levelv(self, message):
@@ -144,7 +162,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.levelv\s*\=\s*(.*)')
     def write_source_levelv(self, message):
-        type(self).levelv = float(message.split('=')[-1])
+        type(self).levelv = float(split_message(message)[-1])
 
     @message(r'print\(smua\.source\.limiti\)')
     def query_source_limiti(self, message):
@@ -152,7 +170,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.limiti\s*\=\s*(.*)')
     def write_source_limiti(self, message):
-        type(self).limiti = float(message.split('=')[-1])
+        type(self).limiti = float(split_message(message)[-1])
 
     @message(r'print\(smua\.source\.limitv\)')
     def query_source_limitv(self, message):
@@ -160,7 +178,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.limitv\s*\=\s*(.*)')
     def write_source_limitv(self, message):
-        type(self).limitv = float(message.split('=')[-1])
+        type(self).limitv = float(split_message(message)[-1])
 
     @message(r'print\(smua\.source\.output\)')
     def query_source_output(self, message):
@@ -168,7 +186,7 @@ class SourceMixin:
 
     @message(r'smua\.source\.output\s*\=\s*(\d+)')
     def write_source_outout(self, message):
-        type(self).output = int(message.split('=')[-1])
+        type(self).output = int(split_message(message)[-1])
 
 class K2657AHandler(IEC60488Handler, BeeperMixin, ErrorQueueMixin, MeasureMixin,
                     SourceMixin):
@@ -184,7 +202,10 @@ class K2657AHandler(IEC60488Handler, BeeperMixin, ErrorQueueMixin, MeasureMixin,
     @message(r'smua\.sense\s*\=\s*(\d+)')
     def write_smua_sense(self, message):
         d = {'LOCAL': 0, 'REMOTE': 1, 'CALA': 2}
-        type(self).smua_sense = d[message.split('=')[-1]]
+        value = split_message(message)[-1]
+        if value in d:
+            value = d[value]
+        type(self).smua_sense = value
 
 if __name__ == "__main__":
     run(K2657AHandler)

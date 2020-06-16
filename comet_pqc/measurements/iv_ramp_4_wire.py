@@ -5,7 +5,6 @@ import os
 import re
 
 import comet
-from comet.driver.keithley import K6517B
 
 from ..driver import K2657A
 from ..estimate import Estimate
@@ -45,7 +44,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             env_model=env_idn
         ))
 
-    def initialize(self, smu, elm):
+    def initialize(self, smu):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
@@ -58,11 +57,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         smu_filter_enable = bool(parameters.get("smu_filter_enable", False))
         smu_filter_count = int(parameters.get("smu_filter_count", 10))
         smu_filter_type = parameters.get("smu_filter_type", "repeat")
-        elm_filter_enable = bool(parameters.get("elm_filter_enable", False))
-        elm_filter_count = int(parameters.get("elm_filter_count", 10))
-        elm_filter_type = parameters.get("elm_filter_type", "repeat")
-        zero_correction = bool(parameters.get("zero_correction", False))
-        integration_rate = parameters.get("integration_rate")
 
         smu_idn = smu.identification
         logging.info("Detected SMU: %s", smu_idn)
@@ -70,11 +64,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         smu_model = ''.join(result) or None
 
         self.process.emit("progress", 1, 5)
-
-        elm_idn = elm.identification
-        logging.info("Detected Electrometer: %s", elm_idn)
-        result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
-        elm_model = ''.join(result) or None
 
         if self.process.get("use_environ"):
             with self.resources.get("environ") as environ:
@@ -86,9 +75,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             smu_model=smu_model,
             smu_voltage=smu.source.levelv,
             smu_current=smu.source.leveli,
-            smu_output=smu.source.output,
-            elm_model=elm_model,
-            elm_current=None,
+            smu_output=smu.source.output
         ))
 
         # Beeper off
@@ -100,8 +87,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.process.emit("state", dict(
             smu_voltage=smu.source.levelv,
             smu_current=smu.source.leveli,
-            smu_output=smu.source.output,
-            elm_current=None
+            smu_output=smu.source.output
         ))
 
         # set sense mode
@@ -178,56 +164,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 if not self.process.running:
                     break
 
-        def elm_safe_write(message):
-            """Write, wait for operation complete, test for errors."""
-            elm.resource.write(message)
-            elm.resource.query("*OPC?")
-            code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
-            code = int(code)
-            label = label.strip("\"")
-            if code != 0:
-                error_message = f"error {code}: {label} returned by '{message}'"
-                logging.error(error_message)
-                raise RuntimeError(error_message)
-
-        elm_safe_write("*RST")
-        elm_safe_write("*CLS")
-
-        # Filter
-        elm_safe_write(f":SENS:CURR:AVER:COUN {elm_filter_count:d}")
-
-        if elm_filter_type == "repeat":
-            elm_safe_write(":SENS:CURR:AVER:TCON REP")
-        elif elm_filter_type == "repeat":
-            elm_safe_write(":SENS:CURR:AVER:TCON MOV")
-
-        if elm_filter_enable:
-            elm_safe_write(":SENS:CURR:AVER:STATE ON")
-        else:
-            elm_safe_write(":SENS:CURR:AVER:STATE OFF")
-
-        nplc = integration_rate / 10.
-        elm_safe_write(f":SENS:CURR:NPLC {nplc:02f}")
-
-        elm_safe_write(":SYST:ZCH ON") # enable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
-
-        elm_safe_write(":SENS:FUNC 'CURR'") # note the quotes!
-        assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
-
-        elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
-        if zero_correction:
-            elm_safe_write(":SYST:ZCOR ON") # perform zero correction
-        elm_safe_write(":SENS:CURR:RANG:AUTO ON")
-        elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
-        elm_safe_write(":SENS:CURR:RANG:AUTO:ULIM 2.000000E-2")
-
-        elm_safe_write(":SYST:ZCH OFF") # disable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
-
         self.process.emit("progress", 3, 5)
 
-    def measure(self, smu, elm):
+    def measure(self, smu):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -249,7 +188,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("current", "E")
             fmt.add_column("voltage_smu", "E")
-            fmt.add_column("voltage_elm", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -278,10 +216,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             # smu.resource.write(":FORM:ELEM VOLT")
             # smu.resource.query("*OPC?")
 
-            # Electrometer reading format: READ
-            elm.resource.write(":FORM:ELEM READ")
-            elm.resource.query("*OPC?")
-
             ramp = comet.Range(current, current_stop, current_step)
             est = Estimate(ramp.count)
             self.process.emit("progress", *est.progress)
@@ -306,18 +240,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 # read SMU
                 smu_reading = smu.measure.v()
                 logging.info("SMU reading: %E V", smu_reading)
-                self.process.emit("reading", "smu", smu_reading, current)
-
-                # read ELM
-                elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                logging.info("ELM reading: %E", elm_reading)
-                self.process.emit("reading", "elm", elm_reading, current)
+                self.process.emit("reading", "smu", abs(current) if ramp.step < 0 else current, smu_reading)
 
                 self.process.emit("update", )
                 self.process.emit("state", dict(
                     smu_current=current,
-                    smu_voltage=smu_reading,
-                    elm_voltage=elm_reading
+                    smu_voltage=smu_reading
                 ))
 
                 # Environment
@@ -346,7 +274,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                     timestamp=dt,
                     current=current,
                     voltage_smu=smu_reading,
-                    voltage_elm=elm_reading,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
@@ -365,13 +292,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 4, 5)
 
-    def finalize(self, smu, elm):
-        elm.resource.write(":SYST:ZCH ON")
-        elm.resource.query("*OPC?")
-
+    def finalize(self, smu):
         self.process.emit("state", dict(
-            smu_voltage=None,
-            elm_current=None
+            smu_voltage=None
         ))
 
         parameters = self.measurement_item.parameters
@@ -403,11 +326,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
 
     def code(self, *args, **kwargs):
         with self.resources.get("smu2") as smu2_res:
-            with self.resources.get("elm") as elm_res:
-                smu2 = K2657A(smu2_res)
-                elm = K6517B(elm_res)
-                try:
-                    self.initialize(smu2, elm)
-                    self.measure(smu2, elm)
-                finally:
-                    self.finalize(smu2, elm)
+            smu2 = K2657A(smu2_res)
+            try:
+                self.initialize(smu2)
+                self.measure(smu2)
+            finally:
+                self.finalize(smu2)

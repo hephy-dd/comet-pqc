@@ -15,10 +15,9 @@ class IVRamp4WirePanel(MatrixPanel):
         self.title = "4 Wire IV Ramp"
 
         self.plot = comet.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("smu", "x", "y", text="SMU", color="red")
-        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
+        self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
+        self.plot.add_axis("y", align="right", text="Voltage [V]")
+        self.plot.add_series("smu", "x", "y", text="SMU2", color="red")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
@@ -29,9 +28,6 @@ class IVRamp4WirePanel(MatrixPanel):
         self.sense_mode = comet.ComboBox(items=["local", "remote"])
         self.route_termination = comet.ComboBox(items=["front", "rear"])
 
-        self.zero_correction = comet.CheckBox(text="Zero Correction")
-        self.integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
-
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
@@ -39,8 +35,6 @@ class IVRamp4WirePanel(MatrixPanel):
         self.bind("voltage_compliance", self.voltage_compliance, 0, unit="V")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
-        self.bind("zero_correction", self.zero_correction, False)
-        self.bind("integration_rate", self.integration_rate, 50.0)
 
         # Instruments status
 
@@ -52,11 +46,6 @@ class IVRamp4WirePanel(MatrixPanel):
         self.bind("status_smu_current", self.status_smu_current, "n/a")
         self.status_smu_output = comet.Text(value="---", readonly=True)
         self.bind("status_smu_output", self.status_smu_output, "n/a")
-
-        self.status_elm_model = comet.Label()
-        self.bind("status_elm_model", self.status_elm_model, "Model: n/a")
-        self.status_elm_current = comet.Text(value="---", readonly=True)
-        self.bind("status_elm_current", self.status_elm_current, "n/a")
 
         self.status_env_model = comet.Label()
         self.bind("status_env_model", self.status_env_model, "Model: n/a")
@@ -85,20 +74,6 @@ class IVRamp4WirePanel(MatrixPanel):
                             comet.Label("Output"),
                             self.status_smu_output
                         )
-                    )
-                )
-            ),
-            comet.GroupBox(
-                title="Electrometer Status",
-                layout=comet.Column(
-                    self.status_elm_model,
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_elm_current
-                        ),
-                        comet.Spacer(),
-                        stretch=(1, 2)
                     )
                 )
             ),
@@ -165,22 +140,6 @@ class IVRamp4WirePanel(MatrixPanel):
             comet.Tab(
                 title="SMU",
                 layout=comet.Row()
-            ),
-            comet.Tab(
-                title="Electrometer",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            self.zero_correction,
-                            comet.Label(text="Integration Rate"),
-                            self.integration_rate,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1)
-                )
             )
         )
 
@@ -209,7 +168,7 @@ class IVRamp4WirePanel(MatrixPanel):
             for x, y in points:
                 voltage = x * comet.ureg('V')
                 current = y * comet.ureg('A')
-                self.plot.series.get(name).append(x, current.to('uA').m)
+                self.plot.series.get(name).append(current.to('uA').m, voltage.m)
         self.update_readings()
 
     def state(self, state):
@@ -224,12 +183,6 @@ class IVRamp4WirePanel(MatrixPanel):
             self.status_smu_current.value = auto_unit(value, "A")
         if 'smu_output' in state:
             self.status_smu_output.value = state.get('smu_output') or '---'
-        if 'elm_model' in state:
-            value = state.get('elm_model', "n/a")
-            self.status_elm_model.text = f"Model: {value}"
-        if 'elm_current' in state:
-            value = state.get('elm_current')
-            self.status_elm_current.value = auto_unit(value, "A")
         if 'env_model' in state:
             value = state.get('env_model', "n/a")
             self.status_env_model.text = f"Model: {value}"
@@ -245,14 +198,14 @@ class IVRamp4WirePanel(MatrixPanel):
         super().state(state)
 
     def append_reading(self, name, x, y):
-        voltage = x * comet.ureg('V')
-        current = y * comet.ureg('A')
+        current = x * comet.ureg('A')
+        voltage = y * comet.ureg('V')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
-                self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, current.to('uA').m)
+                self.measurement.series[name].append((current.m, voltage.m))
+                self.plot.series.get(name).append(current.to('uA').m, voltage.m)
 
     def update_readings(self):
         if self.measurement:
