@@ -277,6 +277,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.hvsrc_model_text = comet.Text(readonly=True)
         self.lcr_model_text = comet.Text(readonly=True)
         self.elm_model_text = comet.Text(readonly=True)
+        self.table_model_text = comet.Text(readonly=True)
         self.env_model_text = comet.Text(readonly=True)
         self.env_box_temperature_text = comet.Text(readonly=True)
         self.env_box_humidity_text = comet.Text(readonly=True)
@@ -333,6 +334,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.elm_model_text,
+                        stretch=(1, 7)
+                    )
+                ),
+                comet.GroupBox(
+                    title="Table",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.table_model_text,
                         stretch=(1, 7)
                     )
                 ),
@@ -704,6 +713,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.hvsrc_model_text.value = ""
         self.lcr_model_text.value = ""
         self.elm_model_text.value = ""
+        self.table_model_text.value = ""
         self.env_model_text.value = ""
         self.env_box_temperature_text.value = ""
         self.env_box_humidity_text.value = ""
@@ -725,6 +735,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.hvsrc_model_text.value = status.get("hvsrc_model") or "n/a"
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
+        self.table_model_text.value = status.get("table_model") or "n/a"
         self.env_model_text.value = status.get("env_model") or "n/a"
         pc_data = status.get("env_pc_data")
         if pc_data:

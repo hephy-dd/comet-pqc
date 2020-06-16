@@ -70,6 +70,16 @@ class StatusProcess(comet.Process, ResourceMixin):
         except (ResourceError, OSError):
             pass
 
+    def read_table(self):
+        self.set("table_model", "")
+        try:
+            with self.resources.get("table") as table_res:
+                table = Venus1(table_res)
+                model = table.identification
+                self.set("table_model", model)
+        except (ResourceError, OSError):
+            pass
+
     def read_environ(self):
         self.set("env_model", "")
         self.set("env_pc_data", None)
@@ -85,31 +95,35 @@ class StatusProcess(comet.Process, ResourceMixin):
 
     def run(self):
         self.emit("message", "Reading Matrix...")
-        self.emit("progress", 0, 6)
+        self.emit("progress", 0, 7)
         self.read_matrix()
 
         self.emit("message", "Reading VSource...")
-        self.emit("progress", 1, 6)
+        self.emit("progress", 1, 7)
         self.read_vsrc()
 
         self.emit("message", "Read HVSource...")
-        self.emit("progress", 2, 6)
+        self.emit("progress", 2, 7)
         self.read_hvsrc()
 
         self.emit("message", "Read LCRMeter...")
-        self.emit("progress", 3, 6)
+        self.emit("progress", 3, 7)
         self.read_lcr()
 
         self.emit("message", "Read Electrometer...")
-        self.emit("progress", 4, 6)
+        self.emit("progress", 4, 7)
         self.read_elm()
 
+        self.emit("message", "Read Table...")
+        self.emit("progress", 5, 7)
+        self.read_table()
+
         self.emit("message", "Read Environment Box...")
-        self.emit("progress", 5, 6)
+        self.emit("progress", 6, 7)
         self.read_environ()
 
         self.emit("message", "")
-        self.emit("progress", 6, 6)
+        self.emit("progress", 7, 7)
 
 class CalibrateProcess(comet.Process, ResourceMixin):
     """Calibration process for Corvus table."""
@@ -122,7 +136,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
     def run(self):
         self.set("success", False)
         self.emit("message", "Calibrating...")
-        with self.resources.get('corvus') as resource:
+        with self.resources.get('table') as resource:
             corvus = Venus1(resource)
             corvus.mode = 0
             retries = 180

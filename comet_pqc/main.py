@@ -64,7 +64,7 @@ def main():
         write_termination="\r\n",
         timeout=8000
     ))
-    app.resources.add("corvus", comet.Resource(
+    app.resources.add("table", comet.Resource(
         resource_name="TCPIP::10.0.0.6::23::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n",
