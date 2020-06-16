@@ -24,17 +24,30 @@ class IVRamp4WirePanel(MatrixPanel):
         self.current_stop = comet.Number(decimals=3, suffix="uA")
         self.current_step = comet.Number(minimum=0, decimals=3, suffix="uA")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.voltage_compliance = comet.Number(decimals=3, suffix="V")
-        self.sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.route_termination = comet.ComboBox(items=["front", "rear"])
+        self.hvsrc_voltage_compliance = comet.Number(decimals=3, suffix="V")
+        self.hvsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+
+        def toggle_vsrc_filter(enabled):
+            self.hvsrc_filter_count.enabled = enabled
+            self.hvsrc_filter_count_label.enabled = enabled
+            self.hvsrc_filter_type.enabled = enabled
+            self.hvsrc_filter_type_label.enabled = enabled
+
+        self.hvsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.hvsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.hvsrc_filter_count_label = comet.Label(text="Count")
+        self.hvsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
+        self.hvsrc_filter_type_label = comet.Label(text="Type")
 
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("voltage_compliance", self.voltage_compliance, 0, unit="V")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("route_termination", self.route_termination, "front")
+        self.bind("hvsrc_voltage_compliance", self.hvsrc_voltage_compliance, 0, unit="V")
+        self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
+        self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
+        self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
+        self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
 
         # Instruments status
 
@@ -121,7 +134,7 @@ class IVRamp4WirePanel(MatrixPanel):
                     comet.GroupBox(
                         title="HVSource Compliance",
                         layout=comet.Column(
-                            self.voltage_compliance,
+                            self.hvsrc_voltage_compliance,
                             comet.Spacer()
                         )
                     ),
@@ -139,7 +152,29 @@ class IVRamp4WirePanel(MatrixPanel):
             ),
             comet.Tab(
                 title="HVSource",
-                layout=comet.Row()
+                layout=comet.Row(
+                    comet.GroupBox(
+                        title="Filter",
+                        layout=comet.Column(
+                            self.hvsrc_filter_enable,
+                            self.hvsrc_filter_count_label,
+                            self.hvsrc_filter_count,
+                            self.hvsrc_filter_type_label,
+                            self.hvsrc_filter_type,
+                            comet.Spacer()
+                        )
+                    ),
+                    comet.GroupBox(
+                        title="Options",
+                        layout=comet.Column(
+                            comet.Label(text="Sense Mode"),
+                            self.hvsrc_sense_mode,
+                            comet.Spacer()
+                        )
+                    ),
+                    comet.Spacer(),
+                    stretch=(1, 1, 1)
+                )
             )
         )
 

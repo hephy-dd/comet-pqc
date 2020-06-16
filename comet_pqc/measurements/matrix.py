@@ -10,9 +10,13 @@ class MatrixMeasurement(Measurement):
 
     type = "matrix"
 
+    default_matrix_enabled = False
+    default_matrix_channels = []
+
     def setup_matrix(self):
         """Setup marix switch."""
-        channels = self.measurement_item.parameters.get("matrix_channels", [])
+        parameters = self.measurement_item.parameters
+        channels = parameters.get("matrix_channels", self.default_matrix_channels)
         logging.info("close matrix channels: %s", channels)
         try:
             with self.resources.get("matrix") as matrix_res:
@@ -35,7 +39,8 @@ class MatrixMeasurement(Measurement):
 
     def run(self, *args, **kwargs):
         logging.info(f"running {self.type}...")
-        matrix_enabled = self.measurement_item.parameters.get("matrix_enabled", False)
+        parameters = self.measurement_item.parameters
+        matrix_enabled = parameters.get("matrix_enabled", self.default_matrix_enabled)
         result = None
         try:
             if matrix_enabled:

@@ -27,9 +27,9 @@ class IVRampElmPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.route_termination = comet.ComboBox(items=["front", "rear"])
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
         def toggle_vsrc_filter(enabled):
             self.vsrc_filter_count.enabled = enabled
@@ -55,24 +55,24 @@ class IVRampElmPanel(MatrixPanel):
         self.elm_filter_type = comet.ComboBox(items=["repeat", "moving"])
         self.elm_filter_type_label = comet.Label(text="Type")
 
-        self.zero_correction = comet.CheckBox(text="Zero Correction")
-        self.integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
+        self.elm_zero_correction = comet.CheckBox(text="Zero Correction")
+        self.elm_integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("route_termination", self.route_termination, "front")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
         self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
         self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
         self.bind("elm_filter_enable", self.elm_filter_enable, False)
         self.bind("elm_filter_count", self.elm_filter_count, 10)
         self.bind("elm_filter_type", self.elm_filter_type, "repeat")
-        self.bind("zero_correction", self.zero_correction, False)
-        self.bind("integration_rate", self.integration_rate, 50.0)
+        self.bind("elm_zero_correction", self.elm_zero_correction, False)
+        self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
 
         # Instruments status
 
@@ -178,7 +178,7 @@ class IVRampElmPanel(MatrixPanel):
                     comet.GroupBox(
                         title="VSource Compliance",
                         layout=comet.Column(
-                            self.current_compliance,
+                            self.vsrc_current_compliance,
                             comet.Spacer()
                         )
                     ),
@@ -212,9 +212,9 @@ class IVRampElmPanel(MatrixPanel):
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
-                            self.sense_mode,
+                            self.vsrc_sense_mode,
                             comet.Label(text="Route Termination"),
-                            self.route_termination,
+                            self.vsrc_route_termination,
                             comet.Spacer()
                         )
                     ),
@@ -239,9 +239,9 @@ class IVRampElmPanel(MatrixPanel):
                     comet.GroupBox(
                         title="Options",
                         layout=comet.Column(
-                            self.zero_correction,
+                            self.elm_zero_correction,
                             comet.Label(text="Integration Rate"),
-                            self.integration_rate,
+                            self.elm_integration_rate,
                             comet.Spacer()
                         )
                     ),

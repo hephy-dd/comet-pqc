@@ -49,20 +49,20 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
-        current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
-        sense_mode = parameters.get("sense_mode")
-        route_termination = parameters.get("route_termination", "front")
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode")
+        vsrc_route_termination = parameters.get("vsrc_route_termination", "rear")
         vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
         vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
         vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
         elm_filter_enable = bool(parameters.get("elm_filter_enable", False))
         elm_filter_count = int(parameters.get("elm_filter_count", 10))
         elm_filter_type = parameters.get("elm_filter_type", "repeat")
-        zero_correction = bool(parameters.get("zero_correction", False))
-        integration_rate = parameters.get("integration_rate")
+        elm_zero_correction = bool(parameters.get("elm_zero_correction", False))
+        elm_integration_rate = int(parameters.get("elm_integration_rate", 50))
 
         vsrc_idn = vsrc.identification
         logging.info("Detected VSrc: %s", vsrc_idn)
@@ -122,27 +122,28 @@ class IVRampElmMeasurement(MatrixMeasurement):
         ))
 
         # Select rear terminal
-        if route_termination == "front":
+        logging.info("set route termination: '%s'", vsrc_route_termination)
+        if vsrc_route_termination == "front":
             vsrc.resource.write(":ROUT:TERM FRONT")
-        elif route_termination == "rear":
+        elif vsrc_route_termination == "rear":
             vsrc.resource.write(":ROUT:TERM REAR")
         vsrc.resource.query("*OPC?")
         check_error(vsrc)
 
         # set sense mode
-        logging.info("set sense mode: '%s'", sense_mode)
-        if sense_mode == "remote":
+        logging.info("set sense mode: '%s'", vsrc_sense_mode)
+        if vsrc_sense_mode == "remote":
             vsrc.resource.write(":SYST:RSEN ON")
-        elif sense_mode == "local":
+        elif vsrc_sense_mode == "local":
             vsrc.resource.write(":SYST:RSEN OFF")
         else:
-            raise ValueError(f"invalid sense mode: {sense_mode}")
+            raise ValueError(f"invalid sense mode: {vsrc_sense_mode}")
         vsrc.resource.query("*OPC?")
         check_error(vsrc)
 
         # Compliance
-        logging.info("set compliance: %E A", current_compliance)
-        vsrc.sense.current.protection.level = current_compliance
+        logging.info("set compliance: %E A", vsrc_current_compliance)
+        vsrc.sense.current.protection.level = vsrc_current_compliance
         check_error(vsrc)
 
         # Range
@@ -241,7 +242,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         else:
             elm_safe_write(":SENS:CURR:AVER:STATE OFF")
 
-        nplc = integration_rate / 10.
+        nplc = elm_integration_rate / 10.
         elm_safe_write(f":SENS:CURR:NPLC {nplc:02f}")
 
         elm_safe_write(":SYST:ZCH ON") # enable zero check
@@ -251,7 +252,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
 
         elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
-        if zero_correction:
+        if elm_zero_correction:
             elm_safe_write(":SYST:ZCOR ON") # perform zero correction
         elm_safe_write(":SENS:CURR:RANG:AUTO ON")
         elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
@@ -269,11 +270,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
-        current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
         voltage_step = parameters.get("voltage_step").to("V").m
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
 
         if not self.process.running:
             return
@@ -302,7 +303,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("current_compliance", f"{current_compliance:G} A")
+            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
             fmt.flush()
 
             # Write header

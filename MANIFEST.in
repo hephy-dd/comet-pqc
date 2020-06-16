@@ -2,7 +2,7 @@ include README.md
 include LICENSE
 
 include docs/_config.yml
-recursive-include docs/ *.md
+recursive-include docs *.md
 
-recursive-include comet_pqc/config/ *.yaml
-recursive-include comet_pqc/schema/ *.yaml
+recursive-include comet_pqc/config *.yaml
+recursive-include comet_pqc/schema *.yaml

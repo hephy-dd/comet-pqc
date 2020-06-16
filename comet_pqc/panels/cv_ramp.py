@@ -32,7 +32,7 @@ class CVRampPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
         self.sense_mode = comet.ComboBox(items=["local", "remote"])
         self.route_termination = comet.ComboBox(items=["front", "rear"])
 
@@ -59,7 +59,7 @@ class CVRampPanel(MatrixPanel):
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("bias_voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
         self.bind("sense_mode", self.sense_mode, "local")
         self.bind("route_termination", self.route_termination, "front")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
@@ -166,7 +166,7 @@ class CVRampPanel(MatrixPanel):
                     comet.GroupBox(
                         title="VSource Compliance",
                         layout=comet.Column(
-                            self.current_compliance,
+                            self.vsrc_current_compliance,
                             comet.Spacer()
                         )
                     ),

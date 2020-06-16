@@ -8,20 +8,20 @@ This COMET application provides PQC sensor measurements.
 
 ### Required instruments:
 
-- Keithley 707B Switching Matrix
-- Keysight E4980A LCR Meter
-- Keithley 6517B Electrometer
-- Keithley 2657A Source Meter
-- Keithley 2410 Source Meter
-- Corvus TT positioning controller
-- HEPHY Environment Box
+- Keithley 707B Switching Matrix (matrix)
+- Keysight E4980A LCR Meter (lcr)
+- Keithley 6517B Electrometer (elm)
+- Keithley 2410 Source Meter (vsrc)
+- Keithley 2657A Source Meter (hvsrc)
+- Corvus TT positioning controller (table)
+- HEPHY Environment Box (environ)
 
 ## Install
 
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.5.0
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.6.0
 comet-pqc
 ```
 

@@ -27,9 +27,9 @@ class IVRampPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.route_termination = comet.ComboBox(items=["front", "rear"])
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
         def toggle_vsrc_filter(enabled):
             self.vsrc_filter_count.enabled = enabled
@@ -47,9 +47,9 @@ class IVRampPanel(MatrixPanel):
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("route_termination", self.route_termination, "front")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
         self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
         self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
@@ -110,7 +110,7 @@ class IVRampPanel(MatrixPanel):
                     comet.GroupBox(
                         title="VSource Compliance",
                         layout=comet.Column(
-                            self.current_compliance,
+                            self.vsrc_current_compliance,
                             comet.Spacer()
                         )
                     ),
@@ -144,9 +144,9 @@ class IVRampPanel(MatrixPanel):
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
-                            self.sense_mode,
+                            self.vsrc_sense_mode,
                             comet.Label(text="Route Termination"),
-                            self.route_termination,
+                            self.vsrc_route_termination,
                             comet.Spacer()
                         )
                     ),

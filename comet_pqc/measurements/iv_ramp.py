@@ -29,6 +29,12 @@ class IVRampMeasurement(MatrixMeasurement):
 
     type = "iv_ramp"
 
+    default_vsrc_sense_mode = "local"
+    default_vsrc_route_termination = "rear"
+    default_vsrc_filter_enable = False
+    default_vsrc_filter_count = 10
+    default_vsrc_filter_type = "repeat"
+
     def env_detect_model(self, env):
         try:
             env_idn = env.resource.query("*IDN?")
@@ -45,15 +51,15 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
-        current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
-        sense_mode = parameters.get("sense_mode")
-        route_termination = parameters.get("route_termination", "rear")
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
+        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
 
         vsrc_proxy = create_proxy(vsrc)
 
@@ -84,29 +90,30 @@ class IVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 1, 5)
 
         # Select rear terminal
-        if route_termination == "front":
+        logging.info("set route termination: '%s'", vsrc_route_termination)
+        if vsrc_route_termination == "front":
             vsrc.resource.write(":ROUT:TERM FRONT")
-        elif route_termination == "rear":
+        elif vsrc_route_termination == "rear":
             vsrc.resource.write(":ROUT:TERM REAR")
         vsrc.resource.query("*OPC?")
         vsrc_proxy.assert_success()
         self.process.emit("progress", 2, 5)
 
         # set sense mode
-        logging.info("set sense mode: '%s'", sense_mode)
-        if sense_mode == "remote":
+        logging.info("set sense mode: '%s'", vsrc_sense_mode)
+        if vsrc_sense_mode == "remote":
             vsrc.resource.write(":SYST:RSEN ON")
-        elif sense_mode == "local":
+        elif vsrc_sense_mode == "local":
             vsrc.resource.write(":SYST:RSEN OFF")
         else:
-            raise ValueError(f"invalid sense mode: {sense_mode}")
+            raise ValueError(f"invalid sense mode: {vsrc_sense_mode}")
         vsrc.resource.query("*OPC?")
         vsrc_proxy.assert_success()
         self.process.emit("progress", 3, 5)
 
         # Compliance
-        logging.info("set compliance: %E A", current_compliance)
-        vsrc.sense.current.protection.level = current_compliance
+        logging.info("set compliance: %E A", vsrc_current_compliance)
+        vsrc.sense.current.protection.level = vsrc_current_compliance
         vsrc_proxy.assert_success()
 
         # Range
@@ -189,11 +196,16 @@ class IVRampMeasurement(MatrixMeasurement):
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
-        current_compliance = parameters.get("current_compliance").to("A").m
         voltage_start = parameters.get("voltage_start").to("V").m
         voltage_step = parameters.get("voltage_step").to("V").m
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
+        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
 
         vsrc_proxy = create_proxy(vsrc)
 
@@ -221,7 +233,13 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("current_compliance", f"{current_compliance:G} A")
+            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+            fmt.write_meta("vsrc_sense_mode", vsrc_sense_mode)
+            fmt.write_meta("vsrc_route_termination", vsrc_route_termination)
+            fmt.write_meta("vsrc_filter_enable", format(vsrc_filter_enable).lower())
+            fmt.write_meta("vsrc_filter_count", format(vsrc_filter_count))
+            fmt.write_meta("vsrc_filter_type", vsrc_filter_type)
+
             fmt.flush()
 
             # Write header

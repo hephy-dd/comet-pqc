@@ -207,6 +207,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 0, 10)
 
         parameters = self.measurement_item.parameters
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
+        vsrc_route_termination = parameters.get("vsrc_route_termination", "rear")
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode", "local")
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
 
         self.vsrc_detect_model(vsrc)
         self.lcr_detect_model(lcr)
@@ -229,26 +235,20 @@ class CVRampMeasurement(MatrixMeasurement):
         self.vsrc_reset(vsrc)
         self.process.emit("progress", 3, 10)
 
-        route_termination = parameters.get("route_termination", "rear")
-        self.vsrc_set_route_termination(vsrc, route_termination)
+        self.vsrc_set_route_termination(vsrc, vsrc_route_termination)
         self.process.emit("progress", 4, 10)
 
-        sense_mode = parameters.get("sense_mode", "local")
         self.vsrc_set_sense_mode(vsrc, sense_mode)
         self.process.emit("progress", 5, 10)
 
-        current_compliance = parameters.get("current_compliance").to("A").m
-        self.vsrc_set_compliance(vsrc, current_compliance)
+        self.vsrc_set_compliance(vsrc, vsrc_current_compliance)
         self.process.emit("progress", 6, 10)
 
         self.vsrc_set_auto_range(vsrc, True)
         self.process.emit("progress", 7, 10)
 
-        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
         self.vsrc_set_filter_type(vsrc, vsrc_filter_type)
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
         self.vsrc_set_filter_count(vsrc, vsrc_filter_count)
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
         self.vsrc_set_filter_enable(vsrc, vsrc_filter_enable)
         self.process.emit("progress", 8, 10)
 
@@ -273,11 +273,11 @@ class CVRampMeasurement(MatrixMeasurement):
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
-        current_compliance = parameters.get("current_compliance").to("A").m
         bias_voltage_start = parameters.get("bias_voltage_start").to("V").m
         bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
         bias_voltage_stop = parameters.get("bias_voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
+        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
         lcr_soft_filter = bool(parameters.get("lcr_soft_filter", True))
         lcr_frequency = parameters.get("lcr_frequency").to("Hz").m
         lcr_amplitude = parameters.get("lcr_amplitude").to("V").m
@@ -331,7 +331,7 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
             fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("current_compliance", f"{current_compliance:G} A")
+            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
             fmt.write_meta("ac_frequency", f"{lcr_frequency:G} Hz")
             fmt.write_meta("ac_amplitude", f"{lcr_amplitude:G} V")
             fmt.flush()

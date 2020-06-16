@@ -33,6 +33,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_4_wire"
 
+    default_hvsrc_sense_mode = "remote"
+    default_hvsrc_filter_enable = False
+    default_hvsrc_filter_count = 10
+    default_hvsrc_filter_type = "repeat"
+
     def env_detect_model(self, env):
         try:
             env_idn = env.query("*IDN?")
@@ -48,15 +53,14 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.process.emit("progress", 0, 5)
 
         parameters = self.measurement_item.parameters
-        voltage_compliance = parameters.get("voltage_compliance").to("V").m
         current_start = parameters.get("current_start").to("A").m
         current_step = parameters.get("current_step").to("A").m
         waiting_time = parameters.get("waiting_time").to("s").m
-        sense_mode = parameters.get("sense_mode", "remote")
-        route_termination = parameters.get("route_termination", "front")
-        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", False))
-        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", 10))
-        hvsrc_filter_type = parameters.get("hvsrc_filter_type", "repeat")
+        hvsrc_voltage_compliance = parameters.get("hvsrc_voltage_compliance").to("V").m
+        hvsrc_sense_mode = parameters.get("hvsrc_sense_mode", self.default_hvsrc_sense_mode)
+        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
+        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
+        hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
 
         hvsrc_idn = hvsrc.identification
         logging.info("Detected HVSrc: %s", hvsrc_idn)
@@ -91,13 +95,13 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         ))
 
         # set sense mode
-        logging.info("set sense mode: '%s'", sense_mode)
-        if sense_mode == "remote":
+        logging.info("set sense mode: '%s'", hvsrc_sense_mode)
+        if hvsrc_sense_mode == "remote":
             hvsrc.sense = 'REMOTE'
-        elif sense_mode == "local":
+        elif hvsrc_sense_mode == "local":
             hvsrc.sense = 'LOCAL'
         else:
-            raise ValueError(f"invalid sense mode: {sense_mode}")
+            raise ValueError(f"invalid sense mode: {hvsrc_sense_mode}")
         check_error(hvsrc)
 
         # Current source
@@ -105,8 +109,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         check_error(hvsrc)
 
         # Compliance
-        logging.info("set compliance: %E V", voltage_compliance)
-        hvsrc.source.limitv = voltage_compliance
+        logging.info("set compliance: %E V", hvsrc_voltage_compliance)
+        hvsrc.source.limitv = hvsrc_voltage_compliance
         check_error(hvsrc)
 
         # Range
@@ -173,11 +177,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
         parameters = self.measurement_item.parameters
-        voltage_compliance = parameters.get("voltage_compliance").to("V").m
         current_start = parameters.get("current_start").to("A").m
         current_step = parameters.get("current_step").to("A").m
         current_stop = parameters.get("current_stop").to("A").m
         waiting_time = parameters.get("waiting_time").to("s").m
+        hvsrc_voltage_compliance = parameters.get("hvsrc_voltage_compliance").to("V").m
 
         if not self.process.running:
             return
@@ -203,7 +207,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt.write_meta("current_stop", f"{current_stop:G} A")
             fmt.write_meta("current_step", f"{current_step:G} A")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("voltage_compliance", f"{voltage_compliance:G} V")
+            fmt.write_meta("hvsrc_voltage_compliance", f"{hvsrc_voltage_compliance:G} V")
             fmt.flush()
 
             # Write header
