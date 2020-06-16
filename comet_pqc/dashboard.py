@@ -24,6 +24,20 @@ from .panels import FrequencyScanPanel
 
 from .driver import EnvironmentBox
 
+class ToggleButton(comet.Button):
+    """Colored checkable button."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.qt.toggled.connect(self.on_toggle_color)
+
+    def on_toggle_color(self, state):
+        """Colored button if checked."""
+        if state:
+            self.stylesheet = "QPushButton:enabled{color: white; background-color: green;}"
+        else:
+            self.stylesheet = "QPushButton:enabled{}"
+
 class PanelStack(comet.Row):
     """Stack of measurement panels."""
 
@@ -108,7 +122,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_sequence_start
         )
 
-        self.autopilot_button = comet.Button(
+        self.autopilot_button = ToggleButton(
             text="Autopilot",
             tool_tip="Run next measurement automatically.",
             checkable=True,
@@ -144,21 +158,21 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Environment Controls
 
-        self.box_light_button = comet.Button(
+        self.box_light_button = ToggleButton(
             text="Box Light",
             checkable=True,
             checked=False,
             clicked=self.on_box_light_clicked
         )
 
-        self.microscope_light_button = comet.Button(
+        self.microscope_light_button = ToggleButton(
             text="Mic Light",
             checkable=True,
             checked=False,
             toggled=self.on_microscope_light_toggled
         )
 
-        self.probe_light_button = comet.Button(
+        self.probe_light_button = ToggleButton(
             text="Probe Light",
             checkable=True,
             checked=False,
