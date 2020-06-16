@@ -217,10 +217,11 @@ class IVRampMeasurement(MatrixMeasurement):
             fmt.write_meta("sample_name", sample_name)
             fmt.write_meta("sample_type", sample_type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("voltage_start", f"{voltage_start:E} V")
-            fmt.write_meta("voltage_stop", f"{voltage_stop:E} V")
-            fmt.write_meta("voltage_step", f"{voltage_step:E} V")
-            fmt.write_meta("current_compliance", f"{current_compliance:E} A")
+            fmt.write_meta("voltage_start", f"{voltage_start:G} V")
+            fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
+            fmt.write_meta("voltage_step", f"{voltage_step:G} V")
+            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
+            fmt.write_meta("current_compliance", f"{current_compliance:G} A")
             fmt.flush()
 
             # Write header

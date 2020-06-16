@@ -261,10 +261,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt.write_meta("measurement_name", measurement_name)
             fmt.write_meta("measurement_type", self.type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("current_start", f"{current_start:E} A")
-            fmt.write_meta("current_stop", f"{current_stop:E} A")
-            fmt.write_meta("current_step", f"{current_step:E} A")
-            fmt.write_meta("voltage_compliance", f"{voltage_compliance:E} V")
+            fmt.write_meta("current_start", f"{current_start:G} A")
+            fmt.write_meta("current_stop", f"{current_stop:G} A")
+            fmt.write_meta("current_step", f"{current_step:G} A")
+            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
+            fmt.write_meta("voltage_compliance", f"{voltage_compliance:G} V")
             fmt.flush()
 
             # Write header

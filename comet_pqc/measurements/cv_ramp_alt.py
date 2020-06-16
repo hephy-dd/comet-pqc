@@ -60,10 +60,11 @@ class CVRampAltMeasurement(MatrixMeasurement):
             fmt.write_meta("sample_name", sample_name)
             fmt.write_meta("sample_type", sample_type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:E} V")
-            fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:E} V")
-            fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:E} V")
-            fmt.write_meta("current_compliance", f"{current_compliance:E} A")
+            fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
+            fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
+            fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
+            fmt.write_meta("current_compliance", f"{current_compliance:G} A")
             fmt.flush()
 
             # Write header
