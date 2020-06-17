@@ -174,6 +174,15 @@ Type: `iv_ramp_bias`
 |---------------------------|---------|---------|-------------|
 |`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`voltage_source`           |`str`    |`hvsrc`  |Possible values are: `vsrc`, `hvsrc`. |
+|`voltage_start`            |`volt`   |`0`      | |
+|`voltage_stop`             |`volt`   |`-100 V` | |
+|`voltage_step`             |`volt`   |`10 V`   | |
+|`bias_voltage_source`      |`str`    |`vsrc`   |Possible values are: `vsrc`, `hvsrc`. |
+|`bias_voltage_start`       |`volt`   |`10 V`   | |
+|`bias_voltage_stop`        |`volt`   |`-90 V`  | |
+|`vsrc_current_compliance`  |`volt`   |required |VSource current compliance. |
+|`hvsrc_current_compliance` |`volt`   |required |HVSource current compliance. |
 
 ### Example configuration
 

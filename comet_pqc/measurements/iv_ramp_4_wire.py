@@ -243,7 +243,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 logging.info("HVSource reading: %E V", hvsrc_reading)
                 self.process.emit("reading", "hvsrc", abs(current) if ramp.step < 0 else current, hvsrc_reading)
 
-                self.process.emit("update", )
+                self.process.emit("update")
                 self.process.emit("state", dict(
                     hvsrc_current=current,
                     hvsrc_voltage=hvsrc_reading

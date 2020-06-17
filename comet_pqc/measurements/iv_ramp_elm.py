@@ -103,23 +103,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
             elm_current=None,
         ))
 
-        # If output enabled
-        if vsrc.output:
-            voltage = vsrc.source.voltage.level
-
-            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-            for voltage in comet.Range(voltage, 0, voltage_step):
-                logging.info("set voltage: %E V", voltage)
-                self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
-                vsrc.source.voltage.level = voltage
-                # check_error(vsrc)
-                time.sleep(.100)
-                self.process.emit("state", dict(
-                    vsrc_voltage=voltage
-                ))
-                if not self.process.running:
-                    break
-
         # Beeper off
         vsrc.reset()
         vsrc.clear()
@@ -373,7 +356,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 logging.info("ELM reading: %E", elm_reading)
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                self.process.emit("update", )
+                self.process.emit("update")
                 self.process.emit("state", dict(
                     vsrc_voltage=voltage,
                     vsrc_current=vsrc_reading,

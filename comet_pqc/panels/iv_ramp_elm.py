@@ -58,6 +58,9 @@ class IVRampElmPanel(MatrixPanel):
         self.elm_zero_correction = comet.CheckBox(text="Zero Correction")
         self.elm_integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
 
+        toggle_vsrc_filter(False)
+        toggle_elm_filter(False)
+
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")

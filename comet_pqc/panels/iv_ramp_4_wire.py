@@ -27,13 +27,13 @@ class IVRamp4WirePanel(MatrixPanel):
         self.hvsrc_voltage_compliance = comet.Number(decimals=3, suffix="V")
         self.hvsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
 
-        def toggle_vsrc_filter(enabled):
+        def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
             self.hvsrc_filter_count_label.enabled = enabled
             self.hvsrc_filter_type.enabled = enabled
             self.hvsrc_filter_type_label.enabled = enabled
 
-        self.hvsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.hvsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_hvsrc_filter)
         self.hvsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
         self.hvsrc_filter_count_label = comet.Label(text="Count")
         self.hvsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
@@ -201,8 +201,8 @@ class IVRamp4WirePanel(MatrixPanel):
             if name in self.plot.series:
                 self.plot.series.clear()
             for x, y in points:
-                voltage = x * comet.ureg('V')
-                current = y * comet.ureg('A')
+                current = x * comet.ureg('A')
+                voltage = y * comet.ureg('V')
                 self.plot.series.get(name).append(current.to('uA').m, voltage.m)
         self.update_readings()
 

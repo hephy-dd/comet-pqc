@@ -72,17 +72,17 @@ contacts:
             hvsrc_voltage_compliance: 20 V
             hvsrc_sense_mode: remote
       - name: FET
-        type: bias_iv_ramp
+        type: iv_ramp_bias
         parameters:
-            matrix_channels: []
-            bias_voltage: 100 mV
-            bias_current_compliance: 10 uA
+            matrix_enabled: true
+            matrix_channels: [1G02, 2D12, 2A10, 2G11]
             voltage_start: -5 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
             waiting_time: 500 ms
+            bias_voltage: 100 mV
             vsrc_current_compliance: 10 uA
-            vsrc_sense_mode: local
+            hvsrc_current_compliance: 10 uA
       - name: MOS capacitor (VSrc)
         type: cv_ramp
         description: Variant using VSource and LCR
@@ -210,17 +210,17 @@ contacts:
     contact_id: flute_2
     measurements:
       - name: GCD
-        type: bias_iv_ramp
+        type: iv_ramp_bias
         parameters:
-            matrix_channels: []
-            bias_voltage: -5 V
-            bias_current_compliance: 10 uA
+            matrix_enabled: true
+            matrix_channels: [1G02, 2D12, 2A10, 2G11]
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
             waiting_time: 500 ms
-            current_compliance: 10 uA
-            sense_mode: local
+            bias_voltage: -5 V
+            vsrc_current_compliance: 10 uA
+            hvsrc_current_compliance: 10 uA
       - name: Polysilicon meander
         type: iv_ramp_elm
         parameters:
@@ -380,17 +380,17 @@ contacts:
     contact_id: flute_4
     measurements:
       - name: GCD05
-        type: bias_iv_ramp
+        type: iv_ramp_bias
         parameters:
-            matrix_channels: []
-            bias_voltage: -5 V
-            bias_current_compliance: 10 uA
+            matrix_enabled: true
+            matrix_channels: [1G02, 2D12, 2A10, 2G11]
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
             waiting_time: 500 ms
-            current_compliance: 10 uA
-            sense_mode: local
+            bias_voltage: -5 V
+            vsrc_current_compliance: 10 uA
+            hvsrc_current_compliance: 10 uA
       - name: N+ CBKR
         type: iv_ramp_4_wire
         parameters:

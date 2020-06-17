@@ -295,7 +295,7 @@ class BaseProcess(comet.Process, ResourceMixin):
 
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
-        if int(resource.query("print(smua.source.output)")):
+        if int(float(resource.query("print(smua.source.output)"))):
             self.emit("message", "Ramping down HVSource...")
             start_voltage = float(resource.query("print(smua.source.levelv)"))
             stop_voltage = 0.0
@@ -304,7 +304,7 @@ class BaseProcess(comet.Process, ResourceMixin):
                 resource.write(f"smua.source.levelv = {voltage:E}")
                 resource.query("*OPC?")
             self.emit("message", "Disable output HVSource...")
-            resource.write("smua.source.output = smua.OUTPUT_OFF")
+            resource.write("smua.source.output = 0")
             resource.query("*OPC?")
         self.emit("message", "Initialized HVSource.")
 
