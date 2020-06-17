@@ -8,6 +8,7 @@ import comet
 from comet.driver.keithley import K6517B
 
 from ..driver import K2410
+from ..utils import auto_unit
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -34,6 +35,17 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_elm"
 
+    default_vsrc_sense_mode = "local"
+    default_vsrc_route_termination = "rear"
+    default_vsrc_filter_enable = False
+    default_vsrc_filter_count = 10
+    default_vsrc_filter_type = "repeat"
+    default_elm_filter_enable = False
+    default_elm_filter_count = 10
+    default_elm_filter_type = "repeat"
+    default_elm_zero_correction = False
+    default_elm_integration_rate = 50
+
     def env_detect_model(self, env):
         try:
             env_idn = env.query("*IDN?")
@@ -53,19 +65,19 @@ class IVRampElmMeasurement(MatrixMeasurement):
         voltage_step = parameters.get("voltage_step").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode")
-        vsrc_route_termination = parameters.get("vsrc_route_termination", "rear")
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
-        elm_filter_enable = bool(parameters.get("elm_filter_enable", False))
-        elm_filter_count = int(parameters.get("elm_filter_count", 10))
-        elm_filter_type = parameters.get("elm_filter_type", "repeat")
-        elm_zero_correction = bool(parameters.get("elm_zero_correction", False))
-        elm_integration_rate = int(parameters.get("elm_integration_rate", 50))
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
+        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
+        elm_filter_enable = bool(parameters.get("elm_filter_enable", self.default_elm_filter_enable))
+        elm_filter_count = int(parameters.get("elm_filter_count", self.default_elm_filter_count))
+        elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
+        elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
+        elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
 
         vsrc_idn = vsrc.identification
-        logging.info("Detected VSrc: %s", vsrc_idn)
+        logging.info("Detected VSource: %s", vsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
         vsrc_model = ''.join(result) or None
 
@@ -98,7 +110,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
                 logging.info("set voltage: %E V", voltage)
-                self.process.emit("message", f"{voltage:.3f} V")
+                self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
                 vsrc.source.voltage.level = voltage
                 # check_error(vsrc)
                 time.sleep(.100)
@@ -210,7 +222,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSrc in compliance")
+                    logging.error("VSource in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -275,6 +287,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
         voltage_stop = parameters.get("voltage_stop").to("V").m
         waiting_time = parameters.get("waiting_time").to("s").m
         vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
+        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
+        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
+        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
+        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
+        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
 
         if not self.process.running:
             return
@@ -304,6 +321,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
             fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+            fmt.write_meta("vsrc_sense_mode", vsrc_sense_mode)
+            fmt.write_meta("vsrc_route_termination", vsrc_route_termination)
+            fmt.write_meta("vsrc_filter_enable", format(vsrc_filter_enable).lower())
+            fmt.write_meta("vsrc_filter_count", format(vsrc_filter_count))
+            fmt.write_meta("vsrc_filter_type", vsrc_filter_type)
             fmt.flush()
 
             # Write header
@@ -312,7 +334,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
             voltage = vsrc.source.voltage.level
 
-            # VSrc reading format: CURR
+            # VSource reading format: CURR
             vsrc.resource.write(":FORM:ELEM CURR")
             vsrc.resource.query("*OPC?")
 
@@ -338,12 +360,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
-                # read VSrc
+                # read VSource
                 vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("VSrc reading: %E", vsrc_reading)
+                logging.info("VSource reading: %E", vsrc_reading)
                 self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
                 # read ELM
@@ -395,7 +417,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSrc in compliance")
+                    logging.error("VSource in compliance")
                     raise ValueError("compliance tripped")
                 # check_error(vsrc)
                 if not self.process.running:
@@ -419,7 +441,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", f"{voltage:.3f} V")
+            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
             vsrc.source.voltage.level = voltage
             time.sleep(.100)
             # check_error(vsrc)

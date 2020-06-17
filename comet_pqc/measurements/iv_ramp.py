@@ -9,6 +9,7 @@ import comet
 from ..driver import K2410
 
 from ..proxy import create_proxy
+from ..utils import auto_unit
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
@@ -64,7 +65,7 @@ class IVRampMeasurement(MatrixMeasurement):
         vsrc_proxy = create_proxy(vsrc)
 
         vsrc_idn = vsrc_proxy.identification
-        logging.info("Detected VSrc: %s", vsrc_idn)
+        logging.info("Detected VSource: %s", vsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
         vsrc_model = ''.join(result) or None
 
@@ -171,7 +172,7 @@ class IVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
-                self.process.emit("message", f"{voltage:.3f} V")
+                self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
                 vsrc_proxy.source_voltage_level = voltage
                 # vsrc_proxy.assert_success()
                 time.sleep(.100)
@@ -182,7 +183,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSrc in compliance")
+                    logging.error("VSource in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -216,8 +217,8 @@ class IVRampMeasurement(MatrixMeasurement):
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
-            fmt.add_column("voltage", "E")
-            fmt.add_column("current", "E")
+            fmt.add_column("vsrc_voltage", "E")
+            fmt.add_column("vsrc_current", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -248,7 +249,7 @@ class IVRampMeasurement(MatrixMeasurement):
 
             voltage = vsrc_proxy.source_voltage_level
 
-            # VSrc reading format: CURR
+            # VSource reading format: CURR
             vsrc.resource.write(":FORM:ELEM CURR")
             vsrc.resource.query("*OPC?")
 
@@ -266,7 +267,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 # vsrc_proxy.assert_success()
                 td = time.time() - t0
                 reading_current = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("VSrc reading: %E A", reading_current)
+                logging.info("VSource reading: %E A", reading_current)
                 self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
                 # Environment
@@ -287,8 +288,8 @@ class IVRampMeasurement(MatrixMeasurement):
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=td,
-                    voltage=voltage,
-                    current=reading_current,
+                    vsrc_voltage=voltage,
+                    vsrc_current=reading_current,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
@@ -299,13 +300,13 @@ class IVRampMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", f"Elapsed {elapsed} | Remaining {remaining} | {voltage:.3f} V")
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSrc in compliance")
+                    logging.error("VSource in compliance")
                     raise ValueError("compliance tripped")
                 # vsrc_proxy.assert_success()
                 if not self.process.running:
@@ -324,7 +325,7 @@ class IVRampMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", f"{voltage:.3f} V")
+            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
             vsrc_proxy.source_voltage_level = voltage
             time.sleep(.100)
             # vsrc_proxy.assert_success()

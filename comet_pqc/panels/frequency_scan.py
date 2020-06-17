@@ -23,34 +23,34 @@ class FrequencyScanPanel(MatrixPanel):
         self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
 
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
-        self.current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.route_termination = comet.ComboBox(items=["front", "rear"])
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
         self.lcr_frequency_start = comet.Number(minimum=0, decimals=3, suffix="Hz")
         self.lcr_frequency_stop = comet.Number(minimum=0, decimals=3, suffix="MHz")
         self.lcr_frequency_steps = comet.Number(minimum=1, maximum=1000, decimals=0)
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
 
-        def toggle_average(enabled):
-            self.average_count.enabled = enabled
-            self.average_count_label.enabled = enabled
-            self.average_type.enabled = enabled
-            self.average_type_label.enabled = enabled
+        def toggle_vsrc_filter(enabled):
+            self.vsrc_filter_count.enabled = enabled
+            self.vsrc_filter_count_label.enabled = enabled
+            self.vsrc_filter_type.enabled = enabled
+            self.vsrc_filter_type_label.enabled = enabled
 
-        self.average_enabled = comet.CheckBox(text="Enable", changed=toggle_average)
-        self.average_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.average_count_label = comet.Label(text="Count")
-        self.average_type = comet.ComboBox(items=["repeat", "moving"])
-        self.average_type_label = comet.Label(text="Type")
+        self.vsrc_filter_enabled = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.vsrc_filter_count_label = comet.Label(text="Count")
+        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
+        self.vsrc_filter_type_label = comet.Label(text="Type")
 
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("current_compliance", self.current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("route_termination", self.route_termination, "front")
-        self.bind("average_enabled", self.average_enabled, False)
-        self.bind("average_count", self.average_count, 10)
-        self.bind("average_type", self.average_type, "repeat")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_route_termination", self.vsrc_route_termination, "rear")
+        self.bind("vsrc_filter_enabled", self.vsrc_filter_enabled, False)
+        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
+        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
         self.bind("lcr_frequency_start", self.lcr_frequency_start, 0, unit="Hz")
         self.bind("lcr_frequency_stop", self.lcr_frequency_stop, 0, unit="MHz")
         self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
@@ -110,9 +110,7 @@ class FrequencyScanPanel(MatrixPanel):
                             comet.Label(text="Bias Voltage"),
                             self.bias_voltage,
                             comet.Label(text="Current Compliance"),
-                            self.current_compliance,
-                            comet.Label(text="Sense Mode"),
-                            self.sense_mode,
+                            self.vsrc_current_compliance,
                             comet.Spacer()
                         )
                     ),
@@ -148,11 +146,11 @@ class FrequencyScanPanel(MatrixPanel):
                     comet.GroupBox(
                         title="Filter",
                         layout=comet.Column(
-                            self.average_enabled,
-                            self.average_count_label,
-                            self.average_count,
-                            self.average_type_label,
-                            self.average_type,
+                            self.vsrc_filter_enabled,
+                            self.vsrc_filter_count_label,
+                            self.vsrc_filter_count,
+                            self.vsrc_filter_type_label,
+                            self.vsrc_filter_type,
                             comet.Spacer()
                         )
                     ),
@@ -160,9 +158,9 @@ class FrequencyScanPanel(MatrixPanel):
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
-                            self.sense_mode,
+                            self.vsrc_sense_mode,
                             comet.Label(text="Route Termination"),
-                            self.route_termination,
+                            self.vsrc_route_termination,
                             comet.Spacer()
                         )
                     ),

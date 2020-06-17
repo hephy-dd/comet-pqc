@@ -1,4 +1,6 @@
 import comet
+
+from ..utils import auto_unit
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampBiasPanel"]

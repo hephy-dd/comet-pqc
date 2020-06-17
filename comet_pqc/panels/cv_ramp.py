@@ -33,8 +33,8 @@ class CVRampPanel(MatrixPanel):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.route_termination = comet.ComboBox(items=["front", "rear"])
+        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
         self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
@@ -60,8 +60,8 @@ class CVRampPanel(MatrixPanel):
         self.bind("bias_voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
-        self.bind("sense_mode", self.sense_mode, "local")
-        self.bind("route_termination", self.route_termination, "front")
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_route_termination", self.vsrc_route_termination, "rear")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
         self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
         self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
@@ -209,9 +209,9 @@ class CVRampPanel(MatrixPanel):
                         title="Options",
                         layout=comet.Column(
                             comet.Label(text="Sense Mode"),
-                            self.sense_mode,
+                            self.vsrc_sense_mode,
                             comet.Label(text="Route Termination"),
-                            self.route_termination,
+                            self.vsrc_route_termination,
                             comet.Spacer()
                         )
                     ),
