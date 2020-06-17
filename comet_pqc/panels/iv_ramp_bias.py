@@ -68,7 +68,7 @@ class IVRampBiasPanel(MatrixPanel):
         self.bind("bias_mode", self.bias_mode, "constant")
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
         self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
+        self.bind("vsrc_route_termination", self.vsrc_route_termination, "rear")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
         self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
         self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
