@@ -1,6 +1,9 @@
 import copy
+import datetime
 import logging
 import os
+
+from qutie.qt import QtGui
 
 import comet
 
@@ -24,19 +27,29 @@ from .panels import FrequencyScanPanel
 
 from .driver import EnvironmentBox
 
+def create_icon(size, color):
+    """Return circular colored icon."""
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtGui.QColor("transparent"))
+    painter = QtGui.QPainter(pixmap)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    painter.setPen(QtGui.QColor(color))
+    painter.setBrush(QtGui.QColor(color))
+    painter.drawEllipse(1, 1, size-2, size-2)
+    del painter
+    return comet.Icon(qt=pixmap)
+
 class ToggleButton(comet.Button):
     """Colored checkable button."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.icons = {False: create_icon(12, "grey"), True: create_icon(12, "green")}
+        self.on_toggle_color(self.checked)
         self.qt.toggled.connect(self.on_toggle_color)
 
     def on_toggle_color(self, state):
-        """Colored button if checked."""
-        if state:
-            self.stylesheet = "QPushButton:enabled{color: white; background-color: green;}"
-        else:
-            self.stylesheet = "QPushButton:enabled{}"
+        self.icon = self.icons[state]
 
 class PanelStack(comet.Row):
     """Stack of measurement panels."""
@@ -406,12 +419,15 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Summary tab
 
+        self.summary_tree = comet.Tree(
+            header=["Time", "Sample", "Type", "Contact", "Measurement", "Result"],
+            indentation=0
+        )
+
         self.summary_tab = comet.Tab(
             title="Summary",
             layout=comet.ScrollArea(
-                layout=comet.Column(
-                    comet.Spacer()
-                )
+                self.summary_tree
             )
         )
 
@@ -717,6 +733,21 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unlock()
         measure = self.processes.get("measure")
         measure.reading = lambda data: None
+        # Append to summary
+        item = self.summary_tree.insert(0, [
+            datetime.datetime.now().isoformat(),
+            measure.get("sample_name"),
+            measure.get("sample_type"),
+            self.sequence_tree.current.contact.name,
+            self.sequence_tree.current.name,
+            self.sequence_tree.current[1].value or "Failed"
+        ])
+        # TODO
+        if item[5].value == "Failed":
+            item[5].color = "red"
+        else:
+            item[5].color = "green"
+        self.summary_tree.fit()
         self.sequence_tree.unlock()
 
     def on_status_start(self):

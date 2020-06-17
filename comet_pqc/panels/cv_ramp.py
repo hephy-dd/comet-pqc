@@ -70,7 +70,7 @@ class CVRampPanel(MatrixPanel):
         self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
         self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
         self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
-        self.bind("lcr_soft_filter", self.lcr_soft_filter, False)
+        self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
 
         # Instruments status
 
@@ -177,12 +177,6 @@ class CVRampPanel(MatrixPanel):
                             self.lcr_frequency,
                             comet.Label(text="AC Amplitude"),
                             self.lcr_amplitude,
-                            comet.Label(text="Integration Time"),
-                            self.lcr_integration_time,
-                            comet.Label(text="Averaging Rate"),
-                            self.lcr_averaging_rate,
-                            self.lcr_auto_level_control,
-                            self.lcr_soft_filter,
                             comet.Spacer()
                         )
                     ),
@@ -223,6 +217,25 @@ class CVRampPanel(MatrixPanel):
                     ),
                     comet.Spacer(),
                     stretch=(1, 1, 1)
+                )
+            ),
+            comet.Tab(
+                title="LCR",
+                layout=comet.Row(
+                    comet.GroupBox(
+                        title="Options",
+                        layout=comet.Column(
+                            comet.Label(text="Integration Time"),
+                            self.lcr_integration_time,
+                            comet.Label(text="Averaging Rate"),
+                            self.lcr_averaging_rate,
+                            self.lcr_auto_level_control,
+                            self.lcr_soft_filter,
+                            comet.Spacer()
+                        )
+                    ),
+                    comet.Spacer(),
+                    stretch=(1, 2)
                 )
             )
         )
