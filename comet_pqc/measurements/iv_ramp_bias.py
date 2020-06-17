@@ -147,7 +147,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
         # Compliance
         logging.info("set compliance: %E V", hvsrc_current_compliance)
-        hvsrc.source.limitv = hvsrc_current_compliance
+        hvsrc.source.limiti = hvsrc_current_compliance
         check_error(hvsrc)
 
         # Filter
