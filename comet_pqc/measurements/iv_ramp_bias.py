@@ -5,6 +5,7 @@ import os
 
 import comet
 
+from comet.driver.keithley import K6517B
 from ..driver import K2410
 from ..driver import K2657A
 from ..utils import auto_unit
@@ -183,8 +184,8 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         # Ramp HV Spource to bias voltage
         voltage = hvsrc.source.levelv
 
-        logging.info("ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, voltage_step)
-        for voltage in comet.Range(voltage, bias_voltage, voltage_step):
+        logging.info("ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, 1.0)
+        for voltage in comet.Range(voltage, bias_voltage, 1.0):
             logging.info("set bias voltage: %E V", voltage)
             self.process.emit("message", "Ramp to bias... {}".format(auto_unit(voltage, "V")))
             hvsrc.source.levelv = voltage
@@ -205,8 +206,8 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         # Ramp V Source to start voltage
         voltage = vsrc.source.voltage.level
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
-        for voltage in comet.Range(voltage, voltage_start, voltage_step):
+        logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, 1.0)
+        for voltage in comet.Range(voltage, voltage_start, 1.0):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
             vsrc.source.voltage.level = voltage
@@ -409,8 +410,8 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
         voltage = vsrc.source.voltage.level
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-        for voltage in comet.Range(voltage, 0, voltage_step):
+        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
+        for voltage in comet.Range(voltage, 0, 1.0):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
             vsrc.source.voltage.level = voltage
@@ -421,8 +422,8 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
         bias_voltage = hvsrc.source.levelv
 
-        logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, voltage_step)
-        for voltage in comet.Range(bias_voltage, 0, voltage_step):
+        logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
+        for voltage in comet.Range(bias_voltage, 0, 1.0):
             logging.info("set bias voltage: %E V", voltage)
             self.process.emit("message", "Ramp bias to zero... {}".format(auto_unit(voltage, "V")))
             hvsrc.source.levelv = voltage

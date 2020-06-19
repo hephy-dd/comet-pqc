@@ -128,6 +128,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         )
 
         self.sequence_tree = SequenceTree(selected=self.on_tree_selected)
+        self.sequence_tree.minimum_width = 360
 
         self.start_button = comet.Button(
             text="Start",

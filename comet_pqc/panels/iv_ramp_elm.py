@@ -159,6 +159,7 @@ class IVRampElmPanel(MatrixPanel):
             ),
             comet.Spacer()
         )
+        self.status_instruments.width = 240
 
         self.tabs = comet.Tabs(
             comet.Tab(
@@ -257,7 +258,7 @@ class IVRampElmPanel(MatrixPanel):
         self.controls.append(comet.Row(
             self.tabs,
             self.status_instruments,
-            stretch=(2, 1)
+            stretch=(3, 1)
         ))
 
     def lock(self):
