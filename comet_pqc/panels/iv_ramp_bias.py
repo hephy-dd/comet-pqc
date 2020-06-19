@@ -296,11 +296,15 @@ class IVRampBiasPanel(MatrixPanel):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
-                self.plot.series.clear()
-            for x, y in points:
-                voltage = x * comet.ureg('V')
-                current = y * comet.ureg('A')
-                self.plot.series.get(name).append(voltage.m, current.to('uA').m)
+                self.plot.series.get(name).clear()
+                if points[0][0] > points[-1][0]:
+                    self.plot.axes.get("x").qt.setReverse(True)
+                else:
+                    self.plot.axes.get("x").qt.setReverse(False)
+                for x, y in points:
+                    voltage = x * comet.ureg('V')
+                    current = y * comet.ureg('A')
+                    self.plot.series.get(name).append(voltage.m, current.to('uA').m)
         self.update_readings()
 
     def unmount(self):
@@ -352,6 +356,10 @@ class IVRampBiasPanel(MatrixPanel):
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((voltage.m, current.m))
+                if self.voltage_start.value > self.voltage_stop.value:
+                    self.plot.axes.get("x").qt.setReverse(True)
+                else:
+                    self.plot.axes.get("x").qt.setReverse(False)
                 self.plot.series.get(name).append(voltage.m, current.to('uA').m)
 
     def update_readings(self):

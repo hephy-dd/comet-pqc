@@ -335,7 +335,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {} | {}".format(elapsed, remaining, auto_unit(voltage, "V"), auto_unit(bias_voltage, "V")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, auto_unit(voltage, "V"), auto_unit(bias_voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # read HV Source
