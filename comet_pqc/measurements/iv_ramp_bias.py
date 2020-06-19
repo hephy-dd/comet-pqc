@@ -268,7 +268,6 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             fmt.add_column("voltage", "E")
             fmt.add_column("current", "E")
             fmt.add_column("bias_voltage", "E")
-            fmt.add_column("bias_current", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -380,7 +379,6 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                     voltage=voltage,
                     current=hvsrc_reading,
                     bias_voltage=bias_voltage,
-                    bias_current=vsrc_reading,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
