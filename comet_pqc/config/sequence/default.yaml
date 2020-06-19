@@ -72,10 +72,10 @@ contacts:
             hvsrc_voltage_compliance: 20 V
             hvsrc_sense_mode: remote
       - name: FET
-        type: iv_ramp_bias
+        type: iv_ramp_bias_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1G02, 2D12, 2A10, 2G11]
+            matrix_channels: [1D02, 2G11, 2A10, 2C12]
             voltage_start: -5 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
@@ -210,15 +210,15 @@ contacts:
     contact_id: flute_2
     measurements:
       - name: GCD
-        type: iv_ramp_bias
+        type: iv_ramp_bias_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1G02, 2D12, 2A10, 2G11]
+            matrix_channels: [1D02, 2G11, 2A10, 2C12]
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
             waiting_time: 500 ms
-            bias_voltage: -5 V
+            bias_voltage: 5 V
             vsrc_current_compliance: 10 uA
             hvsrc_current_compliance: 10 uA
       - name: Polysilicon meander
@@ -380,15 +380,15 @@ contacts:
     contact_id: flute_4
     measurements:
       - name: GCD05
-        type: iv_ramp_bias
+        type: iv_ramp_bias_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1G02, 2D12, 2A10, 2G11]
+            matrix_channels: [1D02, 2G11, 2A10, 2C12]
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
             waiting_time: 500 ms
-            bias_voltage: -5 V
+            bias_voltage: 5 V
             vsrc_current_compliance: 10 uA
             hvsrc_current_compliance: 10 uA
       - name: N+ CBKR

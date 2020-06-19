@@ -2,8 +2,10 @@ import datetime
 import logging
 import time
 import os
+import re
 
 import comet
+from comet.driver.keithley import K6517B
 
 from ..driver import K2410
 from ..driver import K2657A
@@ -12,7 +14,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
 
-__all__ = ["IVRampBiasMeasurement"]
+__all__ = ["IVRampBiasElmMeasurement"]
 
 def check_error(hvsrc):
     if hvsrc.errorqueue.count:
@@ -20,10 +22,10 @@ def check_error(hvsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampBiasMeasurement(MatrixMeasurement):
+class IVRampBiasElmMeasurement(MatrixMeasurement):
     """Bias IV ramp measurement."""
 
-    type = "iv_ramp_bias"
+    type = "iv_ramp_bias_elm"
 
     default_bias_mode = "constant"
     default_vsrc_sense_mode = "local"
@@ -35,8 +37,13 @@ class IVRampBiasMeasurement(MatrixMeasurement):
     default_hvsrc_filter_enable = False
     default_hvsrc_filter_count = 10
     default_hvsrc_filter_type = "repeat"
+    default_elm_filter_enable = False
+    default_elm_filter_count = 10
+    default_elm_filter_type = "repeat"
+    default_elm_zero_correction = False
+    default_elm_integration_rate = 50
 
-    def initialize(self, vsrc, hvsrc):
+    def initialize(self, vsrc, hvsrc, elm):
         self.process.emit("progress", 1, 5)
         self.process.emit("message", "Ramp to start...")
 
@@ -58,6 +65,32 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
         hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
         hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
+        elm_filter_enable = bool(parameters.get("elm_filter_enable", self.default_elm_filter_enable))
+        elm_filter_count = int(parameters.get("elm_filter_count", self.default_elm_filter_count))
+        elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
+        elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
+        elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
+
+        vsrc_idn = vsrc.identification
+        logging.info("Detected V Source: %s", vsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
+        vsrc_model = ''.join(result) or None
+
+        hvsrc_idn = hvsrc.identification
+        logging.info("Detected HV Source: %s", hvsrc_idn)
+        result = re.search(r'model\s+([\d\w]+)', hvsrc_idn, re.IGNORECASE).groups()
+        hvsrc_model = ''.join(result) or None
+
+        elm_idn = elm.identification
+        logging.info("Detected Electrometer: %s", elm_idn)
+        result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
+        elm_model = ''.join(result) or None
+
+        self.process.emit("state", dict(
+            vsrc_model=vsrc_model,
+            hvsrc_model=hvsrc_model,
+            elm_model=elm_model
+        ))
 
         # Initialize V Source
 
@@ -167,6 +200,54 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         if not self.process.running:
             return
 
+        # Initialize Electrometer
+
+        def elm_safe_write(message):
+            """Write, wait for operation complete, test for errors."""
+            elm.resource.write(message)
+            elm.resource.query("*OPC?")
+            code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
+            code = int(code)
+            label = label.strip("\"")
+            if code != 0:
+                logging.error(f"error {code}: {label} returned by '{message}'")
+                raise RuntimeError(f"error {code}: {label} returned by '{message}'")
+
+        elm_safe_write("*RST")
+        elm_safe_write("*CLS")
+
+        # Filter
+        elm_safe_write(f":SENS:CURR:AVER:COUN {elm_filter_count:d}")
+
+        if elm_filter_type == "repeat":
+            elm_safe_write(":SENS:CURR:AVER:TCON REP")
+        elif elm_filter_type == "repeat":
+            elm_safe_write(":SENS:CURR:AVER:TCON MOV")
+
+        if elm_filter_enable:
+            elm_safe_write(":SENS:CURR:AVER:STATE ON")
+        else:
+            elm_safe_write(":SENS:CURR:AVER:STATE OFF")
+
+        nplc = elm_integration_rate / 10.
+        elm_safe_write(f":SENS:CURR:NPLC {nplc:02f}")
+
+        elm_safe_write(":SYST:ZCH ON") # enable zero check
+        assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
+
+        elm_safe_write(":SENS:FUNC 'CURR'") # note the quotes!
+        assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
+
+        elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
+        if elm_zero_correction:
+            elm_safe_write(":SYST:ZCOR ON") # perform zero correction
+        elm_safe_write(":SENS:CURR:RANG:AUTO ON")
+        elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
+        elm_safe_write(":SENS:CURR:RANG:AUTO:ULIM 2.000000E-2")
+
+        elm_safe_write(":SYST:ZCH OFF") # disable zero check
+        assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
+
         # Output enable
 
         vsrc.output = True
@@ -227,7 +308,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 5, 5)
 
-    def measure(self, vsrc, hvsrc):
+    def measure(self, vsrc, hvsrc, elm):
         self.process.emit("progress", 1, 2)
         self.process.emit("message", "Ramp to...")
 
@@ -266,7 +347,9 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage", "E")
-            fmt.add_column("current", "E")
+            fmt.add_column("elm_current", "E")
+            fmt.add_column("hvsrc_current", "E")
+            fmt.add_column("vsrc_current", "E")
             fmt.add_column("bias_voltage", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
@@ -305,6 +388,10 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             vsrc.resource.write(":FORM:ELEM CURR")
             vsrc.resource.query("*OPC?")
 
+            # Electrometer reading format: READ
+            elm.resource.write(":FORM:ELEM READ")
+            elm.resource.query("*OPC?")
+
             voltage = vsrc.source.voltage.level
 
             ramp = comet.Range(voltage, voltage_stop, voltage_step)
@@ -337,19 +424,26 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, auto_unit(voltage, "V"), auto_unit(bias_voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                # read ELM
+                elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                logging.info("ELM reading: %E", elm_reading)
+                self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+
                 # read HV Source
                 hvsrc_reading = hvsrc.measure.i()
                 logging.info("HV Source reading: %E A", hvsrc_reading)
-                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+                ### self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
                 # read V Source
                 vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
                 logging.info("V Source bias reading: %E A", vsrc_reading)
+                ### self.process.emit("reading", "src", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
                 self.process.emit("update")
                 self.process.emit("state", dict(
+                    elm_current=elm_reading,
                     vsrc_current=vsrc_reading,
-                    hvsrc_current=hvsrc_reading
+                    hvsrc_current=hvsrc_reading,
                 ))
 
                 # Environment
@@ -377,7 +471,9 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     voltage=voltage,
-                    current=hvsrc_reading,
+                    elm_current=hvsrc_reading,
+                    hvsrc_current=hvsrc_reading,
+                    vsrc_current=vsrc_reading,
                     bias_voltage=bias_voltage,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
@@ -400,9 +496,18 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 2, 2)
 
-    def finalize(self, vsrc, hvsrc):
+    def finalize(self, vsrc, hvsrc, elm):
         self.process.emit("progress", 1, 2)
         self.process.emit("message", "Ramp to zero...")
+
+        elm.resource.write(":SYST:ZCH ON")
+        elm.resource.query("*OPC?")
+
+        self.process.emit("state", dict(
+            elm_current=None,
+            hvsrc_current=None,
+            vsrc_current=None
+        ))
 
         parameters = self.measurement_item.parameters
         voltage_step = parameters.get("voltage_step").to("V").m
@@ -451,10 +556,12 @@ class IVRampBiasMeasurement(MatrixMeasurement):
     def code(self, *args, **kwargs):
         with self.resources.get("vsrc") as vsrc_res:
             with self.resources.get("hvsrc") as hvsrc_res:
-                vsrc = K2410(vsrc_res)
-                hvsrc = K2657A(hvsrc_res)
-                try:
-                    self.initialize(vsrc, hvsrc)
-                    self.measure(vsrc, hvsrc)
-                finally:
-                    self.finalize(vsrc, hvsrc)
+                with self.resources.get("elm") as elm_res:
+                    vsrc = K2410(vsrc_res)
+                    hvsrc = K2657A(hvsrc_res)
+                    elm = K6517B(elm_res)
+                    try:
+                        self.initialize(vsrc, hvsrc, elm)
+                        self.measure(vsrc, hvsrc, elm)
+                    finally:
+                        self.finalize(vsrc, hvsrc, elm)

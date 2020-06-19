@@ -20,6 +20,7 @@ from .trees import MeasurementTreeItem
 from .panels import IVRampPanel
 from .panels import IVRampElmPanel
 from .panels import IVRampBiasPanel
+from .panels import IVRampBiasElmPanel
 from .panels import IVRamp4WirePanel
 from .panels import CVRampPanel
 from .panels import CVRampAltPanel
@@ -59,6 +60,7 @@ class PanelStack(comet.Row):
         self.append(IVRampPanel(visible=False))
         self.append(IVRampElmPanel(visible=False))
         self.append(IVRampBiasPanel(visible=False))
+        self.append(IVRampBiasElmPanel(visible=False))
         self.append(CVRampPanel(visible=False))
         self.append(CVRampAltPanel(visible=False))
         self.append(IVRamp4WirePanel(visible=False))
