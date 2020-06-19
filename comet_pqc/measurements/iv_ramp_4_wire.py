@@ -64,7 +64,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
 
         hvsrc_idn = hvsrc.identification
-        logging.info("Detected HVSource: %s", hvsrc_idn)
+        logging.info("Detected HV Source: %s", hvsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', hvsrc_idn, re.IGNORECASE).groups()
         hvsrc_model = ''.join(result) or None
 
@@ -164,7 +164,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = hvsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("HVSource in compliance")
+                    logging.error("HV Source in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -238,9 +238,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(current, "A")))
                 self.process.emit("progress", *est.progress)
 
-                # read HVSource
+                # read HV Source
                 hvsrc_reading = hvsrc.measure.v()
-                logging.info("HVSource reading: %E V", hvsrc_reading)
+                logging.info("HV Source reading: %E V", hvsrc_reading)
                 self.process.emit("reading", "hvsrc", abs(current) if ramp.step < 0 else current, hvsrc_reading)
 
                 self.process.emit("update")
@@ -285,7 +285,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = hvsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("HVSource in compliance")
+                    logging.error("HV Source in compliance")
                     raise ValueError("compliance tripped")
                 # check_error(hvsrc)
                 if not self.process.running:

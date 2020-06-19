@@ -20,7 +20,7 @@ class IVRampPanel(MatrixPanel):
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("vsrc", "x", "y", text="VSource", color="red")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="red")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -67,7 +67,7 @@ class IVRampPanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="VSource Status",
+                title="V Source Status",
                 layout=comet.Column(
                     self.status_vsrc_model,
                     comet.Row(
@@ -108,7 +108,7 @@ class IVRampPanel(MatrixPanel):
                         )
                     ),
                     comet.GroupBox(
-                        title="VSource Compliance",
+                        title="V Source Compliance",
                         layout=comet.Column(
                             self.vsrc_current_compliance,
                             comet.Spacer()
@@ -127,7 +127,7 @@ class IVRampPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="VSource",
+                title="V Source",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",

@@ -67,8 +67,8 @@ class CVRampMeasurement(MatrixMeasurement):
         try:
             vsrc_idn = vsrc.resource.query("*IDN?")
         except Exception as e:
-            raise RuntimeError("Failed to access VSource", vsrc.resource.resource_name, e)
-        logging.info("Detected VSource: %s", vsrc_idn)
+            raise RuntimeError("Failed to access V Source", vsrc.resource.resource_name, e)
+        logging.info("Detected V Source: %s", vsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
         vsrc_model = ''.join(result) or None
         self.process.emit("state", dict(
@@ -132,42 +132,42 @@ class CVRampMeasurement(MatrixMeasurement):
         return float(vsrc.resource.query(":SOUR:VOLT:LEV?"))
 
     def vsrc_set_voltage_level(self, vsrc, voltage):
-        logging.info("set VSource voltage level: %s", auto_unit(voltage, "V"))
+        logging.info("set V Source voltage level: %s", auto_unit(voltage, "V"))
         safe_write(vsrc, f":SOUR:VOLT:LEV {voltage:E}")
 
     def vsrc_set_route_termination(self, vsrc, route_termination):
-        logging.info("set VSource route termination: '%s'", route_termination)
+        logging.info("set V Source route termination: '%s'", route_termination)
         value = {"front": "FRON", "rear": "REAR"}[route_termination]
         safe_write(vsrc, f":ROUT:TERM {value:s}")
 
     def vsrc_set_sense_mode(self, vsrc, sense_mode):
-        logging.info("set VSource sense mode: '%s'", sense_mode)
+        logging.info("set V Source sense mode: '%s'", sense_mode)
         value = {"remote": "ON", "local": "OFF"}[sense_mode]
         safe_write(vsrc, f":SYST:RSEN {value:s}")
 
     def vsrc_set_compliance(self, vsrc, compliance):
-        logging.info("set VSource compliance: %s", auto_unit(compliance, "A"))
+        logging.info("set V Source compliance: %s", auto_unit(compliance, "A"))
         safe_write(vsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
 
     def vsrc_compliance_tripped(self, vsrc):
         return bool(int(vsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
 
     def vsrc_set_auto_range(self, vsrc, enabled):
-        logging.info("set VSource auto range (current): %s", enabled)
+        logging.info("set V Source auto range (current): %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
         safe_write(vsrc, f"SENS:CURR:RANG:AUTO {value:s}")
 
     def vsrc_set_filter_enable(self, vsrc, enabled):
-        logging.info("set VSource filter enable: %s", enabled)
+        logging.info("set V Source filter enable: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
         safe_write(vsrc, f":SENS:AVER:STATE {value:s}")
 
     def vsrc_set_filter_count(self, vsrc, count):
-        logging.info("set VSource filter count: %s", count)
+        logging.info("set V Source filter count: %s", count)
         safe_write(vsrc, f":SENS:AVER:COUN {count:d}")
 
     def vsrc_set_filter_type(self, vsrc, type):
-        logging.info("set VSource filter type: %s", type)
+        logging.info("set V Source filter type: %s", type)
         value = {"repeat": "REP", "moving": "MOV"}[type]
         safe_write(vsrc, f":SENS:AVER:TCON {value:s}")
 
@@ -175,7 +175,7 @@ class CVRampMeasurement(MatrixMeasurement):
         return bool(int(vsrc.resource.query(":OUTP:STAT?")))
 
     def vsrc_set_output_state(self, vsrc, enabled):
-        logging.info("set VSource output state: %s", enabled)
+        logging.info("set V Source output state: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
         safe_write(vsrc, f":OUTP:STAT {value:s}")
 
@@ -223,9 +223,9 @@ class CVRampMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 1, 10)
 
-        # Initialize VSource
+        # Initialize V Source
 
-        # Bring down VSource voltage if output enabeled
+        # Bring down V Source voltage if output enabeled
         # Prevents a voltage jump for at device reset.
         self.quick_ramp_zero(vsrc)
         self.vsrc_set_output_state(vsrc, False)
@@ -299,7 +299,7 @@ class CVRampMeasurement(MatrixMeasurement):
             # Compliance?
             compliance_tripped = self.vsrc_compliance_tripped(vsrc)
             if compliance_tripped:
-                logging.error("VSource in compliance")
+                logging.error("V Source in compliance")
                 raise ValueError("compliance tripped!")
 
             if not self.process.running:
@@ -349,7 +349,7 @@ class CVRampMeasurement(MatrixMeasurement):
             t0 = time.time()
 
             safe_write(vsrc, "*CLS")
-            # VSource reading format: CURR
+            # V Source reading format: CURR
             safe_write(vsrc, ":FORM:ELEM CURR")
 
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
@@ -364,9 +364,9 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
-                # read VSource
+                # read V Source
                 vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("VSource reading: %E", vsrc_reading)
+                logging.info("V Source reading: %E", vsrc_reading)
 
 
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
@@ -426,7 +426,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = self.vsrc_compliance_tripped(vsrc)
                 if compliance_tripped:
-                    logging.error("VSource in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped!")
 
                 if not self.process.running:

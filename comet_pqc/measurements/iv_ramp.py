@@ -65,7 +65,7 @@ class IVRampMeasurement(MatrixMeasurement):
         vsrc_proxy = create_proxy(vsrc)
 
         vsrc_idn = vsrc_proxy.identification
-        logging.info("Detected VSource: %s", vsrc_idn)
+        logging.info("Detected V Source: %s", vsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
         vsrc_model = ''.join(result) or None
 
@@ -183,7 +183,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSource in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -249,7 +249,7 @@ class IVRampMeasurement(MatrixMeasurement):
 
             voltage = vsrc_proxy.source_voltage_level
 
-            # VSource reading format: CURR
+            # V Source reading format: CURR
             vsrc.resource.write(":FORM:ELEM CURR")
             vsrc.resource.query("*OPC?")
 
@@ -267,7 +267,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 # vsrc_proxy.assert_success()
                 td = time.time() - t0
                 reading_current = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("VSource reading: %E A", reading_current)
+                logging.info("V Source reading: %E A", reading_current)
                 self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
                 # Environment
@@ -306,7 +306,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSource in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
                 # vsrc_proxy.assert_success()
                 if not self.process.running:

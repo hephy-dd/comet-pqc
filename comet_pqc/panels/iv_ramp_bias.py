@@ -17,8 +17,7 @@ class IVRampBiasPanel(MatrixPanel):
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("vsrc", "x", "y", text="VSource", color="red")
-        self.plot.add_series("hvsrc", "x", "y", text="HVSource", color="blue")
+        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -109,7 +108,7 @@ class IVRampBiasPanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="VSource Status",
+                title="V Source Status",
                 layout=comet.Column(
                     self.status_vsrc_model,
                     comet.Row(
@@ -129,7 +128,7 @@ class IVRampBiasPanel(MatrixPanel):
                 )
             ),
             comet.GroupBox(
-                title="HVSource Status",
+                title="HV Source Status",
                 layout=comet.Column(
                     self.status_hvsrc_model,
                     comet.Row(
@@ -176,7 +175,7 @@ class IVRampBiasPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.GroupBox(
-                        title="HVSource Ramp",
+                        title="V Source Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
                             self.voltage_start,
@@ -190,7 +189,7 @@ class IVRampBiasPanel(MatrixPanel):
                         )
                     ),
                     comet.GroupBox(
-                        title="VSource Bias",
+                        title="HV Source Bias",
                         layout=comet.Column(
                             comet.Label(text="Bias Voltage"),
                             self.bias_voltage,
@@ -199,7 +198,16 @@ class IVRampBiasPanel(MatrixPanel):
                             comet.Spacer()
                         )
                     ),
-                    comet.Spacer(),
+                    comet.GroupBox(
+                        title="Compliance",
+                        layout=comet.Column(
+                            comet.Label(text="V Source Compliance"),
+                            self.vsrc_current_compliance,
+                            comet.Label(text="HV Source Compliance"),
+                            self.hvsrc_current_compliance,
+                            comet.Spacer()
+                        )
+                    ),
                     stretch=(1, 1, 1)
                 )
             ),
@@ -212,7 +220,7 @@ class IVRampBiasPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="VSource",
+                title="V Source",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",
@@ -240,7 +248,7 @@ class IVRampBiasPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="HVSource",
+                title="HV Source",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",

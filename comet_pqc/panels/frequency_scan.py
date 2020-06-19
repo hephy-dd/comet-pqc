@@ -72,7 +72,7 @@ class FrequencyScanPanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="VSource Status",
+                title="V Source Status",
                 layout=comet.Column(
                     self.status_vsrc_model,
                     comet.Row(
@@ -105,7 +105,7 @@ class FrequencyScanPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.GroupBox(
-                        title="VSource",
+                        title="V Source",
                         layout=comet.Column(
                             comet.Label(text="Bias Voltage"),
                             self.bias_voltage,
@@ -141,7 +141,7 @@ class FrequencyScanPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="VSource",
+                title="V Source",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",

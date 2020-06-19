@@ -97,7 +97,7 @@ class CVRampPanel(MatrixPanel):
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
-                title="VSource Status",
+                title="V Source Status",
                 layout=comet.Column(
                     self.status_vsrc_model,
                     comet.Row(
@@ -150,7 +150,7 @@ class CVRampPanel(MatrixPanel):
                 title="General",
                 layout=comet.Row(
                     comet.GroupBox(
-                        title="VSource Ramp",
+                        title="V Source Ramp",
                         layout=comet.Column(
                             comet.Label(text="Start"),
                             self.voltage_start,
@@ -164,7 +164,7 @@ class CVRampPanel(MatrixPanel):
                         )
                     ),
                     comet.GroupBox(
-                        title="VSource Compliance",
+                        title="V Source Compliance",
                         layout=comet.Column(
                             self.vsrc_current_compliance,
                             comet.Spacer()
@@ -192,7 +192,7 @@ class CVRampPanel(MatrixPanel):
                 )
             ),
             comet.Tab(
-                title="VSource",
+                title="V Source",
                 layout=comet.Row(
                     comet.GroupBox(
                         title="Filter",

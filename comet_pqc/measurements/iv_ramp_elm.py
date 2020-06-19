@@ -77,7 +77,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
 
         vsrc_idn = vsrc.identification
-        logging.info("Detected VSource: %s", vsrc_idn)
+        logging.info("Detected V Source: %s", vsrc_idn)
         result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
         vsrc_model = ''.join(result) or None
 
@@ -205,7 +205,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSource in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -317,7 +317,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
             voltage = vsrc.source.voltage.level
 
-            # VSource reading format: CURR
+            # V Source reading format: CURR
             vsrc.resource.write(":FORM:ELEM CURR")
             vsrc.resource.query("*OPC?")
 
@@ -346,9 +346,9 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
-                # read VSource
+                # read V Source
                 vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("VSource reading: %E", vsrc_reading)
+                logging.info("V Source reading: %E", vsrc_reading)
                 self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
                 # read ELM
@@ -400,7 +400,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 # Compliance?
                 compliance_tripped = vsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("VSource in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
                 # check_error(vsrc)
                 if not self.process.running:
