@@ -42,8 +42,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
     default_elm_filter_type = "repeat"
     default_elm_zero_correction = False
     default_elm_integration_rate = 50
-    default_elm_autorange_current_minimum = comet.ureg("20 pA")
-    default_elm_autorange_current_maximum = comet.ureg("20 mA")
+    default_elm_current_range = comet.ureg("20 pA")
+    default_elm_current_autorange_enable = True
+    default_elm_current_autorange_minimum = comet.ureg("20 pA")
+    default_elm_current_autorange_maximum = comet.ureg("20 mA")
 
     def initialize(self, vsrc, hvsrc, elm):
         self.process.emit("progress", 1, 5)
@@ -72,8 +74,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
         elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
         elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
-        elm_autorange_current_minimum = parameters.get("elm_autorange_current_minimum", self.default_elm_autorange_current_minimum).to("A").m
-        elm_autorange_current_maximum = parameters.get("elm_autorange_current_maximum", self.default_elm_autorange_current_maximum).to("A").m
+        elm_current_range = parameters.get("elm_current_range", self.default_elm_current_range).to("A").m
+        elm_current_autorange_enable = bool(parameters.get("elm_current_autorange_enable", self.default_elm_current_autorange_enable))
+        elm_current_autorange_minimum = parameters.get("elm_current_autorange_minimum", self.default_elm_current_autorange_minimum).to("A").m
+        elm_current_autorange_maximum = parameters.get("elm_current_autorange_maximum", self.default_elm_current_autorange_maximum).to("A").m
 
         vsrc_idn = vsrc.identification
         logging.info("Detected V Source: %s", vsrc_idn)
@@ -242,12 +246,13 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         elm_safe_write(":SENS:FUNC 'CURR'") # note the quotes!
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
 
-        elm_safe_write(":SENS:CURR:RANG 20e-12") # 20pA
+        elm_safe_write(f":SENS:CURR:RANG {elm_current_range:E}")
         if elm_zero_correction:
             elm_safe_write(":SYST:ZCOR ON") # perform zero correction
-        elm_safe_write(":SENS:CURR:RANG:AUTO ON")
-        elm_safe_write(f":SENS:CURR:RANG:AUTO:LLIM {elm_autorange_current_minimum:E}")
-        elm_safe_write(f":SENS:CURR:RANG:AUTO:ULIM {elm_autorange_current_maximum:E}")
+        # Auto range
+        elm_safe_write(f":SENS:CURR:RANG:AUTO {elm_current_autorange_enable:d}")
+        elm_safe_write(f":SENS:CURR:RANG:AUTO:LLIM {elm_current_autorange_minimum:E}")
+        elm_safe_write(f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
 
         elm_safe_write(":SYST:ZCH OFF") # disable zero check
         assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
@@ -345,8 +350,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
         elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
         elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
-        elm_autorange_current_minimum = parameters.get("elm_autorange_current_minimum", self.default_elm_autorange_current_minimum).to("A").m
-        elm_autorange_current_maximum = parameters.get("elm_autorange_current_maximum", self.default_elm_autorange_current_maximum).to("A").m
+        elm_current_range = parameters.get("elm_current_range", self.default_elm_current_range).to("A").m
+        elm_current_autorange_enable = bool(parameters.get("elm_current_autorange_enable", self.default_elm_current_autorange_enable))
+        elm_current_autorange_minimum = parameters.get("elm_current_autorange_minimum", self.default_elm_current_autorange_minimum).to("A").m
+        elm_current_autorange_maximum = parameters.get("elm_current_autorange_maximum", self.default_elm_current_autorange_maximum).to("A").m
 
         if not self.process.running:
             return
@@ -394,8 +401,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
             fmt.write_meta("elm_filter_type", elm_filter_type)
             fmt.write_meta("elm_zero_correction", format(elm_zero_correction))
             fmt.write_meta("elm_integration_rate", format(elm_integration_rate))
-            fmt.write_meta("elm_autorange_current_minimum", format(elm_autorange_current_minimum))
-            fmt.write_meta("elm_autorange_current_maximum", format(elm_autorange_current_maximum))
+            fmt.write_meta("elm_current_range", format(elm_current_range, 'G'))
+            fmt.write_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
+            fmt.write_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
+            fmt.write_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
             fmt.flush()
 
             # Write header

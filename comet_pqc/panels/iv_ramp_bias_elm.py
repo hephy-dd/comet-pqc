@@ -13,7 +13,7 @@ class IVRampBiasElmPanel(MatrixPanel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = "Bias + IV Ramp"
+        self.title = "IV Ramp Bias Elm"
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
@@ -72,12 +72,22 @@ class IVRampBiasElmPanel(MatrixPanel):
         self.elm_zero_correction = comet.CheckBox(text="Zero Correction")
         self.elm_integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
 
-        self.elm_autorange_current_minimum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
-        self.elm_autorange_current_maximum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_current_range = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+
+        def toggle_elm_current_autorange(enabled):
+            self.elm_current_range.enabled = not enabled
+            self.elm_current_autorange_minimum.enabled = enabled
+            self.elm_current_autorange_maximum.enabled = enabled
+
+        self.elm_current_range = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_current_autorange_enable = comet.CheckBox(text="Enable", changed=toggle_elm_current_autorange)
+        self.elm_current_autorange_minimum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_current_autorange_maximum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
 
         toggle_vsrc_filter(False)
         toggle_hvsrc_filter(False)
         toggle_elm_filter(False)
+        toggle_elm_current_autorange(False)
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
@@ -101,8 +111,10 @@ class IVRampBiasElmPanel(MatrixPanel):
         self.bind("elm_filter_type", self.elm_filter_type, "repeat")
         self.bind("elm_zero_correction", self.elm_zero_correction, False)
         self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
-        self.bind("elm_autorange_current_minimum", self.elm_autorange_current_minimum, 2.0E-11, unit="A")
-        self.bind("elm_autorange_current_maximum", self.elm_autorange_current_maximum, 2.0E-2, unit="A")
+        self.bind("elm_current_range", self.elm_current_range, 20e-12, unit="A")
+        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, True)
+        self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
+        self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
 
         # Instruments status
 
@@ -334,14 +346,24 @@ class IVRampBiasElmPanel(MatrixPanel):
                             comet.Spacer()
                         )
                     ),
-                    comet.GroupBox(
-                        title="Auto Range",
-                        layout=comet.Column(
-                            comet.Label(text="Current Minimum"),
-                            self.elm_autorange_current_minimum,
-                            comet.Label(text="Current Maximum"),
-                            self.elm_autorange_current_maximum,
-                            comet.Spacer()
+                    comet.Column(
+                        comet.GroupBox(
+                            title="Range",
+                            layout=comet.Column(
+                                comet.Label(text="Current Range"),
+                                self.elm_current_range,
+                            )
+                        ),
+                        comet.GroupBox(
+                            title="Auto Range",
+                            layout=comet.Column(
+                                self.elm_current_autorange_enable,
+                                comet.Label(text="Minimum Current"),
+                                self.elm_current_autorange_minimum,
+                                comet.Label(text="Maximum Current"),
+                                self.elm_current_autorange_maximum,
+                                comet.Spacer()
+                            )
                         )
                     ),
                     comet.GroupBox(
