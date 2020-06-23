@@ -42,6 +42,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
     default_elm_filter_type = "repeat"
     default_elm_zero_correction = False
     default_elm_integration_rate = 50
+    default_elm_autorange_current_minimum = comet.ureg("20 pA")
+    default_elm_autorange_current_maximum = comet.ureg("20 mA")
 
     def initialize(self, vsrc, hvsrc, elm):
         self.process.emit("progress", 1, 5)
@@ -70,6 +72,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
         elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
         elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
+        elm_autorange_current_minimum = parameters.get("elm_autorange_current_minimum", self.default_elm_autorange_current_minimum).to("A").m
+        elm_autorange_current_maximum = parameters.get("elm_autorange_current_maximum", self.default_elm_autorange_current_maximum).to("A").m
 
         vsrc_idn = vsrc.identification
         logging.info("Detected V Source: %s", vsrc_idn)
@@ -242,8 +246,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         if elm_zero_correction:
             elm_safe_write(":SYST:ZCOR ON") # perform zero correction
         elm_safe_write(":SENS:CURR:RANG:AUTO ON")
-        elm_safe_write(":SENS:CURR:RANG:AUTO:LLIM 2.000000E-11")
-        elm_safe_write(":SENS:CURR:RANG:AUTO:ULIM 2.000000E-2")
+        elm_safe_write(f":SENS:CURR:RANG:AUTO:LLIM {elm_autorange_current_minimum:E}")
+        elm_safe_write(f":SENS:CURR:RANG:AUTO:ULIM {elm_autorange_current_maximum:E}")
 
         elm_safe_write(":SYST:ZCH OFF") # disable zero check
         assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
@@ -336,6 +340,13 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
         hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
         hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
+        elm_filter_enable = bool(parameters.get("elm_filter_enable", self.default_elm_filter_enable))
+        elm_filter_count = int(parameters.get("elm_filter_count", self.default_elm_filter_count))
+        elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
+        elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
+        elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
+        elm_autorange_current_minimum = parameters.get("elm_autorange_current_minimum", self.default_elm_autorange_current_minimum).to("A").m
+        elm_autorange_current_maximum = parameters.get("elm_autorange_current_maximum", self.default_elm_autorange_current_maximum).to("A").m
 
         if not self.process.running:
             return
@@ -378,6 +389,13 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
             fmt.write_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
             fmt.write_meta("hvsrc_filter_count", format(hvsrc_filter_count))
             fmt.write_meta("hvsrc_filter_type", hvsrc_filter_type)
+            fmt.write_meta("elm_filter_enable", format(elm_filter_enable).lower())
+            fmt.write_meta("elm_filter_count", format(elm_filter_count))
+            fmt.write_meta("elm_filter_type", elm_filter_type)
+            fmt.write_meta("elm_zero_correction", format(elm_zero_correction))
+            fmt.write_meta("elm_integration_rate", format(elm_integration_rate))
+            fmt.write_meta("elm_autorange_current_minimum", format(elm_autorange_current_minimum))
+            fmt.write_meta("elm_autorange_current_maximum", format(elm_autorange_current_maximum))
             fmt.flush()
 
             # Write header

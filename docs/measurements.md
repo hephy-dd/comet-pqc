@@ -88,6 +88,8 @@ Type: `iv_ramp_elm`
 |`elm_filter_enable`       |`bool`   |`false`  |Enable Electrometer filter. |
 |`elm_filter_count`        |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`         |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
+|`elm_autorange_current_minimum` |`ampere`   |`20 pA`  |Lower current limit for auto range. |
+|`elm_autorange_current_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
 |`elm_zero_correction`     |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`    |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 
@@ -164,8 +166,6 @@ Type: `iv_ramp_4_wire`
 
 ## IV Ramp with Bias
 
-Available in future releases.
-
 Type: `iv_ramp_bias`
 
 ### Parameters
@@ -189,6 +189,45 @@ Type: `iv_ramp_bias`
 ```yaml
 - name: IV Bias Example
   type: iv_ramp_bias
+  enabled: true
+  description: An example measurement.
+  parameters:
+      matrix_enabled: false
+      matrix_channels: []
+```
+
+## IV Ramp with Bias and Electrometer
+
+Type: `iv_ramp_bias_elm`
+
+### Parameters
+
+| Parameter                 | Type    | Default | Description |
+|---------------------------|---------|---------|-------------|
+|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`voltage_source`           |`str`    |`hvsrc`  |Possible values are: `vsrc`, `hvsrc`. |
+|`voltage_start`            |`volt`   |`0`      | |
+|`voltage_stop`             |`volt`   |`-100 V` | |
+|`voltage_step`             |`volt`   |`10 V`   | |
+|`bias_voltage_source`      |`str`    |`vsrc`   |Possible values are: `vsrc`, `hvsrc`. |
+|`bias_voltage_start`       |`volt`   |`10 V`   | |
+|`bias_voltage_stop`        |`volt`   |`-90 V`  | |
+|`vsrc_current_compliance`  |`volt`   |required |VSource current compliance. |
+|`hvsrc_current_compliance` |`volt`   |required |HVSource current compliance. |
+|`elm_filter_enable`       |`bool`   |`false`  |Enable Electrometer filter. |
+|`elm_filter_count`        |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
+|`elm_filter_type`         |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
+|`elm_autorange_current_minimum` |`ampere`   |`20 pA`  |Lower current limit for auto range. |
+|`elm_autorange_current_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
+|`elm_zero_correction`     |`bool`   |`false`  |Perform Electrometer zero correction. |
+|`elm_integration_rate`    |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
+
+### Example configuration
+
+```yaml
+- name: IV Bias Example
+  type: iv_ramp_bias_elm
   enabled: true
   description: An example measurement.
   parameters:

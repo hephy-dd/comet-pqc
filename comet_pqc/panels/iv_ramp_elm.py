@@ -3,6 +3,7 @@ import logging
 import comet
 
 from ..utils import auto_unit
+from ..metric import Metric
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampElmPanel"]
@@ -58,6 +59,9 @@ class IVRampElmPanel(MatrixPanel):
         self.elm_zero_correction = comet.CheckBox(text="Zero Correction")
         self.elm_integration_rate = comet.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
 
+        self.elm_autorange_current_minimum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_autorange_current_maximum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+
         toggle_vsrc_filter(False)
         toggle_elm_filter(False)
 
@@ -76,6 +80,8 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("elm_filter_type", self.elm_filter_type, "repeat")
         self.bind("elm_zero_correction", self.elm_zero_correction, False)
         self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
+        self.bind("elm_autorange_current_minimum", self.elm_autorange_current_minimum, 2.0E-11, unit="A")
+        self.bind("elm_autorange_current_maximum", self.elm_autorange_current_maximum, 2.0E-2, unit="A")
 
         # Instruments status
 
@@ -237,6 +243,16 @@ class IVRampElmPanel(MatrixPanel):
                             self.elm_filter_count,
                             self.elm_filter_type_label,
                             self.elm_filter_type,
+                            comet.Spacer()
+                        )
+                    ),
+                    comet.GroupBox(
+                        title="Auto Range",
+                        layout=comet.Column(
+                            comet.Label(text="Minimum Current"),
+                            self.elm_autorange_current_minimum,
+                            comet.Label(text="Maximum Current"),
+                            self.elm_autorange_current_maximum,
                             comet.Spacer()
                         )
                     ),

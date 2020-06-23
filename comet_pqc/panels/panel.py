@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 
 import comet
 
-
+from ..metric import Metric
 
 __all__ = ["Panel"]
 
@@ -67,6 +67,8 @@ class Panel(comet.Widget):
                 setattr(element, "value", value)
             elif isinstance(element, comet.Label):
                 setattr(element, "text", format(value))
+            elif isinstance(element, Metric):
+                setattr(element, "value", value)
             else:
                 setattr(element, "value", value)
 
@@ -92,6 +94,8 @@ class Panel(comet.Widget):
                     value = getattr(element, "value")
                 elif isinstance(element, comet.Label):
                     value = getattr(element, "text")
+                elif isinstance(element, Metric):
+                    value = getattr(element, "value")
                 else:
                     value = getattr(element, "value")
                 if unit is not None:
@@ -115,6 +119,8 @@ class Panel(comet.Widget):
                 elif isinstance(element, comet.CheckBox):
                     setattr(element, "checked", value)
                 elif isinstance(element, comet.Text):
+                    setattr(element, "value", value)
+                elif isinstance(element, Metric):
                     setattr(element, "value", value)
                 else:
                     setattr(element, "value", value)
