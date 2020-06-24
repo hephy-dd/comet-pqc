@@ -801,27 +801,30 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Import Sequence",
             filter="YAML (*.yaml *.yml)"
         )
-        if filename:
-            try:
-                sequence = config.load_sequence(filename)
-            except Exception as e:
-                logging.error(e)
-                comet.show_exception(e)
-                return
-            # backup callback
-            on_changed = self.sequence_select.changed
-            self.sequence_select.changed = None
-            for item in self.sequence_select:
-                if item.id == sequence.id or item.name == sequence.name:
-                    result = comet.show_question(
-                        title="Sequence already loaded",
-                        text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
-                    )
-                    if result:
-                        self.sequence_select.remove(item)
-                    else:
-                        return
-            self.sequence_select.append(sequence)
-            # Restore callback
-            self.sequence_select.changed = on_changed
-            self.sequence_select.current = sequence
+        if not filename:
+            return
+        try:
+            sequence = config.load_sequence(filename)
+        except Exception as e:
+            logging.error(e)
+            comet.show_exception(e)
+            return
+        # backup callback
+        on_changed = self.sequence_select.changed
+        self.sequence_select.changed = None
+        for item in self.sequence_select:
+            if item.id == sequence.id or item.name == sequence.name:
+                result = comet.show_question(
+                    title="Sequence already loaded",
+                    text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
+                )
+                if result:
+                    self.sequence_select.remove(item)
+                    break
+                else:
+                    self.sequence_select.changed = on_changed
+                    return
+        self.sequence_select.append(sequence)
+        # Restore callback
+        self.sequence_select.changed = on_changed
+        self.sequence_select.current = sequence

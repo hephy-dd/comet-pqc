@@ -8,6 +8,7 @@ import pint.errors
 
 import comet
 
+from .utils import make_path
 from .utils import Position
 
 __all__ = [
@@ -18,9 +19,9 @@ __all__ = [
     'list_configs'
 ]
 
-PACKAGE_DIR = os.path.dirname(__file__)
-SCHEMA_DIR = os.path.join(PACKAGE_DIR, 'schema')
-CONFIG_DIR = os.path.join(PACKAGE_DIR, 'config')
+ASSETS_DIR = make_path('assets')
+SCHEMA_DIR = os.path.join(ASSETS_DIR, 'schema')
+CONFIG_DIR = os.path.join(ASSETS_DIR, 'config')
 CHUCK_DIR = os.path.join(CONFIG_DIR, 'chuck')
 SAMPLE_DIR = os.path.join(CONFIG_DIR, 'sample')
 SEQUENCE_DIR = os.path.join(CONFIG_DIR, 'sequence')

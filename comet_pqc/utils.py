@@ -1,8 +1,27 @@
+import os
 import re
 
 import numpy as np
 
-__all__ = ['auto_unit', 'std_mean_filter', 'BitField', 'Position']
+__all__ = [
+    'PACKAGE_PATH',
+    'make_path',
+    'auto_unit',
+    'std_mean_filter',
+    'BitField',
+    'Position'
+]
+
+PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
+"""Absolute path to package directory."""
+
+def make_path(*args):
+    """Construct an absolute path relative to package path.
+
+    >>> make_path('assets', 'sample.txt')
+    '/usr/local/lib/python/comet_pqc/assets/sample.txt'
+    """
+    return os.path.join(PACKAGE_PATH, *args)
 
 def auto_unit(value, unit, decimals=3):
     """Auto format value to proper unit.
