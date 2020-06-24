@@ -4,6 +4,7 @@ import re
 import comet
 
 from ..utils import format_metric
+from ..metric import Metric
 from .matrix import MatrixPanel
 
 __all__ = ["IVRampPanel"]
@@ -27,7 +28,7 @@ class IVRampPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_current_compliance = Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
         self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
         self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
@@ -47,7 +48,7 @@ class IVRampPanel(MatrixPanel):
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="A")
         self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
         self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
         self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
@@ -122,7 +123,7 @@ class IVRampPanel(MatrixPanel):
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls[0],
+                    self.control_panel[0],
                     comet.Spacer(),
                     stretch=(0, 1)
                 )
@@ -157,7 +158,7 @@ class IVRampPanel(MatrixPanel):
             ),
         )
 
-        self.controls.append(comet.Row(
+        self.control_panel.append(comet.Row(
             self.tabs,
             self.status_instruments,
             stretch=(3, 1)

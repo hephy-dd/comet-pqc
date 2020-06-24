@@ -5,6 +5,7 @@ from PyQt5 import QtCore
 import comet
 
 from ..metric import Metric
+from ..logwindow import LogWidget
 
 __all__ = ["Panel"]
 
@@ -21,17 +22,23 @@ class Panel(comet.Widget):
         )
         self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
         self.description_label = comet.Label()
-        self.data = comet.Column()
-        self.controls = comet.Column()
+        self.data_panel = comet.Column()
+        self.control_panel = comet.Column()
         self.layout = comet.Column(
             self.title_label,
             self.description_label,
-            self.data,
-            self.controls,
+            self.data_panel,
+            self.control_panel,
             comet.Spacer(),
             stretch=(0, 0, 0, 0, 1)
         )
         self.measurement = None
+        self.log_widget = LogWidget()
+        self.data_tabs = comet.Tabs()
+        self.data_tabs.append(comet.Tab(title="Logs", layout=self.log_widget))
+        self.data_panel.append(self.data_tabs)
+
+        self.bind("logs", self.log_widget, [])
 
     def bind(self, key, element, default=None, unit=None):
         """Bind measurement parameter to UI element for syncronization on mount
@@ -71,9 +78,18 @@ class Panel(comet.Widget):
                 setattr(element, "value", value)
             else:
                 setattr(element, "value", value)
+        # Show first tab on mount
+        self.data_tabs.qt.setCurrentIndex(0)
+        # Load hiostory, attach logger
+        self.log_widget.load(self.measurement.parameters.get("history", []))
+        self.log_widget.add_logger(logging.getLogger())
 
     def unmount(self):
         """Unmount measurement from panel."""
+        # Detach logger
+        self.log_widget.remove_logger(logging.getLogger())
+        if self.measurement:
+            self.measurement.parameters["history"] = self.log_widget.dump()
         self.title_label.text = ""
         self.description_label.text = ""
         self.measurement = None
@@ -135,10 +151,10 @@ class Panel(comet.Widget):
         pass
 
     def clear_readings(self):
-        pass
+        self.log_widget.clear()
 
     def lock(self):
-        self.controls.enabled = False
+        self.control_panel.enabled = False
 
     def unlock(self):
-        self.controls.enabled = True
+        self.control_panel.enabled = True

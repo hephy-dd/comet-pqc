@@ -187,7 +187,7 @@ class CVRampPanel(MatrixPanel):
             comet.Tab(
                 title="Matrix",
                 layout=comet.Column(
-                    self.controls[0],
+                    self.control_panel[0],
                     comet.Spacer(),
                     stretch=(0, 1)
                 )
@@ -241,7 +241,7 @@ class CVRampPanel(MatrixPanel):
             )
         )
 
-        self.controls.append(comet.Row(
+        self.control_panel.append(comet.Row(
             self.tabs,
             self.status_instruments,
             stretch=(3, 1)
