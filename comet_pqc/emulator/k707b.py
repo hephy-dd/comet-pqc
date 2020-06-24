@@ -33,7 +33,7 @@ class ChannelMixin:
         if r:
             channels = r.group(1).strip('"').split(',')
             if channels == ['allslots']:
-                type(self).closed_channels = []
+                type(self).closed_channels.clear()
             else:
                 for channel in channels:
                     if channel in type(self).closed_channels:
