@@ -26,6 +26,8 @@ from .panels import CVRampPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
+from .tablecontrol import TableControlDialog
+
 from .driver import EnvironmentBox
 
 def create_icon(size, color):
@@ -210,6 +212,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Table controls
 
+        self.control_button = comet.Button(
+            text="Control Table",
+            tool_tip="Virtual table joystick controls.",
+            clicked=self.on_controls_start
+        )
+
         self.calibrate_button = comet.Button(
             text="Calibrate Table",
             tool_tip="Calibrate table.",
@@ -223,6 +231,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             toggled=self.on_table_groupbox_toggled,
             layout=comet.Row(
                 comet.Spacer(vertical=False),
+                self.control_button,
                 self.calibrate_button
             )
         )
@@ -583,6 +592,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("output_dir", None)
 
     # Table calibration
+
+    def on_controls_start(self):
+        TableControlDialog().run()
 
     def on_calibrate_start(self):
         if not comet.show_question(

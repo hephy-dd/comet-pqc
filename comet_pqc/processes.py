@@ -125,6 +125,37 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("message", "")
         self.emit("progress", 7, 7)
 
+class ControlProcess(comet.Process, ResourceMixin):
+    """Control process for Corvus table."""
+
+    update_interval = 1.0
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.queue = []
+        self.lock = threading.RLock()
+        self.position = None
+
+    def push(self, *args):
+        with self.lock:
+            self.queue.append(args)
+
+    def run(self):
+        with self.resources.get('table') as table_res:
+            table = Venus1(table_res)
+            t = time.time()
+            while self.running:
+                with self.lock:
+                    if self.queue:
+                        args = self.queue.pop(0)
+                        table.rmove(*args)
+                        self.emit('position', *table.pos)
+                        continue
+                if (time.time() - t) > self.update_interval:
+                    t = time.time()
+                    self.emit('position', *table.pos)
+                time.sleep(.025)
+
 class CalibrateProcess(comet.Process, ResourceMixin):
     """Calibration process for Corvus table."""
 
