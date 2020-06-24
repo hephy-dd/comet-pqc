@@ -50,10 +50,10 @@ def format_metric(value, unit, decimals=3):
     )
     if value is None:
         return "---"
-    for scale, prefix in scales:
+    for scale, prefix, _ in scales:
         if abs(value) >= scale:
-            break
-    return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
+            return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
+    return f"{value:.{decimals}f} {unit}"
 
 def std_mean_filter(values, threshold):
     """Return True if standard deviation (sample) / mean < threshold.
