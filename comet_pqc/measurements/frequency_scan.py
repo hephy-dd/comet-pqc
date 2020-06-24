@@ -45,7 +45,8 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 2)
 
     def measure(self, vsrc, lcr):
-        pass
+        self.process.emit("progress", 0, 0)
+        self.process.emit("progress", 1, 1)
 
     def finalize(self, vsrc, lcr):
         self.process.emit("progress", 0, 0)

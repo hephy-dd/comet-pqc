@@ -10,14 +10,15 @@ class MatrixMeasurement(Measurement):
 
     type = "matrix"
 
-    default_matrix_enabled = False
-    default_matrix_channels = []
+    def __init__(self, process):
+        super().__init__(process)
+        self.register_parameter('matrix_enabled', False, type=bool)
+        self.register_parameter('matrix_channels', [], type=list)
 
     def setup_matrix(self):
         """Setup marix switch."""
-        parameters = self.measurement_item.parameters
-        channels = parameters.get("matrix_channels", self.default_matrix_channels)
-        logging.info("close matrix channels: %s", channels)
+        matrix_channels = self.get_parameter('matrix_channels')
+        logging.info("close matrix channels: %s", matrix_channels)
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = K707B(matrix_res)
@@ -25,22 +26,27 @@ class MatrixMeasurement(Measurement):
                 if closed_channels:
                     raise RuntimeError("Some matrix channels are still closed, " \
                         f"please verify the situation and open closed channels. Closed channels: {closed_channels}")
-                if channels:
-                    matrix.channel.close(channels)
+                if matrix_channels:
+                    matrix.channel.close(matrix_channels)
                     closed_channels = matrix.channel.getclose()
-                    if sorted(closed_channels) != sorted(channels):
+                    if sorted(closed_channels) != sorted(matrix_channels):
                         raise RuntimeError("mismatch in closed channels")
         except Exception as e:
-            raise RuntimeError(f"Failed to close matrix channels {channels}, {e.args}")
+            raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {e.args}")
 
     def reset_matrix(self):
         """Reset marix switch to a save state."""
-        pass ## logging.info("reset matrix")
+        # TODO: in conflict with main initialize/finalize
+        # try:
+        #     with self.resources.get("matrix") as matrix_res:
+        #         matrix = K707B(matrix_res)
+        #         matrix.channel.open() # open all
+        # except Exception as e:
+        #     raise RuntimeError(f"Failed to open matrix channels, {e.args}")
 
     def run(self, *args, **kwargs):
         logging.info(f"running {self.type}...")
-        parameters = self.measurement_item.parameters
-        matrix_enabled = parameters.get("matrix_enabled", self.default_matrix_enabled)
+        matrix_enabled = self.get_parameter('matrix_enabled')
         result = None
         try:
             if matrix_enabled:

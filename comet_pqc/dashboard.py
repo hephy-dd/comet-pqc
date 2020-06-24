@@ -429,9 +429,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.summary_tab = comet.Tab(
             title="Summary",
-            layout=comet.ScrollArea(
-                self.summary_tree
-            )
+            layout=self.summary_tree
         )
 
         # Tabs
@@ -517,6 +515,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
         self.panels.lock()
+        self.panels.store()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
         sample_name = self.sample_name_text.value

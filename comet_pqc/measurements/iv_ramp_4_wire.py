@@ -39,6 +39,18 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
     default_hvsrc_filter_count = 10
     default_hvsrc_filter_type = "repeat"
 
+    def __init__(self, process):
+        super().__init__(process)
+        self.register_parameter('current_start', unit='A', required=True)
+        self.register_parameter('current_stop', unit='A', required=True)
+        self.register_parameter('current_step', unit='A', required=True)
+        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('hvsrc_voltage_compliance', unit='V', required=True)
+        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('hvsrc_filter_enable', False, type=bool)
+        self.register_parameter('hvsrc_filter_count', 10, type=int)
+        self.register_parameter('hvsrc_filter_type','repeat', values=('repeat', 'moving'))
+
     def env_detect_model(self, env):
         try:
             env_idn = env.query("*IDN?")
@@ -53,15 +65,14 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
     def initialize(self, hvsrc):
         self.process.emit("progress", 0, 5)
 
-        parameters = self.measurement_item.parameters
-        current_start = parameters.get("current_start").to("A").m
-        current_step = parameters.get("current_step").to("A").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        hvsrc_voltage_compliance = parameters.get("hvsrc_voltage_compliance").to("V").m
-        hvsrc_sense_mode = parameters.get("hvsrc_sense_mode", self.default_hvsrc_sense_mode)
-        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
-        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
-        hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
+        current_start = self.get_parameter('current_start')
+        current_step = self.get_parameter('current_step')
+        waiting_time = self.get_parameter('waiting_time')
+        hvsrc_voltage_compliance = self.get_parameter('hvsrc_voltage_compliance')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
         hvsrc_idn = hvsrc.identification
         logging.info("Detected HV Source: %s", hvsrc_idn)
@@ -177,12 +188,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         output_dir = self.output_dir
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
-        parameters = self.measurement_item.parameters
-        current_start = parameters.get("current_start").to("A").m
-        current_step = parameters.get("current_step").to("A").m
-        current_stop = parameters.get("current_stop").to("A").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        hvsrc_voltage_compliance = parameters.get("hvsrc_voltage_compliance").to("V").m
+
+        current_start = self.get_parameter('current_start')
+        current_step = self.get_parameter('current_step')
+        current_stop = self.get_parameter('current_stop')
+        waiting_time = self.get_parameter('waiting_time')
+        hvsrc_voltage_compliance = self.get_parameter('hvsrc_voltage_compliance')
 
         if not self.process.running:
             return
@@ -298,8 +309,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             hvsrc_voltage=None
         ))
 
-        parameters = self.measurement_item.parameters
-        current_step = parameters.get("current_step").to("A").m
+        current_step = self.get_parameter('current_step')
         current = hvsrc.source.leveli
 
         logging.info("ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)

@@ -37,6 +37,25 @@ class CVRampMeasurement(MatrixMeasurement):
 
     type = "cv_ramp"
 
+    def __init__(self, process):
+        super().__init__(process)
+        self.register_parameter('bias_voltage_start', unit='V', required=True)
+        self.register_parameter('bias_voltage_stop', unit='V', required=True)
+        self.register_parameter('bias_voltage_step', unit='V', required=True)
+        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('vsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('vsrc_filter_enable', False, type=bool)
+        self.register_parameter('vsrc_filter_count', 10, type=int)
+        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('lcr_soft_filter', True, type=bool)
+        self.register_parameter('lcr_amplitude', unit='V', required=True)
+        self.register_parameter('lcr_frequency', unit='Hz', required=True)
+        self.register_parameter('lcr_integration_time', 'medium', values=('short', 'medium', 'long'))
+        self.register_parameter('lcr_averaging_rate', 1, type=int)
+        self.register_parameter('lcr_auto_level_control', True, type=bool)
+
     def acquire_reading(self, lcr):
         """Return primary and secondary LCR reading."""
         safe_write(lcr, "TRIG:IMM")
@@ -101,8 +120,9 @@ class CVRampMeasurement(MatrixMeasurement):
         """Ramp to zero voltage without measuring current."""
         self.process.emit("message", "Ramp to zero...")
         self.process.emit("progress", 0, 1)
-        parameters = self.measurement_item.parameters
-        bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
+
+        bias_voltage_step = self.get_parameter('bias_voltage_step')
+
         vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
             vsrc_output=vsrc_output_state
@@ -185,12 +205,11 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(lcr, ":SYST:BEEP:STAT OFF")
 
     def lcr_setup(self, lcr):
-        parameters = self.measurement_item.parameters
-        lcr_amplitude = parameters.get("lcr_amplitude").to("V").m
-        lcr_frequency = parameters.get("lcr_frequency").to("Hz").m
-        lcr_integration_time = parameters.get("lcr_integration_time", "medium")
-        lcr_averaging_rate = int(parameters.get("lcr_averaging_rate", 1))
-        lcr_auto_level_control = bool(parameters.get("lcr_auto_level_control", True))
+        lcr_amplitude = self.get_parameter('lcr_amplitude')
+        lcr_frequency = self.get_parameter('lcr_frequency')
+        lcr_integration_time = self.get_parameter('lcr_integration_time')
+        lcr_averaging_rate = self.get_parameter('lcr_averaging_rate')
+        lcr_auto_level_control = self.get_parameter('lcr_auto_level_control')
 
         safe_write(lcr, f":AMPL:ALC {lcr_auto_level_control:d}")
         safe_write(lcr, f":VOLT {lcr_amplitude:E}V")
@@ -206,13 +225,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 10)
 
-        parameters = self.measurement_item.parameters
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_route_termination = parameters.get("vsrc_route_termination", "rear")
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode", "local")
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", False))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", 10))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", "repeat")
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
 
         self.vsrc_detect_model(vsrc)
         self.lcr_detect_model(lcr)
@@ -272,15 +290,15 @@ class CVRampMeasurement(MatrixMeasurement):
         output_dir = self.output_dir
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
-        parameters = self.measurement_item.parameters
-        bias_voltage_start = parameters.get("bias_voltage_start").to("V").m
-        bias_voltage_step = parameters.get("bias_voltage_step").to("V").m
-        bias_voltage_stop = parameters.get("bias_voltage_stop").to("V").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        lcr_soft_filter = bool(parameters.get("lcr_soft_filter", True))
-        lcr_frequency = parameters.get("lcr_frequency").to("Hz").m
-        lcr_amplitude = parameters.get("lcr_amplitude").to("V").m
+
+        bias_voltage_start = self.get_parameter('bias_voltage_start')
+        bias_voltage_step = self.get_parameter('bias_voltage_step')
+        bias_voltage_stop = self.get_parameter('bias_voltage_stop')
+        waiting_time = self.get_parameter('waiting_time')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+        lcr_frequency = self.get_parameter('lcr_frequency')
+        lcr_amplitude = self.get_parameter('lcr_amplitude')
 
         # Ramp to start voltage
 

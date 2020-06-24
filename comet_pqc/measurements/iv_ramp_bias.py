@@ -25,39 +25,47 @@ class IVRampBiasMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_bias"
 
-    default_bias_mode = "constant"
-    default_vsrc_sense_mode = "local"
-    default_vsrc_route_termination = "rear"
-    default_vsrc_filter_enable = False
-    default_vsrc_filter_count = 10
-    default_vsrc_filter_type = "repeat"
-    default_hvsrc_sense_mode = "local"
-    default_hvsrc_filter_enable = False
-    default_hvsrc_filter_count = 10
-    default_hvsrc_filter_type = "repeat"
+    def __init__(self, process):
+        super().__init__(process)
+        self.register_parameter('voltage_start', unit='V', required=True)
+        self.register_parameter('voltage_stop', unit='V', required=True)
+        self.register_parameter('voltage_step', unit='V', required=True)
+        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('bias_voltage', unit='V', required=True)
+        self.register_parameter('bias_mode', 'constant', values=('constant', 'offset'))
+        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('vsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('vsrc_filter_enable', False, type=bool)
+        self.register_parameter('vsrc_filter_count', 10, type=int)
+        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('hvsrc_filter_enable', False, type=bool)
+        self.register_parameter('hvsrc_filter_count', 10, type=int)
+        self.register_parameter('hvsrc_filter_type','repeat', values=('repeat', 'moving'))
 
     def initialize(self, vsrc, hvsrc):
         self.process.emit("progress", 1, 5)
         self.process.emit("message", "Ramp to start...")
 
-        parameters = self.measurement_item.parameters
-        voltage_start = parameters.get("voltage_start").to("V").m
-        voltage_stop = parameters.get("voltage_stop").to("V").m
-        voltage_step = parameters.get("voltage_step").to("V").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        bias_voltage = parameters.get("bias_voltage").to("V").m
-        bias_mode = parameters.get("bias_mode", self.default_bias_mode)
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
-        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
-        hvsrc_current_compliance = parameters.get("hvsrc_current_compliance").to("A").m
-        hvsrc_sense_mode = parameters.get("hvsrc_sense_mode", self.default_hvsrc_sense_mode)
-        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
-        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
-        hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
+        voltage_start = self.get_parameter('voltage_start')
+        voltage_stop = self.get_parameter('voltage_stop')
+        voltage_step = self.get_parameter('voltage_step')
+        waiting_time = self.get_parameter('waiting_time')
+        bias_voltage = self.get_parameter('bias_voltage')
+        bias_mode = self.get_parameter('bias_mode')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
         # Initialize V Source
 
@@ -237,24 +245,23 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
 
-        parameters = self.measurement_item.parameters
-        voltage_start = parameters.get("voltage_start").to("V").m
-        voltage_stop = parameters.get("voltage_stop").to("V").m
-        voltage_step = parameters.get("voltage_step").to("V").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        bias_voltage = parameters.get("bias_voltage").to("V").m
-        bias_mode = parameters.get("bias_mode", self.default_bias_mode)
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
-        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
-        hvsrc_current_compliance = parameters.get("hvsrc_current_compliance").to("A").m
-        hvsrc_sense_mode = parameters.get("hvsrc_sense_mode", self.default_hvsrc_sense_mode)
-        hvsrc_filter_enable = bool(parameters.get("hvsrc_filter_enable", self.default_hvsrc_filter_enable))
-        hvsrc_filter_count = int(parameters.get("hvsrc_filter_count", self.default_hvsrc_filter_count))
-        hvsrc_filter_type = parameters.get("hvsrc_filter_type", self.default_hvsrc_filter_type)
+        voltage_start = self.get_parameter('voltage_start')
+        voltage_stop = self.get_parameter('voltage_stop')
+        voltage_step = self.get_parameter('voltage_step')
+        waiting_time = self.get_parameter('waiting_time')
+        bias_voltage = self.get_parameter('bias_voltage')
+        bias_mode = self.get_parameter('bias_mode')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
+        vsrc_filter_enable = bool(self.get_parameter('vsrc_filter_enable'))
+        vsrc_filter_count = int(self.get_parameter('vsrc_filter_count'))
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_filter_enable = bool(self.get_parameter('hvsrc_filter_enable'))
+        hvsrc_filter_count = int(self.get_parameter('hvsrc_filter_count'))
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
         if not self.process.running:
             return
@@ -404,8 +411,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         self.process.emit("progress", 1, 2)
         self.process.emit("message", "Ramp to zero...")
 
-        parameters = self.measurement_item.parameters
-        voltage_step = parameters.get("voltage_step").to("V").m
+        voltage_step = self.get_parameter('voltage_step')
 
         voltage = vsrc.source.voltage.level
 

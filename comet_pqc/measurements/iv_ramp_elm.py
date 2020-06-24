@@ -35,20 +35,27 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_elm"
 
-    default_vsrc_sense_mode = "local"
-    default_vsrc_route_termination = "rear"
-    default_vsrc_filter_enable = False
-    default_vsrc_filter_count = 10
-    default_vsrc_filter_type = "repeat"
-    default_elm_filter_enable = False
-    default_elm_filter_count = 10
-    default_elm_filter_type = "repeat"
-    default_elm_zero_correction = False
-    default_elm_integration_rate = 50
-    default_elm_current_range = comet.ureg("20 pA")
-    default_elm_current_autorange_enable = True
-    default_elm_current_autorange_minimum = comet.ureg("20 pA")
-    default_elm_current_autorange_maximum = comet.ureg("20 mA")
+    def __init__(self, process):
+        super().__init__(process)
+        self.register_parameter('voltage_start', unit='V', required=True)
+        self.register_parameter('voltage_stop', unit='V', required=True)
+        self.register_parameter('voltage_step', unit='V', required=True)
+        self.register_parameter('waiting_time', 1.0, unit='s')
+        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('vsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('vsrc_filter_enable', False, type=bool)
+        self.register_parameter('vsrc_filter_count', 10, type=int)
+        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('elm_filter_enable', False, type=bool)
+        self.register_parameter('elm_filter_count', 10, type=int)
+        self.register_parameter('elm_filter_type', 'repeat')
+        self.register_parameter('elm_zero_correction', False, type=bool)
+        self.register_parameter('elm_integration_rate', 50, type=int)
+        self.register_parameter('elm_current_range', comet.ureg('20 pA'), unit='A')
+        self.register_parameter('elm_current_autorange_enable', True, type=bool)
+        self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
+        self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
 
     def env_detect_model(self, env):
         try:
@@ -64,25 +71,24 @@ class IVRampElmMeasurement(MatrixMeasurement):
     def initialize(self, vsrc, elm):
         self.process.emit("progress", 0, 5)
 
-        parameters = self.measurement_item.parameters
-        voltage_start = parameters.get("voltage_start").to("V").m
-        voltage_step = parameters.get("voltage_step").to("V").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
-        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
-        elm_filter_enable = bool(parameters.get("elm_filter_enable", self.default_elm_filter_enable))
-        elm_filter_count = int(parameters.get("elm_filter_count", self.default_elm_filter_count))
-        elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
-        elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
-        elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
-        elm_current_range = parameters.get("elm_current_range", self.default_elm_current_range).to("A").m
-        elm_current_autorange_enable = bool(parameters.get("elm_current_autorange_enable", self.default_elm_current_autorange_enable))
-        elm_current_autorange_minimum = parameters.get("elm_current_autorange_minimum", self.default_elm_current_autorange_minimum).to("A").m
-        elm_current_autorange_maximum = parameters.get("elm_current_autorange_maximum", self.default_elm_current_autorange_maximum).to("A").m
+        voltage_start = self.get_parameter('voltage_start')
+        voltage_step = self.get_parameter('voltage_step')
+        waiting_time = self.get_parameter('waiting_time')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        elm_filter_enable = self.get_parameter('elm_filter_enable')
+        elm_filter_count = self.get_parameter('elm_filter_count')
+        elm_filter_type = self.get_parameter('elm_filter_type')
+        elm_zero_correction = self.get_parameter('elm_zero_correction')
+        elm_integration_rate = self.get_parameter('elm_integration_rate')
+        elm_current_range = self.get_parameter('elm_current_range')
+        elm_current_autorange_enable = self.get_parameter('elm_current_autorange_enable')
+        elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
+        elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
 
         vsrc_idn = vsrc.identification
         logging.info("Detected V Source: %s", vsrc_idn)
@@ -273,26 +279,26 @@ class IVRampElmMeasurement(MatrixMeasurement):
         output_dir = self.output_dir
         contact_name = self.measurement_item.contact.name
         measurement_name = self.measurement_item.name
-        parameters = self.measurement_item.parameters
-        voltage_start = parameters.get("voltage_start").to("V").m
-        voltage_step = parameters.get("voltage_step").to("V").m
-        voltage_stop = parameters.get("voltage_stop").to("V").m
-        waiting_time = parameters.get("waiting_time").to("s").m
-        vsrc_current_compliance = parameters.get("vsrc_current_compliance").to("A").m
-        vsrc_sense_mode = parameters.get("vsrc_sense_mode", self.default_vsrc_sense_mode)
-        vsrc_route_termination = parameters.get("vsrc_route_termination", self.default_vsrc_route_termination)
-        vsrc_filter_enable = bool(parameters.get("vsrc_filter_enable", self.default_vsrc_filter_enable))
-        vsrc_filter_count = int(parameters.get("vsrc_filter_count", self.default_vsrc_filter_count))
-        vsrc_filter_type = parameters.get("vsrc_filter_type", self.default_vsrc_filter_type)
-        elm_filter_enable = bool(parameters.get("elm_filter_enable", self.default_elm_filter_enable))
-        elm_filter_count = int(parameters.get("elm_filter_count", self.default_elm_filter_count))
-        elm_filter_type = parameters.get("elm_filter_type", self.default_elm_filter_type)
-        elm_zero_correction = bool(parameters.get("elm_zero_correction", self.default_elm_zero_correction))
-        elm_integration_rate = int(parameters.get("elm_integration_rate", self.default_elm_integration_rate))
-        elm_current_range = parameters.get("elm_current_range", self.default_elm_current_range).to("A").m
-        elm_current_autorange_enable = bool(parameters.get("elm_current_autorange_enable", self.default_elm_current_autorange_enable))
-        elm_current_autorange_minimum = parameters.get("elm_current_autorange_minimum", self.default_elm_current_autorange_minimum).to("A").m
-        elm_current_autorange_maximum = parameters.get("elm_current_autorange_maximum", self.default_elm_current_autorange_maximum).to("A").m
+
+        voltage_start = self.get_parameter('voltage_start')
+        voltage_stop = self.get_parameter('voltage_stop')
+        voltage_step = self.get_parameter('voltage_step')
+        waiting_time = self.get_parameter('waiting_time')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        elm_filter_enable = self.get_parameter('elm_filter_enable')
+        elm_filter_count = self.get_parameter('elm_filter_count')
+        elm_filter_type = self.get_parameter('elm_filter_type')
+        elm_zero_correction = self.get_parameter('elm_zero_correction')
+        elm_integration_rate = self.get_parameter('elm_integration_rate')
+        elm_current_range = self.get_parameter('elm_current_range')
+        elm_current_autorange_enable = self.get_parameter('elm_current_autorange_enable')
+        elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
+        elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
 
         if not self.process.running:
             return
@@ -444,8 +450,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             elm_current=None
         ))
 
-        parameters = self.measurement_item.parameters
-        voltage_step = parameters.get("voltage_step").to("V").m
+        voltage_step = self.get_parameter('voltage_step')
         voltage = vsrc.source.voltage.level
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)

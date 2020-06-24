@@ -3,6 +3,16 @@ from comet.resource import ResourceMixin
 
 __all__ = ["Measurement"]
 
+class ParameterType:
+
+    def __init__(self, key, default, values, unit, type, required):
+        self.key = key
+        self.default = default
+        self.values = values
+        self.unit = unit
+        self.type = type
+        self.required = required
+
 class Measurement(ResourceMixin):
     """Base measurement class."""
 
@@ -14,6 +24,36 @@ class Measurement(ResourceMixin):
 
     def __init__(self, process):
         self.process = process
+        self.registered_parameters = {}
+
+    def register_parameter(self, key, default=None, *, values=None, unit=None, type=None,
+                           required=False):
+        """Register measurement parameter."""
+        if key in self.registered_parameters:
+            raise KeyError(f"parameter already registered: {key}")
+        self.registered_parameters[key] = ParameterType(
+            key, default, values, unit, type, required
+        )
+
+    def get_parameter(self, key):
+        """Get measurement parameter."""
+        if key not in self.registered_parameters:
+            raise KeyError(f"no such parameter: {key}")
+        parameter = self.registered_parameters[key]
+        if key not in self.measurement_item.parameters:
+            if parameter.required:
+                raise ValueError(f"missing required parameter: {key}")
+        value = self.measurement_item.parameters.get(key, parameter.default)
+        if parameter.unit:
+            ### TODO !!!
+            ### return comet.ureg(value).to(spec.unit).m
+            return value.to(parameter.unit).m
+        if callable(parameter.type):
+            value = parameter.type(value)
+        if parameter.values:
+            if not value in parameter.values:
+                raise ValueError(f"invalid parameter value: {value}")
+        return value
 
     def create_filename(self, dt=None, suffix=None):
         """Return standardized measurement filename.
