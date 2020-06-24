@@ -2,7 +2,7 @@ import logging
 
 import comet
 
-from ..utils import auto_unit
+from ..utils import format_metric
 from .matrix import MatrixPanel
 
 __all__ = ["CVRampAltPanel"]

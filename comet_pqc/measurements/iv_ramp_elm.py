@@ -8,7 +8,7 @@ import comet
 from comet.driver.keithley import K6517B
 
 from ..driver import K2410
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -376,7 +376,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # read V Source
@@ -456,7 +456,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             vsrc.source.voltage.level = voltage
             time.sleep(.100)
             # check_error(vsrc)

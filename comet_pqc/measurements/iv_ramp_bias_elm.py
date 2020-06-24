@@ -9,7 +9,7 @@ from comet.driver.keithley import K6517B
 
 from ..driver import K2410
 from ..driver import K2657A
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -284,7 +284,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         logging.info("ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, 1.0)
         for voltage in comet.Range(voltage, bias_voltage, 1.0):
             logging.info("set bias voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to bias... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to bias... {}".format(format_metric(voltage, "V")))
             hvsrc.source.levelv = voltage
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
@@ -306,7 +306,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, 1.0)
         for voltage in comet.Range(voltage, voltage_start, 1.0):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             vsrc.source.voltage.level = voltage
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
@@ -455,7 +455,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, auto_unit(voltage, "V"), auto_unit(bias_voltage, "V")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # read ELM
@@ -550,7 +550,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
         for voltage in comet.Range(voltage, 0, 1.0):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             vsrc.source.voltage.level = voltage
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
@@ -562,7 +562,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
         for voltage in comet.Range(bias_voltage, 0, 1.0):
             logging.info("set bias voltage: %E V", voltage)
-            self.process.emit("message", "Ramp bias to zero... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
             hvsrc.source.levelv = voltage
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,

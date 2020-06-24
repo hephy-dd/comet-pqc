@@ -2,7 +2,7 @@ import logging
 
 import comet
 
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..metric import Metric
 from .matrix import MatrixPanel
 
@@ -98,25 +98,25 @@ class IVRampElmPanel(MatrixPanel):
         self.status_vsrc_model = comet.Label()
         self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
         self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "n/a")
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
         self.status_vsrc_current = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_current", self.status_vsrc_current, "n/a")
+        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
         self.status_vsrc_output = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_output", self.status_vsrc_output, "n/a")
+        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
 
         self.status_elm_model = comet.Label()
         self.bind("status_elm_model", self.status_elm_model, "Model: n/a")
         self.status_elm_current = comet.Text(value="---", readonly=True)
-        self.bind("status_elm_current", self.status_elm_current, "n/a")
+        self.bind("status_elm_current", self.status_elm_current, "---")
 
         self.status_env_model = comet.Label()
         self.bind("status_env_model", self.status_env_model, "Model: n/a")
         self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "n/a")
+        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
         self.status_env_box_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, "n/a")
+        self.bind("status_env_box_temperature", self.status_env_box_temperature, "---")
         self.status_env_box_humidity = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, "n/a")
+        self.bind("status_env_box_humidity", self.status_env_box_humidity, "---")
 
         self.status_instruments = comet.Column(
             comet.GroupBox(
@@ -325,10 +325,10 @@ class IVRampElmPanel(MatrixPanel):
             self.status_vsrc_model.text = f"Model: {value}"
         if 'vsrc_voltage' in state:
             value = state.get('vsrc_voltage')
-            self.status_vsrc_voltage.value = auto_unit(value, "V")
+            self.status_vsrc_voltage.value = format_metric(value, "V")
         if 'vsrc_current' in state:
             value = state.get('vsrc_current')
-            self.status_vsrc_current.value = auto_unit(value, "A")
+            self.status_vsrc_current.value = format_metric(value, "A")
         if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
             self.status_vsrc_output.value = labels[state.get('vsrc_output')]
@@ -337,19 +337,19 @@ class IVRampElmPanel(MatrixPanel):
             self.status_elm_model.text = f"Model: {value}"
         if 'elm_current' in state:
             value = state.get('elm_current')
-            self.status_elm_current.value = auto_unit(value, "A")
+            self.status_elm_current.value = format_metric(value, "A")
         if 'env_model' in state:
             value = state.get('env_model', "n/a")
             self.status_env_model.text = f"Model: {value}"
         if 'env_chuck_temperature' in state:
-            value = state.get('env_chuck_temperature', "n/a")
-            self.status_env_chuck_temperature.value = auto_unit(value, "°C", decimals=2)
+            value = state.get('env_chuck_temperature',)
+            self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
         if 'env_box_temperature' in state:
-            value = state.get('env_box_temperature', "n/a")
-            self.status_env_box_temperature.value = auto_unit(value, "°C", decimals=2)
+            value = state.get('env_box_temperature')
+            self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
         if 'env_box_humidity' in state:
-            value = state.get('env_box_humidity', "n/a")
-            self.status_env_box_humidity.value = auto_unit(value, "%rH", decimals=2)
+            value = state.get('env_box_humidity')
+            self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
         super().state(state)
 
     def append_reading(self, name, x, y):

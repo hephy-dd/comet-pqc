@@ -8,7 +8,7 @@ import comet
 from comet.resource import ResourceMixin, ResourceError
 from comet.driver.corvus import Venus1
 
-from .utils import auto_unit
+from .utils import format_metric
 from .measurements import measurement_factory
 from .driver import EnvironmentBox
 from .driver import K707B

@@ -6,7 +6,7 @@ import numpy as np
 __all__ = [
     'PACKAGE_PATH',
     'make_path',
-    'auto_unit',
+    'format_metric',
     'std_mean_filter',
     'BitField',
     'Position'
@@ -23,22 +23,37 @@ def make_path(*args):
     """
     return os.path.join(PACKAGE_PATH, *args)
 
-def auto_unit(value, unit, decimals=3):
-    """Auto format value to proper unit.
+def format_metric(value, unit, decimals=3):
+    """Pretty format metric units.
 
-    >>> auto_unit(.0042, 'A')
+    >>> format_metric(.0042, 'A')
     '4.200 mA'
     """
     scales = (
-        (1e12, 'T'), (1e9, 'G'), (1e6, 'M'), (1e3, 'k'), (1e0, ''),
-        (1e-3, 'm'), (1e-6, 'u'), (1e-9, 'n'), (1e-12, 'p')
+        (1e+24, 'Y', 'yotta'),
+        (1e+21, 'Z', 'zetta'),
+        (1e+18, 'E', 'exa'),
+        (1e+15, 'P', 'peta'),
+        (1e+12, 'T', 'tera'),
+        (1e+9, 'G', 'giga'),
+        (1e+6, 'M', 'mega'),
+        (1e+3, 'k', 'kilo'),
+        (1e+0, '', ''),
+        (1e-3, 'm', 'milli'),
+        (1e-6, 'u', 'micro'),
+        (1e-9, 'n', 'nano'),
+        (1e-12, 'p', 'pico'),
+        (1e-15, 'f', 'femto'),
+        (1e-18, 'a', 'atto'),
+        (1e-21, 'z', 'zepto'),
+        (1e-24, 'y', 'yocto')
     )
     if value is None:
         return "---"
     for scale, prefix in scales:
         if abs(value) >= scale:
-            return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
-    return f"{value:G} {unit}"
+            break
+    return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
 
 def std_mean_filter(values, threshold):
     """Return True if standard deviation (sample) / mean < threshold.

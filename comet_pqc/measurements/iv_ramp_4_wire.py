@@ -7,7 +7,7 @@ import re
 import comet
 
 from ..driver import K2657A
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
@@ -163,7 +163,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             logging.info("ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
             for current in comet.Range(current, current_start, current_step):
                 logging.info("set current: %E A", current)
-                self.process.emit("message", "Ramp to start... {}".format(auto_unit(current, "A")))
+                self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
                 hvsrc.source.leveli = current
                 # check_error(hvsrc)
                 time.sleep(.100)
@@ -246,7 +246,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(current, "A")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(current, "A")))
                 self.process.emit("progress", *est.progress)
 
                 # read HV Source
@@ -315,7 +315,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
         for current in comet.Range(current, 0, current_step):
             logging.info("set current: %E A", current)
-            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(current, "A")))
+            self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
             hvsrc.source.leveli = current
             time.sleep(.100)
             # check_error(hvsrc)

@@ -9,7 +9,7 @@ import comet
 from ..driver import K2410
 
 from ..proxy import create_proxy
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
@@ -178,7 +178,7 @@ class IVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
-                self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
+                self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
                 vsrc_proxy.source_voltage_level = voltage
                 # vsrc_proxy.assert_success()
                 time.sleep(.100)
@@ -306,7 +306,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # Compliance?
@@ -330,7 +330,7 @@ class IVRampMeasurement(MatrixMeasurement):
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             vsrc_proxy.source_voltage_level = voltage
             time.sleep(.100)
             # vsrc_proxy.assert_success()

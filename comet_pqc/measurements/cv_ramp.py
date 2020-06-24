@@ -8,7 +8,7 @@ import comet
 from comet.driver.keysight import E4980A
 
 from ..driver import K2410
-from ..utils import auto_unit
+from ..utils import format_metric
 from ..utils import std_mean_filter
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
@@ -152,7 +152,7 @@ class CVRampMeasurement(MatrixMeasurement):
         return float(vsrc.resource.query(":SOUR:VOLT:LEV?"))
 
     def vsrc_set_voltage_level(self, vsrc, voltage):
-        logging.info("set V Source voltage level: %s", auto_unit(voltage, "V"))
+        logging.info("set V Source voltage level: %s", format_metric(voltage, "V"))
         safe_write(vsrc, f":SOUR:VOLT:LEV {voltage:E}")
 
     def vsrc_set_route_termination(self, vsrc, route_termination):
@@ -166,7 +166,7 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(vsrc, f":SYST:RSEN {value:s}")
 
     def vsrc_set_compliance(self, vsrc, compliance):
-        logging.info("set V Source compliance: %s", auto_unit(compliance, "A"))
+        logging.info("set V Source compliance: %s", format_metric(compliance, "A"))
         safe_write(vsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
 
     def vsrc_compliance_tripped(self, vsrc):
@@ -307,7 +307,7 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.info("ramp to start voltage: from %E V to %E V with step %E V", vsrc_voltage_level, bias_voltage_start, bias_voltage_step)
         for voltage in comet.Range(vsrc_voltage_level, bias_voltage_start, bias_voltage_step):
             logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to start... {}".format(auto_unit(voltage, "V")))
+            self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.vsrc_set_voltage_level(vsrc, voltage)
             time.sleep(.100)
             time.sleep(waiting_time)
@@ -379,7 +379,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 est.next()
                 elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
                 remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, auto_unit(voltage, "V")))
+                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # read V Source
