@@ -41,7 +41,7 @@ class MetricUnits:
 class Metric(comet.Row):
     """Metric input."""
 
-    default_prefixes = 'YZEPTGMkmunpfazy'
+    default_prefixes = 'YZEPTGMk1munpfazy'
 
     class UnitLabel:
 
@@ -107,9 +107,9 @@ class Metric(comet.Row):
     def prefixes(self, value):
         self.__combobox.clear()
         for metric in MetricUnits.METRICS:
-            if metric.prefix in value:
+            if metric.prefix and metric.prefix in value:
                 self.__combobox.append(self.UnitLabel(metric, self.__unit))
-            elif not metric.prefix:
+            elif '1' in value:
                 self.__combobox.append(self.UnitLabel(metric, self.__unit))
 
     @property
