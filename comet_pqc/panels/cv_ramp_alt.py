@@ -4,10 +4,11 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
+from .panel import EnvironmentMixin
 
 __all__ = ["CVRampAltPanel"]
 
-class CVRampAltPanel(MatrixPanel):
+class CVRampAltPanel(MatrixPanel, EnvironmentMixin):
     """Panel for CV ramp (alternate) measurements."""
 
     type = "cv_ramp_alt"
@@ -39,81 +40,50 @@ class CVRampAltPanel(MatrixPanel):
         self.bind("lcr_frequency", self.lcr_frequency, 1, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
+        self.register_environment()
+
         # Instruments status
 
-        self.status_instruments = comet.Column(
-            comet.GroupBox(
-                title="LCR Status",
-                layout=comet.Column(
-                )
-            ),
-            comet.Spacer()
-        )
-
-        self.tabs = comet.Tabs(
-            comet.Tab(
-                title="General",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="LCR Ramp",
-                        layout=comet.Column(
-                            comet.Label(text="Start"),
-                            self.voltage_start,
-                            comet.Label(text="Stop"),
-                            self.voltage_stop,
-                            comet.Label(text="Step"),
-                            self.voltage_step,
-                            comet.Label(text="Waiting Time"),
-                            self.waiting_time,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="LCR Compliance",
-                        layout=comet.Column(
-                            self.current_compliance,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="LCR Freq.",
-                        layout=comet.Column(
-                            comet.Label(text="AC Frequency"),
-                            self.lcr_frequency,
-                            comet.Label(text="AC Amplitude"),
-                            self.lcr_amplitude,
-                            comet.Spacer()
-                        )
-                    ),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Matrix",
-                layout=comet.Column(
-                    self.control_panel[0],
-                    comet.Spacer(),
-                    stretch=(0, 1)
-                )
+        self.status_panel.append(comet.GroupBox(
+            title="LCR Status",
+            layout=comet.Column(
             )
-        )
-
-        self.control_panel.append(comet.Row(
-            self.tabs,
-            self.status_instruments,
-            stretch=(2, 1)
         ))
 
-    def lock(self):
-        for tab in self.tabs:
-            tab.enabled = False
-        self.status_instruments.enabled = True
-        if len(self.tabs):
-            self.tabs.current = self.tabs[0]
+        self.status_panel.append(comet.Spacer())
 
-    def unlock(self):
-        for tab in self.tabs:
-            tab.enabled = True
+        self.general_tab.layout.append(comet.GroupBox(
+            title="LCR Ramp",
+            layout=comet.Column(
+                comet.Label(text="Start"),
+                self.voltage_start,
+                comet.Label(text="Stop"),
+                self.voltage_stop,
+                comet.Label(text="Step"),
+                self.voltage_step,
+                comet.Label(text="Waiting Time"),
+                self.waiting_time,
+                comet.Spacer()
+            )
+        ))
 
-    def state(self, state):
-        super().state(state)
+        self.general_tab.layout.append(comet.GroupBox(
+            title="LCR Compliance",
+            layout=comet.Column(
+                self.current_compliance,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.GroupBox(
+            title="LCR Freq.",
+            layout=comet.Column(
+                comet.Label(text="AC Frequency"),
+                self.lcr_frequency,
+                comet.Label(text="AC Amplitude"),
+                self.lcr_amplitude,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.stretch = 1, 1, 1

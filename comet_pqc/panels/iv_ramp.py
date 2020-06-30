@@ -6,10 +6,12 @@ import comet
 from ..utils import format_metric
 from ..metric import Metric
 from .matrix import MatrixPanel
+from .panel import VSourceMixin
+from .panel import EnvironmentMixin
 
 __all__ = ["IVRampPanel"]
 
-class IVRampPanel(MatrixPanel):
+class IVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     """Panel for IV ramp measurements."""
 
     type = "iv_ramp"
@@ -28,149 +30,48 @@ class IVRampPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
+
+        self.register_vsource()
         self.vsrc_current_compliance = Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
-        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
-
-        def toggle_vsrc_filter(enabled):
-            self.vsrc_filter_count.enabled = enabled
-            self.vsrc_filter_count_label.enabled = enabled
-            self.vsrc_filter_type.enabled = enabled
-            self.vsrc_filter_type_label.enabled = enabled
-
-        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
-        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.vsrc_filter_count_label = comet.Label(text="Count")
-        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
-        self.vsrc_filter_type_label = comet.Label(text="Type")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
+
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="A")
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
 
         # Instruments status
 
-        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
-        self.status_vsrc_current = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
-        self.status_vsrc_output = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
+        self.register_environment()
 
-        self.status_instruments = comet.Column(
-            comet.GroupBox(
-                title="V Source Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Voltage"),
-                            self.status_vsrc_voltage
-                        ),
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_vsrc_current
-                        ),
-                        comet.Column(
-                            comet.Label("Output"),
-                            self.status_vsrc_output
-                        )
-                    )
-                )
-            ),
-            comet.Spacer()
-        )
-        self.status_instruments.width = 240
+        self.status_panel.append(comet.Spacer())
 
-        self.tabs = comet.Tabs(
-            comet.Tab(
-                title="General",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Ramp",
-                        layout=comet.Column(
-                            comet.Label(text="Start"),
-                            self.voltage_start,
-                            comet.Label(text="Stop"),
-                            self.voltage_stop,
-                            comet.Label(text="Step"),
-                            self.voltage_step,
-                            comet.Label(text="Waiting Time"),
-                            self.waiting_time,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="V Source Compliance",
-                        layout=comet.Column(
-                            self.vsrc_current_compliance,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Matrix",
-                layout=comet.Column(
-                    self.control_panel[0],
-                    comet.Spacer(),
-                    stretch=(0, 1)
-                )
-            ),
-            comet.Tab(
-                title="V Source",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.vsrc_filter_enable,
-                            self.vsrc_filter_count_label,
-                            self.vsrc_filter_count,
-                            self.vsrc_filter_type_label,
-                            self.vsrc_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            comet.Label(text="Sense Mode"),
-                            self.vsrc_sense_mode,
-                            comet.Label(text="Route Termination"),
-                            self.vsrc_route_termination,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-        )
-
-        self.control_panel.append(comet.Row(
-            self.tabs,
-            self.status_instruments,
-            stretch=(3, 1)
+        self.general_tab.layout.append(comet.GroupBox(
+            title="Ramp",
+            layout=comet.Column(
+                comet.Label(text="Start"),
+                self.voltage_start,
+                comet.Label(text="Stop"),
+                self.voltage_stop,
+                comet.Label(text="Step"),
+                self.voltage_step,
+                comet.Label(text="Waiting Time"),
+                self.waiting_time,
+                comet.Spacer()
+            )
         ))
 
-    def lock(self):
-        for tab in self.tabs:
-            tab.enabled = False
-        self.status_instruments.enabled = True
-        if len(self.tabs):
-            self.tabs.current = self.tabs[0]
+        self.general_tab.layout.append(comet.GroupBox(
+            title="V Source Compliance",
+            layout=comet.Column(
+                self.vsrc_current_compliance,
+                comet.Spacer()
+            )
+        ))
 
-    def unlock(self):
-        for tab in self.tabs:
-            tab.enabled = True
+        self.general_tab.layout.append(comet.Spacer())
+        self.general_tab.stretch = 1, 1, 1
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -186,18 +87,6 @@ class IVRampPanel(MatrixPanel):
                 else:
                     self.plot.fit()
                 self.plot.fit()
-
-    def state(self, state):
-        if 'vsrc_voltage' in state:
-            value = state.get('vsrc_voltage')
-            self.status_vsrc_voltage.value = format_metric(value, "V")
-        if 'vsrc_current' in state:
-            value = state.get('vsrc_current')
-            self.status_vsrc_current.value = format_metric(value, "A")
-        if 'vsrc_output' in state:
-            labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_vsrc_output.value = labels[state.get('vsrc_output')]
-        super().state(state)
 
     def append_reading(self, name, x, y):
         voltage = x * comet.ureg('V')

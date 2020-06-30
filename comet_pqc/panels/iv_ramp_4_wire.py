@@ -2,10 +2,11 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
+from .panel import EnvironmentMixin
 
 __all__ = ["IVRamp4WirePanel"]
 
-class IVRamp4WirePanel(MatrixPanel):
+class IVRamp4WirePanel(MatrixPanel, EnvironmentMixin):
     """Panel for 4 wire IV ramp measurements."""
 
     type = "iv_ramp_4_wire"
@@ -58,137 +59,83 @@ class IVRamp4WirePanel(MatrixPanel):
         self.status_hvsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_hvsrc_output", self.status_hvsrc_output, "---")
 
-        self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
-        self.status_env_box_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, "---")
-        self.status_env_box_humidity = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, "---")
+        self.register_environment()
 
-        self.status_instruments = comet.Column(
-            comet.GroupBox(
-                title="HV Source Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Voltage"),
-                            self.status_hvsrc_voltage
-                        ),
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_hvsrc_current
-                        ),
-                        comet.Column(
-                            comet.Label("Output"),
-                            self.status_hvsrc_output
-                        )
+        self.status_panel.append(comet.GroupBox(
+            title="HV Source Status",
+            layout=comet.Column(
+                comet.Row(
+                    comet.Column(
+                        comet.Label("Voltage"),
+                        self.status_hvsrc_voltage
+                    ),
+                    comet.Column(
+                        comet.Label("Current"),
+                        self.status_hvsrc_current
+                    ),
+                    comet.Column(
+                        comet.Label("Output"),
+                        self.status_hvsrc_output
                     )
-                )
-            ),
-            comet.GroupBox(
-                title="Environment Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Chuck temp."),
-                            self.status_env_chuck_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box temp."),
-                            self.status_env_box_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box humid."),
-                            self.status_env_box_humidity
-                        )
-                    )
-                )
-            ),
-            comet.Spacer()
-        )
-        self.status_instruments.width = 240
-
-        self.tabs = comet.Tabs(
-            comet.Tab(
-                title="General",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Ramp",
-                        layout=comet.Column(
-                            comet.Label(text="Start"),
-                            self.current_start,
-                            comet.Label(text="Stop"),
-                            self.current_stop,
-                            comet.Label(text="Step"),
-                            self.current_step,
-                            comet.Label(text="Waiting Time"),
-                            self.waiting_time,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="HV Source Compliance",
-                        layout=comet.Column(
-                            self.hvsrc_voltage_compliance,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Matrix",
-                layout=comet.Column(
-                    self.control_panel[0],
-                    comet.Spacer(),
-                    stretch=(0, 1)
-                )
-            ),
-            comet.Tab(
-                title="HV Source",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.hvsrc_filter_enable,
-                            self.hvsrc_filter_count_label,
-                            self.hvsrc_filter_count,
-                            self.hvsrc_filter_type_label,
-                            self.hvsrc_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            comet.Label(text="Sense Mode"),
-                            self.hvsrc_sense_mode,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
                 )
             )
-        )
-
-        self.control_panel.append(comet.Row(
-            self.tabs,
-            self.status_instruments,
-            stretch=(3, 1)
         ))
 
-    def lock(self):
-        for tab in self.tabs:
-            tab.enabled = False
-        self.status_instruments.enabled = True
-        if len(self.tabs):
-            self.tabs.current = self.tabs[0]
+        self.status_panel.append(comet.Spacer())
 
-    def unlock(self):
-        for tab in self.tabs:
-            tab.enabled = True
+        self.general_tab.layout.append(comet.GroupBox(
+            title="Ramp",
+            layout=comet.Column(
+                comet.Label(text="Start"),
+                self.current_start,
+                comet.Label(text="Stop"),
+                self.current_stop,
+                comet.Label(text="Step"),
+                self.current_step,
+                comet.Label(text="Waiting Time"),
+                self.waiting_time,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.GroupBox(
+            title="HV Source Compliance",
+            layout=comet.Column(
+                self.hvsrc_voltage_compliance,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.Spacer())
+
+        self.general_tab.strech = 1, 1, 1
+
+        self.control_tabs.append(comet.Tab(
+            title="HV Source",
+            layout=comet.Row(
+                comet.GroupBox(
+                    title="Filter",
+                    layout=comet.Column(
+                        self.hvsrc_filter_enable,
+                        self.hvsrc_filter_count_label,
+                        self.hvsrc_filter_count,
+                        self.hvsrc_filter_type_label,
+                        self.hvsrc_filter_type,
+                        comet.Spacer()
+                    )
+                ),
+                comet.GroupBox(
+                    title="Options",
+                    layout=comet.Column(
+                        comet.Label(text="Sense Mode"),
+                        self.hvsrc_sense_mode,
+                        comet.Spacer()
+                    )
+                ),
+                comet.Spacer(),
+                stretch=(1, 1, 1)
+            )
+        ))
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -210,15 +157,6 @@ class IVRamp4WirePanel(MatrixPanel):
             self.status_hvsrc_current.value = format_metric(value, "A")
         if 'hvsrc_output' in state:
             self.status_hvsrc_output.value = state.get('hvsrc_output') or '---'
-        if 'env_chuck_temperature' in state:
-            value = state.get('env_chuck_temperature')
-            self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_temperature' in state:
-            value = state.get('env_box_temperature')
-            self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_humidity' in state:
-            value = state.get('env_box_humidity')
-            self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
         super().state(state)
 
     def append_reading(self, name, x, y):

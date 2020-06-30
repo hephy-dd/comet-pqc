@@ -5,10 +5,12 @@ import comet
 from ..utils import format_metric
 from ..metric import Metric
 from .matrix import MatrixPanel
+from .panel import VSourceMixin
+from .panel import EnvironmentMixin
 
 __all__ = ["IVRampElmPanel"]
 
-class IVRampElmPanel(MatrixPanel):
+class IVRampElmPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     """Panel for IV ramp with electrometer measurements."""
 
     type = "iv_ramp_elm"
@@ -28,21 +30,9 @@ class IVRampElmPanel(MatrixPanel):
         self.voltage_stop = comet.Number(decimals=3, suffix="V")
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
+
+        self.register_vsource()
         self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
-
-        def toggle_vsrc_filter(enabled):
-            self.vsrc_filter_count.enabled = enabled
-            self.vsrc_filter_count_label.enabled = enabled
-            self.vsrc_filter_type.enabled = enabled
-            self.vsrc_filter_type_label.enabled = enabled
-
-        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
-        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.vsrc_filter_count_label = comet.Label(text="Count")
-        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
-        self.vsrc_filter_type_label = comet.Label(text="Type")
 
         def toggle_elm_filter(enabled):
             self.elm_filter_count.enabled = enabled
@@ -69,7 +59,6 @@ class IVRampElmPanel(MatrixPanel):
         self.elm_current_autorange_minimum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
         self.elm_current_autorange_maximum = Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
 
-        toggle_vsrc_filter(False)
         toggle_elm_filter(False)
         toggle_elm_current_autorange(False)
 
@@ -78,11 +67,6 @@ class IVRampElmPanel(MatrixPanel):
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
         self.bind("elm_filter_enable", self.elm_filter_enable, False)
         self.bind("elm_filter_count", self.elm_filter_count, 10)
         self.bind("elm_filter_type", self.elm_filter_type, "repeat")
@@ -95,209 +79,100 @@ class IVRampElmPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
-        self.status_vsrc_current = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
-        self.status_vsrc_output = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
-
         self.status_elm_current = comet.Text(value="---", readonly=True)
         self.bind("status_elm_current", self.status_elm_current, "---")
 
-        self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
-        self.status_env_box_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, "---")
-        self.status_env_box_humidity = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, "---")
+        self.register_environment()
 
-        self.status_instruments = comet.Column(
-            comet.GroupBox(
-                title="V Source Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Voltage"),
-                            self.status_vsrc_voltage
-                        ),
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_vsrc_current
-                        ),
-                        comet.Column(
-                            comet.Label("Output"),
-                            self.status_vsrc_output
-                        )
-                    )
-                )
-            ),
-            comet.GroupBox(
-                title="Electrometer Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_elm_current
-                        ),
-                        comet.Spacer(),
-                        stretch=(1, 2)
-                    )
-                )
-            ),
-            comet.GroupBox(
-                title="Environment Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Chuck temp."),
-                            self.status_env_chuck_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box temp."),
-                            self.status_env_box_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box humid."),
-                            self.status_env_box_humidity
-                        )
-                    )
-                )
-            ),
-            comet.Spacer()
-        )
-        self.status_instruments.width = 240
-
-        self.tabs = comet.Tabs(
-            comet.Tab(
-                title="General",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="V Source Ramp",
-                        layout=comet.Column(
-                            comet.Label(text="Start"),
-                            self.voltage_start,
-                            comet.Label(text="Stop"),
-                            self.voltage_stop,
-                            comet.Label(text="Step"),
-                            self.voltage_step,
-                            comet.Label(text="Waiting Time"),
-                            self.waiting_time,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="V Source Compliance",
-                        layout=comet.Column(
-                            self.vsrc_current_compliance,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Matrix",
-                layout=comet.Column(
-                    self.control_panel[0],
-                    comet.Spacer(),
-                    stretch=(0, 1)
-                )
-            ),
-            comet.Tab(
-                title="V Source",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.vsrc_filter_enable,
-                            self.vsrc_filter_count_label,
-                            self.vsrc_filter_count,
-                            self.vsrc_filter_type_label,
-                            self.vsrc_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            comet.Label(text="Sense Mode"),
-                            self.vsrc_sense_mode,
-                            comet.Label(text="Route Termination"),
-                            self.vsrc_route_termination,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Electrometer",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.elm_filter_enable,
-                            self.elm_filter_count_label,
-                            self.elm_filter_count,
-                            self.elm_filter_type_label,
-                            self.elm_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
+        self.status_panel.append(comet.GroupBox(
+            title="Electrometer Status",
+            layout=comet.Column(
+                comet.Row(
                     comet.Column(
-                        comet.GroupBox(
-                            title="Range",
-                            layout=comet.Column(
-                                comet.Label(text="Current Range"),
-                                self.elm_current_range,
-                            )
-                        ),
-                        comet.GroupBox(
-                            title="Auto Range",
-                            layout=comet.Column(
-                                self.elm_current_autorange_enable,
-                                comet.Label(text="Minimum Current"),
-                                self.elm_current_autorange_minimum,
-                                comet.Label(text="Maximum Current"),
-                                self.elm_current_autorange_maximum,
-                                comet.Spacer()
-                            )
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            self.elm_zero_correction,
-                            comet.Label(text="Integration Rate"),
-                            self.elm_integration_rate,
-                            comet.Spacer()
-                        )
+                        comet.Label("Current"),
+                        self.status_elm_current
                     ),
                     comet.Spacer(),
-                    stretch=(1, 1, 1)
+                    stretch=(1, 2)
                 )
             )
-        )
-
-        self.control_panel.append(comet.Row(
-            self.tabs,
-            self.status_instruments,
-            stretch=(3, 1)
         ))
 
-    def lock(self):
-        for tab in self.tabs:
-            tab.enabled = False
-        self.status_instruments.enabled = True
-        if len(self.tabs):
-            self.tabs.current = self.tabs[0]
+        self.status_panel.append(comet.Spacer())
 
-    def unlock(self):
-        for tab in self.tabs:
-            tab.enabled = True
+        self.general_tab.layout.append(comet.GroupBox(
+            title="V Source Ramp",
+            layout=comet.Column(
+                comet.Label(text="Start"),
+                self.voltage_start,
+                comet.Label(text="Stop"),
+                self.voltage_stop,
+                comet.Label(text="Step"),
+                self.voltage_step,
+                comet.Label(text="Waiting Time"),
+                self.waiting_time,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.GroupBox(
+            title="V Source Compliance",
+            layout=comet.Column(
+                self.vsrc_current_compliance,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.Spacer())
+        self.general_tab.stretch = 1, 1, 1
+
+        self.control_tabs.append(comet.Tab(
+            title="Electrometer",
+            layout=comet.Row(
+                comet.GroupBox(
+                    title="Filter",
+                    layout=comet.Column(
+                        self.elm_filter_enable,
+                        self.elm_filter_count_label,
+                        self.elm_filter_count,
+                        self.elm_filter_type_label,
+                        self.elm_filter_type,
+                        comet.Spacer()
+                    )
+                ),
+                comet.Column(
+                    comet.GroupBox(
+                        title="Range",
+                        layout=comet.Column(
+                            comet.Label(text="Current Range"),
+                            self.elm_current_range,
+                        )
+                    ),
+                    comet.GroupBox(
+                        title="Auto Range",
+                        layout=comet.Column(
+                            self.elm_current_autorange_enable,
+                            comet.Label(text="Minimum Current"),
+                            self.elm_current_autorange_minimum,
+                            comet.Label(text="Maximum Current"),
+                            self.elm_current_autorange_maximum,
+                            comet.Spacer()
+                        )
+                    )
+                ),
+                comet.GroupBox(
+                    title="Options",
+                    layout=comet.Column(
+                        self.elm_zero_correction,
+                        comet.Label(text="Integration Rate"),
+                        self.elm_integration_rate,
+                        comet.Spacer()
+                    )
+                ),
+                comet.Spacer(),
+                stretch=(1, 1, 1)
+            )
+        ))
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -311,27 +186,9 @@ class IVRampElmPanel(MatrixPanel):
         self.update_readings()
 
     def state(self, state):
-        if 'vsrc_voltage' in state:
-            value = state.get('vsrc_voltage')
-            self.status_vsrc_voltage.value = format_metric(value, "V")
-        if 'vsrc_current' in state:
-            value = state.get('vsrc_current')
-            self.status_vsrc_current.value = format_metric(value, "A")
-        if 'vsrc_output' in state:
-            labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_vsrc_output.value = labels[state.get('vsrc_output')]
         if 'elm_current' in state:
             value = state.get('elm_current')
             self.status_elm_current.value = format_metric(value, "A")
-        if 'env_chuck_temperature' in state:
-            value = state.get('env_chuck_temperature',)
-            self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_temperature' in state:
-            value = state.get('env_box_temperature')
-            self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_humidity' in state:
-            value = state.get('env_box_humidity')
-            self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
         super().state(state)
 
     def append_reading(self, name, x, y):

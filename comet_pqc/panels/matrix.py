@@ -44,15 +44,22 @@ class MatrixPanel(Panel, ResourceMixin):
         self.bind("matrix_enabled", self.matrix_enabled, False)
         self.bind("matrix_channels", self.matrix_channels, [])
 
-        self.control_panel.append(comet.GroupBox(
+        self.control_tabs.append(comet.Tab(
             title="Matrix",
             layout=comet.Column(
-                self.matrix_enabled,
-                comet.Label(text="Channels"),
-                comet.Row(
-                    self.matrix_channels,
-                    ## comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
-                )
+                comet.GroupBox(
+                    title="Matrix",
+                    layout=comet.Column(
+                        self.matrix_enabled,
+                        comet.Label(text="Channels"),
+                        comet.Row(
+                            self.matrix_channels,
+                            ## comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
+                        )
+                    )
+                ),
+                comet.Spacer(),
+                stretch=(0, 1)
             )
         ))
 

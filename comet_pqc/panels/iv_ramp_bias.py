@@ -2,10 +2,12 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
+from .panel import VSourceMixin
+from .panel import EnvironmentMixin
 
 __all__ = ["IVRampBiasPanel"]
 
-class IVRampBiasPanel(MatrixPanel):
+class IVRampBiasPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
 
     type = "iv_ramp_bias"
@@ -26,23 +28,11 @@ class IVRampBiasPanel(MatrixPanel):
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
         self.bias_mode = comet.ComboBox(items=["constant", "offset"])
+
+        self.register_vsource()
         self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
-        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
         self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
         self.hvsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
-
-        def toggle_vsrc_filter(enabled):
-            self.vsrc_filter_count.enabled = enabled
-            self.vsrc_filter_count_label.enabled = enabled
-            self.vsrc_filter_type.enabled = enabled
-            self.vsrc_filter_type_label.enabled = enabled
-
-        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
-        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.vsrc_filter_count_label = comet.Label(text="Count")
-        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
-        self.vsrc_filter_type_label = comet.Label(text="Type")
 
         def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
@@ -56,7 +46,6 @@ class IVRampBiasPanel(MatrixPanel):
         self.hvsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
         self.hvsrc_filter_type_label = comet.Label(text="Type")
 
-        toggle_vsrc_filter(False)
         toggle_hvsrc_filter(False)
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
@@ -66,11 +55,6 @@ class IVRampBiasPanel(MatrixPanel):
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_route_termination", self.vsrc_route_termination, "rear")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
@@ -79,13 +63,6 @@ class IVRampBiasPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
-        self.status_vsrc_current = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
-        self.status_vsrc_output = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
-
         self.status_hvsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, "---")
         self.status_hvsrc_current = comet.Text(value="---", readonly=True)
@@ -93,196 +70,95 @@ class IVRampBiasPanel(MatrixPanel):
         self.status_hvsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_hvsrc_output", self.status_hvsrc_output, "---")
 
-        self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
-        self.status_env_box_temperature = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, "---")
-        self.status_env_box_humidity = comet.Text(value="---", readonly=True)
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, "---")
+        self.register_environment()
 
-        self.status_instruments = comet.Column(
-            comet.GroupBox(
-                title="V Source Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Voltage"),
-                            self.status_vsrc_voltage
-                        ),
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_vsrc_current
-                        ),
-                        comet.Column(
-                            comet.Label("Output"),
-                            self.status_vsrc_output
-                        )
+        self.status_panel.append(comet.GroupBox(
+            title="HV Source Status",
+            layout=comet.Column(
+                comet.Row(
+                    comet.Column(
+                        comet.Label("Voltage"),
+                        self.status_hvsrc_voltage
+                    ),
+                    comet.Column(
+                        comet.Label("Current"),
+                        self.status_hvsrc_current
+                    ),
+                    comet.Column(
+                        comet.Label("Output"),
+                        self.status_hvsrc_output
                     )
-                )
-            ),
-            comet.GroupBox(
-                title="HV Source Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Voltage"),
-                            self.status_hvsrc_voltage
-                        ),
-                        comet.Column(
-                            comet.Label("Current"),
-                            self.status_hvsrc_current
-                        ),
-                        comet.Column(
-                            comet.Label("Output"),
-                            self.status_hvsrc_output
-                        )
-                    )
-                )
-            ),
-            comet.GroupBox(
-                title="Environment Status",
-                layout=comet.Column(
-                    comet.Row(
-                        comet.Column(
-                            comet.Label("Chuck temp."),
-                            self.status_env_chuck_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box temp."),
-                            self.status_env_box_temperature
-                        ),
-                        comet.Column(
-                            comet.Label("Box humid."),
-                            self.status_env_box_humidity
-                        )
-                    )
-                )
-            ),
-            comet.Spacer()
-        )
-        self.status_instruments.width = 240
-
-        self.tabs = comet.Tabs(
-            comet.Tab(
-                title="General",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="V Source Ramp",
-                        layout=comet.Column(
-                            comet.Label(text="Start"),
-                            self.voltage_start,
-                            comet.Label(text="Stop"),
-                            self.voltage_stop,
-                            comet.Label(text="Step"),
-                            self.voltage_step,
-                            comet.Label(text="Waiting Time"),
-                            self.waiting_time,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="HV Source Bias",
-                        layout=comet.Column(
-                            comet.Label(text="Bias Voltage"),
-                            self.bias_voltage,
-                            comet.Label(text="Bias Mode"),
-                            self.bias_mode,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Compliance",
-                        layout=comet.Column(
-                            comet.Label(text="V Source Compliance"),
-                            self.vsrc_current_compliance,
-                            comet.Label(text="HV Source Compliance"),
-                            self.hvsrc_current_compliance,
-                            comet.Spacer()
-                        )
-                    ),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="Matrix",
-                layout=comet.Column(
-                    self.control_panel[0],
-                    comet.Spacer(),
-                    stretch=(0, 1)
-                )
-            ),
-            comet.Tab(
-                title="V Source",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.vsrc_filter_enable,
-                            self.vsrc_filter_count_label,
-                            self.vsrc_filter_count,
-                            self.vsrc_filter_type_label,
-                            self.vsrc_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            comet.Label(text="Sense Mode"),
-                            self.vsrc_sense_mode,
-                            comet.Label(text="Route Termination"),
-                            self.vsrc_route_termination,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
-                )
-            ),
-            comet.Tab(
-                title="HV Source",
-                layout=comet.Row(
-                    comet.GroupBox(
-                        title="Filter",
-                        layout=comet.Column(
-                            self.hvsrc_filter_enable,
-                            self.hvsrc_filter_count_label,
-                            self.hvsrc_filter_count,
-                            self.hvsrc_filter_type_label,
-                            self.hvsrc_filter_type,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.GroupBox(
-                        title="Options",
-                        layout=comet.Column(
-                            comet.Label(text="Sense Mode"),
-                            self.hvsrc_sense_mode,
-                            comet.Spacer()
-                        )
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 1, 1)
                 )
             )
-        )
-
-        self.control_panel.append(comet.Row(
-            self.tabs,
-            self.status_instruments,
-            stretch=(3, 1)
         ))
 
-    def lock(self):
-        for tab in self.tabs:
-            tab.enabled = False
-        self.status_instruments.enabled = True
-        if len(self.tabs):
-            self.tabs.current = self.tabs[0]
+        self.status_panel.append(comet.Spacer())
 
-    def unlock(self):
-        for tab in self.tabs:
-            tab.enabled = True
+        self.general_tab.layout.append(comet.GroupBox(
+            title="V Source Ramp",
+            layout=comet.Column(
+                comet.Label(text="Start"),
+                self.voltage_start,
+                comet.Label(text="Stop"),
+                self.voltage_stop,
+                comet.Label(text="Step"),
+                self.voltage_step,
+                comet.Label(text="Waiting Time"),
+                self.waiting_time,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.GroupBox(
+            title="HV Source Bias",
+            layout=comet.Column(
+                comet.Label(text="Bias Voltage"),
+                self.bias_voltage,
+                comet.Label(text="Bias Mode"),
+                self.bias_mode,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.layout.append(comet.GroupBox(
+            title="Compliance",
+            layout=comet.Column(
+                comet.Label(text="V Source Compliance"),
+                self.vsrc_current_compliance,
+                comet.Label(text="HV Source Compliance"),
+                self.hvsrc_current_compliance,
+                comet.Spacer()
+            )
+        ))
+
+        self.general_tab.stretch = 1, 1, 1
+
+        self.control_tabs.append(comet.Tab(
+            title="HV Source",
+            layout=comet.Row(
+                comet.GroupBox(
+                    title="Filter",
+                    layout=comet.Column(
+                        self.hvsrc_filter_enable,
+                        self.hvsrc_filter_count_label,
+                        self.hvsrc_filter_count,
+                        self.hvsrc_filter_type_label,
+                        self.hvsrc_filter_type,
+                        comet.Spacer()
+                    )
+                ),
+                comet.GroupBox(
+                    title="Options",
+                    layout=comet.Column(
+                        comet.Label(text="Sense Mode"),
+                        self.hvsrc_sense_mode,
+                        comet.Spacer()
+                    )
+                ),
+                comet.Spacer(),
+                stretch=(1, 1, 1)
+            )
+        ))
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -303,15 +179,6 @@ class IVRampBiasPanel(MatrixPanel):
         super().unmount()
 
     def state(self, state):
-        if 'vsrc_voltage' in state:
-            value = state.get('vsrc_voltage')
-            self.status_vsrc_voltage.value = format_metric(value, "V")
-        if 'vsrc_current' in state:
-            value = state.get('vsrc_current')
-            self.status_vsrc_current.value = format_metric(value, "A")
-        if 'vsrc_output' in state:
-            labels = {False: "OFF", True: "ON", None: "---"}
-            self.status_vsrc_output.value = labels[state.get('vsrc_output')]
         if 'hvsrc_voltage' in state:
             value = state.get('hvsrc_voltage')
             self.status_hvsrc_voltage.value = format_metric(value, "V")
@@ -320,15 +187,6 @@ class IVRampBiasPanel(MatrixPanel):
             self.status_hvsrc_current.value = format_metric(value, "A")
         if 'hvsrc_output' in state:
             self.status_hvsrc_output.value = state.get('hvsrc_output') or '---'
-        if 'env_chuck_temperature' in state:
-            value = state.get('env_chuck_temperature')
-            self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_temperature' in state:
-            value = state.get('env_box_temperature')
-            self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
-        if 'env_box_humidity' in state:
-            value = state.get('env_box_humidity')
-            self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
         super().state(state)
 
     def append_reading(self, name, x, y):
