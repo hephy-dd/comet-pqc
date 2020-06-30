@@ -35,9 +35,9 @@ class ControlProcess(comet.Process, ResourceMixin):
             while self.running:
                 with self.lock:
                     if self.queue:
-                        assert(table.x.unit, UNIT_MICROMETER)
-                        assert(table.y.unit, UNIT_MICROMETER)
-                        assert(table.z.unit, UNIT_MICROMETER)
+                        assert table.x.unit == UNIT_MICROMETER
+                        assert table.y.unit == UNIT_MICROMETER
+                        assert table.z.unit == UNIT_MICROMETER
                         args = self.queue.pop(0)
                         table.rmove(*args)
                         self.emit('position', *table.pos)
