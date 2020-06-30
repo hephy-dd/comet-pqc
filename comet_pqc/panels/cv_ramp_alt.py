@@ -41,14 +41,10 @@ class CVRampAltPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_lcr_model = comet.Label()
-        self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
-
         self.status_instruments = comet.Column(
             comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
-                    self.status_lcr_model,
                 )
             ),
             comet.Spacer()
@@ -120,7 +116,4 @@ class CVRampAltPanel(MatrixPanel):
             tab.enabled = True
 
     def state(self, state):
-        if 'lcr_model' in state:
-            value = state.get('lcr_model', "n/a")
-            self.status_lcr_model.text = f"Model: {value}"
         super().state(state)

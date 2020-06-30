@@ -74,8 +74,6 @@ class CVRampPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_model = comet.Label()
-        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
         self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
         self.status_vsrc_current = comet.Text(value="---", readonly=True)
@@ -83,11 +81,6 @@ class CVRampPanel(MatrixPanel):
         self.status_vsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_output", self.status_vsrc_output, "---")
 
-        self.status_lcr_model = comet.Label()
-        self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
-
-        self.status_env_model = comet.Label()
-        self.bind("status_env_model", self.status_env_model, "Model: n/a")
         self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
         self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
         self.status_env_box_temperature = comet.Text(value="---", readonly=True)
@@ -99,7 +92,6 @@ class CVRampPanel(MatrixPanel):
             comet.GroupBox(
                 title="V Source Status",
                 layout=comet.Column(
-                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
@@ -119,13 +111,11 @@ class CVRampPanel(MatrixPanel):
             comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
-                    self.status_lcr_model,
                 )
             ),
             comet.GroupBox(
                 title="Environment Status",
                 layout=comet.Column(
-                    self.status_env_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Chuck temp."),
@@ -279,9 +269,6 @@ class CVRampPanel(MatrixPanel):
         super().unmount()
 
     def state(self, state):
-        if 'vsrc_model' in state:
-            value = state.get('vsrc_model', "n/a")
-            self.status_vsrc_model.text = f"Model: {value}"
         if 'vsrc_voltage' in state:
             value = state.get('vsrc_voltage')
             self.status_vsrc_voltage.value = format_metric(value, "V")
@@ -291,12 +278,6 @@ class CVRampPanel(MatrixPanel):
         if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
             self.status_vsrc_output.value = labels[state.get('vsrc_output')]
-        if 'lcr_model' in state:
-            value = state.get('lcr_model', "n/a")
-            self.status_lcr_model.text = f"Model: {value}"
-        if 'env_model' in state:
-            value = state.get('env_model', "n/a")
-            self.status_env_model.text = f"Model: {value}"
         if 'env_chuck_temperature' in state:
             value = state.get('env_chuck_temperature', "---")
             self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)

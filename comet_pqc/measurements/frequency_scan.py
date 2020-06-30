@@ -23,23 +23,10 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 2)
 
-        vsrc_idn = vsrc.resource.query("*IDN?")
-        logging.info("Detected VSrc: %s", vsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
-        vsrc_model = ''.join(result) or None
-
-        self.process.emit("progress", 1, 2)
-
-        lcr_idn = lcr.resource.query("*IDN?")
-        logging.info("Detected LCR Meter: %s", lcr_idn)
-        lcr_model = lcr_idn.split(",")[1:][0]
-
         self.process.emit("state", dict(
-            vsrc_model=vsrc_model,
             vsrc_voltage=vsrc.source.voltage.level,
             vsrc_current=None,
-            vsrc_output=vsrc.output,
-            lcr_model=lcr_model
+            vsrc_output=vsrc.output
         ))
 
         self.process.emit("progress", 2, 2)

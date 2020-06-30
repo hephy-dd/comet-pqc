@@ -43,17 +43,6 @@ class IVRampMeasurement(MatrixMeasurement):
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
 
-    def env_detect_model(self, env):
-        try:
-            env_idn = env.resource.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access Environment Box", env.resource.resource_name, e)
-        logging.info("Detected Environment Box: %s", env_idn)
-        # TODO
-        self.process.emit("state", dict(
-            env_model=env_idn
-        ))
-
     def initialize(self, vsrc):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 5)
@@ -70,17 +59,7 @@ class IVRampMeasurement(MatrixMeasurement):
 
         vsrc_proxy = create_proxy(vsrc)
 
-        vsrc_idn = vsrc_proxy.identification
-        logging.info("Detected V Source: %s", vsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
-        vsrc_model = ''.join(result) or None
-
-        if self.process.get("use_environ"):
-            with self.resources.get("environ") as environ:
-                self.env_detect_model(environ)
-
         self.process.emit("state", dict(
-            vsrc_model=vsrc_model,
             vsrc_voltage=vsrc_proxy.source_voltage_level,
             vsrc_current=None,
             vsrc_output=vsrc_proxy.output_enable

@@ -51,17 +51,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.register_parameter('hvsrc_filter_count', 10, type=int)
         self.register_parameter('hvsrc_filter_type','repeat', values=('repeat', 'moving'))
 
-    def env_detect_model(self, env):
-        try:
-            env_idn = env.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access Environment Box", env.resource_name, e)
-        logging.info("Detected Environment Box: %s", env_idn)
-        # TODO
-        self.process.emit("state", dict(
-            env_model=env_idn
-        ))
-
     def initialize(self, hvsrc):
         self.process.emit("progress", 0, 5)
 
@@ -74,21 +63,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
         hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
-        hvsrc_idn = hvsrc.identification
-        logging.info("Detected HV Source: %s", hvsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', hvsrc_idn, re.IGNORECASE).groups()
-        hvsrc_model = ''.join(result) or None
-
         self.process.emit("progress", 1, 5)
-
-        if self.process.get("use_environ"):
-            with self.resources.get("environ") as environ:
-                self.env_detect_model(environ)
 
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            hvsrc_model=hvsrc_model,
             hvsrc_voltage=hvsrc.source.levelv,
             hvsrc_current=hvsrc.source.leveli,
             hvsrc_output=hvsrc.source.output

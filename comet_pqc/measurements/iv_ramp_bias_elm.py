@@ -87,27 +87,6 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
         elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
         elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
 
-        vsrc_idn = vsrc.identification
-        logging.info("Detected V Source: %s", vsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
-        vsrc_model = ''.join(result) or None
-
-        hvsrc_idn = hvsrc.identification
-        logging.info("Detected HV Source: %s", hvsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', hvsrc_idn, re.IGNORECASE).groups()
-        hvsrc_model = ''.join(result) or None
-
-        elm_idn = elm.identification
-        logging.info("Detected Electrometer: %s", elm_idn)
-        result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
-        elm_model = ''.join(result) or None
-
-        self.process.emit("state", dict(
-            vsrc_model=vsrc_model,
-            hvsrc_model=hvsrc_model,
-            elm_model=elm_model
-        ))
-
         # Initialize V Source
 
         vsrc.reset()

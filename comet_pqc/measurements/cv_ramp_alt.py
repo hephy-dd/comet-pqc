@@ -20,15 +20,6 @@ class CVRampAltMeasurement(MatrixMeasurement):
     def initialize(self, lcr):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 1)
-
-        lcr_idn = lcr.resource.query("*IDN?")
-        logging.info("Detected LCR Meter: %s", lcr_idn)
-        lcr_model = lcr_idn.split(",")[1:][0]
-
-        self.process.emit("state", dict(
-            lcr_model=lcr_model
-        ))
-
         self.process.emit("progress", 1, 1)
 
     def measure(self, lcr):

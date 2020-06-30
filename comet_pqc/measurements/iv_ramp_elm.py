@@ -57,17 +57,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
         self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
 
-    def env_detect_model(self, env):
-        try:
-            env_idn = env.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access Environment Box", env.resource_name, e)
-        logging.info("Detected Environment Box: %s", env_idn)
-        # TODO
-        self.process.emit("state", dict(
-            env_model=env_idn
-        ))
-
     def initialize(self, vsrc, elm):
         self.process.emit("progress", 0, 5)
 
@@ -90,30 +79,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
         elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
 
-        vsrc_idn = vsrc.identification
-        logging.info("Detected V Source: %s", vsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
-        vsrc_model = ''.join(result) or None
-
-        self.process.emit("progress", 1, 5)
-
-        elm_idn = elm.identification
-        logging.info("Detected Electrometer: %s", elm_idn)
-        result = re.search(r'model\s+([\d\w]+)', elm_idn, re.IGNORECASE).groups()
-        elm_model = ''.join(result) or None
-
-        if self.process.get("use_environ"):
-            with self.resources.get("environ") as environ:
-                self.env_detect_model(environ)
-
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            vsrc_model=vsrc_model,
             vsrc_voltage=vsrc.source.voltage.level,
             vsrc_current=None,
             vsrc_output=vsrc.output,
-            elm_model=elm_model,
             elm_current=None,
         ))
 

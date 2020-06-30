@@ -79,8 +79,6 @@ class IVRampBiasPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_model = comet.Label()
-        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
         self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
         self.status_vsrc_current = comet.Text(value="---", readonly=True)
@@ -88,8 +86,6 @@ class IVRampBiasPanel(MatrixPanel):
         self.status_vsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_output", self.status_vsrc_output, "---")
 
-        self.status_hvsrc_model = comet.Label()
-        self.bind("status_hvsrc_model", self.status_hvsrc_model, "Model: n/a")
         self.status_hvsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, "---")
         self.status_hvsrc_current = comet.Text(value="---", readonly=True)
@@ -97,8 +93,6 @@ class IVRampBiasPanel(MatrixPanel):
         self.status_hvsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_hvsrc_output", self.status_hvsrc_output, "---")
 
-        self.status_env_model = comet.Label()
-        self.bind("status_env_model", self.status_env_model, "Model: n/a")
         self.status_env_chuck_temperature = comet.Text(value="---", readonly=True)
         self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
         self.status_env_box_temperature = comet.Text(value="---", readonly=True)
@@ -110,7 +104,6 @@ class IVRampBiasPanel(MatrixPanel):
             comet.GroupBox(
                 title="V Source Status",
                 layout=comet.Column(
-                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
@@ -130,7 +123,6 @@ class IVRampBiasPanel(MatrixPanel):
             comet.GroupBox(
                 title="HV Source Status",
                 layout=comet.Column(
-                    self.status_hvsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
@@ -150,7 +142,6 @@ class IVRampBiasPanel(MatrixPanel):
             comet.GroupBox(
                 title="Environment Status",
                 layout=comet.Column(
-                    self.status_env_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Chuck temp."),
@@ -312,9 +303,6 @@ class IVRampBiasPanel(MatrixPanel):
         super().unmount()
 
     def state(self, state):
-        if 'vsrc_model' in state:
-            value = state.get('vsrc_model', "n/a")
-            self.status_vsrc_model.text = f"Model: {value}"
         if 'vsrc_voltage' in state:
             value = state.get('vsrc_voltage')
             self.status_vsrc_voltage.value = format_metric(value, "V")
@@ -324,9 +312,6 @@ class IVRampBiasPanel(MatrixPanel):
         if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
             self.status_vsrc_output.value = labels[state.get('vsrc_output')]
-        if 'hvsrc_model' in state:
-            value = state.get('hvsrc_model', "n/a")
-            self.status_hvsrc_model.text = f"Model: {value}"
         if 'hvsrc_voltage' in state:
             value = state.get('hvsrc_voltage')
             self.status_hvsrc_voltage.value = format_metric(value, "V")
@@ -335,9 +320,6 @@ class IVRampBiasPanel(MatrixPanel):
             self.status_hvsrc_current.value = format_metric(value, "A")
         if 'hvsrc_output' in state:
             self.status_hvsrc_output.value = state.get('hvsrc_output') or '---'
-        if 'env_model' in state:
-            value = state.get('env_model', "n/a")
-            self.status_env_model.text = f"Model: {value}"
         if 'env_chuck_temperature' in state:
             value = state.get('env_chuck_temperature')
             self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)

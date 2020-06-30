@@ -57,8 +57,6 @@ class IVRampPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_model = comet.Label()
-        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
         self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
         self.status_vsrc_current = comet.Text(value="---", readonly=True)
@@ -70,7 +68,6 @@ class IVRampPanel(MatrixPanel):
             comet.GroupBox(
                 title="V Source Status",
                 layout=comet.Column(
-                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
@@ -191,9 +188,6 @@ class IVRampPanel(MatrixPanel):
                 self.plot.fit()
 
     def state(self, state):
-        if 'vsrc_model' in state:
-            value = state.get('vsrc_model', "n/a")
-            self.status_vsrc_model.text = f"Model: {value}"
         if 'vsrc_voltage' in state:
             value = state.get('vsrc_voltage')
             self.status_vsrc_voltage.value = format_metric(value, "V")

@@ -82,40 +82,6 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
 
-    def vsrc_detect_model(self, vsrc):
-        try:
-            vsrc_idn = vsrc.resource.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access V Source", vsrc.resource.resource_name, e)
-        logging.info("Detected V Source: %s", vsrc_idn)
-        result = re.search(r'model\s+([\d\w]+)', vsrc_idn, re.IGNORECASE).groups()
-        vsrc_model = ''.join(result) or None
-        self.process.emit("state", dict(
-            vsrc_model=vsrc_model,
-        ))
-
-    def lcr_detect_model(self, lcr):
-        try:
-            lcr_idn = lcr.resource.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access LCR Meter", lcr.resource.resource_name, e)
-        logging.info("Detected LCR Meter: %s", lcr_idn)
-        lcr_model = lcr_idn.split(",")[1:][0]
-        self.process.emit("state", dict(
-            lcr_model=lcr_model
-        ))
-
-    def env_detect_model(self, env):
-        try:
-            env_idn = env.query("*IDN?")
-        except Exception as e:
-            raise RuntimeError("Failed to access Environment Box", env.resource_name, e)
-        logging.info("Detected Environment Box: %s", env_idn)
-        # TODO
-        self.process.emit("state", dict(
-            env_model=env_idn
-        ))
-
     def quick_ramp_zero(self, vsrc):
         """Ramp to zero voltage without measuring current."""
         self.process.emit("message", "Ramp to zero...")
@@ -231,13 +197,6 @@ class CVRampMeasurement(MatrixMeasurement):
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
         vsrc_filter_type = self.get_parameter('vsrc_filter_type')
-
-        self.vsrc_detect_model(vsrc)
-        self.lcr_detect_model(lcr)
-
-        if self.process.get("use_environ"):
-            with self.resources.get("environ") as env:
-                self.env_detect_model(env)
 
         self.process.emit("progress", 1, 10)
 

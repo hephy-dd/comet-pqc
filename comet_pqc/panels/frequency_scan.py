@@ -58,8 +58,6 @@ class FrequencyScanPanel(MatrixPanel):
 
         # Instruments status
 
-        self.status_vsrc_model = comet.Label()
-        self.bind("status_vsrc_model", self.status_vsrc_model, "Model: n/a")
         self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
         self.status_vsrc_current = comet.Text(value="---", readonly=True)
@@ -67,14 +65,10 @@ class FrequencyScanPanel(MatrixPanel):
         self.status_vsrc_output = comet.Text(value="---", readonly=True)
         self.bind("status_vsrc_output", self.status_vsrc_output, "---")
 
-        self.status_lcr_model = comet.Label()
-        self.bind("status_lcr_model", self.status_lcr_model, "Model: n/a")
-
         self.status_instruments = comet.Column(
             comet.GroupBox(
                 title="V Source Status",
                 layout=comet.Column(
-                    self.status_vsrc_model,
                     comet.Row(
                         comet.Column(
                             comet.Label("Voltage"),
@@ -94,7 +88,6 @@ class FrequencyScanPanel(MatrixPanel):
             comet.GroupBox(
                 title="LCR Status",
                 layout=comet.Column(
-                    self.status_lcr_model,
                 )
             ),
             comet.Spacer()
@@ -189,9 +182,6 @@ class FrequencyScanPanel(MatrixPanel):
             tab.enabled = True
 
     def state(self, state):
-        if 'vsrc_model' in state:
-            value = state.get('vsrc_model', "n/a")
-            self.status_vsrc_model.text = f"Model: {value}"
         if 'vsrc_voltage' in state:
             value = state.get('vsrc_voltage')
             self.status_vsrc_voltage.value = format_metric(value, "V")
@@ -201,7 +191,4 @@ class FrequencyScanPanel(MatrixPanel):
         if 'vsrc_output' in state:
             labels = {False: "OFF", True: "ON", None: "---"}
             self.status_vsrc_output.value = labels[state.get('vsrc_output')]
-        if 'lcr_model' in state:
-            value = state.get('lcr_model', "n/a")
-            self.status_lcr_model.text = f"Model: {value}"
         super().state(state)
