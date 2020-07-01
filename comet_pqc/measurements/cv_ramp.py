@@ -290,6 +290,7 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage_vsrc", "E")
+            fmt.add_column("current_vsrc", "E")
             fmt.add_column("capacitance", "E")
             fmt.add_column("capacitance2", "E")
             fmt.add_column("resistance", "E")
@@ -392,6 +393,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     voltage_vsrc=voltage,
+                    current_vsrc=vsrc_reading,
                     capacitance=lcr_prim,
                     capacitance2=lcr_prim2,
                     resistance=lcr_sec,
