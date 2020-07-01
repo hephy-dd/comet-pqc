@@ -12,6 +12,7 @@ from ..driver import K2657A
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
+from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampBiasElmMeasurement"]
@@ -413,99 +414,116 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
 
             t0 = time.time()
 
+            benchmark_step = Benchmark("single_step")
+            benchmark_elm = Benchmark("read_ELM")
+            benchmark_vsrc = Benchmark("read_VSrc")
+            benchmark_hvsrc = Benchmark("read_HVSrc")
+            benchmark_environ = Benchmark("read_environment")
+
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
-                logging.info("set voltage: %E V", voltage)
-                vsrc.source.voltage.level = voltage
-                self.process.emit("state", dict(
-                    vsrc_voltage=voltage,
-                ))
-                # Move bias TODO
-                if bias_mode == "offset":
-                    bias_voltage += abs(ramp.step) if ramp.begin <= ramp.end else -abs(ramp.step)
-                    logging.info("set bias voltage: %E V", bias_voltage)
-                    hvsrc.source.levelv = bias_voltage
+                with benchmark_step:
+                    logging.info("set voltage: %E V", voltage)
+                    vsrc.source.voltage.level = voltage
                     self.process.emit("state", dict(
-                        hvsrc_voltage=bias_voltage,
+                        vsrc_voltage=voltage,
                     ))
-                time.sleep(.100)
-                dt = time.time() - t0
+                    # Move bias TODO
+                    if bias_mode == "offset":
+                        bias_voltage += abs(ramp.step) if ramp.begin <= ramp.end else -abs(ramp.step)
+                        logging.info("set bias voltage: %E V", bias_voltage)
+                        hvsrc.source.levelv = bias_voltage
+                        self.process.emit("state", dict(
+                            hvsrc_voltage=bias_voltage,
+                        ))
+                    time.sleep(.100)
+                    dt = time.time() - t0
 
-                est.next()
-                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
-                self.process.emit("progress", *est.progress)
+                    est.next()
+                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+                    self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
+                    self.process.emit("progress", *est.progress)
 
-                # read ELM
-                elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                logging.info("ELM reading: %E", elm_reading)
-                self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+                    # read ELM
+                    with benchmark_elm:
+                        elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                    logging.info("ELM reading: %E", elm_reading)
+                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                # read HV Source
-                hvsrc_reading = hvsrc.measure.i()
-                logging.info("HV Source reading: %E A", hvsrc_reading)
-                ### self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+                    # read HV Source
+                    with benchmark_hvsrc:
+                        hvsrc_reading = hvsrc.measure.i()
+                    logging.info("HV Source reading: %E A", hvsrc_reading)
+                    ### self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
-                # read V Source
-                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("V Source bias reading: %E A", vsrc_reading)
-                ### self.process.emit("reading", "src", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+                    # read V Source
+                    with benchmark_vsrc:
+                        vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
+                    logging.info("V Source bias reading: %E A", vsrc_reading)
+                    ### self.process.emit("reading", "src", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    elm_current=elm_reading,
-                    vsrc_current=vsrc_reading,
-                    hvsrc_current=hvsrc_reading,
-                ))
+                    self.process.emit("update")
+                    self.process.emit("state", dict(
+                        elm_current=elm_reading,
+                        vsrc_current=vsrc_reading,
+                        hvsrc_current=hvsrc_reading,
+                    ))
 
-                # Environment
-                if self.process.get("use_environ"):
-                    with self.resources.get("environ") as environ:
-                        pc_data = environ.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
-                else:
-                    temperature_box = float('nan')
-                    temperature_chuck = float('nan')
-                    humidity_box = float('nan')
+                    # Environment
+                    if self.process.get("use_environ"):
+                        with benchmark_environ:
+                            with self.resources.get("environ") as environ:
+                                pc_data = environ.query("GET:PC_DATA ?").split(",")
+                        temperature_box = float(pc_data[2])
+                        logging.info("temperature box: %s degC", temperature_box)
+                        temperature_chuck = float(pc_data[33])
+                        logging.info("temperature chuck: %s degC", temperature_chuck)
+                        humidity_box = float(pc_data[1])
+                        logging.info("humidity box: %s degC", humidity_box)
+                    else:
+                        temperature_box = float('nan')
+                        temperature_chuck = float('nan')
+                        humidity_box = float('nan')
 
-                self.process.emit("state", dict(
-                    env_chuck_temperature=temperature_chuck,
-                    env_box_temperature=temperature_box,
-                    env_box_humidity=humidity_box
-                ))
+                    self.process.emit("state", dict(
+                        env_chuck_temperature=temperature_chuck,
+                        env_box_temperature=temperature_box,
+                        env_box_humidity=humidity_box
+                    ))
 
-                # Write reading
-                fmt.write_row(dict(
-                    timestamp=dt,
-                    voltage=voltage,
-                    elm_current=hvsrc_reading,
-                    hvsrc_current=hvsrc_reading,
-                    vsrc_current=vsrc_reading,
-                    bias_voltage=bias_voltage,
-                    temperature_box=temperature_box,
-                    temperature_chuck=temperature_chuck,
-                    humidity_box=humidity_box
-                ))
-                fmt.flush()
-                time.sleep(waiting_time)
+                    # Write reading
+                    fmt.write_row(dict(
+                        timestamp=dt,
+                        voltage=voltage,
+                        elm_current=hvsrc_reading,
+                        hvsrc_current=hvsrc_reading,
+                        vsrc_current=vsrc_reading,
+                        bias_voltage=bias_voltage,
+                        temperature_box=temperature_box,
+                        temperature_chuck=temperature_chuck,
+                        humidity_box=humidity_box
+                    ))
+                    fmt.flush()
+                    time.sleep(waiting_time)
 
-                # Compliance?
-                compliance_tripped = vsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("V Source in compliance")
-                    raise ValueError("V Source compliance tripped")
-                compliance_tripped = hvsrc.source.compliance
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ValueError("HV Source compliance tripped")
-                if not self.process.running:
-                    break
+                    # Compliance?
+                    compliance_tripped = vsrc.sense.current.protection.tripped
+                    if compliance_tripped:
+                        logging.error("V Source in compliance")
+                        raise ValueError("V Source compliance tripped")
+                    compliance_tripped = hvsrc.source.compliance
+                    if compliance_tripped:
+                        logging.error("HV Source in compliance")
+                        raise ValueError("HV Source compliance tripped")
+                    if not self.process.running:
+                        break
+
+            logging.info(benchmark_step)
+            logging.info(benchmark_elm)
+            logging.info(benchmark_vsrc)
+            logging.info(benchmark_hvsrc)
+            logging.info(benchmark_environ)
 
         self.process.emit("progress", 2, 2)
 

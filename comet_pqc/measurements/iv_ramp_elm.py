@@ -11,6 +11,7 @@ from ..driver import K2410
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
+from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampElmMeasurement"]
@@ -335,80 +336,94 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
             t0 = time.time()
 
+            benchmark_step = Benchmark("single_step")
+            benchmark_elm = Benchmark("read_ELM")
+            benchmark_vsrc = Benchmark("read_VSrc")
+            benchmark_environ = Benchmark("read_environment")
+
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
-                logging.info("set voltage: %E V", voltage)
-                vsrc.clear()
-                vsrc.source.voltage.level = voltage
-                time.sleep(.100)
-                # check_error(vsrc)
-                dt = time.time() - t0
+                with benchmark_step:
+                    logging.info("set voltage: %E V", voltage)
+                    vsrc.clear()
+                    vsrc.source.voltage.level = voltage
+                    time.sleep(.100)
+                    # check_error(vsrc)
+                    dt = time.time() - t0
 
-                est.next()
-                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
-                self.process.emit("progress", *est.progress)
+                    est.next()
+                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+                    self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
+                    self.process.emit("progress", *est.progress)
 
-                # read V Source
-                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("V Source reading: %E", vsrc_reading)
-                self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
+                    # read V Source
+                    with benchmark_vsrc:
+                        vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
+                    logging.info("V Source reading: %E", vsrc_reading)
+                    self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
-                # read ELM
-                elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                logging.info("ELM reading: %E", elm_reading)
-                self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+                    # read ELM
+                    with benchmark_elm:
+                        elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                    logging.info("ELM reading: %E", elm_reading)
+                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    vsrc_voltage=voltage,
-                    vsrc_current=vsrc_reading,
-                    elm_current=elm_reading
-                ))
+                    self.process.emit("update")
+                    self.process.emit("state", dict(
+                        vsrc_voltage=voltage,
+                        vsrc_current=vsrc_reading,
+                        elm_current=elm_reading
+                    ))
 
-                # Environment
-                if self.process.get("use_environ"):
-                    with self.resources.get("environ") as environ:
-                        pc_data = environ.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
-                else:
-                    temperature_box = float('nan')
-                    temperature_chuck = float('nan')
-                    humidity_box = float('nan')
+                    # Environment
+                    if self.process.get("use_environ"):
+                        with benchmark_environ:
+                            with self.resources.get("environ") as environ:
+                                pc_data = environ.query("GET:PC_DATA ?").split(",")
+                        temperature_box = float(pc_data[2])
+                        logging.info("temperature box: %s degC", temperature_box)
+                        temperature_chuck = float(pc_data[33])
+                        logging.info("temperature chuck: %s degC", temperature_chuck)
+                        humidity_box = float(pc_data[1])
+                        logging.info("humidity box: %s degC", humidity_box)
+                    else:
+                        temperature_box = float('nan')
+                        temperature_chuck = float('nan')
+                        humidity_box = float('nan')
 
-                self.process.emit("state", dict(
-                    env_chuck_temperature=temperature_chuck,
-                    env_box_temperature=temperature_box,
-                    env_box_humidity=humidity_box
-                ))
+                    self.process.emit("state", dict(
+                        env_chuck_temperature=temperature_chuck,
+                        env_box_temperature=temperature_box,
+                        env_box_humidity=humidity_box
+                    ))
 
-                # Write reading
-                fmt.write_row(dict(
-                    timestamp=dt,
-                    voltage=voltage,
-                    current_vsrc=vsrc_reading,
-                    current_elm=elm_reading,
-                    temperature_box=temperature_box,
-                    temperature_chuck=temperature_chuck,
-                    humidity_box=humidity_box
-                ))
-                fmt.flush()
-                time.sleep(waiting_time)
+                    # Write reading
+                    fmt.write_row(dict(
+                        timestamp=dt,
+                        voltage=voltage,
+                        current_vsrc=vsrc_reading,
+                        current_elm=elm_reading,
+                        temperature_box=temperature_box,
+                        temperature_chuck=temperature_chuck,
+                        humidity_box=humidity_box
+                    ))
+                    fmt.flush()
+                    time.sleep(waiting_time)
 
-                # Compliance?
-                compliance_tripped = vsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("V Source in compliance")
-                    raise ValueError("compliance tripped")
-                # check_error(vsrc)
-                if not self.process.running:
-                    break
+                    # Compliance?
+                    compliance_tripped = vsrc.sense.current.protection.tripped
+                    if compliance_tripped:
+                        logging.error("V Source in compliance")
+                        raise ValueError("compliance tripped")
+                    # check_error(vsrc)
+                    if not self.process.running:
+                        break
+
+            logging.info(benchmark_step)
+            logging.info(benchmark_elm)
+            logging.info(benchmark_vsrc)
+            logging.info(benchmark_environ)
 
         self.process.emit("progress", 4, 5)
 
