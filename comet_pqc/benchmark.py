@@ -25,14 +25,22 @@ class Benchmark:
         self.history.clear()
 
     @property
-    def average(self):
-        if self.history:
-            return sum(self.history) / len(self.history)
-        return 0
-
-    @property
     def count(self):
         return len(self.history)
 
+    @property
+    def average(self):
+        if self.history:
+            return sum(self.history) / len(self.history)
+        return 0.
+
+    @property
+    def minimum(self):
+        return min(self.history or [0.])
+
+    @property
+    def maximum(self):
+        return max(self.history or [0.])
+
     def __str__(self):
-        return f"{self.__class__.__name__}[{self.name}](average={self.average:.6f} s, count={self.count:d})"
+        return f"{self.__class__.__name__}[{self.name}](n={self.count:d}, avg={self.average:.6f}s, min={self.minimum:.6f}s, max={self.maximum:.6f}s)"
