@@ -341,11 +341,6 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
-                # read V Source
-                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                logging.info("V Source reading: %E", vsrc_reading)
-
-
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 if lcr_soft_filter:
                     lcr_prim, lcr_sec = self.acquire_filter_reading(lcr)
@@ -355,6 +350,10 @@ class CVRampMeasurement(MatrixMeasurement):
                     lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
                 except ZeroDivisionError:
                     lcr_prim2 = 0.0
+
+                # read V Source
+                vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
+                logging.info("V Source reading: %E", vsrc_reading)
 
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
