@@ -23,6 +23,7 @@ from .panels import IVRampBiasPanel
 from .panels import IVRampBiasElmPanel
 from .panels import IVRamp4WirePanel
 from .panels import CVRampPanel
+from .panels import CVRampHVPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
@@ -67,6 +68,7 @@ class PanelStack(comet.Row):
         self.append(IVRampBiasPanel(visible=False))
         self.append(IVRampBiasElmPanel(visible=False))
         self.append(CVRampPanel(visible=False))
+        self.append(CVRampHVPanel(visible=False))
         self.append(CVRampAltPanel(visible=False))
         self.append(IVRamp4WirePanel(visible=False))
         self.append(FrequencyScanPanel(visible=False))

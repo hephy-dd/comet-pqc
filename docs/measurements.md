@@ -296,6 +296,61 @@ Type: `cv_ramp`
       lcr_auto_level_control: true
 ```
 
+## CV Ramp (HVSource)
+
+CV ramp using HVSource and LCR for CpRp measurements.
+
+Type: `cv_ramp_hv`
+
+### Parameters
+
+| Parameter                 | Type    | Default | Description |
+|---------------------------|---------|---------|-------------|
+|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`bias_voltage_start`       |`volt`   |required | |
+|`bias_voltage_step`        |`volt`   |required | |
+|`bias_voltage_stop`        |`volt`   |required | |
+|`waiting_time`             |`second` |`1 s`    | |
+|`hvsrc_current_compliance`  |`ampere` |`1 uA`   | |
+|`hvsrc_sense_mode`          |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`hvsrc_filter_enable`       |`bool`   |`false`  | |
+|`hvsrc_filter_count`        |`int`    |`10`     | |
+|`hvsrc_filter_type`         |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`lcr_soft_filter`          |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
+|`lcr_frequency`            |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
+|`lcr_amplitude`            |`volt`   |`250 mV` | |
+|`lcr_integration_time`     |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
+|`lcr_averaging_rate`       |`int`    |`1`      | Possible range from `1` to `10`. |
+|`lcr_auto_level_control`   |`bool`   |`true`   | |
+
+### Example configuration
+
+```yaml
+- name: CV Example
+  type: cv_ramp_hv
+  enabled: true
+  description: An example measurement.
+  parameters:
+      matrix_enabled: true
+      matrix_channels: [1A01, 1B02, 2H11, 2G12]
+      bias_voltage_start: -5 V
+      bias_voltage_stop: 10 V
+      bias_voltage_step: 0.1 V
+      waiting_time: 100 ms
+      hvsrc_current_compliance: 100 uA
+      hvsrc_sense_mode: local
+      hvsrc_filter_enable: false
+      hvsrc_filter_count: 10
+      hvsrc_filter_type: moving
+      lcr_soft_filter: true
+      lcr_frequency: 10 kHz
+      lcr_amplitude: 250 mV
+      lcr_integration_time: medium
+      lcr_averaging_rate: 1
+      lcr_auto_level_control: true
+```
+
 ## CV Ramp (LCR only)
 
 Available in future releases.

@@ -176,6 +176,19 @@ contacts:
             vsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
+      - name: Diode CV (HV)
+        type: cv_ramp_hv
+        parameters:
+            matrix_enabled: true
+            matrix_channels: []
+            bias_voltage_start: 0 V
+            bias_voltage_stop: -500 V
+            bias_voltage_step: 5 V
+            waiting_time: 500 ms
+            hvsrc_current_compliance: 100 uA
+            hvsrc_sense_mode: local
+            lcr_frequency: 10 kHz
+            lcr_amplitude: 250 mV
       - name: Diode CV 10kHz Test
         type: cv_ramp
         enabled: false
