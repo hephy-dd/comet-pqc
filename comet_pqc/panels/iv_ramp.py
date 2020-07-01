@@ -20,6 +20,9 @@ class IVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         super().__init__(*args, **kwargs)
         self.title = "IV Ramp"
 
+        self.register_vsource()
+        self.register_environment()
+
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
@@ -31,7 +34,6 @@ class IVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
 
-        self.register_vsource()
         self.vsrc_current_compliance = Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
@@ -41,37 +43,31 @@ class IVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="A")
 
-        # Instruments status
-
-        self.register_environment()
-
-        self.status_panel.append(comet.Spacer())
-
-        self.general_tab.layout.append(comet.GroupBox(
-            title="Ramp",
-            layout=comet.Column(
-                comet.Label(text="Start"),
-                self.voltage_start,
-                comet.Label(text="Stop"),
-                self.voltage_stop,
-                comet.Label(text="Step"),
-                self.voltage_step,
-                comet.Label(text="Waiting Time"),
-                self.waiting_time,
-                comet.Spacer()
-            )
-        ))
-
-        self.general_tab.layout.append(comet.GroupBox(
-            title="V Source Compliance",
-            layout=comet.Column(
-                self.vsrc_current_compliance,
-                comet.Spacer()
-            )
-        ))
-
-        self.general_tab.layout.append(comet.Spacer())
-        self.general_tab.stretch = 1, 1, 1
+        self.general_tab.layout = comet.Row(
+            comet.GroupBox(
+                title="Ramp",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.voltage_start,
+                    comet.Label(text="Stop"),
+                    self.voltage_stop,
+                    comet.Label(text="Step"),
+                    self.voltage_step,
+                    comet.Label(text="Waiting Time"),
+                    self.waiting_time,
+                    comet.Spacer()
+                )
+            ),
+            comet.GroupBox(
+                title="V Source Compliance",
+                layout=comet.Column(
+                    self.vsrc_current_compliance,
+                    comet.Spacer()
+                )
+            ),
+            comet.Spacer(),
+            stretch=(1, 1, 1)
+        )
 
     def mount(self, measurement):
         super().mount(measurement)

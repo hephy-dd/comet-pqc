@@ -74,12 +74,3 @@ class MatrixPanel(Panel, ResourceMixin):
         except Exception as e:
             comet.show_exception(e)
         self.enabled = True
-
-    def mount(self, measurement):
-        super().mount(measurement)
-
-    def unmount(self):
-        super().unmount()
-
-    def clear_readings(self):
-        super().clear_readings()

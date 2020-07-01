@@ -5,11 +5,12 @@ import comet
 from ..utils import format_metric
 from .matrix import MatrixPanel
 from .panel import VSourceMixin
+from .panel import LCRMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["CVRampPanel"]
 
-class CVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
+class CVRampPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
     """Panel for CV ramp measurements."""
 
     type = "cv_ramp"
@@ -17,6 +18,10 @@ class CVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "CV Ramp (VSrc)"
+
+        self.register_vsource()
+        self.register_lcr()
+        self.register_environment()
 
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
@@ -36,15 +41,10 @@ class CVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
 
-        self.register_vsource()
         self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
-        self.lcr_integration_time = comet.ComboBox(items=["short", "medium", "long"])
-        self.lcr_averaging_rate = comet.Number(minimum=1, maximum=256, decimals=0)
-        self.lcr_auto_level_control = comet.CheckBox(text="Auto Level Control")
-        self.lcr_soft_filter = comet.CheckBox(text="Filter STD/mean < 0.005")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
@@ -53,78 +53,41 @@ class CVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
         self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
-        self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
-        self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
-        self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
-        self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
 
-        # Instruments status
-
-        self.register_environment()
-
-        self.status_panel.append(comet.GroupBox(
-            title="LCR Status",
-            layout=comet.Column(
-            )
-        ))
-
-        self.status_panel.append(comet.Spacer())
-
-        self.general_tab.layout.append(comet.GroupBox(
-            title="V Source Ramp",
-            layout=comet.Column(
-                comet.Label(text="Start"),
-                self.voltage_start,
-                comet.Label(text="Stop"),
-                self.voltage_stop,
-                comet.Label(text="Step"),
-                self.voltage_step,
-                comet.Label(text="Waiting Time"),
-                self.waiting_time,
-                comet.Spacer()
-            )
-        ))
-
-        self.general_tab.layout.append(comet.GroupBox(
-            title="V Source Compliance",
-            layout=comet.Column(
-                self.vsrc_current_compliance,
-                comet.Spacer()
-            )
-        ))
-
-        self.general_tab.layout.append(comet.GroupBox(
-            title="LCR",
-            layout=comet.Column(
-                comet.Label(text="AC Frequency"),
-                self.lcr_frequency,
-                comet.Label(text="AC Amplitude"),
-                self.lcr_amplitude,
-                comet.Spacer()
-            )
-        ))
-
-        self.general_tab.stretch = 1, 1, 1
-
-        self.control_tabs.append(comet.Tab(
-            title="LCR",
-            layout=comet.Row(
-                comet.GroupBox(
-                    title="Options",
-                    layout=comet.Column(
-                        comet.Label(text="Integration Time"),
-                        self.lcr_integration_time,
-                        comet.Label(text="Averaging Rate"),
-                        self.lcr_averaging_rate,
-                        self.lcr_auto_level_control,
-                        self.lcr_soft_filter,
-                        comet.Spacer()
-                    )
-                ),
-                comet.Spacer(),
-                stretch=(1, 2)
-            )
-        ))
+        self.general_tab.layout = comet.Row(
+            comet.GroupBox(
+                title="V Source Ramp",
+                layout=comet.Column(
+                    comet.Label(text="Start"),
+                    self.voltage_start,
+                    comet.Label(text="Stop"),
+                    self.voltage_stop,
+                    comet.Label(text="Step"),
+                    self.voltage_step,
+                    comet.Label(text="Waiting Time"),
+                    self.waiting_time,
+                    comet.Spacer()
+                )
+            ),
+            comet.GroupBox(
+                title="V Source Compliance",
+                layout=comet.Column(
+                    self.vsrc_current_compliance,
+                    comet.Spacer()
+                )
+            ),
+            comet.GroupBox(
+                title="LCR",
+                layout=comet.Column(
+                    comet.Label(text="AC Frequency"),
+                    self.lcr_frequency,
+                    comet.Label(text="AC Amplitude"),
+                    self.lcr_amplitude,
+                    comet.Spacer()
+                )
+            ),
+            stretch=(1, 1, 1)
+        )
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -142,9 +105,6 @@ class CVRampPanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                     self.plot2.series.get(name).append(x, y)
         self.plot.fit()
         self.plot2.fit()
-
-    def unmount(self):
-        super().unmount()
 
     def append_reading(self, name, x, y):
         if self.measurement:
