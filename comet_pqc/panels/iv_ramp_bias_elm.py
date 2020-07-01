@@ -20,6 +20,7 @@ class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerM
         self.title = "IV Ramp Bias Elm"
 
         self.register_vsource()
+        self.register_hvsource()
         self.register_electrometer()
         self.register_environment()
 
