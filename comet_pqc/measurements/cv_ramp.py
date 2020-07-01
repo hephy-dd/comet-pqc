@@ -332,7 +332,10 @@ class CVRampMeasurement(MatrixMeasurement):
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
             for voltage in ramp:
                 self.vsrc_set_voltage_level(vsrc, voltage)
-                time.sleep(.100)
+
+                # Delay
+                time.sleep(waiting_time)
+
                 # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                 dt = time.time() - t0
                 est.next()
@@ -397,7 +400,6 @@ class CVRampMeasurement(MatrixMeasurement):
                     humidity_box=humidity_box
                 ))
                 fmt.flush()
-                time.sleep(waiting_time)
 
                 # Compliance?
                 compliance_tripped = self.vsrc_compliance_tripped(vsrc)
