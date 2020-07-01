@@ -30,6 +30,9 @@ from .tablecontrol import TableControlDialog
 
 from .driver import EnvironmentBox
 
+ENABLE_SEQUENCING = False
+"""Switch to disable sequence execution from user interface."""
+
 def create_icon(size, color):
     """Return circular colored icon."""
     pixmap = QtGui.QPixmap(size, size)
@@ -137,7 +140,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.start_button = comet.Button(
             text="Start",
             tool_tip="Start measurement sequence.",
-            clicked=self.on_sequence_start
+            clicked=self.on_sequence_start,
+            enabled=ENABLE_SEQUENCING
         )
 
         self.autopilot_button = ToggleButton(
