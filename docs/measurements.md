@@ -89,7 +89,7 @@ Type: `iv_ramp_elm`
 |`elm_filter_count`        |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`         |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
 |`elm_current_range`       |`ampere` |`20 pA`  |Current range for measurements. |
-|`elm_current_autorange_enable` |`bool`   |`True`  |Enable current auto range. |
+|`elm_current_autorange_enable` |`bool`   |`False`  |Enable current auto range. |
 |`elm_current_autorange_minimum` |`ampere`   |`20 pA`  |Lower current limit for auto range. |
 |`elm_current_autorange_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
 |`elm_zero_correction`     |`bool`   |`false`  |Perform Electrometer zero correction. |
@@ -221,7 +221,7 @@ Type: `iv_ramp_bias_elm`
 |`elm_filter_count`         |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`          |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
 |`elm_current_range`        |`ampere` |`20 pA`  |Current range for measurements. |
-|`elm_current_autorange_enable` |`bool`   |`True`  |Enable current auto range. |
+|`elm_current_autorange_enable` |`bool`   |`False`  |Enable current auto range. |
 |`elm_current_autorange_minimum` |`ampere`   |`20 pA`  |Lower current limit for auto range. |
 |`elm_current_autorange_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
 |`elm_zero_correction`     |`bool`   |`false`  |Perform Electrometer zero correction. |

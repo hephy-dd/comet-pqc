@@ -414,7 +414,7 @@ class ElectrometerMixin:
         self.bind("elm_zero_correction", self.elm_zero_correction, False)
         self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
         self.bind("elm_current_range", self.elm_current_range, 20e-12, unit="A")
-        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, True)
+        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, False)
         self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
         self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
 

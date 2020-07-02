@@ -54,7 +54,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.register_parameter('elm_zero_correction', False, type=bool)
         self.register_parameter('elm_integration_rate', 50, type=int)
         self.register_parameter('elm_current_range', comet.ureg('20 pA'), unit='A')
-        self.register_parameter('elm_current_autorange_enable', True, type=bool)
+        self.register_parameter('elm_current_autorange_enable', False, type=bool)
         self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
         self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
 
