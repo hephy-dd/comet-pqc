@@ -232,9 +232,10 @@ class TableControl(comet.Widget):
     @position.setter
     def position(self, value):
         self.__position = value[0], value[1], value[2]
-        self.pos_x_label.text = f"{1000.0 * value[0]:.3f} mm"
-        self.pos_y_label.text = f"{1000.0 * value[1]:.3f} mm"
-        self.pos_z_label.text = f"{1000.0 * value[2]:.3f} mm"
+        # TODO
+        self.pos_x_label.text = f"{value[0] / 1000.:.3f} mm"
+        self.pos_y_label.text = f"{value[1] / 1000.:.3f} mm"
+        self.pos_z_label.text = f"{value[2] / 1000.:.3f} mm"
 
     @property
     def caldone(self):
@@ -245,14 +246,14 @@ class TableControl(comet.Widget):
         def getcal(value):
             return value & 0x1
         def getrm(value):
-            return (value[0] >> 1) & 0x1
+            return (value >> 1) & 0x1
         self.__caldone = value[0], value[1], value[2]
-        self.cal_x_label.text = format(getcal(value[0]))
-        self.cal_y_label.text = format(getcal(value[1]))
-        self.cal_z_label.text = format(getcal(value[2]))
-        self.rm_x_label.text = format(getrm(value[0]))
-        self.rm_y_label.text = format(getrm(value[1]))
-        self.rm_z_label.text = format(getrm(value[2]))
+        self.cal_x_label.text = "cal {}".format(getcal(value[0]))
+        self.cal_y_label.text = "cal {}".format(getcal(value[1]))
+        self.cal_z_label.text = "cal {}".format(getcal(value[2]))
+        self.rm_x_label.text = "rm {}".format(getrm(value[0]))
+        self.rm_y_label.text = "rm {}".format(getrm(value[1]))
+        self.rm_z_label.text = "rm {}".format(getrm(value[2]))
 
     def on_back(self):
         self.emit("move", 0, self.step_width, 0)

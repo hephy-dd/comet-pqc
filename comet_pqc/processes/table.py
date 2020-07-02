@@ -28,6 +28,8 @@ class ControlProcess(comet.Process, ResourceMixin):
     def run(self):
         with self.resources.get('table') as table_res:
             table = Venus1(table_res)
+            table.mode = 0
+            table.joystick = False
             table.x.unit = UNIT_MICROMETER
             table.y.unit = UNIT_MICROMETER
             table.z.unit = UNIT_MICROMETER
