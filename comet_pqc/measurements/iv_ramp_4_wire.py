@@ -14,9 +14,9 @@ from .matrix import MatrixMeasurement
 
 __all__ = ["IVRamp4WireMeasurement"]
 
-def check_error(hvsrc):
-    if hvsrc.errorqueue.count:
-        error = hvsrc.errorqueue.next()
+def check_error(vsrc):
+    if vsrc.errorqueue.count:
+        error = vsrc.errorqueue.next()
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
@@ -34,10 +34,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
 
     type = "iv_ramp_4_wire"
 
-    default_hvsrc_sense_mode = "remote"
-    default_hvsrc_filter_enable = False
-    default_hvsrc_filter_count = 10
-    default_hvsrc_filter_type = "repeat"
+    default_vsrc_sense_mode = "remote"
+    default_vsrc_filter_enable = False
+    default_vsrc_filter_count = 10
+    default_vsrc_filter_type = "repeat"
 
     def __init__(self, process):
         super().__init__(process)
@@ -45,123 +45,123 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.register_parameter('current_stop', unit='A', required=True)
         self.register_parameter('current_step', unit='A', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
-        self.register_parameter('hvsrc_voltage_compliance', unit='V', required=True)
-        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_filter_enable', False, type=bool)
-        self.register_parameter('hvsrc_filter_count', 10, type=int)
-        self.register_parameter('hvsrc_filter_type','repeat', values=('repeat', 'moving'))
+        self.register_parameter('vsrc_voltage_compliance', unit='V', required=True)
+        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('vsrc_filter_enable', False, type=bool)
+        self.register_parameter('vsrc_filter_count', 10, type=int)
+        self.register_parameter('vsrc_filter_type','repeat', values=('repeat', 'moving'))
 
-    def initialize(self, hvsrc):
+    def initialize(self, vsrc):
         self.process.emit("progress", 0, 5)
 
         current_start = self.get_parameter('current_start')
         current_step = self.get_parameter('current_step')
         waiting_time = self.get_parameter('waiting_time')
-        hvsrc_voltage_compliance = self.get_parameter('hvsrc_voltage_compliance')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
+        vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
 
         self.process.emit("progress", 1, 5)
 
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc.source.levelv,
-            hvsrc_current=hvsrc.source.leveli,
-            hvsrc_output=hvsrc.source.output
+            vsrc_voltage=vsrc.source.levelv,
+            vsrc_current=vsrc.source.leveli,
+            vsrc_output=vsrc.source.output
         ))
 
         # Beeper off
-        hvsrc.reset()
-        hvsrc.clear()
-        hvsrc.beeper.enable = False
-        check_error(hvsrc)
+        vsrc.reset()
+        vsrc.clear()
+        vsrc.beeper.enable = False
+        check_error(vsrc)
 
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc.source.levelv,
-            hvsrc_current=hvsrc.source.leveli,
-            hvsrc_output=hvsrc.source.output
+            vsrc_voltage=vsrc.source.levelv,
+            vsrc_current=vsrc.source.leveli,
+            vsrc_output=vsrc.source.output
         ))
 
         # set sense mode
-        logging.info("set sense mode: '%s'", hvsrc_sense_mode)
-        if hvsrc_sense_mode == "remote":
-            hvsrc.sense = 'REMOTE'
-        elif hvsrc_sense_mode == "local":
-            hvsrc.sense = 'LOCAL'
+        logging.info("set sense mode: '%s'", vsrc_sense_mode)
+        if vsrc_sense_mode == "remote":
+            vsrc.sense = 'REMOTE'
+        elif vsrc_sense_mode == "local":
+            vsrc.sense = 'LOCAL'
         else:
-            raise ValueError(f"invalid sense mode: {hvsrc_sense_mode}")
-        check_error(hvsrc)
+            raise ValueError(f"invalid sense mode: {vsrc_sense_mode}")
+        check_error(vsrc)
 
         # Current source
-        hvsrc.source.func = 'DCAMPS'
-        check_error(hvsrc)
+        vsrc.source.func = 'DCAMPS'
+        check_error(vsrc)
 
         # Compliance
-        logging.info("set compliance: %E V", hvsrc_voltage_compliance)
-        hvsrc.source.limitv = hvsrc_voltage_compliance
-        check_error(hvsrc)
+        logging.info("set compliance: %E V", vsrc_voltage_compliance)
+        vsrc.source.limitv = vsrc_voltage_compliance
+        check_error(vsrc)
 
         # Range
         # TODO
 
         # Filter
-        hvsrc.measure.filter.count = hvsrc_filter_count
-        check_error(hvsrc)
+        vsrc.measure.filter.count = vsrc_filter_count
+        check_error(vsrc)
 
-        if hvsrc_filter_type == "repeat":
-            hvsrc.measure.filter.type = 'REPEAT'
-        elif hvsrc_filter_type == "moving":
-            hvsrc.measure.filter.type = 'MOVING'
-        check_error(hvsrc)
+        if vsrc_filter_type == "repeat":
+            vsrc.measure.filter.type = 'REPEAT'
+        elif vsrc_filter_type == "moving":
+            vsrc.measure.filter.type = 'MOVING'
+        check_error(vsrc)
 
-        hvsrc.measure.filter.enable = hvsrc_filter_enable
-        check_error(hvsrc)
+        vsrc.measure.filter.enable = vsrc_filter_enable
+        check_error(vsrc)
 
         self.process.emit("progress", 1, 5)
 
         # Enable output
-        hvsrc.source.leveli = 0
-        check_error(hvsrc)
-        hvsrc.source.output = 'ON'
-        check_error(hvsrc)
+        vsrc.source.leveli = 0
+        check_error(vsrc)
+        vsrc.source.output = 'ON'
+        check_error(vsrc)
         time.sleep(.100)
 
         self.process.emit("state", dict(
-            hvsrc_output=hvsrc.source.output
+            vsrc_output=vsrc.source.output
         ))
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            current = hvsrc.source.leveli
+            current = vsrc.source.leveli
 
             logging.info("ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
             for current in comet.Range(current, current_start, current_step):
                 logging.info("set current: %E A", current)
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
-                hvsrc.source.leveli = current
-                # check_error(hvsrc)
+                vsrc.source.leveli = current
+                # check_error(vsrc)
                 time.sleep(.100)
                 time.sleep(waiting_time)
 
                 self.process.emit("state", dict(
-                    hvsrc_current=current,
+                    vsrc_current=current,
                 ))
                 # Compliance?
-                compliance_tripped = hvsrc.source.compliance
+                compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("HV Source in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 3, 5)
 
-    def measure(self, hvsrc):
+    def measure(self, vsrc):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -172,7 +172,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         current_step = self.get_parameter('current_step')
         current_stop = self.get_parameter('current_stop')
         waiting_time = self.get_parameter('waiting_time')
-        hvsrc_voltage_compliance = self.get_parameter('hvsrc_voltage_compliance')
+        vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
 
         if not self.process.running:
             return
@@ -182,7 +182,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("current", "E")
-            fmt.add_column("voltage_hvsrc", "E")
+            fmt.add_column("voltage_vsrc", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
             fmt.add_column("humidity_box", "E")
@@ -198,14 +198,14 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             fmt.write_meta("current_stop", f"{current_stop:G} A")
             fmt.write_meta("current_step", f"{current_step:G} A")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("hvsrc_voltage_compliance", f"{hvsrc_voltage_compliance:G} V")
+            fmt.write_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
             fmt.flush()
 
             # Write header
             fmt.write_header()
             fmt.flush()
 
-            current = hvsrc.source.leveli
+            current = vsrc.source.leveli
 
             ramp = comet.Range(current, current_stop, current_step)
             est = Estimate(ramp.count)
@@ -216,10 +216,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
             for current in ramp:
                 logging.info("set current: %E A", current)
-                hvsrc.clear()
-                hvsrc.source.leveli = current
+                vsrc.clear()
+                vsrc.source.leveli = current
                 time.sleep(.100)
-                # check_error(hvsrc)
+                # check_error(vsrc)
                 dt = time.time() - t0
 
                 est.next()
@@ -228,15 +228,15 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(current, "A")))
                 self.process.emit("progress", *est.progress)
 
-                # read HV Source
-                hvsrc_reading = hvsrc.measure.v()
-                logging.info("HV Source reading: %E V", hvsrc_reading)
-                self.process.emit("reading", "hvsrc", abs(current) if ramp.step < 0 else current, hvsrc_reading)
+                # read V Source
+                vsrc_reading = vsrc.measure.v()
+                logging.info("V Source reading: %E V", vsrc_reading)
+                self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
 
                 self.process.emit("update")
                 self.process.emit("state", dict(
-                    hvsrc_current=current,
-                    hvsrc_voltage=hvsrc_reading
+                    vsrc_current=current,
+                    vsrc_voltage=vsrc_reading
                 ))
 
                 # Environment
@@ -264,7 +264,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 fmt.write_row(dict(
                     timestamp=dt,
                     current=current,
-                    voltage_hvsrc=hvsrc_reading,
+                    voltage_vsrc=vsrc_reading,
                     temperature_box=temperature_box,
                     temperature_chuck=temperature_chuck,
                     humidity_box=humidity_box
@@ -273,40 +273,40 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 # Compliance?
-                compliance_tripped = hvsrc.source.compliance
+                compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
-                    logging.error("HV Source in compliance")
+                    logging.error("V Source in compliance")
                     raise ValueError("compliance tripped")
-                # check_error(hvsrc)
+                # check_error(vsrc)
                 if not self.process.running:
                     break
 
         self.process.emit("progress", 4, 5)
 
-    def finalize(self, hvsrc):
+    def finalize(self, vsrc):
         self.process.emit("state", dict(
-            hvsrc_voltage=None
+            vsrc_voltage=None
         ))
 
         current_step = self.get_parameter('current_step')
-        current = hvsrc.source.leveli
+        current = vsrc.source.leveli
 
         logging.info("ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
         for current in comet.Range(current, 0, current_step):
             logging.info("set current: %E A", current)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
-            hvsrc.source.leveli = current
+            vsrc.source.leveli = current
             time.sleep(.100)
-            # check_error(hvsrc)
+            # check_error(vsrc)
             self.process.emit("state", dict(
-                hvsrc_current=current,
+                vsrc_current=current,
             ))
 
-        hvsrc.source.output = 'OFF'
-        check_error(hvsrc)
+        vsrc.source.output = 'OFF'
+        check_error(vsrc)
 
         self.process.emit("state", dict(
-            hvsrc_output=hvsrc.source.output,
+            vsrc_output=vsrc.source.output,
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
@@ -315,10 +315,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("hvsrc") as hvsrc_res:
-            hvsrc = K2657A(hvsrc_res)
+        with self.resources.get("vsrc") as vsrc_res:
+            vsrc = K2657A(vsrc_res)
             try:
-                self.initialize(hvsrc)
-                self.measure(hvsrc)
+                self.initialize(vsrc)
+                self.measure(vsrc)
             finally:
-                self.finalize(hvsrc)
+                self.finalize(vsrc)

@@ -5,13 +5,13 @@ import comet
 from ..utils import format_metric
 from ..metric import Metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
+from .panel import HVSourceMixin
 from .panel import ElectrometerMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["IVRampElmPanel"]
 
-class IVRampElmPanel(MatrixPanel, VSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
     """Panel for IV ramp with electrometer measurements."""
 
     type = "iv_ramp_elm"
@@ -27,7 +27,7 @@ class IVRampElmPanel(MatrixPanel, VSourceMixin, ElectrometerMixin, EnvironmentMi
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="red")
+        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
@@ -36,19 +36,19 @@ class IVRampElmPanel(MatrixPanel, VSourceMixin, ElectrometerMixin, EnvironmentMi
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
 
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
 
         # Instruments status
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
-                title="V Source Ramp",
+                title="HV Source Ramp",
                 layout=comet.Column(
                     comet.Label(text="Start"),
                     self.voltage_start,
@@ -62,9 +62,9 @@ class IVRampElmPanel(MatrixPanel, VSourceMixin, ElectrometerMixin, EnvironmentMi
                 )
             ),
             comet.GroupBox(
-                title="V Source Compliance",
+                title="HV Source Compliance",
                 layout=comet.Column(
-                    self.vsrc_current_compliance,
+                    self.hvsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

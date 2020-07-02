@@ -16,8 +16,8 @@ from .matrix import MatrixMeasurement
 
 __all__ = ["IVRampElmMeasurement"]
 
-def check_error(vsrc):
-    error = vsrc.system.error
+def check_error(hvsrc):
+    error = hvsrc.system.error
     if error[0]:
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
@@ -42,12 +42,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.register_parameter('voltage_stop', unit='V', required=True)
         self.register_parameter('voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', 1.0, unit='s')
-        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('vsrc_route_termination', 'rear', values=('front', 'rear'))
-        self.register_parameter('vsrc_filter_enable', False, type=bool)
-        self.register_parameter('vsrc_filter_count', 10, type=int)
-        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('hvsrc_filter_enable', False, type=bool)
+        self.register_parameter('hvsrc_filter_count', 10, type=int)
+        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
         self.register_parameter('elm_filter_enable', False, type=bool)
         self.register_parameter('elm_filter_count', 10, type=int)
         self.register_parameter('elm_filter_type', 'repeat')
@@ -58,18 +58,18 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
         self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
 
-    def initialize(self, vsrc, elm):
+    def initialize(self, hvsrc, elm):
         self.process.emit("progress", 0, 5)
 
         voltage_start = self.get_parameter('voltage_start')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
-        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
-        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
-        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
-        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
         elm_filter_enable = self.get_parameter('elm_filter_enable')
         elm_filter_count = self.get_parameter('elm_filter_count')
         elm_filter_type = self.get_parameter('elm_filter_type')
@@ -83,115 +83,115 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 5)
 
         self.process.emit("state", dict(
-            vsrc_voltage=vsrc.source.voltage.level,
-            vsrc_current=None,
-            vsrc_output=vsrc.output,
+            hvsrc_voltage=hvsrc.source.voltage.level,
+            hvsrc_current=None,
+            hvsrc_output=hvsrc.output,
             elm_current=None,
         ))
 
         # Beeper off
-        vsrc.reset()
-        vsrc.clear()
-        vsrc.system.beeper.status = False
-        check_error(vsrc)
+        hvsrc.reset()
+        hvsrc.clear()
+        hvsrc.system.beeper.status = False
+        check_error(hvsrc)
 
         self.process.emit("state", dict(
-            vsrc_voltage=vsrc.source.voltage.level,
-            vsrc_current=None,
-            vsrc_output=vsrc.output,
+            hvsrc_voltage=hvsrc.source.voltage.level,
+            hvsrc_current=None,
+            hvsrc_output=hvsrc.output,
             elm_current=None
         ))
 
         # Select rear terminal
-        logging.info("set route termination: '%s'", vsrc_route_termination)
-        if vsrc_route_termination == "front":
-            vsrc.resource.write(":ROUT:TERM FRONT")
-        elif vsrc_route_termination == "rear":
-            vsrc.resource.write(":ROUT:TERM REAR")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
+        logging.info("set route termination: '%s'", hvsrc_route_termination)
+        if hvsrc_route_termination == "front":
+            hvsrc.resource.write(":ROUT:TERM FRONT")
+        elif hvsrc_route_termination == "rear":
+            hvsrc.resource.write(":ROUT:TERM REAR")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
 
         # set sense mode
-        logging.info("set sense mode: '%s'", vsrc_sense_mode)
-        if vsrc_sense_mode == "remote":
-            vsrc.resource.write(":SYST:RSEN ON")
-        elif vsrc_sense_mode == "local":
-            vsrc.resource.write(":SYST:RSEN OFF")
+        logging.info("set sense mode: '%s'", hvsrc_sense_mode)
+        if hvsrc_sense_mode == "remote":
+            hvsrc.resource.write(":SYST:RSEN ON")
+        elif hvsrc_sense_mode == "local":
+            hvsrc.resource.write(":SYST:RSEN OFF")
         else:
-            raise ValueError(f"invalid sense mode: {vsrc_sense_mode}")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
+            raise ValueError(f"invalid sense mode: {hvsrc_sense_mode}")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
 
         # Compliance
-        logging.info("set compliance: %E A", vsrc_current_compliance)
-        vsrc.sense.current.protection.level = vsrc_current_compliance
-        check_error(vsrc)
+        logging.info("set compliance: %E A", hvsrc_current_compliance)
+        hvsrc.sense.current.protection.level = hvsrc_current_compliance
+        check_error(hvsrc)
 
         # Range
         current_range = 1.05E-6
-        vsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
-        vsrc.resource.write(":SENS:VOLT:RANG:AUTO ON")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
-        #vsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #vsrc.resource.query("*OPC?")
-        #check_error(vsrc)
+        hvsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
+        hvsrc.resource.write(":SENS:VOLT:RANG:AUTO ON")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
+        #hvsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
+        #hvsrc.resource.query("*OPC?")
+        #check_error(hvsrc)
 
         # Filter
-        vsrc.resource.write(f":SENS:AVER:COUN {vsrc_filter_count:d}")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
+        hvsrc.resource.write(f":SENS:AVER:COUN {hvsrc_filter_count:d}")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
 
-        if vsrc_filter_type == "repeat":
-            vsrc.resource.write(":SENS:AVER:TCON REP")
-        elif vsrc_filter_type == "repeat":
-            vsrc.resource.write(":SENS:AVER:TCON MOV")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
+        if hvsrc_filter_type == "repeat":
+            hvsrc.resource.write(":SENS:AVER:TCON REP")
+        elif hvsrc_filter_type == "repeat":
+            hvsrc.resource.write(":SENS:AVER:TCON MOV")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
 
-        if vsrc_filter_enable:
-            vsrc.resource.write(":SENS:AVER:STATE ON")
+        if hvsrc_filter_enable:
+            hvsrc.resource.write(":SENS:AVER:STATE ON")
         else:
-            vsrc.resource.write(":SENS:AVER:STATE OFF")
-        vsrc.resource.query("*OPC?")
-        check_error(vsrc)
+            hvsrc.resource.write(":SENS:AVER:STATE OFF")
+        hvsrc.resource.query("*OPC?")
+        check_error(hvsrc)
 
         self.process.emit("progress", 1, 5)
 
         # If output disabled
         voltage = 0
-        vsrc.source.voltage.level = voltage
-        check_error(vsrc)
-        vsrc.output = True
-        check_error(vsrc)
+        hvsrc.source.voltage.level = voltage
+        check_error(hvsrc)
+        hvsrc.output = True
+        check_error(hvsrc)
         time.sleep(.100)
 
         self.process.emit("state", dict(
-            vsrc_output=vsrc.output
+            hvsrc_output=hvsrc.output
         ))
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            voltage = vsrc.source.voltage.level
+            voltage = hvsrc.source.voltage.level
 
             logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
                 logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                vsrc.source.voltage.level = voltage
-                # check_error(vsrc)
+                hvsrc.source.voltage.level = voltage
+                # check_error(hvsrc)
                 time.sleep(.100)
                 time.sleep(waiting_time)
 
                 self.process.emit("state", dict(
-                    vsrc_voltage=voltage,
+                    hvsrc_voltage=voltage,
                 ))
                 # Compliance?
-                compliance_tripped = vsrc.sense.current.protection.tripped
+                compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
-                    logging.error("V Source in compliance")
+                    logging.error("HV Source in compliance")
                     raise ValueError("compliance tripped")
                 if not self.process.running:
                     break
@@ -245,7 +245,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 3, 5)
 
-    def measure(self, vsrc, elm):
+    def measure(self, hvsrc, elm):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -256,12 +256,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
-        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
-        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
-        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
-        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
         elm_filter_enable = self.get_parameter('elm_filter_enable')
         elm_filter_count = self.get_parameter('elm_filter_count')
         elm_filter_type = self.get_parameter('elm_filter_type')
@@ -282,7 +282,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
             fmt.add_column("voltage", "E")
-            fmt.add_column("current_vsrc", "E")
+            fmt.add_column("current_hvsrc", "E")
             fmt.add_column("current_elm", "E")
             fmt.add_column("temperature_box", "E")
             fmt.add_column("temperature_chuck", "E")
@@ -299,12 +299,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
-            fmt.write_meta("vsrc_sense_mode", vsrc_sense_mode)
-            fmt.write_meta("vsrc_route_termination", vsrc_route_termination)
-            fmt.write_meta("vsrc_filter_enable", format(vsrc_filter_enable).lower())
-            fmt.write_meta("vsrc_filter_count", format(vsrc_filter_count))
-            fmt.write_meta("vsrc_filter_type", vsrc_filter_type)
+            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+            fmt.write_meta("hvsrc_sense_mode", hvsrc_sense_mode)
+            fmt.write_meta("hvsrc_route_termination", hvsrc_route_termination)
+            fmt.write_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
+            fmt.write_meta("hvsrc_filter_count", format(hvsrc_filter_count))
+            fmt.write_meta("hvsrc_filter_type", hvsrc_filter_type)
             fmt.write_meta("elm_filter_enable", format(elm_filter_enable).lower())
             fmt.write_meta("elm_filter_count", format(elm_filter_count))
             fmt.write_meta("elm_filter_type", elm_filter_type)
@@ -320,11 +320,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            voltage = vsrc.source.voltage.level
+            voltage = hvsrc.source.voltage.level
 
-            # V Source reading format: CURR
-            vsrc.resource.write(":FORM:ELEM CURR")
-            vsrc.resource.query("*OPC?")
+            # HV Source reading format: CURR
+            hvsrc.resource.write(":FORM:ELEM CURR")
+            hvsrc.resource.query("*OPC?")
 
             # Electrometer reading format: READ
             elm.resource.write(":FORM:ELEM READ")
@@ -336,19 +336,19 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
             t0 = time.time()
 
-            benchmark_step = Benchmark("single_step")
-            benchmark_elm = Benchmark("read_ELM")
-            benchmark_vsrc = Benchmark("read_VSrc")
-            benchmark_environ = Benchmark("read_environment")
+            benchmark_step = Benchmark("Single_Step")
+            benchmark_elm = Benchmark("Read_ELM")
+            benchmark_hvsrc = Benchmark("Read_HV_Source")
+            benchmark_environ = Benchmark("Read_Environment")
 
             logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
             for voltage in ramp:
                 with benchmark_step:
                     logging.info("set voltage: %E V", voltage)
-                    vsrc.clear()
-                    vsrc.source.voltage.level = voltage
+                    hvsrc.clear()
+                    hvsrc.source.voltage.level = voltage
                     time.sleep(.100)
-                    # check_error(vsrc)
+                    # check_error(hvsrc)
                     dt = time.time() - t0
 
                     est.next()
@@ -357,11 +357,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
                     self.process.emit("progress", *est.progress)
 
-                    # read V Source
-                    with benchmark_vsrc:
-                        vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                    logging.info("V Source reading: %E", vsrc_reading)
-                    self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
+                    # read HV Source
+                    with benchmark_hvsrc:
+                        hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
+                    logging.info("HV Source reading: %E", hvsrc_reading)
+                    self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
                     # read ELM
                     with benchmark_elm:
@@ -371,8 +371,8 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
                     self.process.emit("update")
                     self.process.emit("state", dict(
-                        vsrc_voltage=voltage,
-                        vsrc_current=vsrc_reading,
+                        hvsrc_voltage=voltage,
+                        hvsrc_current=hvsrc_reading,
                         elm_current=elm_reading
                     ))
 
@@ -402,7 +402,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     fmt.write_row(dict(
                         timestamp=dt,
                         voltage=voltage,
-                        current_vsrc=vsrc_reading,
+                        current_hvsrc=hvsrc_reading,
                         current_elm=elm_reading,
                         temperature_box=temperature_box,
                         temperature_chuck=temperature_chuck,
@@ -412,49 +412,49 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     time.sleep(waiting_time)
 
                     # Compliance?
-                    compliance_tripped = vsrc.sense.current.protection.tripped
+                    compliance_tripped = hvsrc.sense.current.protection.tripped
                     if compliance_tripped:
-                        logging.error("V Source in compliance")
+                        logging.error("HV Source in compliance")
                         raise ValueError("compliance tripped")
-                    # check_error(vsrc)
+                    # check_error(hvsrc)
                     if not self.process.running:
                         break
 
             logging.info(benchmark_step)
             logging.info(benchmark_elm)
-            logging.info(benchmark_vsrc)
+            logging.info(benchmark_hvsrc)
             logging.info(benchmark_environ)
 
         self.process.emit("progress", 4, 5)
 
-    def finalize(self, vsrc, elm):
+    def finalize(self, hvsrc, elm):
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 
         self.process.emit("state", dict(
-            vsrc_current=None,
+            hvsrc_current=None,
             elm_current=None
         ))
 
         voltage_step = self.get_parameter('voltage_step')
-        voltage = vsrc.source.voltage.level
+        voltage = hvsrc.source.voltage.level
 
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            vsrc.source.voltage.level = voltage
+            hvsrc.source.voltage.level = voltage
             time.sleep(.100)
-            # check_error(vsrc)
+            # check_error(hvsrc)
             self.process.emit("state", dict(
-                vsrc_voltage=voltage,
+                hvsrc_voltage=voltage,
             ))
 
-        vsrc.output = False
-        check_error(vsrc)
+        hvsrc.output = False
+        check_error(hvsrc)
 
         self.process.emit("state", dict(
-            vsrc_output=vsrc.output,
+            hvsrc_output=hvsrc.output,
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None
@@ -463,12 +463,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
         self.process.emit("progress", 5, 5)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("vsrc") as vsrc_res:
+        with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("elm") as elm_res:
-                vsrc = K2410(vsrc_res)
+                hvsrc = K2410(hvsrc_res)
                 elm = K6517B(elm_res)
                 try:
-                    self.initialize(vsrc, elm)
-                    self.measure(vsrc, elm)
+                    self.initialize(hvsrc, elm)
+                    self.measure(hvsrc, elm)
                 finally:
-                    self.finalize(vsrc, elm)
+                    self.finalize(hvsrc, elm)

@@ -45,12 +45,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
-        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('vsrc_route_termination', 'rear', values=('front', 'rear'))
-        self.register_parameter('vsrc_filter_enable', False, type=bool)
-        self.register_parameter('vsrc_filter_count', 10, type=int)
-        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('hvsrc_filter_enable', False, type=bool)
+        self.register_parameter('hvsrc_filter_count', 10, type=int)
+        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
         self.register_parameter('lcr_soft_filter', True, type=bool)
         self.register_parameter('lcr_amplitude', unit='V', required=True)
         self.register_parameter('lcr_frequency', unit='Hz', required=True)
@@ -84,88 +84,88 @@ class CVRampMeasurement(MatrixMeasurement):
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
 
-    def quick_ramp_zero(self, vsrc):
+    def quick_ramp_zero(self, hvsrc):
         """Ramp to zero voltage without measuring current."""
         self.process.emit("message", "Ramp to zero...")
         self.process.emit("progress", 0, 1)
 
         bias_voltage_step = self.get_parameter('bias_voltage_step')
 
-        vsrc_output_state = self.vsrc_get_output_state(vsrc)
+        hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
-            vsrc_output=vsrc_output_state
+            hvsrc_output=hvsrc_output_state
         ))
-        if vsrc_output_state:
-            vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
-            ramp = comet.Range(vsrc_voltage_level, 0, bias_voltage_step)
+        if hvsrc_output_state:
+            hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
+            ramp = comet.Range(hvsrc_voltage_level, 0, bias_voltage_step)
             for step, voltage in enumerate(ramp):
                 self.process.emit("progress", step + 1, ramp.count)
-                self.vsrc_set_voltage_level(vsrc, voltage)
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
                 self.process.emit("state", dict(
-                    vsrc_voltage=voltage
+                    hvsrc_voltage=voltage
                 ))
-        vsrc_output_state = self.vsrc_get_output_state(vsrc)
+        hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
-            vsrc_output=vsrc_output_state
+            hvsrc_output=hvsrc_output_state
         ))
         self.process.emit("message", "")
         self.process.emit("progress", 1, 1)
 
-    def vsrc_reset(self, vsrc):
-        safe_write(vsrc, "*RST")
-        safe_write(vsrc, "*CLS")
-        safe_write(vsrc, ":SYST:BEEP:STAT OFF")
+    def hvsrc_reset(self, hvsrc):
+        safe_write(hvsrc, "*RST")
+        safe_write(hvsrc, "*CLS")
+        safe_write(hvsrc, ":SYST:BEEP:STAT OFF")
 
-    def vsrc_get_voltage_level(self, vsrc):
-        return float(vsrc.resource.query(":SOUR:VOLT:LEV?"))
+    def hvsrc_get_voltage_level(self, hvsrc):
+        return float(hvsrc.resource.query(":SOUR:VOLT:LEV?"))
 
-    def vsrc_set_voltage_level(self, vsrc, voltage):
-        logging.info("set V Source voltage level: %s", format_metric(voltage, "V"))
-        safe_write(vsrc, f":SOUR:VOLT:LEV {voltage:E}")
+    def hvsrc_set_voltage_level(self, hvsrc, voltage):
+        logging.info("set HV Source voltage level: %s", format_metric(voltage, "V"))
+        safe_write(hvsrc, f":SOUR:VOLT:LEV {voltage:E}")
 
-    def vsrc_set_route_termination(self, vsrc, route_termination):
-        logging.info("set V Source route termination: '%s'", route_termination)
+    def hvsrc_set_route_termination(self, hvsrc, route_termination):
+        logging.info("set HV Source route termination: '%s'", route_termination)
         value = {"front": "FRON", "rear": "REAR"}[route_termination]
-        safe_write(vsrc, f":ROUT:TERM {value:s}")
+        safe_write(hvsrc, f":ROUT:TERM {value:s}")
 
-    def vsrc_set_sense_mode(self, vsrc, sense_mode):
-        logging.info("set V Source sense mode: '%s'", sense_mode)
+    def hvsrc_set_sense_mode(self, hvsrc, sense_mode):
+        logging.info("set HV Source sense mode: '%s'", sense_mode)
         value = {"remote": "ON", "local": "OFF"}[sense_mode]
-        safe_write(vsrc, f":SYST:RSEN {value:s}")
+        safe_write(hvsrc, f":SYST:RSEN {value:s}")
 
-    def vsrc_set_compliance(self, vsrc, compliance):
-        logging.info("set V Source compliance: %s", format_metric(compliance, "A"))
-        safe_write(vsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
+    def hvsrc_set_compliance(self, hvsrc, compliance):
+        logging.info("set HV Source compliance: %s", format_metric(compliance, "A"))
+        safe_write(hvsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
 
-    def vsrc_compliance_tripped(self, vsrc):
-        return bool(int(vsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
+    def hvsrc_compliance_tripped(self, hvsrc):
+        return bool(int(hvsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
 
-    def vsrc_set_auto_range(self, vsrc, enabled):
-        logging.info("set V Source auto range (current): %s", enabled)
+    def hvsrc_set_auto_range(self, hvsrc, enabled):
+        logging.info("set HV Source auto range (current): %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(vsrc, f"SENS:CURR:RANG:AUTO {value:s}")
+        safe_write(hvsrc, f"SENS:CURR:RANG:AUTO {value:s}")
 
-    def vsrc_set_filter_enable(self, vsrc, enabled):
-        logging.info("set V Source filter enable: %s", enabled)
+    def hvsrc_set_filter_enable(self, hvsrc, enabled):
+        logging.info("set HV Source filter enable: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(vsrc, f":SENS:AVER:STATE {value:s}")
+        safe_write(hvsrc, f":SENS:AVER:STATE {value:s}")
 
-    def vsrc_set_filter_count(self, vsrc, count):
-        logging.info("set V Source filter count: %s", count)
-        safe_write(vsrc, f":SENS:AVER:COUN {count:d}")
+    def hvsrc_set_filter_count(self, hvsrc, count):
+        logging.info("set HV Source filter count: %s", count)
+        safe_write(hvsrc, f":SENS:AVER:COUN {count:d}")
 
-    def vsrc_set_filter_type(self, vsrc, type):
-        logging.info("set V Source filter type: %s", type)
+    def hvsrc_set_filter_type(self, hvsrc, type):
+        logging.info("set HV Source filter type: %s", type)
         value = {"repeat": "REP", "moving": "MOV"}[type]
-        safe_write(vsrc, f":SENS:AVER:TCON {value:s}")
+        safe_write(hvsrc, f":SENS:AVER:TCON {value:s}")
 
-    def vsrc_get_output_state(self, vsrc):
-        return bool(int(vsrc.resource.query(":OUTP:STAT?")))
+    def hvsrc_get_output_state(self, hvsrc):
+        return bool(int(hvsrc.resource.query(":OUTP:STAT?")))
 
-    def vsrc_set_output_state(self, vsrc, enabled):
-        logging.info("set V Source output state: %s", enabled)
+    def hvsrc_set_output_state(self, hvsrc, enabled):
+        logging.info("set HV Source output state: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(vsrc, f":OUTP:STAT {value:s}")
+        safe_write(hvsrc, f":OUTP:STAT {value:s}")
 
     def lcr_reset(self, lcr):
         safe_write(lcr, "*RST")
@@ -189,52 +189,52 @@ class CVRampMeasurement(MatrixMeasurement):
         safe_write(lcr, ":INIT:CONT OFF")
         safe_write(lcr, ":TRIG:SOUR BUS")
 
-    def initialize(self, vsrc, lcr):
+    def initialize(self, hvsrc, lcr):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 10)
 
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
-        vsrc_route_termination = self.get_parameter('vsrc_route_termination')
-        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
-        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
-        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
         self.process.emit("progress", 1, 10)
 
-        # Initialize V Source
+        # Initialize HV Source
 
-        # Bring down V Source voltage if output enabeled
+        # Bring down HV Source voltage if output enabeled
         # Prevents a voltage jump for at device reset.
-        self.quick_ramp_zero(vsrc)
-        self.vsrc_set_output_state(vsrc, False)
+        self.quick_ramp_zero(hvsrc)
+        self.hvsrc_set_output_state(hvsrc, False)
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 2, 10)
 
-        self.vsrc_reset(vsrc)
+        self.hvsrc_reset(hvsrc)
         self.process.emit("progress", 3, 10)
 
-        self.vsrc_set_route_termination(vsrc, vsrc_route_termination)
+        self.hvsrc_set_route_termination(hvsrc, hvsrc_route_termination)
         self.process.emit("progress", 4, 10)
 
-        self.vsrc_set_sense_mode(vsrc,vsrc_sense_mode)
+        self.hvsrc_set_sense_mode(hvsrc,hvsrc_sense_mode)
         self.process.emit("progress", 5, 10)
 
-        self.vsrc_set_compliance(vsrc, vsrc_current_compliance)
+        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
         self.process.emit("progress", 6, 10)
 
-        self.vsrc_set_auto_range(vsrc, True)
+        self.hvsrc_set_auto_range(hvsrc, True)
         self.process.emit("progress", 7, 10)
 
-        self.vsrc_set_filter_type(vsrc, vsrc_filter_type)
-        self.vsrc_set_filter_count(vsrc, vsrc_filter_count)
-        self.vsrc_set_filter_enable(vsrc, vsrc_filter_enable)
+        self.hvsrc_set_filter_type(hvsrc, hvsrc_filter_type)
+        self.hvsrc_set_filter_count(hvsrc, hvsrc_filter_count)
+        self.hvsrc_set_filter_enable(hvsrc, hvsrc_filter_enable)
         self.process.emit("progress", 8, 10)
 
-        self.vsrc_set_output_state(vsrc, True)
-        vsrc_output_state = self.vsrc_get_output_state(vsrc)
+        self.hvsrc_set_output_state(hvsrc, True)
+        hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
-            vsrc_output=vsrc_output_state,
+            hvsrc_output=hvsrc_output_state,
         ))
 
         # Initialize LCR
@@ -245,7 +245,7 @@ class CVRampMeasurement(MatrixMeasurement):
         self.lcr_setup(lcr)
         self.process.emit("progress", 10, 10)
 
-    def measure(self, vsrc, lcr):
+    def measure(self, hvsrc, lcr):
         sample_name = self.sample_name
         sample_type = self.sample_type
         output_dir = self.output_dir
@@ -256,29 +256,29 @@ class CVRampMeasurement(MatrixMeasurement):
         bias_voltage_step = self.get_parameter('bias_voltage_step')
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
         lcr_soft_filter = self.get_parameter('lcr_soft_filter')
         lcr_frequency = self.get_parameter('lcr_frequency')
         lcr_amplitude = self.get_parameter('lcr_amplitude')
 
         # Ramp to start voltage
 
-        vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+        hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", vsrc_voltage_level, bias_voltage_start, bias_voltage_step)
-        for voltage in comet.Range(vsrc_voltage_level, bias_voltage_start, bias_voltage_step):
+        logging.info("ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step)
+        for voltage in comet.Range(hvsrc_voltage_level, bias_voltage_start, bias_voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
-            self.vsrc_set_voltage_level(vsrc, voltage)
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             time.sleep(.100)
             time.sleep(waiting_time)
             self.process.emit("state", dict(
-                vsrc_voltage=voltage,
+                hvsrc_voltage=voltage,
             ))
             # Compliance?
-            compliance_tripped = self.vsrc_compliance_tripped(vsrc)
+            compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
             if compliance_tripped:
-                logging.error("V Source in compliance")
+                logging.error("HV Source in compliance")
                 raise ValueError("compliance tripped!")
 
             if not self.process.running:
@@ -291,8 +291,8 @@ class CVRampMeasurement(MatrixMeasurement):
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f")
-            fmt.add_column("voltage_vsrc", "E")
-            fmt.add_column("current_vsrc", "E")
+            fmt.add_column("voltage_hvsrc", "E")
+            fmt.add_column("current_hvsrc", "E")
             fmt.add_column("capacitance", "E")
             fmt.add_column("capacitance2", "E")
             fmt.add_column("resistance", "E")
@@ -311,7 +311,7 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
             fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
             fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
             fmt.write_meta("ac_frequency", f"{lcr_frequency:G} Hz")
             fmt.write_meta("ac_amplitude", f"{lcr_amplitude:G} V")
             fmt.flush()
@@ -320,32 +320,32 @@ class CVRampMeasurement(MatrixMeasurement):
             fmt.write_header()
             fmt.flush()
 
-            vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+            hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-            ramp = comet.Range(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
+            ramp = comet.Range(hvsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
             est = Estimate(ramp.count)
             self.process.emit("progress", *est.progress)
 
             t0 = time.time()
 
-            safe_write(vsrc, "*CLS")
-            # V Source reading format: CURR
-            safe_write(vsrc, ":FORM:ELEM CURR")
+            safe_write(hvsrc, "*CLS")
+            # HV Source reading format: CURR
+            safe_write(hvsrc, ":FORM:ELEM CURR")
 
-            benchmark_step = Benchmark("single_step")
-            benchmark_lcr = Benchmark("read_LCR")
-            benchmark_vsrc = Benchmark("read_VSrc")
-            benchmark_environ = Benchmark("read_environment")
+            benchmark_step = Benchmark("Single_Step")
+            benchmark_lcr = Benchmark("Read_LCR")
+            benchmark_hvsrc = Benchmark("Read_HV_Source")
+            benchmark_environ = Benchmark("Read_Environment")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
+            logging.info("ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
             for voltage in ramp:
                 with benchmark_step:
-                    self.vsrc_set_voltage_level(vsrc, voltage)
+                    self.hvsrc_set_voltage_level(hvsrc, voltage)
 
                     # Delay
                     time.sleep(waiting_time)
 
-                    # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+                    # hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
                     dt = time.time() - t0
                     est.next()
                     elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
@@ -364,18 +364,18 @@ class CVRampMeasurement(MatrixMeasurement):
                         except ZeroDivisionError:
                             lcr_prim2 = 0.0
 
-                    # read V Source
-                    with benchmark_vsrc:
-                        vsrc_reading = float(vsrc.resource.query(":READ?").split(',')[0])
-                    logging.info("V Source reading: %E", vsrc_reading)
+                    # read HV Source
+                    with benchmark_hvsrc:
+                        hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
+                    logging.info("HV Source reading: %E", hvsrc_reading)
 
                     self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                     self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
                     self.process.emit("update", )
                     self.process.emit("state", dict(
-                        vsrc_voltage=voltage,
-                        vsrc_current=vsrc_reading
+                        hvsrc_voltage=voltage,
+                        hvsrc_current=hvsrc_reading
                     ))
 
                     # Environment
@@ -403,8 +403,8 @@ class CVRampMeasurement(MatrixMeasurement):
                     # Write reading
                     fmt.write_row(dict(
                         timestamp=dt,
-                        voltage_vsrc=voltage,
-                        current_vsrc=vsrc_reading,
+                        voltage_hvsrc=voltage,
+                        current_hvsrc=hvsrc_reading,
                         capacitance=lcr_prim,
                         capacitance2=lcr_prim2,
                         resistance=lcr_sec,
@@ -415,9 +415,9 @@ class CVRampMeasurement(MatrixMeasurement):
                     fmt.flush()
 
                     # Compliance?
-                    compliance_tripped = self.vsrc_compliance_tripped(vsrc)
+                    compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
                     if compliance_tripped:
-                        logging.error("V Source in compliance")
+                        logging.error("HV Source in compliance")
                         raise ValueError("compliance tripped!")
 
                     if not self.process.running:
@@ -425,20 +425,20 @@ class CVRampMeasurement(MatrixMeasurement):
 
             logging.info(benchmark_step)
             logging.info(benchmark_lcr)
-            logging.info(benchmark_vsrc)
+            logging.info(benchmark_hvsrc)
             logging.info(benchmark_environ)
 
-    def finalize(self, vsrc, lcr):
+    def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 1, 2)
         self.process.emit("state", dict(
-            vsrc_current=None,
+            hvsrc_current=None,
         ))
 
-        self.quick_ramp_zero(vsrc)
-        self.vsrc_set_output_state(vsrc, False)
-        vsrc_output_state = self.vsrc_get_output_state(vsrc)
+        self.quick_ramp_zero(hvsrc)
+        self.hvsrc_set_output_state(hvsrc, False)
+        hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
-            vsrc_output=vsrc_output_state,
+            hvsrc_output=hvsrc_output_state,
         ))
 
         self.process.emit("state", dict(
@@ -450,12 +450,12 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("progress", 2, 2)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("vsrc") as vsrc_res:
+        with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                vsrc = K2410(vsrc_res)
+                hvsrc = K2410(hvsrc_res)
                 lcr = E4980A(lcr_res)
                 try:
-                    self.initialize(vsrc, lcr)
-                    self.measure(vsrc, lcr)
+                    self.initialize(hvsrc, lcr)
+                    self.measure(hvsrc, lcr)
                 finally:
-                    self.finalize(vsrc, lcr)
+                    self.finalize(hvsrc, lcr)

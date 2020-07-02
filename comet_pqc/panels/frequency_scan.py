@@ -4,13 +4,13 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
+from .panel import HVSourceMixin
 from .panel import LCRMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["FrequencyScanPanel"]
 
-class FrequencyScanPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
+class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
     """Frequency scan with log10 steps."""
 
     type = "frequency_scan"
@@ -31,7 +31,7 @@ class FrequencyScanPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
 
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
 
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.lcr_frequency_start = comet.Number(minimum=0, decimals=3, suffix="Hz")
         self.lcr_frequency_stop = comet.Number(minimum=0, decimals=3, suffix="MHz")
@@ -39,7 +39,7 @@ class FrequencyScanPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
 
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
         self.bind("lcr_frequency_start", self.lcr_frequency_start, 0, unit="Hz")
         self.bind("lcr_frequency_stop", self.lcr_frequency_stop, 0, unit="MHz")
         self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
@@ -47,12 +47,12 @@ class FrequencyScanPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
-                title="V Source",
+                title="HV Source",
                 layout=comet.Column(
                     comet.Label(text="Bias Voltage"),
                     self.bias_voltage,
                     comet.Label(text="Current Compliance"),
-                    self.vsrc_current_compliance,
+                    self.hvsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

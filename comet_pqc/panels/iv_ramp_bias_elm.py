@@ -3,14 +3,14 @@ import comet
 from ..utils import format_metric
 from ..metric import Metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
 from .panel import HVSourceMixin
+from .panel import VSourceMixin
 from .panel import ElectrometerMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["IVRampBiasElmPanel"]
 
-class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
 
     type = "iv_ramp_bias_elm"
@@ -37,8 +37,8 @@ class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerM
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
         self.bias_mode = comet.ComboBox(items=["constant", "offset"])
 
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
         self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
@@ -46,12 +46,12 @@ class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerM
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
-                title="V Source Ramp",
+                title="HV Source Ramp",
                 layout=comet.Column(
                     comet.Label(text="Start"),
                     self.voltage_start,
@@ -65,7 +65,7 @@ class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerM
                 )
             ),
             comet.GroupBox(
-                title="HV Source Bias",
+                title="V Source Bias",
                 layout=comet.Column(
                     comet.Label(text="Bias Voltage"),
                     self.bias_voltage,
@@ -77,10 +77,10 @@ class IVRampBiasElmPanel(MatrixPanel, VSourceMixin, HVSourceMixin, ElectrometerM
             comet.GroupBox(
                 title="Compliance",
                 layout=comet.Column(
-                    comet.Label(text="V Source Compliance"),
-                    self.vsrc_current_compliance,
                     comet.Label(text="HV Source Compliance"),
                     self.hvsrc_current_compliance,
+                    comet.Label(text="V Source Compliance"),
+                    self.vsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

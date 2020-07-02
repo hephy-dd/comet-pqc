@@ -2,13 +2,13 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
 from .panel import HVSourceMixin
+from .panel import VSourceMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["IVRampBiasPanel"]
 
-class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin):
+class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
 
     type = "iv_ramp_bias"
@@ -24,7 +24,7 @@ class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="blue")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = comet.Number(decimals=3, suffix="V")
@@ -34,8 +34,8 @@ class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin
         self.bias_voltage = comet.Number(decimals=3, suffix="V")
         self.bias_mode = comet.ComboBox(items=["constant", "offset"])
 
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
         self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
@@ -43,12 +43,12 @@ class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
-                title="V Source Ramp",
+                title="HV Source Ramp",
                 layout=comet.Column(
                     comet.Label(text="Start"),
                     self.voltage_start,
@@ -62,7 +62,7 @@ class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin
                 )
             ),
             comet.GroupBox(
-                title="HV Source Bias",
+                title="V Source Bias",
                 layout=comet.Column(
                     comet.Label(text="Bias Voltage"),
                     self.bias_voltage,
@@ -74,10 +74,10 @@ class IVRampBiasPanel(MatrixPanel, VSourceMixin, HVSourceMixin, EnvironmentMixin
             comet.GroupBox(
                 title="Compliance",
                 layout=comet.Column(
-                    comet.Label(text="V Source Compliance"),
-                    self.vsrc_current_compliance,
                     comet.Label(text="HV Source Compliance"),
                     self.hvsrc_current_compliance,
+                    comet.Label(text="V Source Compliance"),
+                    self.vsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

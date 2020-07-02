@@ -26,21 +26,21 @@ class StatusProcess(comet.Process, ResourceMixin):
         except (ResourceError, OSError):
             pass
 
-    def read_vsrc(self):
-        self.set("vsrc_model", "")
-        try:
-            with self.resources.get("vsrc") as vsrc_res:
-                model = vsrc_res.query("*IDN?")
-                self.set("vsrc_model", model)
-        except (ResourceError, OSError):
-            pass
-
     def read_hvsrc(self):
         self.set("hvsrc_model", "")
         try:
             with self.resources.get("hvsrc") as hvsrc_res:
                 model = hvsrc_res.query("*IDN?")
                 self.set("hvsrc_model", model)
+        except (ResourceError, OSError):
+            pass
+
+    def read_vsrc(self):
+        self.set("vsrc_model", "")
+        try:
+            with self.resources.get("vsrc") as vsrc_res:
+                model = vsrc_res.query("*IDN?")
+                self.set("vsrc_model", model)
         except (ResourceError, OSError):
             pass
 
@@ -90,13 +90,13 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.emit("progress", 0, 7)
         self.read_matrix()
 
-        self.emit("message", "Reading VSource...")
+        self.emit("message", "Reading HVSource...")
         self.emit("progress", 1, 7)
-        self.read_vsrc()
-
-        self.emit("message", "Read HVSource...")
-        self.emit("progress", 2, 7)
         self.read_hvsrc()
+
+        self.emit("message", "Read VSource...")
+        self.emit("progress", 2, 7)
+        self.read_vsrc()
 
         self.emit("message", "Read LCRMeter...")
         self.emit("progress", 3, 7)

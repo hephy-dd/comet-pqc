@@ -19,36 +19,36 @@ class FrequencyScanMeasurement(MatrixMeasurement):
 
     type = "frequency_scan"
 
-    def initialize(self, vsrc, lcr):
+    def initialize(self, hvsrc, lcr):
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 2)
 
         self.process.emit("state", dict(
-            vsrc_voltage=vsrc.source.voltage.level,
-            vsrc_current=None,
-            vsrc_output=vsrc.output
+            hvsrc_voltage=hvsrc.source.voltage.level,
+            hvsrc_current=None,
+            hvsrc_output=hvsrc.output
         ))
 
         self.process.emit("progress", 2, 2)
 
-    def measure(self, vsrc, lcr):
+    def measure(self, hvsrc, lcr):
         self.process.emit("progress", 0, 0)
         self.process.emit("progress", 1, 1)
 
-    def finalize(self, vsrc, lcr):
+    def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 0, 0)
 
-        vsrc.output = False
+        hvsrc.output = False
 
         self.process.emit("progress", 1, 1)
 
     def code(self, *args, **kwargs):
-        with self.resources.get("vsrc") as vsrc_res:
+        with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                vsrc = K2410(vsrc_res)
+                hvsrc = K2410(hvsrc_res)
                 lcr = E4980A(lcr_res)
                 try:
-                    self.initialize(vsrc, lcr)
-                    self.measure(vsrc, lcr)
+                    self.initialize(hvsrc, lcr)
+                    self.measure(hvsrc, lcr)
                 finally:
-                    self.finalize(vsrc, lcr)
+                    self.finalize(hvsrc, lcr)

@@ -15,35 +15,35 @@ from ..driver import K707B
 
 class BaseProcess(comet.Process, ResourceMixin):
 
-    def safe_initialize_vsrc(self, resource):
+    def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
         if int(resource.query(":OUTP:STAT?")):
-            self.emit("message", "Ramping down VSource...")
+            self.emit("message", "Ramping down HVSource...")
             start_voltage = float(resource.query(":SOUR:VOLT:LEV?"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f":SOUR:VOLT:LEV {voltage:E}")
                 resource.query("*OPC?")
-            self.emit("message", "Disable output VSource...")
+            self.emit("message", "Disable output HVSource...")
             resource.write(":OUTP:STAT OFF")
             resource.query("*OPC?")
-        self.emit("message", "Initialized VSource.")
+        self.emit("message", "Initialized HVSource.")
 
-    def safe_initialize_hvsrc(self, resource):
+    def safe_initialize_vsrc(self, resource):
         resource.query("*IDN?")
         if int(float(resource.query("print(smua.source.output)"))):
-            self.emit("message", "Ramping down HVSource...")
+            self.emit("message", "Ramping down VSource...")
             start_voltage = float(resource.query("print(smua.source.levelv)"))
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
                 resource.write(f"smua.source.levelv = {voltage:E}")
                 resource.query("*OPC?")
-            self.emit("message", "Disable output HVSource...")
+            self.emit("message", "Disable output VSource...")
             resource.write("smua.source.output = 0")
             resource.query("*OPC?")
-        self.emit("message", "Initialized HVSource.")
+        self.emit("message", "Initialized VSource.")
 
     def discarge_decoupling(self, device):
         device.identification
@@ -62,16 +62,16 @@ class BaseProcess(comet.Process, ResourceMixin):
 
     def safe_initialize(self):
         try:
-            with self.resources.get("vsrc") as vsrc:
-                self.safe_initialize_vsrc(vsrc)
-        except Exception:
-            logging.error("unable to connect with VSource")
-            raise RuntimeError("Failed to connect with VSource")
-        try:
             with self.resources.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
         except Exception:
-            logging.warning("unable to connect with HVSource")
+            logging.error("unable to connect with HVSource")
+            raise RuntimeError("Failed to connect with HVSource")
+        try:
+            with self.resources.get("vsrc") as vsrc:
+                self.safe_initialize_vsrc(vsrc)
+        except Exception:
+            logging.warning("unable to connect with VSource")
         if self.get("use_environ"):
             with self.resources.get("environ") as environ_resource:
                 environ = EnvironmentBox(environ_resource)
@@ -84,13 +84,13 @@ class BaseProcess(comet.Process, ResourceMixin):
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
-        with self.resources.get("vsrc") as vsrc:
-            self.safe_initialize_vsrc(vsrc)
+        with self.resources.get("hvsrc") as hvsrc:
+            self.safe_initialize_hvsrc(hvsrc)
         try:
-            with self.resources.get("hvsrc") as hvsrc:
-                self.safe_initialize_hvsrc(hvsrc)
+            with self.resources.get("vsrc") as vsrc:
+                self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.warning("unable to connect with HVSource")
+            logging.warning("unable to connect with VSource")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)

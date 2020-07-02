@@ -32,7 +32,7 @@ class SquareLabel(comet.Label):
         self.height = 32
         self.qt.setAlignment(qutie.qt.QtCore.Qt.AlignCenter)
 
-class TableControl(comet.Widget):
+class TableControl(comet.Column):
 
     fine_step_width = 1.0
     wide_step_width = 10.0
@@ -102,6 +102,12 @@ class TableControl(comet.Widget):
         self.rm_x_label = comet.Label()
         self.rm_y_label = comet.Label()
         self.rm_z_label = comet.Label()
+        self.positions_tree = comet.Tree()
+        self.positions_tree.header = "Name", "X", "Y", "Z"
+        self.positions_tree.indentation = 0
+        self.positions_tree.append(["LOAD", 1., 2., 3.])
+        self.positions_tree.append(["PROBE CARD", 3., 4., 2.5])
+        self.positions_tree.fit()
         # Layout
         self.controls_tab = comet.Tab(
             title="Controls",
@@ -138,36 +144,26 @@ class TableControl(comet.Widget):
                 stretch=(1, 0, 1)
             )
         )
-        self.command_tab = comet.Tab(
-            title="Commands",
+        self.positions_tab = comet.Tab(
+            title="Positions",
             layout=comet.Row(
+                self.positions_tree,
                 comet.Column(
-                    comet.GroupBox(
-                        title="Load Chuck",
-                        layout=comet.Row(
-                            comet.Label("Move chuck to loading/unloading position."),
-                            comet.Button("Move", width=80),
-                        )
-
-                    ),
-                    comet.GroupBox(
-                        title="Move to Probe Card",
-                        layout=comet.Row(
-                            comet.Label("Move chuck to safe position below probe card."),
-                            comet.Button("Move", width=80),
-                        )
-                    ),
-                    comet.Spacer()
+                    comet.Button("Move To", clicked=self.on_move_to_position),
+                    comet.Button("Set Pos", clicked=self.on_set_position),
+                    comet.Spacer(),
+                    comet.Button("&Add", clicked=self.on_add_position),
+                    comet.Button("&Edit", clicked=self.on_edit_position),
+                    comet.Button("&Remove", clicked=self.on_remove_position)
                 ),
-                comet.Spacer(),
                 stretch=(0, 1)
             )
         )
-        self.layout = comet.Column(
+        self.append(comet.Column(
             comet.Row(
                 comet.Tabs(
                     self.controls_tab,
-                    self.command_tab
+                    self.positions_tab
                 ),
                 comet.Column(
                     comet.GroupBox(
@@ -212,7 +208,7 @@ class TableControl(comet.Widget):
             ),
             comet.Spacer(),
             stretch=(0, 1)
-        )
+        ))
         # Init buttons
         self.fine_button.checked = True
         self.position = 0, 0, 0
@@ -280,6 +276,34 @@ class TableControl(comet.Widget):
     def on_wide(self, state):
         for button in self.control_buttons:
             button.stylesheet = "QPushButton{color:red;font-size:22px;}"
+
+    def on_move_to_position(self):
+        item = self.positions_tree.current
+        if item:
+            comet.show_question(f"Do you want to move table to position '{item[0].value}'?")
+
+    def on_set_position(self):
+        item = self.positions_tree.current
+        if item:
+            comet.show_question(f"Do you want to assign current position to '{item[0].value}'?")
+
+    def on_add_position(self):
+        text = comet.get_text(title="Add Position", label="Name", text="")
+        if text:
+            self.positions_tree.append([text, 0, 0, 0])
+
+    def on_edit_position(self):
+        item = self.positions_tree.current
+        if item:
+            text = comet.get_text(title="Add Position", label="Name", text=item[0].value)
+            if text:
+                item[0].value = text
+
+    def on_remove_position(self):
+        item = self.positions_tree.current
+        if item:
+            if comet.show_question(f"Do you want to remove position '{item[0].value}'?"):
+                self.positions_tree.remove(item)
 
 class TableControlDialog(comet.Dialog):
 

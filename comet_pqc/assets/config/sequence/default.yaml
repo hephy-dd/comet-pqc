@@ -14,8 +14,8 @@ contacts:
             current_stop: 10 uA
             current_step: 500 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Reverse Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -25,8 +25,8 @@ contacts:
             current_stop: 10 uA
             current_step: 500 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -36,8 +36,8 @@ contacts:
             current_stop: 1 mA
             current_step: 50 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Reverse N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -47,8 +47,8 @@ contacts:
             current_stop: 1 mA
             current_step: 50 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -58,8 +58,8 @@ contacts:
             current_stop: 500 nA
             current_step: 25 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Reverse P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -69,8 +69,8 @@ contacts:
             current_stop: 500 nA
             current_step: 25 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: FET
         type: iv_ramp_bias_elm
         parameters:
@@ -81,11 +81,11 @@ contacts:
             voltage_step: 0.1 V
             waiting_time: 500 ms
             bias_voltage: 100 mV
-            vsrc_current_compliance: 10 uA
             hvsrc_current_compliance: 10 uA
-      - name: MOS capacitor (VSrc)
+            vsrc_current_compliance: 10 uA
+      - name: MOS capacitor (V Source)
         type: cv_ramp
-        description: Variant using VSource and LCR
+        description: Variant using HVSource and LCR
         parameters:
             matrix_enabled: true
             matrix_channels: [1A01, 1B02, 2H11, 2G12]
@@ -93,8 +93,8 @@ contacts:
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
-            vsrc_current_compliance: 100 uA
-            vsrc_route_termination: rear
+            hvsrc_current_compliance: 100 uA
+            hvsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: MOS capacitor (LCR)
@@ -112,9 +112,9 @@ contacts:
             route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (VSrc)
+      - name: Capacitor test structure (V Source)
         type: cv_ramp
-        description: Variant using VSource and LCR
+        description: Variant using HVSource and LCR
         parameters:
             matrix_enabled: true
             matrix_channels: [1A01, 1B02, 2H11, 2G12]
@@ -122,9 +122,9 @@ contacts:
             bias_voltage_stop: 5 V
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
-            vsrc_current_compliance: 100 uA
-            vsrc_sense_mode: local
-            vsrc_route_termination: rear
+            hvsrc_current_compliance: 100 uA
+            hvsrc_sense_mode: local
+            hvsrc_route_termination: rear
             lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
       - name: Capacitor test structure (LCR)
@@ -151,12 +151,12 @@ contacts:
             voltage_stop: -1000 V
             voltage_step: 10 V
             waiting_time: 1 s
-            vsrc_current_compliance: 1 uA
-            vsrc_sense_mode: local
-            vsrc_route_termination: rear
-            vsrc_filter_enabled: true
-            vsrc_filter_count: 10
-            vsrc_filter_type: repeat
+            hvsrc_current_compliance: 1 uA
+            hvsrc_sense_mode: local
+            hvsrc_route_termination: rear
+            hvsrc_filter_enabled: true
+            hvsrc_filter_count: 10
+            hvsrc_filter_type: repeat
             elm_filter_enabled: false
             elm_filter_count: 10
             elm_filter_type: repeat
@@ -171,9 +171,9 @@ contacts:
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
             waiting_time: 500 ms
-            vsrc_current_compliance: 100 uA
-            vsrc_sense_mode: local
-            vsrc_route_termination: rear
+            hvsrc_current_compliance: 100 uA
+            hvsrc_sense_mode: local
+            hvsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode CV (HV)
@@ -185,8 +185,8 @@ contacts:
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
             waiting_time: 500 ms
-            hvsrc_current_compliance: 100 uA
-            hvsrc_sense_mode: local
+            vsrc_current_compliance: 100 uA
+            vsrc_sense_mode: local
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode CV 10kHz Test
@@ -199,9 +199,9 @@ contacts:
             bias_voltage_stop: 200 V
             bias_voltage_step: 2.5 V
             waiting_time: 500 ms
-            vsrc_current_compliance: 25 uA
-            vsrc_sense_mode: local
-            vsrc_route_termination: rear
+            hvsrc_current_compliance: 25 uA
+            hvsrc_sense_mode: local
+            hvsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
             lcr_integration_time: "long"
@@ -212,9 +212,9 @@ contacts:
         parameters:
             matrix_channels: []
             bias_voltage: 300 V
-            vsrc_current_compliance: 10 uA
-            vsrc_sense_mode: local
-            vsrc_route_termination: rear
+            hvsrc_current_compliance: 10 uA
+            hvsrc_sense_mode: local
+            hvsrc_route_termination: rear
             lcr_frequency_start: 100 Hz
             lcr_frequency_stop: 2 MHz
             lcr_frequency_steps: 100
@@ -232,8 +232,8 @@ contacts:
             voltage_step: 0.1 V
             waiting_time: 500 ms
             bias_voltage: 5 V
-            vsrc_current_compliance: 10 uA
             hvsrc_current_compliance: 10 uA
+            vsrc_current_compliance: 10 uA
       - name: Polysilicon meander
         type: iv_ramp_elm
         parameters:
@@ -243,8 +243,8 @@ contacts:
             voltage_stop: 100 mV
             voltage_step: 25 mV
             waiting_time: 200 ms
-            vsrc_current_compliance: 10 uA
-            vsrc_sense_mode: local
+            hvsrc_current_compliance: 10 uA
+            hvsrc_sense_mode: local
             elm_zero_correction: true
             elm_integration_rate: 50
       - name: N+ linewidth structure
@@ -256,8 +256,8 @@ contacts:
             current_stop: 1 mA
             current_step: 50 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: P-stop linewidth structure
         type: iv_ramp_4_wire
         parameters:
@@ -267,8 +267,8 @@ contacts:
             current_stop: 500 nA
             current_step: 25 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Dielectric Breakdown
         type: iv_ramp_elm
         parameters:
@@ -279,8 +279,8 @@ contacts:
             voltage_stop: 250 V
             voltage_step: 10 V
             waiting_time: 500 ms
-            vsrc_current_compliance: 1 uA
-            vsrc_sense_mode: local
+            hvsrc_current_compliance: 1 uA
+            hvsrc_sense_mode: local
             elm_zero_correction: true
             elm_integration_rate: 50
   - name: PQC Flute 3
@@ -295,8 +295,8 @@ contacts:
             current_stop: 1 mA
             current_step: 50 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Metal clover leaf Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -306,8 +306,8 @@ contacts:
             current_stop: 10 mA
             current_step: 500 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Reverse Metal clover leaf Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -317,8 +317,8 @@ contacts:
             current_stop: 10 mA
             current_step: 500 uA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -328,8 +328,8 @@ contacts:
             current_stop: 10 uA
             current_step: 500 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Reverse P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -339,8 +339,8 @@ contacts:
             current_stop: 10 uA
             current_step: 500 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Bulk cross
         type: iv_ramp_4_wire
         parameters:
@@ -350,8 +350,8 @@ contacts:
             current_stop: 500 nA
             current_step: 5 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Diode IV
         type: iv_ramp_elm
         parameters:
@@ -361,8 +361,8 @@ contacts:
             voltage_stop: -1000 V
             voltage_step: 10 V
             waiting_time: 1 s
-            vsrc_current_compliance: 1 uA
-            vsrc_sense_mode: local
+            hvsrc_current_compliance: 1 uA
+            hvsrc_sense_mode: local
             elm_zero_correction: true
             elm_integration_rate: 50
       - name: Diode CV
@@ -374,8 +374,8 @@ contacts:
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
             waiting_time: 500 ms
-            vsrc_current_compliance: 100 uA
-            vsrc_sense_mode: local
+            hvsrc_current_compliance: 100 uA
+            hvsrc_sense_mode: local
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode Frequency Scan
@@ -402,8 +402,8 @@ contacts:
             voltage_step: 0.1 V
             waiting_time: 500 ms
             bias_voltage: 5 V
-            vsrc_current_compliance: 10 uA
             hvsrc_current_compliance: 10 uA
+            vsrc_current_compliance: 10 uA
       - name: N+ CBKR
         type: iv_ramp_4_wire
         parameters:
@@ -413,8 +413,8 @@ contacts:
             current_stop: 10 uA
             current_step: 100 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Polysilicon CBKR
         type: iv_ramp_4_wire
         parameters:
@@ -424,8 +424,8 @@ contacts:
             current_stop: 10 uA
             current_step: 100 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: Polysilicon contact chain
         type: iv_ramp_4_wire
         parameters:
@@ -435,8 +435,8 @@ contacts:
             current_stop: 10 uA
             current_step: 100 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: P+ contact chain
         type: iv_ramp_4_wire
         parameters:
@@ -446,8 +446,8 @@ contacts:
             current_stop: 10 uA
             current_step: 100 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote
       - name: N+ contact chain
         type: iv_ramp_4_wire
         parameters:
@@ -457,5 +457,5 @@ contacts:
             current_stop: 10 uA
             current_step: 100 nA
             waiting_time: 200 ms
-            hvsrc_voltage_compliance: 20 V
-            hvsrc_sense_mode: remote
+            vsrc_voltage_compliance: 20 V
+            vsrc_sense_mode: remote

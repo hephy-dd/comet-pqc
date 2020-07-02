@@ -2,12 +2,12 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import HVSourceMixin
+from .panel import VSourceMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["IVRamp4WirePanel"]
 
-class IVRamp4WirePanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
+class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     """Panel for 4 wire IV ramp measurements."""
 
     type = "iv_ramp_4_wire"
@@ -22,20 +22,20 @@ class IVRamp4WirePanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.plot = comet.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
         self.plot.add_axis("y", align="right", text="Voltage [V]")
-        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="red")
         self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
 
         self.current_start = comet.Number(decimals=3, suffix="uA")
         self.current_stop = comet.Number(decimals=3, suffix="uA")
         self.current_step = comet.Number(minimum=0, decimals=3, suffix="uA")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.hvsrc_voltage_compliance = comet.Number(decimals=3, suffix="V")
+        self.vsrc_voltage_compliance = comet.Number(decimals=3, suffix="V")
 
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("hvsrc_voltage_compliance", self.hvsrc_voltage_compliance, 0, unit="V")
+        self.bind("vsrc_voltage_compliance", self.vsrc_voltage_compliance, 0, unit="V")
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
@@ -53,9 +53,9 @@ class IVRamp4WirePanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
                 )
             ),
             comet.GroupBox(
-                title="HV Source Compliance",
+                title="V Source Compliance",
                 layout=comet.Column(
-                    self.hvsrc_voltage_compliance,
+                    self.vsrc_voltage_compliance,
                     comet.Spacer()
                 )
             ),

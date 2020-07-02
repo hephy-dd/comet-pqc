@@ -4,20 +4,20 @@ import comet
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
+from .panel import HVSourceMixin
 from .panel import LCRMixin
 from .panel import EnvironmentMixin
 
 __all__ = ["CVRampPanel"]
 
-class CVRampPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
+class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
     """Panel for CV ramp measurements."""
 
     type = "cv_ramp"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = "CV Ramp (VSrc)"
+        self.title = "CV Ramp (HV Source)"
 
         self.register_vsource()
         self.register_lcr()
@@ -41,7 +41,7 @@ class CVRampPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
 
-        self.vsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
 
         self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
@@ -50,13 +50,13 @@ class CVRampPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("bias_voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
         self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
 
         self.general_tab.layout = comet.Row(
             comet.GroupBox(
-                title="V Source Ramp",
+                title="HV Source Ramp",
                 layout=comet.Column(
                     comet.Label(text="Start"),
                     self.voltage_start,
@@ -70,9 +70,9 @@ class CVRampPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
                 )
             ),
             comet.GroupBox(
-                title="V Source Compliance",
+                title="HV Source Compliance",
                 layout=comet.Column(
-                    self.vsrc_current_compliance,
+                    self.hvsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

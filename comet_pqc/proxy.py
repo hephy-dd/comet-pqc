@@ -12,8 +12,8 @@ def create_proxy(context):
 
     Raises a `TypeError` on error.
 
-    >>> vsrc = create_proxy(device)
-    >>> vsrc.identification
+    >>> hvsrc = create_proxy(device)
+    >>> hvsrc.identification
     'Keithley Inc., Model 2410, 1234567, r1'
     """
     assert isinstance(context, Driver)

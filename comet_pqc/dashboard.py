@@ -318,8 +318,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.matrix_model_text = comet.Text(readonly=True)
         self.matrix_channels_text = comet.Text(readonly=True)
-        self.vsrc_model_text = comet.Text(readonly=True)
         self.hvsrc_model_text = comet.Text(readonly=True)
+        self.vsrc_model_text = comet.Text(readonly=True)
         self.lcr_model_text = comet.Text(readonly=True)
         self.elm_model_text = comet.Text(readonly=True)
         self.table_model_text = comet.Text(readonly=True)
@@ -351,18 +351,18 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                     )
                 ),
                 comet.GroupBox(
-                    title="VSource",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
-                        self.vsrc_model_text,
-                        stretch=(1, 7)
-                    )
-                ),
-                comet.GroupBox(
                     title="HVSource",
                     layout=comet.Row(
                         comet.Label("Model:"),
                         self.hvsrc_model_text,
+                        stretch=(1, 7)
+                    )
+                ),
+                comet.GroupBox(
+                    title="VSource",
+                    layout=comet.Row(
+                        comet.Label("Model:"),
+                        self.vsrc_model_text,
                         stretch=(1, 7)
                     )
                 ),
@@ -774,8 +774,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.enabled = False
         self.matrix_model_text.value = ""
         self.matrix_channels_text.value = ""
-        self.vsrc_model_text.value = ""
         self.hvsrc_model_text.value = ""
+        self.vsrc_model_text.value = ""
         self.lcr_model_text.value = ""
         self.elm_model_text.value = ""
         self.table_model_text.value = ""
@@ -796,8 +796,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         status = self.processes.get("status")
         self.matrix_model_text.value = status.get("matrix_model") or "n/a"
         self.matrix_channels_text.value = status.get("matrix_channels")
-        self.vsrc_model_text.value = status.get("vsrc_model") or "n/a"
         self.hvsrc_model_text.value = status.get("hvsrc_model") or "n/a"
+        self.vsrc_model_text.value = status.get("vsrc_model") or "n/a"
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
         self.table_model_text.value = status.get("table_model") or "n/a"

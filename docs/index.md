@@ -17,8 +17,8 @@ Process Quality Control for CMS tracker
 - Keithley 707B Switching Matrix
 - Keysight E4980A LCR Meter
 - Keithley 6517B Electrometer
-- Keithley 2657A Source Meter
-- Keithley 2410 Source Meter
+- Keithley 2410 Source Meter (HV Source)
+- Keithley 2657A Source Meter (V Source)
 - Corvus TT positioning controller
 - HEPHY Environment Box
 

@@ -10,8 +10,8 @@ from ..logwindow import LogWidget
 
 __all__ = [
     'Panel',
-    'VSourceMixin',
     'HVSourceMixin',
+    'VSourceMixin',
     'ElectrometerMixin',
     'LCRMixin',
     'EnvironmentMixin'
@@ -189,107 +189,12 @@ class Panel(comet.Widget):
         for tab in self.control_tabs:
             tab.enabled = True
 
-class VSourceMixin:
-    """Mixin class providing default controls and status for V Source."""
-
-    def register_vsource(self):
-        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
-        self.vsrc_route_termination = comet.ComboBox(items=["front", "rear"])
-
-        def toggle_vsrc_filter(enabled):
-            self.vsrc_filter_count.enabled = enabled
-            self.vsrc_filter_count_label.enabled = enabled
-            self.vsrc_filter_type.enabled = enabled
-            self.vsrc_filter_type_label.enabled = enabled
-
-        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
-        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
-        self.vsrc_filter_count_label = comet.Label(text="Count")
-        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
-        self.vsrc_filter_type_label = comet.Label(text="Type")
-
-        toggle_vsrc_filter(False)
-
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_route_termination", self.vsrc_route_termination, "front")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
-
-        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
-        self.status_vsrc_current = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
-        self.status_vsrc_output = comet.Text(value="---", readonly=True)
-        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
-
-        self.status_panel.append(comet.GroupBox(
-            title="V Source Status",
-            layout=comet.Column(
-                comet.Row(
-                    comet.Column(
-                        comet.Label("Voltage"),
-                        self.status_vsrc_voltage
-                    ),
-                    comet.Column(
-                        comet.Label("Current"),
-                        self.status_vsrc_current
-                    ),
-                    comet.Column(
-                        comet.Label("Output"),
-                        self.status_vsrc_output
-                    )
-                )
-            )
-        ))
-
-        self.control_tabs.append(comet.Tab(
-            title="V Source",
-            layout=comet.Row(
-                comet.GroupBox(
-                    title="Filter",
-                    layout=comet.Column(
-                        self.vsrc_filter_enable,
-                        self.vsrc_filter_count_label,
-                        self.vsrc_filter_count,
-                        self.vsrc_filter_type_label,
-                        self.vsrc_filter_type,
-                        comet.Spacer()
-                    )
-                ),
-                comet.GroupBox(
-                    title="Options",
-                    layout=comet.Column(
-                        comet.Label(text="Sense Mode"),
-                        self.vsrc_sense_mode,
-                        comet.Label(text="Route Termination"),
-                        self.vsrc_route_termination,
-                        comet.Spacer()
-                    )
-                ),
-                comet.Spacer(),
-                stretch=(1, 1, 1)
-            )
-        ))
-
-        def handler(state):
-            if 'vsrc_voltage' in state:
-                value = state.get('vsrc_voltage')
-                self.status_vsrc_voltage.value = format_metric(value, "V")
-            if 'vsrc_current' in state:
-                value = state.get('vsrc_current')
-                self.status_vsrc_current.value = format_metric(value, "A")
-            if 'vsrc_output' in state:
-                labels = {False: "OFF", True: "ON", None: "---"}
-                self.status_vsrc_output.value = labels[state.get('vsrc_output')]
-
-        self.state_handlers.append(handler)
-
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
-    def register_hvsource(self):
+    def register_vsource(self):
         self.hvsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+        self.hvsrc_route_termination = comet.ComboBox(items=["front", "rear"])
 
         def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
@@ -306,6 +211,7 @@ class HVSourceMixin:
         toggle_hvsrc_filter(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
+        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "front")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
@@ -356,6 +262,8 @@ class HVSourceMixin:
                     layout=comet.Column(
                         comet.Label(text="Sense Mode"),
                         self.hvsrc_sense_mode,
+                        comet.Label(text="Route Termination"),
+                        self.hvsrc_route_termination,
                         comet.Spacer()
                     )
                 ),
@@ -372,7 +280,99 @@ class HVSourceMixin:
                 value = state.get('hvsrc_current')
                 self.status_hvsrc_current.value = format_metric(value, "A")
             if 'hvsrc_output' in state:
-                self.status_hvsrc_output.value = state.get('hvsrc_output') or '---'
+                labels = {False: "OFF", True: "ON", None: "---"}
+                self.status_hvsrc_output.value = labels[state.get('hvsrc_output')]
+
+        self.state_handlers.append(handler)
+
+class VSourceMixin:
+    """Mixin class providing default controls and status for V Source."""
+
+    def register_hvsource(self):
+        self.vsrc_sense_mode = comet.ComboBox(items=["local", "remote"])
+
+        def toggle_vsrc_filter(enabled):
+            self.vsrc_filter_count.enabled = enabled
+            self.vsrc_filter_count_label.enabled = enabled
+            self.vsrc_filter_type.enabled = enabled
+            self.vsrc_filter_type_label.enabled = enabled
+
+        self.vsrc_filter_enable = comet.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.vsrc_filter_count = comet.Number(minimum=0, maximum=100, decimals=0)
+        self.vsrc_filter_count_label = comet.Label(text="Count")
+        self.vsrc_filter_type = comet.ComboBox(items=["repeat", "moving"])
+        self.vsrc_filter_type_label = comet.Label(text="Type")
+
+        toggle_vsrc_filter(False)
+
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
+        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
+        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
+
+        self.status_vsrc_voltage = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
+        self.status_vsrc_current = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
+        self.status_vsrc_output = comet.Text(value="---", readonly=True)
+        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
+
+        self.status_panel.append(comet.GroupBox(
+            title="V Source Status",
+            layout=comet.Column(
+                comet.Row(
+                    comet.Column(
+                        comet.Label("Voltage"),
+                        self.status_vsrc_voltage
+                    ),
+                    comet.Column(
+                        comet.Label("Current"),
+                        self.status_vsrc_current
+                    ),
+                    comet.Column(
+                        comet.Label("Output"),
+                        self.status_vsrc_output
+                    )
+                )
+            )
+        ))
+
+        self.control_tabs.append(comet.Tab(
+            title="V Source",
+            layout=comet.Row(
+                comet.GroupBox(
+                    title="Filter",
+                    layout=comet.Column(
+                        self.vsrc_filter_enable,
+                        self.vsrc_filter_count_label,
+                        self.vsrc_filter_count,
+                        self.vsrc_filter_type_label,
+                        self.vsrc_filter_type,
+                        comet.Spacer()
+                    )
+                ),
+                comet.GroupBox(
+                    title="Options",
+                    layout=comet.Column(
+                        comet.Label(text="Sense Mode"),
+                        self.vsrc_sense_mode,
+                        comet.Spacer()
+                    )
+                ),
+                comet.Spacer(),
+                stretch=(1, 1, 1)
+            )
+        ))
+
+        def handler(state):
+            if 'vsrc_voltage' in state:
+                value = state.get('vsrc_voltage')
+                self.status_vsrc_voltage.value = format_metric(value, "V")
+            if 'vsrc_current' in state:
+                value = state.get('vsrc_current')
+                self.status_vsrc_current.value = format_metric(value, "A")
+            if 'vsrc_output' in state:
+                self.status_vsrc_output.value = state.get('vsrc_output') or '---'
 
         self.state_handlers.append(handler)
 

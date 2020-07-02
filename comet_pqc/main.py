@@ -40,13 +40,13 @@ def main():
         read_termination="\n",
         write_termination="\n"
     ))
-    app.resources.add("vsrc", comet.Resource(
+    app.resources.add("hvsrc", comet.Resource(
         resource_name="TCPIP::10.0.0.5::10002::SOCKET",
         read_termination="\r\n",
         write_termination="\r\n",
         timeout=4000
     ))
-    app.resources.add("hvsrc", comet.Resource(
+    app.resources.add("vsrc", comet.Resource(
         resource_name="TCPIP::10.0.0.3::5025::SOCKET",
         encoding='latin1',
         read_termination="\n",
