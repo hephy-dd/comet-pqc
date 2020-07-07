@@ -300,7 +300,7 @@ Type: `cv_ramp`
 
 CV ramp using V Source and LCR for CpRp measurements.
 
-Type: `cv_ramp_hv`
+Type: `cv_ramp_vsrc`
 
 ### Parameters
 
@@ -328,7 +328,7 @@ Type: `cv_ramp_hv`
 
 ```yaml
 - name: CV Example
-  type: cv_ramp_hv
+  type: cv_ramp_vsrc
   enabled: true
   description: An example measurement.
   parameters:

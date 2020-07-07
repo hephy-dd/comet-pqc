@@ -83,7 +83,7 @@ contacts:
             bias_voltage: 100 mV
             hvsrc_current_compliance: 10 uA
             vsrc_current_compliance: 10 uA
-      - name: MOS capacitor (V Source)
+      - name: MOS capacitor (HV Source)
         type: cv_ramp
         description: Variant using HVSource and LCR
         parameters:
@@ -112,7 +112,7 @@ contacts:
             route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
-      - name: Capacitor test structure (V Source)
+      - name: Capacitor test structure (HV Source)
         type: cv_ramp
         description: Variant using HVSource and LCR
         parameters:
@@ -162,7 +162,7 @@ contacts:
             elm_filter_type: repeat
             elm_zero_correction: true
             elm_integration_rate: 50
-      - name: Diode CV
+      - name: Diode CV (HV Source)
         type: cv_ramp
         parameters:
             matrix_enabled: true
@@ -176,8 +176,9 @@ contacts:
             hvsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
-      - name: Diode CV (HV)
-        type: cv_ramp_hv
+      - name: Diode CV (V Source)
+        type: cv_ramp_vsrc
+        description: Alternate diode CV with V Source.
         parameters:
             matrix_enabled: true
             matrix_channels: []
