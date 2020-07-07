@@ -184,6 +184,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.box_light_button = ToggleButton(
             text="Box Light",
+            tool_tip="Toggle box light",
             checkable=True,
             checked=False,
             clicked=self.on_box_light_clicked
@@ -191,16 +192,34 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.microscope_light_button = ToggleButton(
             text="Mic Light",
+            tool_tip="Toggle microscope light",
             checkable=True,
             checked=False,
-            toggled=self.on_microscope_light_toggled
+            clicked=self.on_microscope_light_clicked
         )
 
-        self.probe_light_button = ToggleButton(
-            text="Probe Light",
+        self.microscope_camera_button = ToggleButton(
+            text="Mic Cam",
+            tool_tip="Toggle microscope camera power",
             checkable=True,
             checked=False,
-            toggled=self.on_probe_light_toggled
+            clicked=self.on_microscope_camera_clicked
+        )
+
+        self.probecard_light_button = ToggleButton(
+            text="PC Light",
+            tool_tip="Toggle probe card light",
+            checkable=True,
+            checked=False,
+            clicked=self.on_probecard_light_clicked
+        )
+
+        self.probecard_camera_button = ToggleButton(
+            text="PC Cam",
+            tool_tip="Toggle probe card camera power",
+            checkable=True,
+            checked=False,
+            clicked=self.on_probecard_camera_clicked
         )
 
         self.environment_groupbox = comet.GroupBox(
@@ -211,7 +230,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             layout=comet.Row(
                 self.box_light_button,
                 self.microscope_light_button,
-                self.probe_light_button,
+                self.microscope_camera_button,
+                self.probecard_light_button,
+                self.probecard_camera_button,
                 comet.Spacer(vertical=False)
             )
         )
@@ -633,7 +654,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.settings["use_environ"] = state
         self.box_light_button.enabled = state
         self.microscope_light_button.enabled = state
-        self.probe_light_button.enabled = state
+        self.probecard_light_button.enabled = state
 
     def on_box_light_clicked(self):
         # TODO run in thread
@@ -647,9 +668,10 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
-    def on_microscope_light_toggled(self, state):
+    def on_microscope_light_clicked(self):
         # TODO run in thread
         self.enabled = False
+        state = self.microscope_light_button.checked
         try:
             with self.resources.get("environ") as environ_resource:
                 environ = EnvironmentBox(environ_resource)
@@ -658,9 +680,22 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
-    def on_probe_light_toggled(self, state):
+    def on_microscope_camera_clicked(self):
         # TODO run in thread
         self.enabled = False
+        state = self.microscope_camera_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.microscope_camera = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def on_probecard_light_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.probecard_light_button.checked
         try:
             with self.resources.get("environ") as environ_resource:
                 environ = EnvironmentBox(environ_resource)
@@ -669,7 +704,21 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
+    def on_probecard_camera_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.probecard_camera_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.probecard_camera = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
     def on_environment_groupbox_toggled(self, state):
+        environ = self.processes.get("environ")
+        environ.enabled = state
         self.settings["use_environ"] = state
 
     def on_table_groupbox_toggled(self, state):
