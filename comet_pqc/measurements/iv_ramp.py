@@ -201,12 +201,12 @@ class IVRampMeasurement(MatrixMeasurement):
         with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f")
-            fmt.add_column("hvsrc_voltage", "E")
-            fmt.add_column("hvsrc_current", "E")
-            fmt.add_column("temperature_box", "E")
-            fmt.add_column("temperature_chuck", "E")
-            fmt.add_column("humidity_box", "E")
+            fmt.add_column("timestamp", ".3f", unit="s")
+            fmt.add_column("hvsrc_voltage", "E", unit="V")
+            fmt.add_column("hvsrc_current", "E", unit="A")
+            fmt.add_column("temperature_box", "E", unit="degC")
+            fmt.add_column("temperature_chuck", "E", unit="degC")
+            fmt.add_column("humidity_box", "E", unit="%")
 
             # Write meta data
             fmt.write_meta("measurement_name", measurement_name)

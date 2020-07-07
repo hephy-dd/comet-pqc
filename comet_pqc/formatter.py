@@ -68,6 +68,23 @@ class CSVFormatter(Formatter):
         """Flush write buffer."""
         self.__f.flush()
 
+class PQCHeader:
+
+    def __init__(self, name, unit=None):
+        self.name = name
+        self.unit = unit
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return self.name == other
+
+    def __str__(self):
+        if self.unit is not None:
+            return f'{self.name}[{self.unit}]'
+        return self.name
+
 class PQCFormatter(CSVFormatter):
     """PQC formatter.
 
@@ -79,6 +96,8 @@ class PQCFormatter(CSVFormatter):
     >>>     fmt.write_header()
     >>>     fmt.write_row(dict(key='spam', value=42.0))
     """
+
+    Header = PQCHeader
 
     def __init__(self, f):
         super().__init__(f, dialect='excel-tab')
@@ -98,6 +117,9 @@ class PQCFormatter(CSVFormatter):
         self.__f.write(f"{key}: {value}")
         self.__f.write(os.linesep)
         self.__f.flush()
+
+    def add_column(self, name, format_spec=None, unit=None):
+        super().add_column(type(self).Header(name, unit), format_spec)
 
     def write_header(self):
         """Write CSV header.

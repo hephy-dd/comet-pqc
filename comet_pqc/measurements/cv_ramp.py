@@ -290,15 +290,15 @@ class CVRampMeasurement(MatrixMeasurement):
         with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f")
-            fmt.add_column("voltage_hvsrc", "E")
-            fmt.add_column("current_hvsrc", "E")
-            fmt.add_column("capacitance", "E")
-            fmt.add_column("capacitance2", "E")
-            fmt.add_column("resistance", "E")
-            fmt.add_column("temperature_box", "E")
-            fmt.add_column("temperature_chuck", "E")
-            fmt.add_column("humidity_box", "E")
+            fmt.add_column("timestamp", ".3f", unit="s")
+            fmt.add_column("voltage_hvsrc", "E", unit="V")
+            fmt.add_column("current_hvsrc", "E", unit="A")
+            fmt.add_column("capacitance", "E", unit="F")
+            fmt.add_column("capacitance2", "E", unit="1")
+            fmt.add_column("resistance", "E", unit="Ohm")
+            fmt.add_column("temperature_box", "E", unit="degC")
+            fmt.add_column("temperature_chuck", "E", unit="degC")
+            fmt.add_column("humidity_box", "E", unit="%")
 
             # Write meta data
             fmt.write_meta("measurement_name", measurement_name)
