@@ -151,6 +151,10 @@ def main():
     # Load configurations
     dashboard.load_sequences()
 
+    # Sync environment controls
+    if dashboard.environment_groupbox.checked:
+        dashboard.sync_environment_controls()
+
     return app.run()
 
 if __name__ == '__main__':

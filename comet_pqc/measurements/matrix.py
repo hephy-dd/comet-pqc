@@ -15,7 +15,7 @@ class MatrixMeasurement(Measurement):
         self.register_parameter('matrix_enabled', False, type=bool)
         self.register_parameter('matrix_channels', [], type=list)
 
-    def setup_matrix(self):
+    def initialize_matrix(self):
         """Setup marix switch."""
         matrix_channels = self.get_parameter('matrix_channels')
         logging.info("close matrix channels: %s", matrix_channels)
@@ -34,28 +34,25 @@ class MatrixMeasurement(Measurement):
         except Exception as e:
             raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {e.args}")
 
-    def reset_matrix(self):
+    def finalize_matrix(self):
         """Reset marix switch to a save state."""
         # TODO: in conflict with main initialize/finalize
-        # try:
-        #     with self.resources.get("matrix") as matrix_res:
-        #         matrix = K707B(matrix_res)
-        #         matrix.channel.open() # open all
-        # except Exception as e:
-        #     raise RuntimeError(f"Failed to open matrix channels, {e.args}")
+        try:
+            with self.resources.get("matrix") as matrix_res:
+                matrix = K707B(matrix_res)
+                matrix.channel.open() # open all
+        except Exception as e:
+            raise RuntimeError(f"Failed to open matrix channels, {e.args}")
 
     def run(self, *args, **kwargs):
         logging.info(f"running {self.type}...")
         matrix_enabled = self.get_parameter('matrix_enabled')
         result = None
-        try:
-            if matrix_enabled:
-                self.reset_matrix()
-                self.setup_matrix()
-            result = self.code(*args, **kwargs)
-        finally:
-            if matrix_enabled:
-                # Always reset matrix switch!
-                self.reset_matrix()
+        if matrix_enabled:
+            self.initialize_matrix()
+        result = self.code(*args, **kwargs)
+        if matrix_enabled:
+            # Always reset matrix switch!
+            self.finalize_matrix()
         logging.info(f"finished {self.type}.")
         return result

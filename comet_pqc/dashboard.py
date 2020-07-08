@@ -31,7 +31,7 @@ from .tablecontrol import TableControlDialog
 
 from .driver import EnvironmentBox
 
-ENABLE_SEQUENCING = False
+ENABLE_SEQUENCING = True
 """Switch to disable sequence execution from user interface."""
 
 def create_icon(size, color):
@@ -222,33 +222,45 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_probecard_camera_clicked
         )
 
+        self.pid_control_button = ToggleButton(
+            text="PID Control",
+            tool_tip="Toggle PID control",
+            checkable=True,
+            checked=False,
+            clicked=self.on_pid_control_clicked
+        )
+
         self.environment_groupbox = comet.GroupBox(
             title="Environment Box",
             checkable=True,
             checked=self.settings.get("use_environ", True),
             toggled=self.on_environment_groupbox_toggled,
-            layout=comet.Row(
-                self.box_light_button,
-                self.microscope_light_button,
-                self.microscope_camera_button,
-                self.probecard_light_button,
-                self.probecard_camera_button,
-                comet.Spacer(vertical=False)
+            layout=comet.Column(
+                comet.Row(
+                    self.box_light_button,
+                    self.microscope_light_button,
+                    self.probecard_light_button
+                ),
+                comet.Row(
+                    self.microscope_camera_button,
+                    self.probecard_camera_button,
+                    self.pid_control_button
+                )
             )
         )
 
         # Table controls
 
-        self.control_button = comet.Button(
+        self.table_control_button = comet.Button(
             text="Control Table",
             tool_tip="Virtual table joystick controls.",
-            clicked=self.on_controls_start
+            clicked=self.on_table_controls_start
         )
 
-        self.calibrate_button = comet.Button(
+        self.table_calibrate_button = comet.Button(
             text="Calibrate Table",
             tool_tip="Calibrate table.",
-            clicked=self.on_calibrate_start
+            clicked=self.on_table_controls_start
         )
 
         self.table_groupbox = comet.GroupBox(
@@ -258,8 +270,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             toggled=self.on_table_groupbox_toggled,
             layout=comet.Row(
                 comet.Spacer(vertical=False),
-                self.control_button,
-                self.calibrate_button
+                self.table_control_button,
+                self.table_calibrate_button
             )
         )
 
@@ -542,7 +554,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             text="Are you sure to start a measurement sequence?"
         ): return
         self.sample_groupbox.enabled = False
-        self.calibrate_button.enabled = False
+        self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.start_button.enabled = False
@@ -606,7 +618,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_sequence_finished(self):
         self.sample_groupbox.enabled = True
-        self.calibrate_button.enabled = True
+        self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.start_button.enabled = True
@@ -623,16 +635,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Table calibration
 
-    def on_controls_start(self):
+    def on_table_controls_start(self):
         TableControlDialog().run()
 
-    def on_calibrate_start(self):
+    def on_table_controls_start(self):
         if not comet.show_question(
             title="Calibrate table",
             text="Are you sure to calibrate the table?"
         ): return
         self.sample_groupbox.enabled = False
-        self.calibrate_button.enabled = False
+        self.table_calibrate_button.enabled = False
         self.start_button.enabled = False
         self.autopilot_button.enabled = False
         self.continue_button.enabled = False
@@ -646,7 +658,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if calibrate.get("success", False):
             comet.show_info(title="Success", text="Calibrated table successfully.")
         self.sample_groupbox.enabled = True
-        self.calibrate_button.enabled = True
+        self.table_calibrate_button.enabled = True
         self.start_button.enabled = True
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
@@ -719,8 +731,39 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
+    def on_pid_control_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.pid_control_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.pid_control = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def sync_environment_controls(self):
+        """Syncronize environment controls."""
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                pc_data = environ.pc_data
+        except Exception as exc:
+            comet.show_exception(exc)
+            self.environment_groupbox.checked = False
+        else:
+            self.box_light_button.checked = pc_data.relay_states.box_light
+            self.microscope_light_button.checked = pc_data.relay_states.microscope_light
+            self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+            self.probecard_light_button.checked = pc_data.relay_states.probecard_light
+            self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
+            self.pid_control_button.checked = pc_data.pid_status
+
     def on_environment_groupbox_toggled(self, state):
         self.settings["use_environ"] = state
+        if self.environment_groupbox.checked:
+            self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
         self.settings["use_table"] = state
@@ -752,7 +795,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Run Measurement",
             text="Do you want to run the current selected measurement?"
         ): return
-        self.calibrate_button.enabled = False
+        self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.measure_restore_button.enabled = False
@@ -793,7 +836,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.stop()
 
     def on_measure_finished(self):
-        self.calibrate_button.enabled = True
+        self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.measure_restore_button.enabled = True
