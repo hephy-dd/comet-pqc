@@ -83,7 +83,7 @@ a = Analysis(['entry_point.pyw'],
         (os.path.join(comet_root, 'assets', 'icons', '*.ico'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join('comet_pqc', 'assets', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'chuck')),
         (os.path.join('comet_pqc', 'assets', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'sequence')),
-        (os.path.join('comet_pqc', 'assets', 'config', 'wafer', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'wafer')),
+        (os.path.join('comet_pqc', 'assets', 'config', 'sample', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'sample')),
         (os.path.join('comet_pqc', 'assets', 'schema', '*.yaml'), os.path.join('comet_pqc', 'assets', 'schema'))
     ],
     hiddenimports=[
