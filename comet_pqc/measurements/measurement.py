@@ -22,6 +22,8 @@ class Measurement(ResourceMixin):
     sample_type = ""
     output_dir = ""
 
+    measurement_item = None
+
     def __init__(self, process):
         self.process = process
         self.registered_parameters = {}

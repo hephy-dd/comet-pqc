@@ -29,7 +29,7 @@ class K6517BHandler(IEC60488Handler):
         type(self).zero_check = True
 
     @message(r'\:SYST\:ZCH\s+OFF')
-    def write_system_zerocheck_on(self, message):
+    def write_system_zerocheck_off(self, message):
         type(self).zero_check = False
 
     @message(r'\:SENS\:FUNC\?')

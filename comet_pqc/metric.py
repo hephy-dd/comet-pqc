@@ -101,7 +101,7 @@ class Metric(comet.Row):
 
     @property
     def prefixes(self):
-        return [value.metric.prefix for value in self.__combobox.values]
+        return [value.metric.prefix for value in self.__combobox.items]
 
     @prefixes.setter
     def prefixes(self, value):

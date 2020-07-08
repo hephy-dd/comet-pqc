@@ -717,8 +717,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.enabled = True
 
     def on_environment_groupbox_toggled(self, state):
-        environ = self.processes.get("environ")
-        environ.enabled = state
         self.settings["use_environ"] = state
 
     def on_table_groupbox_toggled(self, state):

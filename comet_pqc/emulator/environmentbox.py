@@ -31,11 +31,6 @@ class EnvironmentBoxHandler(IEC60488Handler):
         type(self).box_light = message.split()[-1].strip() == 'ON'
         return 'OK'
 
-    @message(r'SET:BOX_LIGHT (ON|OFF)')
-    def query_set_box_light(self, message):
-        type(self).box_light = message.split()[-1].strip() == 'ON'
-        return 'OK'
-
     @message(r'GET:MICROSCOPE_LIGHT ?')
     def query_get_microscope_light(self, message):
         return int(type(self).microscope_light)
