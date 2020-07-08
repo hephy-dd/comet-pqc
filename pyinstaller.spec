@@ -81,10 +81,10 @@ a = Analysis(['entry_point.pyw'],
         (os.path.join(comet_root, 'widgets', '*.ui'), os.path.join('comet', 'widgets')),
         (os.path.join(comet_root, 'assets', 'icons', '*.svg'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join(comet_root, 'assets', 'icons', '*.ico'), os.path.join('comet', 'assets', 'icons')),
-        (os.path.join('comet_pqc', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'config', 'chuck')),
-        (os.path.join('comet_pqc', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'config', 'sequence')),
-        (os.path.join('comet_pqc', 'config', 'wafer', '*.yaml'), os.path.join('comet_pqc', 'config', 'wafer')),
-        (os.path.join('comet_pqc', 'schema', '*.yaml'), os.path.join('comet_pqc', 'schema'))
+        (os.path.join('comet_pqc', 'assets', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'chuck')),
+        (os.path.join('comet_pqc', 'assets', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'sequence')),
+        (os.path.join('comet_pqc', 'assets', 'config', 'wafer', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'wafer')),
+        (os.path.join('comet_pqc', 'assets', 'schema', '*.yaml'), os.path.join('comet_pqc', 'assets', 'schema'))
     ],
     hiddenimports=[
         'pyvisa-sim',
