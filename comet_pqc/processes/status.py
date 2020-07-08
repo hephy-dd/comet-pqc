@@ -67,6 +67,7 @@ class StatusProcess(comet.Process, ResourceMixin):
         try:
             with self.resources.get("table") as table_res:
                 table = Venus1(table_res)
+                table.mode = 0
                 model = table.identification
                 self.set("table_model", model)
         except (ResourceError, OSError):
