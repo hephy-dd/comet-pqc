@@ -1,7 +1,16 @@
+import datetime
+
 import comet
 from comet.resource import ResourceMixin
 
 __all__ = ["Measurement"]
+
+def format_estimate(est):
+    """Format estimation message without milliseconds."""
+    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
+    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
+    average = datetime.timedelta(seconds=round(est.average.total_seconds()))
+    return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
 class ParameterType:
 

@@ -11,6 +11,7 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["IVRampBiasMeasurement"]
 
@@ -339,9 +340,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                 dt = time.time() - t0
 
                 est.next()
-                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
+                self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # read V Source

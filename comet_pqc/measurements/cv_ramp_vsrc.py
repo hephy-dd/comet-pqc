@@ -14,6 +14,7 @@ from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["CVRampHVMeasurement"]
 
@@ -337,9 +338,7 @@ class CVRampHVMeasurement(MatrixMeasurement):
                     # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                     dt = time.time() - t0
                     est.next()
-                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                    self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
+                    self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                     self.process.emit("progress", *est.progress)
 
                     # read LCR, for CpRp -> prim: Cp, sec: Rp

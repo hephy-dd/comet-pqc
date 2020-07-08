@@ -46,19 +46,20 @@ class BaseProcess(comet.Process, ResourceMixin):
         self.emit("message", "Initialized VSource.")
 
     def discarge_decoupling(self, device):
-        device.identification
         self.emit("message", "Auto-discharging decoupling box...")
+        device.identification
         device.discharge()
         self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
+        self.emit("message", "Open all matrix channels...")
         matrix = K707B(resource)
         matrix.identification
         logging.info("matrix: open all channels.")
         matrix.channel.open()
         channels = matrix.channel.getclose()
         logging.info("matrix channels: %s", channels)
-        # self.emit("message", "Initialized Matrix.")
+        self.emit("message", "Opened all matrix channels.")
 
     def safe_initialize(self):
         try:
@@ -96,6 +97,7 @@ class BaseProcess(comet.Process, ResourceMixin):
                 self.initialize_matrix(matrix)
         except Exception:
             logging.warning("unable to connect with: Matrix")
+            raise RuntimeError("Failed to connect with Matrix")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a single measurements."""

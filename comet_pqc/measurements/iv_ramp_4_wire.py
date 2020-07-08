@@ -11,6 +11,7 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["IVRamp4WireMeasurement"]
 
@@ -223,9 +224,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 dt = time.time() - t0
 
                 est.next()
-                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(current, "A")))
+                self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
                 self.process.emit("progress", *est.progress)
 
                 # read V Source

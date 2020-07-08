@@ -13,6 +13,7 @@ from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["IVRampMeasurement"]
 
@@ -283,9 +284,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 time.sleep(waiting_time)
 
                 est.next()
-                elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
+                self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
                 # Compliance?

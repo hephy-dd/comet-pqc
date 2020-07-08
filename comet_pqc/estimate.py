@@ -36,6 +36,10 @@ class Estimate:
         return self._count
 
     @property
+    def passed(self):
+        return len(self._deltas)
+
+    @property
     def average(self):
         return sum(self._deltas, datetime.timedelta(0)) / max(1, len(self._deltas))
 
@@ -49,4 +53,4 @@ class Estimate:
 
     @property
     def progress(self):
-        return len(self._deltas), self.count
+        return self.passed, self.count
