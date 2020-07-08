@@ -117,7 +117,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             value=self.settings.get("sample_type", ""),
             changed=self.on_sample_type_changed
         )
-        self.sequence_select = comet.ComboBox(changed=self.on_load_sequence_tree)
+        self.sequence_combobox = comet.ComboBox(
+            changed=self.on_load_sequence_tree
+        )
 
         self.sample_groupbox = comet.GroupBox(
             title="Sample",
@@ -130,7 +132,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 comet.Column(
                     self.sample_name_text,
                     self.sample_type_text,
-                    self.sequence_select
+                    self.sequence_combobox
                 ),
                 stretch=(0, 1)
             )
@@ -496,9 +498,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def load_sequences(self):
         """Load available sequence configurations."""
-        self.sequence_select.clear()
+        current_sequence_id = self.settings.get("current_sequence_id")
+        self.sequence_combobox.clear()
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
-            self.sequence_select.append(config.load_sequence(filename))
+            sequence = config.load_sequence(filename)
+            self.sequence_combobox.append(sequence)
+        custom_sequences = []
+        for filename in self.settings.get("custom_sequences") or []:
+            if os.path.exists(filename):
+                sequence = config.load_sequence(filename)
+                sequence.name = f"{sequence.name} (custom)"
+                self.sequence_combobox.append(sequence)
+                custom_sequences.append(filename)
+        self.settings["custom_sequences"] = custom_sequences
+        for sequence in self.sequence_combobox:
+            if sequence.id == current_sequence_id:
+                self.sequence_combobox.current = sequence
+                break
 
     def create_output_dir(self, sample_name, sample_type):
         """Create new timestamp prefixed output directory."""
@@ -523,12 +539,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unmount()
         self.panels.hide()
         self.sequence_tree.clear()
-        sequence = copy.deepcopy(self.sequence_select.current)
+        sequence = copy.deepcopy(self.sequence_combobox.current)
         for contact in sequence:
             self.sequence_tree.append(ContactTreeItem(contact))
         self.sequence_tree.fit()
         if len(self.sequence_tree):
             self.sequence_tree.current = self.sequence_tree[0]
+        self.settings["current_sequence_id"] = sequence.id
 
     # Sequence control
 
@@ -907,7 +924,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
             self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
             self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
-            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
+            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "FloadD"
 
     # Menu action callbacks
 
@@ -925,21 +942,27 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(e)
             return
         # backup callback
-        on_changed = self.sequence_select.changed
-        self.sequence_select.changed = None
-        for item in self.sequence_select:
+        on_changed = self.sequence_combobox.changed
+        self.sequence_combobox.changed = None
+        for item in self.sequence_combobox:
             if item.id == sequence.id or item.name == sequence.name:
                 result = comet.show_question(
                     title="Sequence already loaded",
                     text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
                 )
                 if result:
-                    self.sequence_select.remove(item)
+                    self.sequence_combobox.remove(item)
                     break
                 else:
-                    self.sequence_select.changed = on_changed
+                    self.sequence_combobox.changed = on_changed
                     return
-        self.sequence_select.append(sequence)
+        sequence.name = f"{sequence.name} (custom)"
+        self.sequence_combobox.append(sequence)
         # Restore callback
-        self.sequence_select.changed = on_changed
-        self.sequence_select.current = sequence
+        self.sequence_combobox.changed = on_changed
+        self.sequence_combobox.current = sequence
+        custom_sequences = self.settings.get("custom_sequences") or []
+        if filename not in custom_sequences:
+            custom_sequences.append(filename)
+        self.settings["custom_sequences"] = custom_sequences
+        self.settings["current_sequence_id"] = sequence.id
