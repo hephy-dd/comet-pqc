@@ -544,6 +544,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sample_groupbox.enabled = False
         self.calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
         self.start_button.enabled = False
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
@@ -562,6 +563,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("sample_type", sample_type)
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
+        sequence.set("use_table", self.table_groupbox.checked)
         sequence.sequence_tree = self.sequence_tree
         sequence.start()
 
@@ -606,6 +608,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sample_groupbox.enabled = True
         self.calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
         self.start_button.enabled = True
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
@@ -751,6 +754,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         ): return
         self.calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
         self.measure_restore_button.enabled = False
         self.measure_run_button.enabled = False
         self.measure_stop_button.enabled = True
@@ -773,6 +777,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.set("sample_type", sample_type)
         measure.set("output_dir", output_dir)
         measure.set("use_environ", self.environment_groupbox.checked)
+        measure.set("use_table", self.table_groupbox.checked)
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
@@ -790,6 +795,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_measure_finished(self):
         self.calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
         self.measure_restore_button.enabled = True
         self.measure_run_button.enabled = True
         self.measure_stop_button.enabled = False
@@ -835,6 +841,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_door_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
+        status.set("use_environ", self.environment_groupbox.checked)
+        status.set("use_table", self.table_groupbox.checked)
         status.start()
 
     def on_status_finished(self):
