@@ -9,6 +9,7 @@ import comet
 from . import __version__
 
 from .processes import StatusProcess
+from .processes import ControlProcess
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
 from .processes import SequenceProcess
@@ -93,7 +94,10 @@ def main():
         app.message = message
 
     def on_progress(value, maximum):
-        app.progress = value, maximum
+        if value == maximum:
+            app.progress = None
+        else:
+            app.progress = value, maximum
 
     # Register processes
 
@@ -103,8 +107,12 @@ def main():
         message=on_message,
         progress=on_progress
     ))
+    app.processes.add("control", ControlProcess(
+        failed=on_show_error,
+        message=on_message,
+        progress=on_progress
+    ))
     app.processes.add("calibrate", CalibrateProcess(
-        finished=dashboard.on_calibrate_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress

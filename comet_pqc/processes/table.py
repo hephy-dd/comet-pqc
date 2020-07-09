@@ -17,12 +17,14 @@ class ControlProcess(comet.Process, ResourceMixin):
 
     update_interval = 1.0
 
-    def __init__(self, **kwargs):
+    def __init__(self, message=None, progress=None, **kwargs):
         super().__init__(**kwargs)
         self.queue = []
         self.lock = threading.RLock()
         self.position = None
         self.caldone = None
+        self.message = message
+        self.progress = progress
 
     def push(self, *args):
         with self.lock:
@@ -60,6 +62,19 @@ class CalibrateProcess(comet.Process, ResourceMixin):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
+        self.position = None
+        self.caldone = None
+
+    def peek(self):
+        if not self.alive:
+            with self.resources.get('table') as resource:
+                corvus = Venus1(resource)
+                corvus.mode = 0
+                corvus.x.unit = UNIT_MICROMETER
+                corvus.y.unit = UNIT_MICROMETER
+                corvus.z.unit = UNIT_MICROMETER
+                self.emit('position', *corvus.pos)
+                self.emit('caldone', corvus.x.caldone, corvus.y.caldone, corvus.z.caldone)
 
     def run(self):
         self.set("success", False)
@@ -80,10 +95,23 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError(f"Corvus: {error}")
                 time.sleep(delay)
 
+            def handle_abort():
+                if not self.running:
+                    corvus.joystick = True
+                    self.emit("progress", 0, 0)
+                    self.emit("message", "Calibration aborted.")
+                    raise comet.StopRequest()
+
+            def update_status():
+                self.emit("message", "Table x={} um, y={} um, z={} um".format(*corvus.pos))
+                self.emit('position', *corvus.pos)
+                self.emit('caldone', corvus.x.caldone, corvus.y.caldone, corvus.z.caldone)
+
             def ncal(axis):
                 axis.ncal()
                 for i in range(retries + 1):
-                    self.emit("message", "x={}, y={}, z={}".format(*corvus.pos))
+                    handle_abort()
+                    update_status()
                     if axis is corvus.x:
                         if corvus.pos[0] == 0.0:
                             logging.info("caldone -> OK")
@@ -104,7 +132,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 axis.nrm()
                 time.sleep(delay)
                 for i in range(retries + 1):
-                    self.emit("message", "x={}, y={}, z={}".format(*corvus.pos))
+                    handle_abort()
+                    update_status()
                     if axis is corvus.x:
                         if corvus.pos[0] == pos[0]:
                             logging.info("caldone -> OK")
@@ -121,6 +150,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     pos = corvus.pos
                 return i < retries
 
+            handle_abort()
+
             #handle_error()
             self.emit("progress", 0, 7)
             self.emit("message", "Retreating Z axis...")
@@ -128,6 +159,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 if not ncal(corvus.z):
                     raise RuntimeError("failed retreating Z axis")
             time.sleep(delay)
+
+            handle_abort()
 
             #handle_error()
             self.emit("progress", 1, 7)
@@ -137,6 +170,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError("failed to calibrate Y axis")
             time.sleep(delay)
 
+            handle_abort()
+
             #handle_error()
             self.emit("progress", 2, 7)
             self.emit("message", "Calibrating X axis...")
@@ -144,6 +179,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 if not ncal(corvus.x):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
+
+            handle_abort()
 
             #handle_error()
             self.emit("progress", 3, 7)
@@ -153,6 +190,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError("failed to ragne measure X axis")
             time.sleep(delay)
 
+            handle_abort()
+
             #handle_error()
             self.emit("progress", 4, 7)
             self.emit("message", "Range measure Y axis...")
@@ -161,16 +200,21 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError("failed to range measure Y axis")
             time.sleep(delay)
 
+            handle_abort()
+
             #handle_error()
             corvus.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
             for i in range(retries):
+                handle_abort()
+                update_status()
                 pos = corvus.pos
-                self.emit("message", "x={}, y={}, z={}".format(*pos))
                 if pos[:2] == (0, 0):
                     break
                 time.sleep(delay)
             if pos[:2] != (0, 0):
                 raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+
+            handle_abort()
 
             #handle_error()
             self.emit("progress", 5, 7)
@@ -180,6 +224,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError("failed to calibrate Z axis")
             time.sleep(delay)
 
+            handle_abort()
+
             #handle_error()
             self.emit("progress", 6, 7)
             self.emit("message", "Range measure Z axis maximum...")
@@ -188,11 +234,14 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     raise RuntimeError("failed to range measure Z axis")
             time.sleep(delay)
 
+            handle_abort()
+
             #handle_error()
             corvus.rmove(0, 0, -AXIS_OFFSET)
             for i in range(retries):
+                handle_abort()
+                update_status()
                 pos = corvus.pos
-                self.emit("message", "x={}, y={}, z={}".format(*pos))
                 if pos == (0, 0, 0):
                     break
                 time.sleep(delay)
@@ -200,8 +249,9 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 raise RuntimeError("failed to calibrate axes, current pos: {}".format(pos))
 
             #handle_error()
+            update_status()
             self.emit("progress", 7, 7)
-            self.emit("message", None)
+            self.emit("message", "Calibration successful.")
 
             corvus.joystick = True
 

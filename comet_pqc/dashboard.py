@@ -27,7 +27,8 @@ from .panels import CVRampHVPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
-from .tablecontrol import TableControlDialog
+from .dialogs import TableControlDialog
+from .dialogs import TableCalibrateDialog
 
 from .driver import EnvironmentBox
 
@@ -358,6 +359,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text = comet.Text(readonly=True)
         self.elm_model_text = comet.Text(readonly=True)
         self.table_model_text = comet.Text(readonly=True)
+        self.table_state_text = comet.Text(readonly=True)
         self.env_model_text = comet.Text(readonly=True)
         self.env_box_temperature_text = comet.Text(readonly=True)
         self.env_box_humidity_text = comet.Text(readonly=True)
@@ -419,10 +421,17 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 ),
                 comet.GroupBox(
                     title="Table",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
-                        self.table_model_text,
-                        stretch=(1, 7)
+                    layout=comet.Column(
+                        comet.Row(
+                            comet.Label("Model:"),
+                            self.table_model_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("State:"),
+                            self.table_state_text,
+                            stretch=(1, 7)
+                        )
                     )
                 ),
                 comet.GroupBox(
@@ -656,31 +665,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         TableControlDialog().run()
 
     def on_table_calibrate_start(self):
-        if not comet.show_question(
-            title="Calibrate table",
-            text="Are you sure to calibrate the table?"
-        ): return
-        self.sample_groupbox.enabled = False
-        self.table_calibrate_button.enabled = False
-        self.start_button.enabled = False
-        self.autopilot_button.enabled = False
-        self.continue_button.enabled = False
-        self.stop_button.enabled = False
-        self.enabled = False
-        calibrate = self.processes.get("calibrate")
-        calibrate.start()
-
-    def on_calibrate_finished(self):
-        calibrate = self.processes.get("calibrate")
-        if calibrate.get("success", False):
-            comet.show_info(title="Success", text="Calibrated table successfully.")
-        self.sample_groupbox.enabled = True
-        self.table_calibrate_button.enabled = True
-        self.start_button.enabled = True
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
-        self.stop_button.enabled = False
-        self.enabled = True
+        TableCalibrateDialog().run()
 
     def on_use_environ_changed(self, state):
         self.settings["use_environ"] = state
@@ -892,6 +877,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text.value = ""
         self.elm_model_text.value = ""
         self.table_model_text.value = ""
+        self.table_state_text.value = ""
         self.env_model_text.value = ""
         self.env_box_temperature_text.value = ""
         self.env_box_humidity_text.value = ""
@@ -916,6 +902,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
         self.table_model_text.value = status.get("table_model") or "n/a"
+        self.table_state_text.value = status.get("table_state") or "n/a"
         self.env_model_text.value = status.get("env_model") or "n/a"
         pc_data = status.get("env_pc_data")
         if pc_data:

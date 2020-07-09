@@ -64,12 +64,19 @@ class StatusProcess(comet.Process, ResourceMixin):
 
     def read_table(self):
         self.set("table_model", "")
+        self.set("table_state", "N/A")
         try:
             with self.resources.get("table") as table_res:
                 table = Venus1(table_res)
                 table.mode = 0
                 model = table.identification
                 self.set("table_model", model)
+                caldone = (table.x.caldone, table.y.caldone, table.z.caldone)
+                if caldone == (3, 3, 3):
+                    state = f"CALIBRATED"
+                else:
+                    state = f"NOT CALIBRATED"
+                self.set("table_state", state)
         except (ResourceError, OSError):
             pass
 

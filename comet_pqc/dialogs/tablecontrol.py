@@ -6,9 +6,45 @@ import comet
 import qutie
 comet.RadioButton = qutie.RadioButton
 
-from .processes import ControlProcess
+__all__ = ['TableControlDialog']
 
-__all__ = ['TableControl']
+class TableControlDialog(comet.Dialog, comet.ProcessMixin):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title="Table Control"
+        self.control = TableControl()
+        self.layout=comet.Column(
+            self.control,
+            comet.Row(
+                comet.Button("&Close", clicked=self.close),
+                comet.Spacer(vertical=False)
+            ),
+        )
+        self.process = self.processes.get('control')
+        def on_failed(*args):
+            comet.show_exception(*args)
+            self.close()
+        self.process.failed = on_failed
+        def on_close():
+             self.close()
+        self.process.finished = on_close
+        def on_move(x, y, z):
+            logging.info(f"Move table: {x} {y} {z}")
+            self.process.push(x, y, z)
+        def on_position(x, y, z):
+            self.control.position = x, y, z
+        def on_caldone(x, y, z):
+            self.control.caldone = x, y, z
+        self.process.position = on_position
+        self.process.caldone = on_caldone
+        self.control.move = on_move
+
+    def run(self):
+        self.process.start()
+        super().run()
+        self.process.stop()
+        self.process.join()
 
 class SquareSpacer(comet.Spacer):
 
@@ -245,11 +281,20 @@ class TableControl(comet.Column):
             return (value >> 1) & 0x1
         self.__caldone = value[0], value[1], value[2]
         self.cal_x_label.text = "cal {}".format(getcal(value[0]))
+        self.cal_x_label.stylesheet = "color: green" if getcal(value[0]) else "color: red"
         self.cal_y_label.text = "cal {}".format(getcal(value[1]))
+        self.cal_y_label.stylesheet = "color: green" if getcal(value[1]) else "color: red"
         self.cal_z_label.text = "cal {}".format(getcal(value[2]))
+        self.cal_z_label.stylesheet = "color: green" if getcal(value[2]) else "color: red"
         self.rm_x_label.text = "rm {}".format(getrm(value[0]))
+        self.rm_x_label.stylesheet = "color: green" if getrm(value[0]) else "color: red"
         self.rm_y_label.text = "rm {}".format(getrm(value[1]))
+        self.rm_y_label.stylesheet = "color: green" if getrm(value[1]) else "color: red"
         self.rm_z_label.text = "rm {}".format(getrm(value[2]))
+        self.rm_z_label.stylesheet = "color: green" if getrm(value[2]) else "color: red"
+        state = value == (3, 3, 3)
+        self.controls_tab.enabled = state
+        self.positions_tab.enabled = state
 
     def on_back(self):
         self.emit("move", 0, self.step_width, 0)
@@ -304,41 +349,3 @@ class TableControl(comet.Column):
         if item:
             if comet.show_question(f"Do you want to remove position '{item[0].value}'?"):
                 self.positions_tree.remove(item)
-
-class TableControlDialog(comet.Dialog):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title="Table Control"
-        self.control = TableControl()
-        self.layout=comet.Column(
-            self.control,
-            comet.Row(
-                comet.Button("&Close", clicked=self.close),
-                comet.Spacer(vertical=False)
-            ),
-        )
-        self.process = ControlProcess()
-        def on_failed(*args):
-            comet.show_exception(*args)
-            self.close()
-        self.process.failed = on_failed
-        def on_close():
-             self.close()
-        self.process.finished = on_close
-        def on_move(x, y, z):
-            logging.info(f"Move table: {x} {y} {z}")
-            self.process.push(x, y, z)
-        def on_position(x, y, z):
-            self.control.position = x, y, z
-        def on_caldone(x, y, z):
-            self.control.caldone = x, y, z
-        self.process.position = on_position
-        self.process.caldone = on_caldone
-        self.control.move = on_move
-
-    def run(self):
-        self.process.start()
-        super().run()
-        self.process.stop()
-        self.process.join()
