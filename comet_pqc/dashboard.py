@@ -262,7 +262,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_calibrate_button = comet.Button(
             text="Calibrate Table",
             tool_tip="Calibrate table.",
-            clicked=self.on_table_controls_start
+            clicked=self.on_table_calibrate_start
         )
 
         self.table_groupbox = comet.GroupBox(
@@ -655,7 +655,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_table_controls_start(self):
         TableControlDialog().run()
 
-    def on_table_controls_start(self):
+    def on_table_calibrate_start(self):
         if not comet.show_question(
             title="Calibrate table",
             text="Are you sure to calibrate the table?"
