@@ -70,9 +70,11 @@ class SquareLabel(comet.Label):
 
 class TableControl(comet.Column):
 
-    fine_step_width = 1.0
-    wide_step_width = 10.0
-    large_step_width = 100.0
+    movement_widths = (
+        (1.0, "fine", "green"),
+        (10.0, "wide", "orange"),
+        (100.0, "large", "red")
+    )
 
     def __init__(self, *args, move=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -117,25 +119,19 @@ class TableControl(comet.Column):
             self.up_button,
             self.down_button
         )
-        # Movement buttons
-        self.large_button = comet.RadioButton(
-            text=f"Large ({self.large_step_width} μm)",
-            tool_tip="Move in large steps.",
-            stylesheet="QRadioButton{color:red;}",
-            toggled=self.on_large
-        )
-        self.wide_button = comet.RadioButton(
-            text=f"Wide ({self.wide_step_width} μm)",
-            tool_tip="Move in wide steps.",
-            stylesheet="QRadioButton{color:orange;}",
-            toggled=self.on_wide
-        )
-        self.fine_button = comet.RadioButton(
-            text=f"Fine ({self.fine_step_width} μm)",
-            tool_tip="Move in fine steps.",
-            stylesheet="QRadioButton{color:green;}",
-            toggled=self.on_fine
-        )
+        # Create movement radio buttons
+        self.movement_buttons = comet.Column()
+        for width, name, color in self.movement_widths:
+            button = comet.RadioButton(
+                text=f"{name.title()} ({width} μm)",
+                tool_tip=f"Move in {name} steps.",
+                stylesheet=f"QRadioButton{{color:{color};}}",
+                toggled=self.on_colorcode
+            )
+            button.movement_width = width
+            button.movement_name = name
+            button.movement_color = color
+            self.movement_buttons.append(button)
         self.pos_x_label = comet.Label()
         self.pos_y_label = comet.Label()
         self.pos_z_label = comet.Label()
@@ -173,11 +169,7 @@ class TableControl(comet.Column):
                     comet.Column(
                         comet.GroupBox(
                             title="Movement",
-                            layout=comet.Column(
-                                self.fine_button,
-                                self.wide_button,
-                                self.large_button
-                            )
+                            layout=self.movement_buttons
                         ),
                         comet.Spacer(horizontal=False)
                     ),
@@ -254,18 +246,23 @@ class TableControl(comet.Column):
             stretch=(0, 1)
         ))
         # Init buttons
-        self.fine_button.checked = True
+        if self.movement_buttons:
+            self.movement_buttons[0].checked = True
         self.position = 0, 0, 0
 
     @property
     def step_width(self):
-        if self.fine_button.checked:
-            return abs(self.fine_step_width)
-        elif self.wide_button.checked:
-            return abs(self.wide_step_width)
-        elif self.large_button.checked:
-            return abs(self.large_step_width)
+        for button in self.movement_buttons:
+            if button.checked:
+                return abs(button.movement_width)
         return 0
+
+    @property
+    def step_color(self):
+        for button in self.movement_buttons:
+            if button.checked:
+                return button.movement_color
+        return "black"
 
     @property
     def position(self):
@@ -324,17 +321,9 @@ class TableControl(comet.Column):
     def on_down(self):
         self.emit("move", 0, 0, -self.step_width)
 
-    def on_fine(self, state):
+    def on_colorcode(self, state):
         for button in self.control_buttons:
-            button.stylesheet = "QPushButton{color:green;font-size:22px;}"
-
-    def on_wide(self, state):
-        for button in self.control_buttons:
-            button.stylesheet = "QPushButton{color:orange;font-size:22px;}"
-
-    def on_large(self, state):
-        for button in self.control_buttons:
-            button.stylesheet = "QPushButton{color:red;font-size:22px;}"
+            button.stylesheet = f"QPushButton{{color:{self.step_color};font-size:22px;}}"
 
     def on_move_to_position(self):
         item = self.positions_tree.current
