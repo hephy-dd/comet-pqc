@@ -9,6 +9,9 @@ from comet.driver.corvus import Venus1
 UNIT_MICROMETER = 1
 UNIT_MILLIMETER = 2
 
+AXIS_OFFSET = 2e6
+RETRIES = 180
+
 class ControlProcess(comet.Process, ResourceMixin):
     """Control process for Corvus table."""
 
@@ -64,7 +67,10 @@ class CalibrateProcess(comet.Process, ResourceMixin):
         with self.resources.get('table') as resource:
             corvus = Venus1(resource)
             corvus.mode = 0
-            retries = 180
+            corvus.x.unit = UNIT_MICROMETER
+            corvus.y.unit = UNIT_MICROMETER
+            corvus.z.unit = UNIT_MICROMETER
+            retries = RETRIES
             delay = 1.0
 
             def handle_error():
@@ -156,7 +162,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             #handle_error()
-            corvus.rmove(-1000, -1000, 0)
+            corvus.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
             for i in range(retries):
                 pos = corvus.pos
                 self.emit("message", "x={}, y={}, z={}".format(*pos))
@@ -183,7 +189,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             #handle_error()
-            corvus.rmove(0, 0, -1000)
+            corvus.rmove(0, 0, -AXIS_OFFSET)
             for i in range(retries):
                 pos = corvus.pos
                 self.emit("message", "x={}, y={}, z={}".format(*pos))
