@@ -105,6 +105,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             def update_status():
                 self.emit("message", "Table x={} um, y={} um, z={} um".format(*corvus.pos))
                 self.emit('position', *corvus.pos)
+
+            def update_caldone():
                 self.emit('caldone', corvus.x.caldone, corvus.y.caldone, corvus.z.caldone)
 
             def ncal(axis):
@@ -151,6 +153,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 return i < retries
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 0, 7)
@@ -161,6 +164,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 1, 7)
@@ -171,6 +175,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 2, 7)
@@ -181,6 +186,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 3, 7)
@@ -191,6 +197,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 4, 7)
@@ -201,6 +208,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             corvus.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
@@ -215,6 +223,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 raise RuntimeError("failed to relative move, current pos: {}".format(pos))
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 5, 7)
@@ -225,6 +234,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             self.emit("progress", 6, 7)
@@ -235,6 +245,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
             time.sleep(delay)
 
             handle_abort()
+            update_caldone()
 
             #handle_error()
             corvus.rmove(0, 0, -AXIS_OFFSET)
@@ -250,6 +261,8 @@ class CalibrateProcess(comet.Process, ResourceMixin):
 
             #handle_error()
             update_status()
+            update_caldone()
+
             self.emit("progress", 7, 7)
             self.emit("message", "Calibration successful.")
 

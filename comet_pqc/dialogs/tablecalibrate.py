@@ -106,8 +106,8 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
     def on_start(self):
         if not comet.show_question(
             title="Calibrate table",
-            text="Are you sure to calibrate the table?",
-            informative="Make sure to remove any needle positioners from the box."
+            text="Are you sure you want to calibrate the table?",
+            informative="Make sure to remove any needle positioners from inside the box."
         ): return
         self.process.set("success", False)
         self.start_button.enabled = False
@@ -123,7 +123,7 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
         self.stop_button.enabled = False
         self.close_button.enabled = True
         if self.process.get("success", False):
-            comet.show_info(title="Success", text="Calibrated table successfully.")
+            comet.show_info(title="Success", text="Table calibrated successfully.")
 
     def on_close(self):
         """Prevent close dialog if process is still running."""
@@ -131,7 +131,7 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
         if self.process.alive:
             if not comet.show_question(
                 title="Stop calibration",
-                text="Do you want to stop calibration?"
+                text="Do you want to stop the calibration?"
             ): return False
             self.process.stop()
             self.process.join()
