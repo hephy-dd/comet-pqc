@@ -36,13 +36,13 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
 
-        self.hvsrc_current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.hvsrc_current_compliance = Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
 
         # Instruments status
 
@@ -62,8 +62,9 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
                 )
             ),
             comet.GroupBox(
-                title="HV Source Compliance",
+                title="HV Source",
                 layout=comet.Column(
+                    comet.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
                     comet.Spacer()
                 )

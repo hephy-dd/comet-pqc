@@ -27,7 +27,7 @@ class Panel(comet.Widget):
         self._bindings = {}
         self.state_handlers = []
         self.title_label = comet.Label(
-            stylesheet="font-size: 16px; font-weight: bold; background-color: white; height: 32px;"
+            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
         )
         self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
         self.description_label = comet.Label()

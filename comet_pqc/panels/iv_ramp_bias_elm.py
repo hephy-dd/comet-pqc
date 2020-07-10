@@ -69,18 +69,18 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
                 layout=comet.Column(
                     comet.Label(text="Bias Voltage"),
                     self.bias_voltage,
+                    comet.Label(text="Bias Compliance"),
+                    self.vsrc_current_compliance,
                     comet.Label(text="Bias Mode"),
                     self.bias_mode,
                     comet.Spacer()
                 )
             ),
             comet.GroupBox(
-                title="Compliance",
+                title="HV Source",
                 layout=comet.Column(
-                    comet.Label(text="HV Source Compliance"),
+                    comet.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
-                    comet.Label(text="V Source Compliance"),
-                    self.vsrc_current_compliance,
                     comet.Spacer()
                 )
             ),

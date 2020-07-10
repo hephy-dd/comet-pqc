@@ -70,8 +70,9 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
                 )
             ),
             comet.GroupBox(
-                title="V Source Compliance",
+                title="V Source",
                 layout=comet.Column(
+                    comet.Label(text="Compliance"),
                     self.vsrc_current_compliance,
                     comet.Spacer()
                 )

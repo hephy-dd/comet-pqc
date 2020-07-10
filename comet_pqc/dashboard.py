@@ -911,7 +911,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
             self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
             self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
-            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "FloadD"
+            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
 
     # Menu action callbacks
 

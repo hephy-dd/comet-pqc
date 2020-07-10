@@ -50,7 +50,7 @@ class MatrixMeasurement(Measurement):
         result = None
         if matrix_enabled:
             self.initialize_matrix()
-        result = self.code(*args, **kwargs)
+        result = super().run(*args, **kwargs)
         if matrix_enabled:
             # Always reset matrix switch!
             self.finalize_matrix()
