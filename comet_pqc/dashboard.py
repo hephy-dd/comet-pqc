@@ -28,6 +28,7 @@ from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
 from .dialogs import TableControlDialog
+from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
 
 from .driver import EnvironmentBox
@@ -255,13 +256,19 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Table controls
 
         self.table_control_button = comet.Button(
-            text="Control Table",
+            text="Control...",
             tool_tip="Virtual table joystick controls.",
             clicked=self.on_table_controls_start
         )
 
+        self.table_move_button = comet.Button(
+            text="Move to...",
+            tool_tip="Move table to predefined positions.",
+            clicked=self.on_table_move_start
+        )
+
         self.table_calibrate_button = comet.Button(
-            text="Calibrate Table",
+            text="Calibrate...",
             tool_tip="Calibrate table.",
             clicked=self.on_table_calibrate_start
         )
@@ -274,6 +281,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             layout=comet.Row(
                 comet.Spacer(vertical=False),
                 self.table_control_button,
+                self.table_move_button,
                 self.table_calibrate_button
             )
         )
@@ -663,6 +671,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_table_controls_start(self):
         TableControlDialog().run()
+
+    def on_table_move_start(self):
+        TableMoveDialog().run()
 
     def on_table_calibrate_start(self):
         TableCalibrateDialog().run()

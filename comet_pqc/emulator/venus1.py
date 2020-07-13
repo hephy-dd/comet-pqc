@@ -14,6 +14,8 @@ class Venus1Handler(Venus1BaseHandler):
 
     getcaldone = 3
     getaxis = 3
+    geterror = 0
+    getmerror = 0
 
     @message(r'\d\s+getcaldone')
     def query_getcaldone(self, message):
@@ -22,6 +24,14 @@ class Venus1Handler(Venus1BaseHandler):
     @message(r'\d\s+getaxis')
     def query_getaxis(self, message):
         return type(self).getaxis
+
+    @message(r'geterror')
+    def query_geterror(self, message):
+        return type(self).geterror
+
+    @message(r'getmerror')
+    def query_getmerror(self, message):
+        return type(self).getmerror
 
     @message(r'[+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? rmove')
     def write_rmove(self, message):

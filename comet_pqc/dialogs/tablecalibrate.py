@@ -127,7 +127,6 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
 
     def on_close(self):
         """Prevent close dialog if process is still running."""
-        print(self.process.running)
         if self.process.alive:
             if not comet.show_question(
                 title="Stop calibration",

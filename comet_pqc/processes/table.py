@@ -23,6 +23,7 @@ class ControlProcess(comet.Process, ResourceMixin):
         self.lock = threading.RLock()
         self.position = None
         self.caldone = None
+        self.z_warning = None
         self.message = message
         self.progress = progress
 
@@ -38,6 +39,15 @@ class ControlProcess(comet.Process, ResourceMixin):
             table.x.unit = UNIT_MICROMETER
             table.y.unit = UNIT_MICROMETER
             table.z.unit = UNIT_MICROMETER
+
+            def handle_error():
+                error = table.error
+                if error:
+                    raise RuntimeError(f"Error: {error}")
+                merror = table.merror
+                if merror:
+                    raise RuntimeError(f"Machine Error: {merror}")
+
             t = time.time()
             while self.running:
                 with self.lock:
@@ -46,14 +56,135 @@ class ControlProcess(comet.Process, ResourceMixin):
                         assert table.y.unit == UNIT_MICROMETER
                         assert table.z.unit == UNIT_MICROMETER
                         args = self.queue.pop(0)
+                        handle_error()
                         table.rmove(*args)
                         self.emit('position', *table.pos)
+                        handle_error()
                         continue
                 if (time.time() - t) > self.update_interval:
                     t = time.time()
+                    handle_error()
                     self.emit('position', *table.pos)
                     self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
                 time.sleep(.025)
+
+class MoveProcess(comet.Process, ResourceMixin):
+    """Move process for Corvus table."""
+
+    MAXIMUM_Z = 22000
+
+    def __init__(self, message, progress, **kwargs):
+        super().__init__(**kwargs)
+        self.message = message
+        self.progress = progress
+        self.position = None
+        self.caldone = None
+
+    def peek(self):
+        if not self.alive:
+            with self.resources.get('table') as resource:
+                corvus = Venus1(resource)
+                corvus.mode = 0
+                corvus.x.unit = UNIT_MICROMETER
+                corvus.y.unit = UNIT_MICROMETER
+                corvus.z.unit = UNIT_MICROMETER
+                self.emit('position', *corvus.pos)
+                self.emit('caldone', corvus.x.caldone, corvus.y.caldone, corvus.z.caldone)
+
+    def run(self):
+        self.set("success", False)
+        self.emit("message", "Moving...")
+        x = self.get('x', 0)
+        y = self.get('y', 0)
+        z = min(self.get('z', 0), self.MAXIMUM_Z)
+        with self.resources.get('table') as resource:
+            corvus = Venus1(resource)
+            corvus.mode = 0
+            corvus.joystick = False
+            corvus.x.unit = UNIT_MICROMETER
+            corvus.y.unit = UNIT_MICROMETER
+            corvus.z.unit = UNIT_MICROMETER
+            retries = RETRIES
+            delay = 1.0
+
+            def handle_error():
+                time.sleep(delay)
+                error = corvus.error
+                if error:
+                    raise RuntimeError(f"Error: {error}")
+                merror = corvus.merror
+                if merror:
+                    raise RuntimeError(f"Machine Error: {merror}")
+                time.sleep(delay)
+
+            def handle_abort():
+                if not self.running:
+                    corvus.joystick = True
+                    self.emit("progress", 0, 0)
+                    self.emit("message", "Moving aborted.")
+                    raise comet.StopRequest()
+
+            def update_status():
+                self.emit("message", "Table x={} um, y={} um, z={} um".format(*corvus.pos))
+                self.emit('position', *corvus.pos)
+
+            def update_caldone():
+                self.emit('caldone', corvus.x.caldone, corvus.y.caldone, corvus.z.caldone)
+
+            handle_abort()
+            update_caldone()
+
+            self.emit("progress", 1, 4)
+            self.emit("message", "Retreating Z axis...")
+            corvus.rmove(0, 0, -AXIS_OFFSET)
+            for i in range(retries):
+                handle_abort()
+                update_status()
+                pos = corvus.pos
+                if pos[2] == 0:
+                    break
+                time.sleep(delay)
+            if pos[2] != 0:
+                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+
+            handle_abort()
+            update_caldone()
+
+            self.emit("progress", 2, 4)
+            self.emit("message", "Move X Y axes...")
+            corvus.move(x, y, 0)
+            for i in range(retries):
+                handle_abort()
+                update_status()
+                pos = corvus.pos
+                if pos[:2] == (x, y):
+                    break
+                time.sleep(delay)
+            if pos[:2] != (x, y):
+                raise RuntimeError("failed to absolute move, current pos: {}".format(pos))
+
+            self.emit("progress", 3, 4)
+            self.emit("message", "Move up Z axis...")
+            corvus.rmove(0, 0, z)
+            for i in range(retries):
+                handle_abort()
+                update_status()
+                pos = corvus.pos
+                if pos[2] >= z:
+                    break
+                time.sleep(delay)
+            if pos != (x, y, z):
+                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+
+            if self.get('z') > z:
+                self.emit('z_warning', z)
+
+            self.emit("progress", 7, 7)
+            self.emit("message", "Movement successful.")
+
+            corvus.joystick = True
+
+        self.set("success", True)
 
 class CalibrateProcess(comet.Process, ResourceMixin):
     """Calibration process for Corvus table."""
@@ -82,6 +213,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
         with self.resources.get('table') as resource:
             corvus = Venus1(resource)
             corvus.mode = 0
+            corvus.joystick = False
             corvus.x.unit = UNIT_MICROMETER
             corvus.y.unit = UNIT_MICROMETER
             corvus.z.unit = UNIT_MICROMETER
@@ -92,7 +224,10 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                 time.sleep(delay)
                 error = corvus.error
                 if error:
-                    raise RuntimeError(f"Corvus: {error}")
+                    raise RuntimeError(f"Error: {error}")
+                merror = corvus.merror
+                if merror:
+                    raise RuntimeError(f"Machine Error: {merror}")
                 time.sleep(delay)
 
             def handle_abort():

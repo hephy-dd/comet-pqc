@@ -11,6 +11,7 @@ from . import __version__
 
 from .processes import StatusProcess
 from .processes import ControlProcess
+from .processes import MoveProcess
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
 from .processes import SequenceProcess
@@ -112,6 +113,11 @@ def main():
         progress=on_progress
     ))
     app.processes.add("control", ControlProcess(
+        failed=on_show_error,
+        message=on_message,
+        progress=on_progress
+    ))
+    app.processes.add("move", MoveProcess(
         failed=on_show_error,
         message=on_message,
         progress=on_progress

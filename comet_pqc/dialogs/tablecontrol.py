@@ -141,65 +141,41 @@ class TableControl(comet.Column):
         self.rm_x_label = comet.Label()
         self.rm_y_label = comet.Label()
         self.rm_z_label = comet.Label()
-        self.positions_tree = comet.Tree()
-        self.positions_tree.header = "Name", "X", "Y", "Z"
-        self.positions_tree.indentation = 0
-        self.positions_tree.append(["LOAD", 1., 2., 3.])
-        self.positions_tree.append(["PROBE CARD", 3., 4., 2.5])
-        self.positions_tree.fit()
         # Layout
-        self.controls_tab = comet.Tab(
-            title="Controls",
-            layout=comet.Column(
+        self.controls_layout = comet.Column(
+            comet.Spacer(),
+            comet.Row(
                 comet.Spacer(),
                 comet.Row(
-                    comet.Spacer(),
-                    comet.Row(
-                        comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
-                        comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
-                        comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+                    comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
+                    comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
+                    comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+                ),
+                SquareSpacer(),
+                comet.Column(
+                    self.up_button,
+                    SquareLabel("Z"),
+                    self.down_button
+                ),
+                SquareSpacer(),
+                comet.Column(
+                    comet.GroupBox(
+                        title="Movement",
+                        layout=self.movement_buttons
                     ),
-                    SquareSpacer(),
-                    comet.Column(
-                        self.up_button,
-                        SquareLabel("Z"),
-                        self.down_button
-                    ),
-                    SquareSpacer(),
-                    comet.Column(
-                        comet.GroupBox(
-                            title="Movement",
-                            layout=self.movement_buttons
-                        ),
-                        comet.Spacer(horizontal=False)
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 0, 0, 0, 0, 0, 1)
+                    comet.Spacer(horizontal=False)
                 ),
                 comet.Spacer(),
-                stretch=(1, 0, 1)
-            )
-        )
-        self.positions_tab = comet.Tab(
-            title="Positions",
-            layout=comet.Row(
-                self.positions_tree,
-                comet.Column(
-                    comet.Button("Move To", clicked=self.on_move_to_position),
-                    comet.Button("Set Pos", clicked=self.on_set_position),
-                    comet.Spacer(),
-                    comet.Button("&Add", clicked=self.on_add_position),
-                    comet.Button("&Edit", clicked=self.on_edit_position),
-                    comet.Button("&Remove", clicked=self.on_remove_position)
-                ),
-                stretch=(0, 1)
-            )
+                stretch=(1, 0, 0, 0, 0, 0, 1)
+            ),
+            comet.Spacer(),
+            stretch=(1, 0, 1)
         )
         self.append(comet.Column(
             comet.Row(
-                comet.Tabs(
-                    self.controls_tab,
-                    self.positions_tab
+                comet.GroupBox(
+                    title="Control",
+                    layout=self.controls_layout
                 ),
                 comet.Column(
                     comet.GroupBox(
@@ -300,8 +276,7 @@ class TableControl(comet.Column):
         self.rm_z_label.text = "rm {}".format(getrm(value[2]))
         self.rm_z_label.stylesheet = "color: green" if getrm(value[2]) else "color: red"
         state = value == (3, 3, 3)
-        self.controls_tab.enabled = state
-        self.positions_tab.enabled = state
+        self.controls_layout.enabled = state
 
     def on_back(self):
         self.emit("move", 0, self.step_width, 0)
@@ -324,31 +299,3 @@ class TableControl(comet.Column):
     def on_colorcode(self, state):
         for button in self.control_buttons:
             button.stylesheet = f"QPushButton{{color:{self.step_color};font-size:22px;}}"
-
-    def on_move_to_position(self):
-        item = self.positions_tree.current
-        if item:
-            comet.show_question(f"Do you want to move table to position '{item[0].value}'?")
-
-    def on_set_position(self):
-        item = self.positions_tree.current
-        if item:
-            comet.show_question(f"Do you want to assign current position to '{item[0].value}'?")
-
-    def on_add_position(self):
-        text = comet.get_text(title="Add Position", label="Name", text="")
-        if text:
-            self.positions_tree.append([text, 0, 0, 0])
-
-    def on_edit_position(self):
-        item = self.positions_tree.current
-        if item:
-            text = comet.get_text(title="Add Position", label="Name", text=item[0].value)
-            if text:
-                item[0].value = text
-
-    def on_remove_position(self):
-        item = self.positions_tree.current
-        if item:
-            if comet.show_question(f"Do you want to remove position '{item[0].value}'?"):
-                self.positions_tree.remove(item)
