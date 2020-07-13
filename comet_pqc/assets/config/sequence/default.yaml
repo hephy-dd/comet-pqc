@@ -9,7 +9,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D09, 2E10, 2F11, 2G12]
+            matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -20,7 +20,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D12, 2E09, 2F10, 2G11]
+            matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -10 uA
             current_stop: 10 uA
             current_step: 500 nA
@@ -31,7 +31,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D09, 2E10, 2F11, 2G12]
+            matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -42,7 +42,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D12, 2E09, 2F10, 2G11]
+            matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -53,7 +53,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D09, 2E10, 2F11, 2G12]
+            matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -64,7 +64,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D12, 2E09, 2F10, 2G11]
+            matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -75,7 +75,7 @@ contacts:
         type: iv_ramp_bias_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1D02, 2G11, 2A10, 2C12]
+            matrix_channels: [2D11, 2G09, 2A10, 1G02]
             voltage_start: -5 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
@@ -88,7 +88,7 @@ contacts:
         description: Variant using HVSource and LCR
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A01, 1B02, 2H11, 2G12]
+            matrix_channels: [1A01, 1B02, 2H12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
             bias_voltage_step: 0.1 V
@@ -117,7 +117,7 @@ contacts:
         description: Variant using HVSource and LCR
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A01, 1B02, 2H11, 2G12]
+            matrix_channels: [1A01, 1B02, 2H12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 5 V
             bias_voltage_step: 0.1 V
@@ -146,7 +146,7 @@ contacts:
         type: iv_ramp_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A02, 2C11]
+            matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: 0 V
             voltage_stop: -1000 V
             voltage_step: 10 V
@@ -166,7 +166,7 @@ contacts:
         type: cv_ramp
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A01, 1B02, 2H11, 2G12]
+            matrix_channels: [1A01, 1B02, 2C11, 2H12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
             bias_voltage_step: 5 V
@@ -195,7 +195,7 @@ contacts:
         enabled: false
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A01, 1B02, 2H11, 2G12]
+            matrix_channels: [1A01, 1B02, 2C11, 2H12]
             bias_voltage_start: 0 V
             bias_voltage_stop: 200 V
             bias_voltage_step: 2.5 V
@@ -227,7 +227,7 @@ contacts:
         type: iv_ramp_bias_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1D02, 2G11, 2A10, 2C12]
+            matrix_channels: [2D11, 2G09, 2A10, 1G02]
             voltage_start: -10 V
             voltage_stop: 10 V
             voltage_step: 0.1 V
@@ -239,7 +239,7 @@ contacts:
         type: iv_ramp_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A02, 2C11]
+            matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: -100 mV
             voltage_stop: 100 mV
             voltage_step: 25 mV
@@ -252,7 +252,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D10, 2E09, 2F11, 2G12]
+            matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
             current_step: 50 uA
@@ -263,7 +263,7 @@ contacts:
         type: iv_ramp_4_wire
         parameters:
             matrix_enabled: true
-            matrix_channels: [2D10, 2E09, 2F11, 2G12]
+            matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
             current_step: 25 nA
@@ -274,8 +274,7 @@ contacts:
         type: iv_ramp_elm
         parameters:
             matrix_enabled: true
-            matrix_channels: [1A02, 2C11]
-            iterations: 3
+            matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: 0 V
             voltage_stop: 250 V
             voltage_step: 10 V
@@ -286,6 +285,7 @@ contacts:
             elm_integration_rate: 50
   - name: PQC Flute 3
     contact_id: flute_3
+    enabled: false
     measurements:
       - name: Metal meander
         type: iv_ramp_4_wire
@@ -392,6 +392,7 @@ contacts:
             lcr_amplitude: 250 mV
   - name: PQC Flute 4
     contact_id: flute_4
+    enabled: false
     measurements:
       - name: GCD05
         type: iv_ramp_bias_elm
