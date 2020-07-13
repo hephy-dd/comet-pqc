@@ -33,7 +33,7 @@ from .dialogs import TableCalibrateDialog
 
 from .driver import EnvironmentBox
 
-ENABLE_SEQUENCING = True
+ENABLE_SEQUENCING = False
 """Switch to disable sequence execution from user interface."""
 
 def create_icon(size, color):
