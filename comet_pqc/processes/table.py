@@ -93,6 +93,7 @@ class MoveProcess(comet.Process, ResourceMixin):
 
     def run(self):
         self.set("success", False)
+        self.set("z_warning", False)
         self.emit("message", "Moving...")
         x = self.get('x', 0)
         y = self.get('y', 0)
@@ -176,14 +177,10 @@ class MoveProcess(comet.Process, ResourceMixin):
             if pos != (x, y, z):
                 raise RuntimeError("failed to relative move, current pos: {}".format(pos))
 
-            if self.get('z') > z:
-                self.emit('z_warning', z)
-
             self.emit("progress", 7, 7)
             self.emit("message", "Movement successful.")
 
-            corvus.joystick = True
-
+        self.set("z_warning", self.get('z') > z)
         self.set("success", True)
 
 class CalibrateProcess(comet.Process, ResourceMixin):
@@ -400,7 +397,5 @@ class CalibrateProcess(comet.Process, ResourceMixin):
 
             self.emit("progress", 7, 7)
             self.emit("message", "Calibration successful.")
-
-            corvus.joystick = True
 
         self.set("success", True)

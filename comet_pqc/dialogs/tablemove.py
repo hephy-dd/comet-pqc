@@ -38,7 +38,6 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         self.process.failed = self.on_failed
         self.process.position = self.on_position
         self.process.caldone = self.on_caldone
-        self.process.z_warning = self.on_z_warning
         self.content.load_positions()
         self.content.assign_position = self.on_assign_position
         self.content.move_selected = self.on_move_selected
@@ -70,12 +69,6 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
     def on_caldone(self, x, y, z):
         self.content.caldone = x, y, z
 
-    def on_z_warning(self, z):
-        self.show_warning(
-            title="Safe Z Position",
-            text=f"Limited Z movement to {z} to protext probe card."
-        )
-
     def on_start(self):
         item = self.content.positions_tree.current
         if item:
@@ -95,6 +88,11 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
 
     def on_finished(self):
         name = self.process.get('name')
+        if self.process.get("z_warning"):
+            comet.show_warning(
+                title="Safe Z Position",
+                text=f"Limited Z movement to {self.process.MAXIMUM_Z/1000.:.3f} mm to protect probe card."
+            )
         if self.process.get("success", False):
             comet.show_info(title="Success", text=f"Moved table successfully to {name}.")
         self.process.set('name', None)

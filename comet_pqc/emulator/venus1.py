@@ -17,6 +17,8 @@ class Venus1Handler(Venus1BaseHandler):
     geterror = 0
     getmerror = 0
 
+    joystick = False
+
     @message(r'\d\s+getcaldone')
     def query_getcaldone(self, message):
         return type(self).getcaldone
@@ -32,6 +34,15 @@ class Venus1Handler(Venus1BaseHandler):
     @message(r'getmerror')
     def query_getmerror(self, message):
         return type(self).getmerror
+
+    @message(r'joystick')
+    def query_joystick(self, message):
+        return type(self).joystick
+
+    @message(r'\d\s+joystick')
+    def write_joystick(self, message):
+        state = bool(int(message.split([0])))
+        type(self).joystick = state
 
     @message(r'[+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? rmove')
     def write_rmove(self, message):

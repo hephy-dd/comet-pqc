@@ -10,6 +10,7 @@ import comet
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
 from comet.resource import ResourceMixin
+from comet.driver.corvus import Venus1
 
 from . import config
 
@@ -255,6 +256,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Table controls
 
+        self.table_joystick_button = ToggleButton(
+            text="Joystick",
+            tool_tip="Toggle table joystick",
+            checkable=True,
+            checked=False,
+            clicked=self.on_table_joystick_clicked
+        )
+
         self.table_control_button = comet.Button(
             text="Control...",
             tool_tip="Virtual table joystick controls.",
@@ -279,6 +288,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             checked=self.settings.get("use_table", False),
             toggled=self.on_table_groupbox_toggled,
             layout=comet.Row(
+                self.table_joystick_button,
                 comet.Spacer(vertical=False),
                 self.table_control_button,
                 self.table_move_button,
@@ -669,14 +679,29 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Table calibration
 
+    def on_table_joystick_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.table_joystick_button.checked
+        try:
+            with self.resources.get("table") as table_resource:
+                table = Venus1(table_resource)
+                table.joystick = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
     def on_table_controls_start(self):
         TableControlDialog().run()
+        self.sync_table_controls()
 
     def on_table_move_start(self):
         TableMoveDialog().run()
+        self.sync_table_controls()
 
     def on_table_calibrate_start(self):
         TableCalibrateDialog().run()
+        self.sync_table_controls()
 
     def on_use_environ_changed(self, state):
         self.settings["use_environ"] = state
@@ -773,6 +798,18 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
             self.pid_control_button.checked = pc_data.pid_status
 
+    def sync_table_controls(self):
+        """Syncronize table controls."""
+        try:
+            with self.resources.get("table") as table_resource:
+                table = Venus1(table_resource)
+                joystick_state = table.joystick
+        except Exception as exc:
+            comet.show_exception(exc)
+            self.table_groupbox.checked = False
+        else:
+            self.table_joystick_button.checked = joystick_state
+
     def on_environment_groupbox_toggled(self, state):
         self.settings["use_environ"] = state
         if self.environment_groupbox.checked:
@@ -780,6 +817,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_table_groupbox_toggled(self, state):
         self.settings["use_table"] = state
+        if self.table_groupbox.checked:
+            self.sync_table_controls()
 
     def on_output_changed(self, value):
         self.settings["output_path"] = value
