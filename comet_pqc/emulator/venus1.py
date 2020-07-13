@@ -12,27 +12,30 @@ __all__ = ['Venus1Handler']
 
 class Venus1Handler(Venus1BaseHandler):
 
-    n = -1
+    getcaldone = 3
+    getaxis = 3
 
     @message(r'\d\s+getcaldone')
     def query_getcaldone(self, message):
-        type(self).n += 1
-        return min(type(self).n, 3)
+        return type(self).getcaldone
 
     @message(r'\d\s+getaxis')
     def query_getaxis(self, message):
-        return 3
+        return type(self).getaxis
 
     @message(r'[+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? rmove')
     def write_rmove(self, message):
-        x, y, z, command = message.split()
-        cls = self.__class__
-        cls.x_pos += float(x)
-        cls.y_pos += float(y)
-        cls.z_pos += float(z)
-        cls.x_pos = max(0.0, cls.x_pos)
-        cls.y_pos = max(0.0, cls.y_pos)
-        cls.z_pos = max(0.0, cls.z_pos)
+        x, y, z = map(float, message.split()[:3])
+        type(self).x_pos = max(0.0, type(self).x_pos + x)
+        type(self).y_pos = max(0.0, type(self).y_pos + y)
+        type(self).z_pos = max(0.0, type(self).z_pos + z)
+
+    @message(r'[+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? move')
+    def write_move(self, message):
+        x, y, z = map(float, message.split()[:3])
+        type(self).x_pos = max(0.0, x)
+        type(self).y_pos = max(0.0, y)
+        type(self).z_pos = max(0.0, z)
 
 if __name__ == "__main__":
     run(Venus1Handler)

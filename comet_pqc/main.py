@@ -143,7 +143,7 @@ def main():
     # Layout
 
     app.layout = dashboard
-    app.width = 1280
+    app.width = 1420
     app.height = 920
 
     # Tweaks... there's no hook, so it's a hack.
