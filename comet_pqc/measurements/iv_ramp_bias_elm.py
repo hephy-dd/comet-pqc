@@ -14,6 +14,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["IVRampBiasElmMeasurement"]
 
@@ -22,6 +23,14 @@ def check_error(vsrc):
         error = vsrc.errorqueue.next()
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
+
+def elm_check_error(elm):
+    code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
+    code = int(code)
+    label = label.strip("\"")
+    if code != 0:
+        logging.error(f"Error {code}: {label} returned by '{message}'")
+        raise RuntimeError(f"Error {code}: {label} returned by '{message}'")
 
 class IVRampBiasElmMeasurement(MatrixMeasurement):
     """Bias IV ramp measurement."""
@@ -135,7 +144,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
 
         if hvsrc_filter_type == "repeat":
             hvsrc.resource.write(":SENS:AVER:TCON REP")
-        elif hvsrc_filter_type == "repeat":
+        elif hvsrc_filter_type == "moving":
             hvsrc.resource.write(":SENS:AVER:TCON MOV")
         hvsrc.resource.query("*OPC?")
 
@@ -202,12 +211,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
             """Write, wait for operation complete, test for errors."""
             elm.resource.write(message)
             elm.resource.query("*OPC?")
-            code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
-            code = int(code)
-            label = label.strip("\"")
-            if code != 0:
-                logging.error(f"error {code}: {label} returned by '{message}'")
-                raise RuntimeError(f"error {code}: {label} returned by '{message}'")
+            elm_check_error(elm)
 
         elm_safe_write("*RST")
         elm_safe_write("*CLS")
@@ -217,7 +221,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
 
         if elm_filter_type == "repeat":
             elm_safe_write(":SENS:CURR:AVER:TCON REP")
-        elif elm_filter_type == "repeat":
+        elif elm_filter_type == "moving":
             elm_safe_write(":SENS:CURR:AVER:TCON MOV")
 
         if elm_filter_enable:
@@ -402,9 +406,11 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
             hvsrc.resource.write(":FORM:ELEM CURR")
             hvsrc.resource.query("*OPC?")
 
+
             # Electrometer reading format: READ
             elm.resource.write(":FORM:ELEM READ")
             elm.resource.query("*OPC?")
+            elm_check_error(elm)
 
             voltage = hvsrc.source.voltage.level
 
@@ -440,14 +446,13 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
                     dt = time.time() - t0
 
                     est.next()
-                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                    self.process.emit("message", "Elapsed {} | Remaining {} | {} | Bias {}".format(elapsed, remaining, format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
+                    self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
                     self.process.emit("progress", *est.progress)
 
                     # read ELM
                     with benchmark_elm:
                         elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                    elm_check_error(elm)
                     logging.info("ELM reading: %E", elm_reading)
                     self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
@@ -455,13 +460,11 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
                     with benchmark_vsrc:
                         vsrc_reading = vsrc.measure.i()
                     logging.info("V Source reading: %E A", vsrc_reading)
-                    ### self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
                     # read HV Source
                     with benchmark_hvsrc:
                         hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
                     logging.info("HV Source bias reading: %E A", hvsrc_reading)
-                    ### self.process.emit("reading", "src", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
                     self.process.emit("update")
                     self.process.emit("state", dict(

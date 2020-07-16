@@ -14,6 +14,7 @@ from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["CVRampHVMeasurement"]
 
@@ -46,7 +47,6 @@ class CVRampHVMeasurement(MatrixMeasurement):
         self.register_parameter('waiting_time', unit='s', required=True)
         self.register_parameter('vsrc_current_compliance', unit='A', required=True)
         self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
-        ### self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
         self.register_parameter('vsrc_filter_enable', False, type=bool)
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
@@ -120,11 +120,6 @@ class CVRampHVMeasurement(MatrixMeasurement):
     def vsrc_set_voltage_level(self, vsrc, voltage):
         logging.info("set V Source voltage level: %s", format_metric(voltage, "V"))
         vsrc.source.levelv = voltage
-
-    # def hvsrc_set_route_termination(self, hvsrc, route_termination):
-    #     logging.info("set HV Source route termination: '%s'", route_termination)
-    #     value = {"front": "FRON", "rear": "REAR"}[route_termination]
-    #     safe_write(hvsrc, f":ROUT:TERM {value:s}")
 
     def vsrc_set_sense_mode(self, vsrc, sense_mode):
         logging.info("set V Source sense mode: '%s'", sense_mode)
@@ -337,9 +332,7 @@ class CVRampHVMeasurement(MatrixMeasurement):
                     # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                     dt = time.time() - t0
                     est.next()
-                    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-                    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-                    self.process.emit("message", "Elapsed {} | Remaining {} | {}".format(elapsed, remaining, format_metric(voltage, "V")))
+                    self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                     self.process.emit("progress", *est.progress)
 
                     # read LCR, for CpRp -> prim: Cp, sec: Rp

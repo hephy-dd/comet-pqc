@@ -1,4 +1,5 @@
 import argparse
+import webbrowser
 import logging
 import sys
 
@@ -9,11 +10,16 @@ import comet
 from . import __version__
 
 from .processes import StatusProcess
+from .processes import ControlProcess
+from .processes import MoveProcess
 from .processes import CalibrateProcess
 from .processes import MeasureProcess
 from .processes import SequenceProcess
 
 from .dashboard import Dashboard
+
+CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
+GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -93,7 +99,10 @@ def main():
         app.message = message
 
     def on_progress(value, maximum):
-        app.progress = value, maximum
+        if value == maximum:
+            app.progress = None
+        else:
+            app.progress = value, maximum
 
     # Register processes
 
@@ -103,8 +112,17 @@ def main():
         message=on_message,
         progress=on_progress
     ))
+    app.processes.add("control", ControlProcess(
+        failed=on_show_error,
+        message=on_message,
+        progress=on_progress
+    ))
+    app.processes.add("move", MoveProcess(
+        failed=on_show_error,
+        message=on_message,
+        progress=on_progress
+    ))
     app.processes.add("calibrate", CalibrateProcess(
-        finished=dashboard.on_calibrate_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress
@@ -115,7 +133,7 @@ def main():
         message=on_message,
         progress=on_progress,
         measurement_state=dashboard.on_measurement_state,
-        reading=lambda name, x, y: logging.info("READING: %s %s %s", name, x, y)
+        reading=None
     ))
     app.processes.add("sequence", SequenceProcess(
         finished=dashboard.on_sequence_finished,
@@ -125,18 +143,16 @@ def main():
         continue_contact=dashboard.on_continue_contact,
         continue_measurement=dashboard.on_continue_measurement,
         measurement_state=dashboard.on_measurement_state,
-        reading=lambda name, x, y: logging.info("READING: %s %s %s", name, x, y)
+        reading=None
     ))
 
     # Layout
 
     app.layout = dashboard
-    app.width = 1280
+    app.width = 1420
     app.height = 920
 
-    # Tweaks
-
-    # There's no hook, so it's a hack.
+    # Tweaks... there's no hook, so it's a hack.
     ui = app.qt.window.ui
     sequenceMenu = QtWidgets.QMenu("&Sequence")
     ui.fileMenu.insertMenu(ui.quitAction, sequenceMenu)
@@ -144,12 +160,22 @@ def main():
     importAction.triggered.connect(dashboard.on_import_sequence)
     sequenceMenu.addAction(importAction)
     ui.fileMenu.insertSeparator(ui.quitAction)
+    githubAction = QtWidgets.QAction("&GitHub")
+    githubAction.triggered.connect(
+        lambda: webbrowser.open(app.qt.window.property('githubUrl'))
+    )
+    ui.helpMenu.insertAction(ui.aboutQtAction, githubAction)
 
     # Set contents URL
-    app.qt.window.setProperty('contentsUrl', 'https://hephy-dd.github.io/comet-pqc/')
+    app.qt.window.setProperty('contentsUrl', CONTENTS_URL)
+    app.qt.window.setProperty('githubUrl', GITHUB_URL)
 
     # Load configurations
     dashboard.load_sequences()
+
+    # Sync environment controls
+    if dashboard.environment_groupbox.checked:
+        dashboard.sync_environment_controls()
 
     return app.run()
 

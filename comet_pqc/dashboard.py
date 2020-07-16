@@ -10,6 +10,7 @@ import comet
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
 from comet.resource import ResourceMixin
+from comet.driver.corvus import Venus1
 
 from . import config
 
@@ -27,7 +28,9 @@ from .panels import CVRampHVPanel
 from .panels import CVRampAltPanel
 from .panels import FrequencyScanPanel
 
-from .tablecontrol import TableControlDialog
+from .dialogs import TableControlDialog
+from .dialogs import TableMoveDialog
+from .dialogs import TableCalibrateDialog
 
 from .driver import EnvironmentBox
 
@@ -117,7 +120,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             value=self.settings.get("sample_type", ""),
             changed=self.on_sample_type_changed
         )
-        self.sequence_select = comet.ComboBox(changed=self.on_load_sequence_tree)
+        self.sequence_combobox = comet.ComboBox(
+            changed=self.on_load_sequence_tree
+        )
 
         self.sample_groupbox = comet.GroupBox(
             title="Sample",
@@ -130,7 +135,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 comet.Column(
                     self.sample_name_text,
                     self.sample_type_text,
-                    self.sequence_select
+                    self.sequence_combobox
                 ),
                 stretch=(0, 1)
             )
@@ -222,33 +227,59 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_probecard_camera_clicked
         )
 
+        self.pid_control_button = ToggleButton(
+            text="PID Control",
+            tool_tip="Toggle PID control",
+            checkable=True,
+            checked=False,
+            clicked=self.on_pid_control_clicked
+        )
+
         self.environment_groupbox = comet.GroupBox(
             title="Environment Box",
             checkable=True,
             checked=self.settings.get("use_environ", True),
             toggled=self.on_environment_groupbox_toggled,
-            layout=comet.Row(
-                self.box_light_button,
-                self.microscope_light_button,
-                self.microscope_camera_button,
-                self.probecard_light_button,
-                self.probecard_camera_button,
-                comet.Spacer(vertical=False)
+            layout=comet.Column(
+                comet.Row(
+                    self.box_light_button,
+                    self.microscope_light_button,
+                    self.probecard_light_button
+                ),
+                comet.Row(
+                    self.microscope_camera_button,
+                    self.probecard_camera_button,
+                    self.pid_control_button
+                )
             )
         )
 
         # Table controls
 
-        self.control_button = comet.Button(
-            text="Control Table",
-            tool_tip="Virtual table joystick controls.",
-            clicked=self.on_controls_start
+        self.table_joystick_button = ToggleButton(
+            text="Joystick",
+            tool_tip="Toggle table joystick",
+            checkable=True,
+            checked=False,
+            clicked=self.on_table_joystick_clicked
         )
 
-        self.calibrate_button = comet.Button(
-            text="Calibrate Table",
+        self.table_control_button = comet.Button(
+            text="Control...",
+            tool_tip="Virtual table joystick controls.",
+            clicked=self.on_table_controls_start
+        )
+
+        self.table_move_button = comet.Button(
+            text="Move to...",
+            tool_tip="Move table to predefined positions.",
+            clicked=self.on_table_move_start
+        )
+
+        self.table_calibrate_button = comet.Button(
+            text="Calibrate...",
             tool_tip="Calibrate table.",
-            clicked=self.on_calibrate_start
+            clicked=self.on_table_calibrate_start
         )
 
         self.table_groupbox = comet.GroupBox(
@@ -257,9 +288,11 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             checked=self.settings.get("use_table", False),
             toggled=self.on_table_groupbox_toggled,
             layout=comet.Row(
+                self.table_joystick_button,
                 comet.Spacer(vertical=False),
-                self.control_button,
-                self.calibrate_button
+                self.table_control_button,
+                self.table_move_button,
+                self.table_calibrate_button
             )
         )
 
@@ -344,6 +377,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text = comet.Text(readonly=True)
         self.elm_model_text = comet.Text(readonly=True)
         self.table_model_text = comet.Text(readonly=True)
+        self.table_state_text = comet.Text(readonly=True)
         self.env_model_text = comet.Text(readonly=True)
         self.env_box_temperature_text = comet.Text(readonly=True)
         self.env_box_humidity_text = comet.Text(readonly=True)
@@ -405,10 +439,17 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 ),
                 comet.GroupBox(
                     title="Table",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
-                        self.table_model_text,
-                        stretch=(1, 7)
+                    layout=comet.Column(
+                        comet.Row(
+                            comet.Label("Model:"),
+                            self.table_model_text,
+                            stretch=(1, 7)
+                        ),
+                        comet.Row(
+                            comet.Label("State:"),
+                            self.table_state_text,
+                            stretch=(1, 7)
+                        )
                     )
                 ),
                 comet.GroupBox(
@@ -484,9 +525,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def load_sequences(self):
         """Load available sequence configurations."""
-        self.sequence_select.clear()
+        current_sequence_id = self.settings.get("current_sequence_id")
+        self.sequence_combobox.clear()
         for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
-            self.sequence_select.append(config.load_sequence(filename))
+            sequence = config.load_sequence(filename)
+            self.sequence_combobox.append(sequence)
+        custom_sequences = []
+        for filename in self.settings.get("custom_sequences") or []:
+            if os.path.exists(filename):
+                sequence = config.load_sequence(filename)
+                sequence.name = f"{sequence.name} (custom)"
+                self.sequence_combobox.append(sequence)
+                custom_sequences.append(filename)
+        self.settings["custom_sequences"] = custom_sequences
+        for sequence in self.sequence_combobox:
+            if sequence.id == current_sequence_id:
+                self.sequence_combobox.current = sequence
+                break
 
     def create_output_dir(self, sample_name, sample_type):
         """Create new timestamp prefixed output directory."""
@@ -511,12 +566,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unmount()
         self.panels.hide()
         self.sequence_tree.clear()
-        sequence = copy.deepcopy(self.sequence_select.current)
+        sequence = copy.deepcopy(self.sequence_combobox.current)
         for contact in sequence:
             self.sequence_tree.append(ContactTreeItem(contact))
         self.sequence_tree.fit()
         if len(self.sequence_tree):
             self.sequence_tree.current = self.sequence_tree[0]
+        self.settings["current_sequence_id"] = sequence.id
 
     # Sequence control
 
@@ -542,8 +598,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             text="Are you sure to start a measurement sequence?"
         ): return
         self.sample_groupbox.enabled = False
-        self.calibrate_button.enabled = False
+        self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
         self.start_button.enabled = False
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
@@ -562,6 +619,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("sample_type", sample_type)
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
+        sequence.set("use_table", self.table_groupbox.checked)
         sequence.sequence_tree = self.sequence_tree
         sequence.start()
 
@@ -604,8 +662,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_sequence_finished(self):
         self.sample_groupbox.enabled = True
-        self.calibrate_button.enabled = True
+        self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
         self.start_button.enabled = True
         self.autopilot_button.enabled = True
         self.continue_button.enabled = False
@@ -620,35 +679,29 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Table calibration
 
-    def on_controls_start(self):
-        TableControlDialog().run()
-
-    def on_calibrate_start(self):
-        if not comet.show_question(
-            title="Calibrate table",
-            text="Are you sure to calibrate the table?"
-        ): return
-        self.sample_groupbox.enabled = False
-        self.calibrate_button.enabled = False
-        self.start_button.enabled = False
-        self.autopilot_button.enabled = False
-        self.continue_button.enabled = False
-        self.stop_button.enabled = False
+    def on_table_joystick_clicked(self):
+        # TODO run in thread
         self.enabled = False
-        calibrate = self.processes.get("calibrate")
-        calibrate.start()
-
-    def on_calibrate_finished(self):
-        calibrate = self.processes.get("calibrate")
-        if calibrate.get("success", False):
-            comet.show_info(title="Success", text="Calibrated table successfully.")
-        self.sample_groupbox.enabled = True
-        self.calibrate_button.enabled = True
-        self.start_button.enabled = True
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
-        self.stop_button.enabled = False
+        state = self.table_joystick_button.checked
+        try:
+            with self.resources.get("table") as table_resource:
+                table = Venus1(table_resource)
+                table.joystick = state
+        except Exception as exc:
+            comet.show_exception(exc)
         self.enabled = True
+
+    def on_table_controls_start(self):
+        TableControlDialog().run()
+        self.sync_table_controls()
+
+    def on_table_move_start(self):
+        TableMoveDialog().run()
+        self.sync_table_controls()
+
+    def on_table_calibrate_start(self):
+        TableCalibrateDialog().run()
+        self.sync_table_controls()
 
     def on_use_environ_changed(self, state):
         self.settings["use_environ"] = state
@@ -716,11 +769,56 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
+    def on_pid_control_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.pid_control_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.pid_control = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def sync_environment_controls(self):
+        """Syncronize environment controls."""
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                pc_data = environ.pc_data
+        except Exception as exc:
+            comet.show_exception(exc)
+            self.environment_groupbox.checked = False
+        else:
+            self.box_light_button.checked = pc_data.relay_states.box_light
+            self.microscope_light_button.checked = pc_data.relay_states.microscope_light
+            self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+            self.probecard_light_button.checked = pc_data.relay_states.probecard_light
+            self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
+            self.pid_control_button.checked = pc_data.pid_status
+
+    def sync_table_controls(self):
+        """Syncronize table controls."""
+        try:
+            with self.resources.get("table") as table_resource:
+                table = Venus1(table_resource)
+                joystick_state = table.joystick
+        except Exception as exc:
+            comet.show_exception(exc)
+            self.table_groupbox.checked = False
+        else:
+            self.table_joystick_button.checked = joystick_state
+
     def on_environment_groupbox_toggled(self, state):
         self.settings["use_environ"] = state
+        if self.environment_groupbox.checked:
+            self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
         self.settings["use_table"] = state
+        if self.table_groupbox.checked:
+            self.sync_table_controls()
 
     def on_output_changed(self, value):
         self.settings["output_path"] = value
@@ -749,8 +847,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Run Measurement",
             text="Do you want to run the current selected measurement?"
         ): return
-        self.calibrate_button.enabled = False
+        self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
         self.measure_restore_button.enabled = False
         self.measure_run_button.enabled = False
         self.measure_stop_button.enabled = True
@@ -773,6 +872,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.set("sample_type", sample_type)
         measure.set("output_dir", output_dir)
         measure.set("use_environ", self.environment_groupbox.checked)
+        measure.set("use_table", self.table_groupbox.checked)
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
@@ -788,8 +888,9 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.stop()
 
     def on_measure_finished(self):
-        self.calibrate_button.enabled = True
+        self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
         self.measure_restore_button.enabled = True
         self.measure_run_button.enabled = True
         self.measure_stop_button.enabled = False
@@ -826,6 +927,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text.value = ""
         self.elm_model_text.value = ""
         self.table_model_text.value = ""
+        self.table_state_text.value = ""
         self.env_model_text.value = ""
         self.env_box_temperature_text.value = ""
         self.env_box_humidity_text.value = ""
@@ -835,6 +937,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_door_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
+        status.set("use_environ", self.environment_groupbox.checked)
+        status.set("use_table", self.table_groupbox.checked)
         status.start()
 
     def on_status_finished(self):
@@ -848,6 +952,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.lcr_model_text.value = status.get("lcr_model") or "n/a"
         self.elm_model_text.value = status.get("elm_model") or "n/a"
         self.table_model_text.value = status.get("table_model") or "n/a"
+        self.table_state_text.value = status.get("table_state") or "n/a"
         self.env_model_text.value = status.get("env_model") or "n/a"
         pc_data = status.get("env_pc_data")
         if pc_data:
@@ -874,21 +979,27 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(e)
             return
         # backup callback
-        on_changed = self.sequence_select.changed
-        self.sequence_select.changed = None
-        for item in self.sequence_select:
+        on_changed = self.sequence_combobox.changed
+        self.sequence_combobox.changed = None
+        for item in self.sequence_combobox:
             if item.id == sequence.id or item.name == sequence.name:
                 result = comet.show_question(
                     title="Sequence already loaded",
                     text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
                 )
                 if result:
-                    self.sequence_select.remove(item)
+                    self.sequence_combobox.remove(item)
                     break
                 else:
-                    self.sequence_select.changed = on_changed
+                    self.sequence_combobox.changed = on_changed
                     return
-        self.sequence_select.append(sequence)
+        sequence.name = f"{sequence.name} (custom)"
+        self.sequence_combobox.append(sequence)
         # Restore callback
-        self.sequence_select.changed = on_changed
-        self.sequence_select.current = sequence
+        self.sequence_combobox.changed = on_changed
+        self.sequence_combobox.current = sequence
+        custom_sequences = self.settings.get("custom_sequences") or []
+        if filename not in custom_sequences:
+            custom_sequences.append(filename)
+        self.settings["custom_sequences"] = custom_sequences
+        self.settings["current_sequence_id"] = sequence.id

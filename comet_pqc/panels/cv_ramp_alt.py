@@ -60,8 +60,9 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
                 )
             ),
             comet.GroupBox(
-                title="LCR Compliance",
+                title="LCR",
                 layout=comet.Column(
+                    comet.Label(text="Compliance"),
                     self.current_compliance,
                     comet.Spacer()
                 )

@@ -27,7 +27,7 @@ class Panel(comet.Widget):
         self._bindings = {}
         self.state_handlers = []
         self.title_label = comet.Label(
-            stylesheet="font-size: 16px; font-weight: bold; background-color: white; height: 32px;"
+            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
         )
         self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
         self.description_label = comet.Label()
@@ -38,7 +38,6 @@ class Panel(comet.Widget):
             )
         self.control_tabs = comet.Tabs(self.general_tab)
         self.status_panel = comet.Column()
-        self.status_panel.width = 280
         self.control_panel = comet.Row(
             self.control_tabs,
             comet.Column(
@@ -211,7 +210,7 @@ class HVSourceMixin:
         toggle_hvsrc_filter(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "front")
+        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "rear")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")

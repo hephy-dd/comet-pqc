@@ -11,6 +11,7 @@ from comet.driver.keysight import E4980A
 
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import format_estimate
 
 __all__ = ["FrequencyScanMeasurement"]
 

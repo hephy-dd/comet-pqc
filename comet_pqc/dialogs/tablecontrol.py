@@ -6,9 +6,45 @@ import comet
 import qutie
 comet.RadioButton = qutie.RadioButton
 
-from .processes import ControlProcess
+__all__ = ['TableControlDialog']
 
-__all__ = ['TableControl']
+class TableControlDialog(comet.Dialog, comet.ProcessMixin):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title="Table Control"
+        self.control = TableControl()
+        self.layout=comet.Column(
+            self.control,
+            comet.Row(
+                comet.Button("&Close", clicked=self.close),
+                comet.Spacer(vertical=False)
+            ),
+        )
+        self.process = self.processes.get('control')
+        def on_failed(*args):
+            comet.show_exception(*args)
+            self.close()
+        self.process.failed = on_failed
+        def on_close():
+             self.close()
+        self.process.finished = on_close
+        def on_move(x, y, z):
+            logging.info(f"Move table: {x} {y} {z}")
+            self.process.push(x, y, z)
+        def on_position(x, y, z):
+            self.control.position = x, y, z
+        def on_caldone(x, y, z):
+            self.control.caldone = x, y, z
+        self.process.position = on_position
+        self.process.caldone = on_caldone
+        self.control.move = on_move
+
+    def run(self):
+        self.process.start()
+        super().run()
+        self.process.stop()
+        self.process.join()
 
 class SquareSpacer(comet.Spacer):
 
@@ -34,8 +70,11 @@ class SquareLabel(comet.Label):
 
 class TableControl(comet.Column):
 
-    fine_step_width = 1.0
-    wide_step_width = 10.0
+    movement_widths = (
+        (1.0, "fine", "green"),
+        (10.0, "wide", "orange"),
+        (100.0, "large", "red")
+    )
 
     def __init__(self, *args, move=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,19 +119,19 @@ class TableControl(comet.Column):
             self.up_button,
             self.down_button
         )
-        # Movement buttons
-        self.wide_button = comet.RadioButton(
-            text=f"Wide ({self.wide_step_width} μm)",
-            tool_tip="Move in wide steps.",
-            stylesheet="QRadioButton{color:red;}",
-            toggled=self.on_wide
-        )
-        self.fine_button = comet.RadioButton(
-            text=f"Fine ({self.fine_step_width} μm)",
-            tool_tip="Move in fine steps.",
-            stylesheet="QRadioButton{color:green;}",
-            toggled=self.on_fine
-        )
+        # Create movement radio buttons
+        self.movement_buttons = comet.Column()
+        for width, name, color in self.movement_widths:
+            button = comet.RadioButton(
+                text=f"{name.title()} ({width} μm)",
+                tool_tip=f"Move in {name} steps.",
+                stylesheet=f"QRadioButton{{color:{color};}}",
+                toggled=self.on_colorcode
+            )
+            button.movement_width = width
+            button.movement_name = name
+            button.movement_color = color
+            self.movement_buttons.append(button)
         self.pos_x_label = comet.Label()
         self.pos_y_label = comet.Label()
         self.pos_z_label = comet.Label()
@@ -102,68 +141,41 @@ class TableControl(comet.Column):
         self.rm_x_label = comet.Label()
         self.rm_y_label = comet.Label()
         self.rm_z_label = comet.Label()
-        self.positions_tree = comet.Tree()
-        self.positions_tree.header = "Name", "X", "Y", "Z"
-        self.positions_tree.indentation = 0
-        self.positions_tree.append(["LOAD", 1., 2., 3.])
-        self.positions_tree.append(["PROBE CARD", 3., 4., 2.5])
-        self.positions_tree.fit()
         # Layout
-        self.controls_tab = comet.Tab(
-            title="Controls",
-            layout=comet.Column(
+        self.controls_layout = comet.Column(
+            comet.Spacer(),
+            comet.Row(
                 comet.Spacer(),
                 comet.Row(
-                    comet.Spacer(),
-                    comet.Row(
-                        comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
-                        comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
-                        comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+                    comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
+                    comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
+                    comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+                ),
+                SquareSpacer(),
+                comet.Column(
+                    self.up_button,
+                    SquareLabel("Z"),
+                    self.down_button
+                ),
+                SquareSpacer(),
+                comet.Column(
+                    comet.GroupBox(
+                        title="Movement",
+                        layout=self.movement_buttons
                     ),
-                    SquareSpacer(),
-                    comet.Column(
-                        self.up_button,
-                        SquareLabel("Z"),
-                        self.down_button
-                    ),
-                    SquareSpacer(),
-                    comet.Column(
-                        comet.GroupBox(
-                            title="Movement",
-                            layout=comet.Column(
-                                self.fine_button,
-                                self.wide_button
-                            )
-                        ),
-                        comet.Spacer(horizontal=False)
-                    ),
-                    comet.Spacer(),
-                    stretch=(1, 0, 0, 0, 0, 0, 1)
+                    comet.Spacer(horizontal=False)
                 ),
                 comet.Spacer(),
-                stretch=(1, 0, 1)
-            )
-        )
-        self.positions_tab = comet.Tab(
-            title="Positions",
-            layout=comet.Row(
-                self.positions_tree,
-                comet.Column(
-                    comet.Button("Move To", clicked=self.on_move_to_position),
-                    comet.Button("Set Pos", clicked=self.on_set_position),
-                    comet.Spacer(),
-                    comet.Button("&Add", clicked=self.on_add_position),
-                    comet.Button("&Edit", clicked=self.on_edit_position),
-                    comet.Button("&Remove", clicked=self.on_remove_position)
-                ),
-                stretch=(0, 1)
-            )
+                stretch=(1, 0, 0, 0, 0, 0, 1)
+            ),
+            comet.Spacer(),
+            stretch=(1, 0, 1)
         )
         self.append(comet.Column(
             comet.Row(
-                comet.Tabs(
-                    self.controls_tab,
-                    self.positions_tab
+                comet.GroupBox(
+                    title="Control",
+                    layout=self.controls_layout
                 ),
                 comet.Column(
                     comet.GroupBox(
@@ -210,16 +222,23 @@ class TableControl(comet.Column):
             stretch=(0, 1)
         ))
         # Init buttons
-        self.fine_button.checked = True
+        if self.movement_buttons:
+            self.movement_buttons[0].checked = True
         self.position = 0, 0, 0
 
     @property
     def step_width(self):
-        if self.fine_button.checked:
-            return abs(self.fine_step_width)
-        elif self.wide_button.checked:
-            return abs(self.wide_step_width)
+        for button in self.movement_buttons:
+            if button.checked:
+                return abs(button.movement_width)
         return 0
+
+    @property
+    def step_color(self):
+        for button in self.movement_buttons:
+            if button.checked:
+                return button.movement_color
+        return "black"
 
     @property
     def position(self):
@@ -245,11 +264,19 @@ class TableControl(comet.Column):
             return (value >> 1) & 0x1
         self.__caldone = value[0], value[1], value[2]
         self.cal_x_label.text = "cal {}".format(getcal(value[0]))
+        self.cal_x_label.stylesheet = "color: green" if getcal(value[0]) else "color: red"
         self.cal_y_label.text = "cal {}".format(getcal(value[1]))
+        self.cal_y_label.stylesheet = "color: green" if getcal(value[1]) else "color: red"
         self.cal_z_label.text = "cal {}".format(getcal(value[2]))
+        self.cal_z_label.stylesheet = "color: green" if getcal(value[2]) else "color: red"
         self.rm_x_label.text = "rm {}".format(getrm(value[0]))
+        self.rm_x_label.stylesheet = "color: green" if getrm(value[0]) else "color: red"
         self.rm_y_label.text = "rm {}".format(getrm(value[1]))
+        self.rm_y_label.stylesheet = "color: green" if getrm(value[1]) else "color: red"
         self.rm_z_label.text = "rm {}".format(getrm(value[2]))
+        self.rm_z_label.stylesheet = "color: green" if getrm(value[2]) else "color: red"
+        state = value == (3, 3, 3)
+        self.controls_layout.enabled = state
 
     def on_back(self):
         self.emit("move", 0, self.step_width, 0)
@@ -269,76 +296,6 @@ class TableControl(comet.Column):
     def on_down(self):
         self.emit("move", 0, 0, -self.step_width)
 
-    def on_fine(self, state):
+    def on_colorcode(self, state):
         for button in self.control_buttons:
-            button.stylesheet = "QPushButton{color:green;font-size:22px;}"
-
-    def on_wide(self, state):
-        for button in self.control_buttons:
-            button.stylesheet = "QPushButton{color:red;font-size:22px;}"
-
-    def on_move_to_position(self):
-        item = self.positions_tree.current
-        if item:
-            comet.show_question(f"Do you want to move table to position '{item[0].value}'?")
-
-    def on_set_position(self):
-        item = self.positions_tree.current
-        if item:
-            comet.show_question(f"Do you want to assign current position to '{item[0].value}'?")
-
-    def on_add_position(self):
-        text = comet.get_text(title="Add Position", label="Name", text="")
-        if text:
-            self.positions_tree.append([text, 0, 0, 0])
-
-    def on_edit_position(self):
-        item = self.positions_tree.current
-        if item:
-            text = comet.get_text(title="Add Position", label="Name", text=item[0].value)
-            if text:
-                item[0].value = text
-
-    def on_remove_position(self):
-        item = self.positions_tree.current
-        if item:
-            if comet.show_question(f"Do you want to remove position '{item[0].value}'?"):
-                self.positions_tree.remove(item)
-
-class TableControlDialog(comet.Dialog):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title="Table Control"
-        self.control = TableControl()
-        self.layout=comet.Column(
-            self.control,
-            comet.Row(
-                comet.Button("&Close", clicked=self.close),
-                comet.Spacer(vertical=False)
-            ),
-        )
-        self.process = ControlProcess()
-        def on_failed(*args):
-            comet.show_exception(*args)
-            self.close()
-        self.process.failed = on_failed
-        def on_close():
-             self.close()
-        self.process.finished = on_close
-        def on_move(x, y, z):
-            logging.info(f"Move table: {x} {y} {z}")
-            self.process.push(x, y, z)
-        def on_position(x, y, z):
-            self.control.position = x, y, z
-        def on_caldone(x, y, z):
-            self.control.caldone = x, y, z
-        self.process.position = on_position
-        self.process.caldone = on_caldone
-        self.control.move = on_move
-
-    def run(self):
-        self.process.start()
-        super().run()
-        self.process.stop()
-        self.process.join()
+            button.stylesheet = f"QPushButton{{color:{self.step_color};font-size:22px;}}"

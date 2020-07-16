@@ -53,8 +53,9 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 )
             ),
             comet.GroupBox(
-                title="V Source Compliance",
+                title="V Source",
                 layout=comet.Column(
+                    comet.Label(text="Compliance"),
                     self.vsrc_voltage_compliance,
                     comet.Spacer()
                 )
