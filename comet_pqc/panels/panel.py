@@ -210,7 +210,7 @@ class HVSourceMixin:
         toggle_hvsrc_filter(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "front")
+        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "rear")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
