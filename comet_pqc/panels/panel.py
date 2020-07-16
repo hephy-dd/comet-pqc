@@ -38,7 +38,6 @@ class Panel(comet.Widget):
             )
         self.control_tabs = comet.Tabs(self.general_tab)
         self.status_panel = comet.Column()
-        self.status_panel.width = 280
         self.control_panel = comet.Row(
             self.control_tabs,
             comet.Column(
