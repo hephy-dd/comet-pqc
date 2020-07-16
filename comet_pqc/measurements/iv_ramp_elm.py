@@ -23,6 +23,14 @@ def check_error(hvsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
+def elm_check_error(elm):
+    code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
+    code = int(code)
+    label = label.strip("\"")
+    if code != 0:
+        logging.error(f"Error {code}: {label} returned by '{message}'")
+        raise RuntimeError(f"Error {code}: {label} returned by '{message}'")
+
 class IVRampElmMeasurement(MatrixMeasurement):
     """IV ramp with electrometer measurement.
 
@@ -201,12 +209,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             """Write, wait for operation complete, test for errors."""
             elm.resource.write(message)
             elm.resource.query("*OPC?")
-            code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
-            code = int(code)
-            label = label.strip("\"")
-            if code != 0:
-                logging.error(f"error {code}: {label} returned by '{message}'")
-                raise RuntimeError(f"error {code}: {label} returned by '{message}'")
+            elm_check_error(elm)
 
         elm_safe_write("*RST")
         elm_safe_write("*CLS")
@@ -330,6 +333,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
             # Electrometer reading format: READ
             elm.resource.write(":FORM:ELEM READ")
             elm.resource.query("*OPC?")
+            elm_check_error(elm)
 
             ramp = comet.Range(voltage, voltage_stop, voltage_step)
             est = Estimate(ramp.count)
@@ -356,17 +360,18 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                     self.process.emit("progress", *est.progress)
 
+                    # read ELM
+                    with benchmark_elm:
+                        elm_reading = float(elm.resource.query(":READ?").split(',')[0])
+                    elm_check_error(elm)
+                    logging.info("ELM reading: %E", elm_reading)
+                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+
                     # read HV Source
                     with benchmark_hvsrc:
                         hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
                     logging.info("HV Source reading: %E", hvsrc_reading)
                     self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
-
-                    # read ELM
-                    with benchmark_elm:
-                        elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                    logging.info("ELM reading: %E", elm_reading)
-                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
                     self.process.emit("update")
                     self.process.emit("state", dict(
