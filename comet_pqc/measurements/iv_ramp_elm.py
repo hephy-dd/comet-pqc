@@ -153,7 +153,7 @@ class IVRampElmMeasurement(MatrixMeasurement):
 
         if hvsrc_filter_type == "repeat":
             hvsrc.resource.write(":SENS:AVER:TCON REP")
-        elif hvsrc_filter_type == "repeat":
+        elif hvsrc_filter_type == "moving":
             hvsrc.resource.write(":SENS:AVER:TCON MOV")
         hvsrc.resource.query("*OPC?")
         check_error(hvsrc)

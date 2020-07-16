@@ -144,7 +144,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
 
         if hvsrc_filter_type == "repeat":
             hvsrc.resource.write(":SENS:AVER:TCON REP")
-        elif hvsrc_filter_type == "repeat":
+        elif hvsrc_filter_type == "moving":
             hvsrc.resource.write(":SENS:AVER:TCON MOV")
         hvsrc.resource.query("*OPC?")
 
@@ -221,7 +221,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement):
 
         if elm_filter_type == "repeat":
             elm_safe_write(":SENS:CURR:AVER:TCON REP")
-        elif elm_filter_type == "repeat":
+        elif elm_filter_type == "moving":
             elm_safe_write(":SENS:CURR:AVER:TCON MOV")
 
         if elm_filter_enable:
