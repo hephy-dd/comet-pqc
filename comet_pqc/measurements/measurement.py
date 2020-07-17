@@ -5,6 +5,8 @@ from comet.resource import ResourceMixin
 
 __all__ = ["Measurement"]
 
+QUICK_RAMP_DELAY = 0.100
+
 def format_estimate(est):
     """Format estimation message without milliseconds."""
     elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))

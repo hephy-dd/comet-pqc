@@ -16,6 +16,7 @@ from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
+from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["CVRampMeasurement"]
 
@@ -105,6 +106,7 @@ class CVRampMeasurement(MatrixMeasurement):
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage
                 ))
+                time.sleep(QUICK_RAMP_DELAY)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
             hvsrc_output=hvsrc_output_state
@@ -271,8 +273,7 @@ class CVRampMeasurement(MatrixMeasurement):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
-            time.sleep(.100)
-            time.sleep(waiting_time)
+            time.sleep(QUICK_RAMP_DELAY)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))

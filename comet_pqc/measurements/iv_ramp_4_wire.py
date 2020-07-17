@@ -12,6 +12,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
+from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["IVRamp4WireMeasurement"]
 
@@ -146,8 +147,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
                 vsrc.source.leveli = current
                 # check_error(vsrc)
-                time.sleep(.100)
-                time.sleep(waiting_time)
+                time.sleep(QUICK_RAMP_DELAY)
 
                 self.process.emit("state", dict(
                     vsrc_current=current,
@@ -219,7 +219,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 logging.info("set current: %E A", current)
                 vsrc.clear()
                 vsrc.source.leveli = current
-                time.sleep(.100)
+                self.process.emit("state", dict(
+                    vsrc_current=current,
+                ))
+
+                time.sleep(waiting_time)
                 # check_error(vsrc)
                 dt = time.time() - t0
 
@@ -234,7 +238,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
 
                 self.process.emit("update")
                 self.process.emit("state", dict(
-                    vsrc_current=current,
                     vsrc_voltage=vsrc_reading
                 ))
 
@@ -269,7 +272,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                     humidity_box=humidity_box
                 ))
                 fmt.flush()
-                time.sleep(waiting_time)
 
                 # Compliance?
                 compliance_tripped = vsrc.source.compliance
@@ -295,11 +297,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
             logging.info("set current: %E A", current)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
             vsrc.source.leveli = current
-            time.sleep(.100)
             # check_error(vsrc)
             self.process.emit("state", dict(
                 vsrc_current=current,
             ))
+            time.sleep(QUICK_RAMP_DELAY)
 
         vsrc.source.output = 'OFF'
         check_error(vsrc)

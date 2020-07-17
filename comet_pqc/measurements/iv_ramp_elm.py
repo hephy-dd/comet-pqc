@@ -14,6 +14,7 @@ from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
+from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["IVRampElmMeasurement"]
 
@@ -191,12 +192,12 @@ class IVRampElmMeasurement(MatrixMeasurement):
                 self.process.emit("message", f"{voltage:.3f} V")
                 hvsrc.source.voltage.level = voltage
                 # check_error(hvsrc)
-                time.sleep(.100)
-                time.sleep(waiting_time)
-
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage,
                 ))
+
+                time.sleep(QUICK_RAMP_DELAY)
+
                 # Compliance?
                 compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
@@ -352,8 +353,10 @@ class IVRampElmMeasurement(MatrixMeasurement):
                     logging.info("set voltage: %E V", voltage)
                     hvsrc.clear()
                     hvsrc.source.voltage.level = voltage
-                    time.sleep(.100)
                     # check_error(hvsrc)
+
+                    time.sleep(waiting_time)
+
                     dt = time.time() - t0
 
                     est.next()
@@ -413,7 +416,6 @@ class IVRampElmMeasurement(MatrixMeasurement):
                         humidity_box=humidity_box
                     ))
                     fmt.flush()
-                    time.sleep(waiting_time)
 
                     # Compliance?
                     compliance_tripped = hvsrc.sense.current.protection.tripped
@@ -448,11 +450,11 @@ class IVRampElmMeasurement(MatrixMeasurement):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             hvsrc.source.voltage.level = voltage
-            time.sleep(.100)
             # check_error(hvsrc)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
+            time.sleep(QUICK_RAMP_DELAY)
 
         hvsrc.output = False
         check_error(hvsrc)

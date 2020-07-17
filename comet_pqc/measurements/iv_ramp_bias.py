@@ -12,6 +12,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
+from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["IVRampBiasMeasurement"]
 
@@ -200,7 +201,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
             ))
-            time.sleep(waiting_time)
+            time.sleep(QUICK_RAMP_DELAY)
 
             # Compliance?
             compliance_tripped = vsrc.source.compliance
@@ -223,7 +224,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                 hvsrc_voltage=voltage,
             ))
             # check_error(hvsrc)
-            time.sleep(waiting_time)
+            time.sleep(QUICK_RAMP_DELAY)
 
             # Compliance?
             compliance_tripped = hvsrc.sense.current.protection.tripped
@@ -336,7 +337,9 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                     self.process.emit("state", dict(
                         vsrc_voltage=bias_voltage,
                     ))
-                time.sleep(.100)
+
+                time.sleep(waiting_time)
+
                 dt = time.time() - t0
 
                 est.next()
@@ -390,7 +393,6 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                     humidity_box=humidity_box
                 ))
                 fmt.flush()
-                time.sleep(waiting_time)
 
                 # Compliance?
                 compliance_tripped = hvsrc.sense.current.protection.tripped
@@ -422,7 +424,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
-            time.sleep(.100)
+            time.sleep(QUICK_RAMP_DELAY)
 
         bias_voltage = vsrc.source.levelv
 
@@ -434,7 +436,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
             ))
-            time.sleep(.100)
+            time.sleep(QUICK_RAMP_DELAY)
 
         hvsrc.output = False
         vsrc.source.output = 'OFF'
