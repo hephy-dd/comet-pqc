@@ -14,6 +14,7 @@ from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
+from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["IVRampMeasurement"]
 
@@ -133,7 +134,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 self.process.emit("message", f"{voltage:.3f} V")
                 hvsrc_proxy.source_voltage_level = voltage
                 # hvsrc_proxy.assert_success()
-                time.sleep(.100)
+                time.sleep(QUICK_RAMP_DELAY)
                 if not self.process.running:
                     break
         # If output disabled
@@ -161,11 +162,10 @@ class IVRampMeasurement(MatrixMeasurement):
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
                 hvsrc_proxy.source_voltage_level = voltage
                 # hvsrc_proxy.assert_success()
-                time.sleep(.100)
                 # Returns <elements> comma separated
                 #values = list(map(float, hvsrc.resource.query(":READ?").split(",")))
                 #data = zip(elements, values)
-                time.sleep(waiting_time)
+                time.sleep(QUICK_RAMP_DELAY)
                 # Compliance?
                 compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
@@ -249,8 +249,10 @@ class IVRampMeasurement(MatrixMeasurement):
             for voltage in ramp:
                 logging.info("set voltage: %E V", voltage)
                 hvsrc_proxy.source_voltage_level = voltage
-                time.sleep(.100)
                 # hvsrc_proxy.assert_success()
+
+                time.sleep(waiting_time)
+
                 td = time.time() - t0
                 reading_current = float(hvsrc.resource.query(":READ?").split(',')[0])
                 logging.info("HV Source reading: %E A", reading_current)
@@ -281,7 +283,6 @@ class IVRampMeasurement(MatrixMeasurement):
                     humidity_box=humidity_box
                 ))
                 fmt.flush()
-                time.sleep(waiting_time)
 
                 est.next()
                 self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
@@ -310,7 +311,7 @@ class IVRampMeasurement(MatrixMeasurement):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             hvsrc_proxy.source_voltage_level = voltage
-            time.sleep(.100)
+            time.sleep(QUICK_RAMP_DELAY)
             # hvsrc_proxy.assert_success()
 
         hvsrc_proxy.output_enable = False
