@@ -249,6 +249,23 @@ class EnvironmentBox(Driver):
             raise RuntimeError(result)
 
     @property
+    def laser_sensor(self):
+        """Laser sensor switch and actual laser sensor state.
+
+        >>> device.laser_sensor = True
+        >>> device.laser_sensor
+        True
+        """
+        return self.pc_data.relay_states.laser_sensor
+
+    @laser_sensor.setter
+    def laser_sensor(self, value):
+        value = {False: 'OFF', True: 'ON'}[value]
+        result = self.resource.query(f'SET:LASER_SENSOR {value:s}')
+        if result != 'OK':
+            raise RuntimeError(result)
+
+    @property
     def box_light(self):
         """Box light switch and actual light relay state.
 

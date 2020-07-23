@@ -187,6 +187,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Environment Controls
 
+        self.box_laser_button = ToggleButton(
+            text="Laser",
+            tool_tip="Toggle laser",
+            checkable=True,
+            checked=False,
+            clicked=self.on_box_laser_clicked
+        )
+
         self.box_light_button = ToggleButton(
             text="Box Light",
             tool_tip="Toggle box light",
@@ -209,6 +217,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             checkable=True,
             checked=False,
             clicked=self.on_microscope_camera_clicked
+        )
+
+        self.microscope_control_button = ToggleButton(
+            text="Mic Ctrl",
+            tool_tip="Toggle microscope control",
+            checkable=True,
+            checked=False,
+            clicked=self.on_microscope_control_clicked
         )
 
         self.probecard_light_button = ToggleButton(
@@ -242,6 +258,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             toggled=self.on_environment_groupbox_toggled,
             layout=comet.Column(
                 comet.Row(
+                    self.box_laser_button,
                     self.box_light_button,
                     self.microscope_light_button,
                     self.probecard_light_button
@@ -249,6 +266,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 comet.Row(
                     self.microscope_camera_button,
                     self.probecard_camera_button,
+                    self.microscope_control_button,
                     self.pid_control_button
                 )
             )
@@ -703,11 +721,17 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         TableCalibrateDialog().run()
         self.sync_table_controls()
 
-    def on_use_environ_changed(self, state):
-        self.settings["use_environ"] = state
-        self.box_light_button.enabled = state
-        self.microscope_light_button.enabled = state
-        self.probecard_light_button.enabled = state
+    def on_box_laser_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.box_laser_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.laser_sensor = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
 
     def on_box_light_clicked(self):
         # TODO run in thread
@@ -741,6 +765,18 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             with self.resources.get("environ") as environ_resource:
                 environ = EnvironmentBox(environ_resource)
                 environ.microscope_camera = state
+        except Exception as exc:
+            comet.show_exception(exc)
+        self.enabled = True
+
+    def on_microscope_control_clicked(self):
+        # TODO run in thread
+        self.enabled = False
+        state = self.microscope_control_button.checked
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                environ.microscope_control = state
         except Exception as exc:
             comet.show_exception(exc)
         self.enabled = True
@@ -791,9 +827,11 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
             self.environment_groupbox.checked = False
         else:
+            self.box_laser_button.checked = pc_data.relay_states.laser_sensor
             self.box_light_button.checked = pc_data.relay_states.box_light
             self.microscope_light_button.checked = pc_data.relay_states.microscope_light
             self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+            self.microscope_control_button.checked = pc_data.relay_states.microscope_control
             self.probecard_light_button.checked = pc_data.relay_states.probecard_light
             self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
             self.pid_control_button.checked = pc_data.pid_status
