@@ -41,7 +41,7 @@ class Venus1Handler(Venus1BaseHandler):
 
     @message(r'\d\s+joystick')
     def write_joystick(self, message):
-        state = bool(int(message.split([0])))
+        state = bool(int(message.split()[0]))
         type(self).joystick = state
 
     @message(r'[+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? [+-]?\d+(\.\d+)? rmove')
