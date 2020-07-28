@@ -615,6 +615,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Start sequence",
             text="Are you sure to start a measurement sequence?"
         ): return
+        self.switch_off_lights()
+        self.sync_environment_controls()
         self.sample_groupbox.enabled = False
         self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
@@ -694,6 +696,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
         sequence.set("output_dir", None)
+        self.sync_environment_controls()
 
     # Table calibration
 
@@ -817,6 +820,30 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             comet.show_exception(exc)
         self.enabled = True
 
+    def switch_off_lights(self):
+        try:
+            with self.resources.get("environ") as environ_resource:
+                environ = EnvironmentBox(environ_resource)
+                def has_light():
+                    relay_states = environ.pc_data.relay_states
+                    if relay_states.box_light:
+                        return True
+                    if relay_states.probecard_light:
+                        return True
+                    if relay_states.microscope_light:
+                        return True
+                    return False
+                if has_light():
+                    if comet.show_question(
+                        title="Box Lights",
+                        text="Do you want to switch off all box lights?"
+                    ):
+                        environ.box_light = False
+                        environ.probecard_light = False
+                        environ.microscope_light = False
+        except Exception as exc:
+            comet.show_exception(exc)
+
     def sync_environment_controls(self):
         """Syncronize environment controls."""
         try:
@@ -885,6 +912,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             title="Run Measurement",
             text="Do you want to run the current selected measurement?"
         ): return
+        self.switch_off_lights()
+        self.sync_environment_controls()
         self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
@@ -926,6 +955,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.stop()
 
     def on_measure_finished(self):
+        self.sync_environment_controls()
         self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
