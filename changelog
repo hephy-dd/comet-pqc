@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Open correction mode and channel option for LCR meter (#24).
 - Auto switch of box lights on start sequence/measurement (#22).
+- Configurable Z soft limit for table movements.
 - This changelog file.
 
 ## [0.18.0] - 2020-07-23
