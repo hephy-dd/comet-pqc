@@ -492,15 +492,24 @@ class LCRMixin:
     """Mixin class providing default controls and status for LCR Meter."""
 
     def register_lcr(self):
+        def change_lcr_open_correction_mode(mode):
+            self.lcr_open_correction_channel.enabled = mode == "multi"
+
         self.lcr_integration_time = comet.ComboBox(items=["short", "medium", "long"])
         self.lcr_averaging_rate = comet.Number(minimum=1, maximum=256, decimals=0)
         self.lcr_auto_level_control = comet.CheckBox(text="Auto Level Control")
         self.lcr_soft_filter = comet.CheckBox(text="Filter STD/mean < 0.005")
+        self.lcr_open_correction_mode = comet.ComboBox(items=["single", "multi"], changed=change_lcr_open_correction_mode)
+        self.lcr_open_correction_channel = comet.Number(minimum=0, maximum=127, decimals=0)
+
+        change_lcr_open_correction_mode(self.lcr_open_correction_mode.current)
 
         self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
         self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
         self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
         self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
+        self.bind("lcr_open_correction_mode", self.lcr_open_correction_mode, "single")
+        self.bind("lcr_open_correction_channel", self.lcr_open_correction_channel, 0)
 
         self.status_panel.append(comet.GroupBox(
             title="LCR Status",
@@ -511,6 +520,16 @@ class LCRMixin:
         self.control_tabs.append(comet.Tab(
             title="LCR",
             layout=comet.Row(
+                comet.GroupBox(
+                    title="Open Correction",
+                    layout=comet.Column(
+                        comet.Label(text="Method"),
+                        self.lcr_open_correction_mode,
+                        comet.Label(text="Channel"),
+                        self.lcr_open_correction_channel,
+                        comet.Spacer()
+                    )
+                ),
                 comet.GroupBox(
                     title="Options",
                     layout=comet.Column(
@@ -524,7 +543,7 @@ class LCRMixin:
                     )
                 ),
                 comet.Spacer(),
-                stretch=(1, 2)
+                stretch=(1, 1, 1)
             )
         ))
 

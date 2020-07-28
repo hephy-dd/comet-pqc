@@ -1,0 +1,41 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.19.0] - 2020-07-28
+### Added
+- Open correction mode and channel option for LCR meter.
+- This changelog file.
+
+## [0.18.0] - 2020-07-23
+### Added
+- Laser sensor toggle button (#23).
+- Microscope control toggle button (#25).
+
+## [0.17.1] - 2020-07-23
+### Changed
+- Reduced ramp delays for initial/final ramps to speed up measurements (#9).
+
+## [0.17.0] - 2020-07-16
+### Added
+- Table calibration dialog and process.
+- Table control dialog and process.
+- Table move dialog and process.
+- Metric widget for numeric unit inputs.
+- Property `passed` to Estimate class.
+### Changed
+- Moved config and schema to assets directory.
+- Updated default matrix channel configurations.
+### Fixed
+- Filter selection for type `moving`.
+- Default HV source route termination `rear` (#17).
+
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.19.0...HEAD
+[0.19.0]: https://github.com/hephy-dd/comet-pqc/compare/0.18.0...0.19.0
+[0.18.0]: https://github.com/hephy-dd/comet-pqc/compare/0.17.1...0.18.0
+[0.17.1]: https://github.com/hephy-dd/comet-pqc/compare/0.17.0...0.17.1
+[0.17.0]: https://github.com/hephy-dd/comet-pqc/releases/tag/0.17.0

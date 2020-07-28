@@ -9,34 +9,19 @@ from comet.driver.keysight import E4980A
 
 from ..driver import K2410
 from ..utils import format_metric
-from ..utils import std_mean_filter
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
+from .measurement import HVSourceMixin
+from .measurement import LCRMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["CVRampMeasurement"]
 
-def check_error(device):
-    """Test for error."""
-    code, message = device.resource.query(":SYST:ERR?").split(",", 1)
-    code = int(code)
-    if code != 0:
-        message = message.strip("\"")
-        logging.error(f"error {code}: {message}")
-        raise RuntimeError(f"error {code}: {message}")
-
-def safe_write(device, message):
-    """Write, wait for operation complete, test for error."""
-    logging.info(f"safe write: {device.__class__.__name__}: {message}")
-    device.resource.write(message)
-    device.resource.query("*OPC?")
-    check_error(device)
-
-class CVRampMeasurement(MatrixMeasurement):
+class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin):
     """CV ramp measurement."""
 
     type = "cv_ramp"
@@ -47,44 +32,8 @@ class CVRampMeasurement(MatrixMeasurement):
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
-        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
-        self.register_parameter('hvsrc_filter_enable', False, type=bool)
-        self.register_parameter('hvsrc_filter_count', 10, type=int)
-        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
-        self.register_parameter('lcr_soft_filter', True, type=bool)
-        self.register_parameter('lcr_amplitude', unit='V', required=True)
-        self.register_parameter('lcr_frequency', unit='Hz', required=True)
-        self.register_parameter('lcr_integration_time', 'medium', values=('short', 'medium', 'long'))
-        self.register_parameter('lcr_averaging_rate', 1, type=int)
-        self.register_parameter('lcr_auto_level_control', True, type=bool)
-
-    def acquire_reading(self, lcr):
-        """Return primary and secondary LCR reading."""
-        safe_write(lcr, "TRIG:IMM")
-        result = lcr.resource.query("FETC?")
-        logging.info("lcr reading: %s", result)
-        prim, sec = [float(value) for value in result.split(",")[:2]]
-        return prim, sec
-
-    def acquire_filter_reading(self, lcr, maximum=64, threshold=0.005, size=2):
-        """Aquire readings until standard deviation (sample) / mean < threshold.
-
-        Size is the number of samples to be used for filter calculation.
-        """
-        samples = []
-        prim = 0.
-        sec = 0.
-        for _ in range(maximum):
-            prim, sec = self.acquire_reading(lcr)
-            samples.append(prim)
-            samples = samples[-size:]
-            if len(samples) >= size:
-                if std_mean_filter(samples, threshold):
-                    return prim, sec
-        logging.warning("maximum sample count reached: %d", maximum)
-        return prim, sec
+        self.register_hvsource()
+        self.register_lcr()
 
     def quick_ramp_zero(self, hvsrc):
         """Ramp to zero voltage without measuring current."""
@@ -114,96 +63,9 @@ class CVRampMeasurement(MatrixMeasurement):
         self.process.emit("message", "")
         self.process.emit("progress", 1, 1)
 
-    def hvsrc_reset(self, hvsrc):
-        safe_write(hvsrc, "*RST")
-        safe_write(hvsrc, "*CLS")
-        safe_write(hvsrc, ":SYST:BEEP:STAT OFF")
-
-    def hvsrc_get_voltage_level(self, hvsrc):
-        return float(hvsrc.resource.query(":SOUR:VOLT:LEV?"))
-
-    def hvsrc_set_voltage_level(self, hvsrc, voltage):
-        logging.info("set HV Source voltage level: %s", format_metric(voltage, "V"))
-        safe_write(hvsrc, f":SOUR:VOLT:LEV {voltage:E}")
-
-    def hvsrc_set_route_termination(self, hvsrc, route_termination):
-        logging.info("set HV Source route termination: '%s'", route_termination)
-        value = {"front": "FRON", "rear": "REAR"}[route_termination]
-        safe_write(hvsrc, f":ROUT:TERM {value:s}")
-
-    def hvsrc_set_sense_mode(self, hvsrc, sense_mode):
-        logging.info("set HV Source sense mode: '%s'", sense_mode)
-        value = {"remote": "ON", "local": "OFF"}[sense_mode]
-        safe_write(hvsrc, f":SYST:RSEN {value:s}")
-
-    def hvsrc_set_compliance(self, hvsrc, compliance):
-        logging.info("set HV Source compliance: %s", format_metric(compliance, "A"))
-        safe_write(hvsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
-
-    def hvsrc_compliance_tripped(self, hvsrc):
-        return bool(int(hvsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
-
-    def hvsrc_set_auto_range(self, hvsrc, enabled):
-        logging.info("set HV Source auto range (current): %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(hvsrc, f"SENS:CURR:RANG:AUTO {value:s}")
-
-    def hvsrc_set_filter_enable(self, hvsrc, enabled):
-        logging.info("set HV Source filter enable: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(hvsrc, f":SENS:AVER:STATE {value:s}")
-
-    def hvsrc_set_filter_count(self, hvsrc, count):
-        logging.info("set HV Source filter count: %s", count)
-        safe_write(hvsrc, f":SENS:AVER:COUN {count:d}")
-
-    def hvsrc_set_filter_type(self, hvsrc, type):
-        logging.info("set HV Source filter type: %s", type)
-        value = {"repeat": "REP", "moving": "MOV"}[type]
-        safe_write(hvsrc, f":SENS:AVER:TCON {value:s}")
-
-    def hvsrc_get_output_state(self, hvsrc):
-        return bool(int(hvsrc.resource.query(":OUTP:STAT?")))
-
-    def hvsrc_set_output_state(self, hvsrc, enabled):
-        logging.info("set HV Source output state: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        safe_write(hvsrc, f":OUTP:STAT {value:s}")
-
-    def lcr_reset(self, lcr):
-        safe_write(lcr, "*RST")
-        safe_write(lcr, "*CLS")
-        safe_write(lcr, ":SYST:BEEP:STAT OFF")
-
-    def lcr_setup(self, lcr):
-        lcr_amplitude = self.get_parameter('lcr_amplitude')
-        lcr_frequency = self.get_parameter('lcr_frequency')
-        lcr_integration_time = self.get_parameter('lcr_integration_time')
-        lcr_averaging_rate = self.get_parameter('lcr_averaging_rate')
-        lcr_auto_level_control = self.get_parameter('lcr_auto_level_control')
-
-        safe_write(lcr, f":AMPL:ALC {lcr_auto_level_control:d}")
-        safe_write(lcr, f":VOLT {lcr_amplitude:E}V")
-        safe_write(lcr, f":FREQ {lcr_frequency:.0f}HZ")
-        safe_write(lcr, ":FUNC:IMP:RANG:AUTO ON")
-        safe_write(lcr, ":FUNC:IMP:TYPE CPRP")
-        integration = {"short": "SHOR", "medium": "MED", "long": "LONG"}[lcr_integration_time]
-        safe_write(lcr, f":APER {integration},{lcr_averaging_rate:d}")
-        safe_write(lcr, ":INIT:CONT OFF")
-        safe_write(lcr, ":TRIG:SOUR BUS")
-
     def initialize(self, hvsrc, lcr):
         self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 0, 10)
-
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
-
-        self.process.emit("progress", 1, 10)
+        self.process.emit("progress", 1, 6)
 
         # Initialize HV Source
 
@@ -212,27 +74,13 @@ class CVRampMeasurement(MatrixMeasurement):
         self.quick_ramp_zero(hvsrc)
         self.hvsrc_set_output_state(hvsrc, False)
         self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 2, 10)
+        self.process.emit("progress", 2, 6)
 
         self.hvsrc_reset(hvsrc)
-        self.process.emit("progress", 3, 10)
+        self.process.emit("progress", 3, 6)
 
-        self.hvsrc_set_route_termination(hvsrc, hvsrc_route_termination)
-        self.process.emit("progress", 4, 10)
-
-        self.hvsrc_set_sense_mode(hvsrc,hvsrc_sense_mode)
-        self.process.emit("progress", 5, 10)
-
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
-        self.process.emit("progress", 6, 10)
-
-        self.hvsrc_set_auto_range(hvsrc, True)
-        self.process.emit("progress", 7, 10)
-
-        self.hvsrc_set_filter_type(hvsrc, hvsrc_filter_type)
-        self.hvsrc_set_filter_count(hvsrc, hvsrc_filter_count)
-        self.hvsrc_set_filter_enable(hvsrc, hvsrc_filter_enable)
-        self.process.emit("progress", 8, 10)
+        self.hvsrc_setup(hvsrc)
+        self.process.emit("progress", 4, 6)
 
         self.hvsrc_set_output_state(hvsrc, True)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
@@ -243,10 +91,10 @@ class CVRampMeasurement(MatrixMeasurement):
         # Initialize LCR
 
         self.lcr_reset(lcr)
-        self.process.emit("progress", 9, 10)
+        self.process.emit("progress", 5, 6)
 
         self.lcr_setup(lcr)
-        self.process.emit("progress", 10, 10)
+        self.process.emit("progress", 6, 6)
 
     def measure(self, hvsrc, lcr):
         sample_name = self.sample_name
@@ -330,9 +178,9 @@ class CVRampMeasurement(MatrixMeasurement):
 
             t0 = time.time()
 
-            safe_write(hvsrc, "*CLS")
+            self.hvsrc_safe_write(hvsrc, "*CLS")
             # HV Source reading format: CURR
-            safe_write(hvsrc, ":FORM:ELEM CURR")
+            self.hvsrc_safe_write(hvsrc, ":FORM:ELEM CURR")
 
             benchmark_step = Benchmark("Single_Step")
             benchmark_lcr = Benchmark("Read_LCR")
@@ -356,9 +204,9 @@ class CVRampMeasurement(MatrixMeasurement):
                     # read LCR, for CpRp -> prim: Cp, sec: Rp
                     with benchmark_lcr:
                         if lcr_soft_filter:
-                            lcr_prim, lcr_sec = self.acquire_filter_reading(lcr)
+                            lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
                         else:
-                            lcr_prim, lcr_sec = self.acquire_reading(lcr)
+                            lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
                         try:
                             lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
                         except ZeroDivisionError:
