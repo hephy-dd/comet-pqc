@@ -36,12 +36,12 @@ class MatrixPanel(Panel, ResourceMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.matrix_enabled = comet.CheckBox(text="Enable Switching")
+        self.matrix_enable = comet.CheckBox(text="Enable Switching")
         self.matrix_channels = MatrixChannelsText(
             tool_tip="Matrix card switching channels, comma separated list."
         )
 
-        self.bind("matrix_enabled", self.matrix_enabled, False)
+        self.bind("matrix_enable", self.matrix_enable, False)
         self.bind("matrix_channels", self.matrix_channels, [])
 
         self.control_tabs.append(comet.Tab(
@@ -50,7 +50,7 @@ class MatrixPanel(Panel, ResourceMixin):
                 comet.GroupBox(
                     title="Matrix",
                     layout=comet.Column(
-                        self.matrix_enabled,
+                        self.matrix_enable,
                         comet.Label(text="Channels"),
                         comet.Row(
                             self.matrix_channels,

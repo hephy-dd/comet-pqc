@@ -8,7 +8,7 @@ contacts:
       - name: Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -19,7 +19,7 @@ contacts:
       - name: Reverse Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -10 uA
             current_stop: 10 uA
@@ -30,7 +30,7 @@ contacts:
       - name: N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
@@ -41,7 +41,7 @@ contacts:
       - name: Reverse N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -1 mA
             current_stop: 1 mA
@@ -52,7 +52,7 @@ contacts:
       - name: P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
@@ -63,7 +63,7 @@ contacts:
       - name: Reverse P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D12, 2E11, 2F09, 2G10]
             current_start: -500 nA
             current_stop: 500 nA
@@ -74,7 +74,7 @@ contacts:
       - name: FET
         type: iv_ramp_bias_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2G09, 2A10, 1G02]
             voltage_start: -5 V
             voltage_stop: 10 V
@@ -87,7 +87,7 @@ contacts:
         type: cv_ramp
         description: Variant using HVSource and LCR
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A01, 1B02, 2H12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 10 V
@@ -116,7 +116,7 @@ contacts:
         type: cv_ramp
         description: Variant using HVSource and LCR
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A01, 1B02, 2H12]
             bias_voltage_start: -5 V
             bias_voltage_stop: 5 V
@@ -145,7 +145,7 @@ contacts:
       - name: Diode IV
         type: iv_ramp_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: 0 V
             voltage_stop: -1000 V
@@ -165,7 +165,7 @@ contacts:
       - name: Diode CV (HV Source)
         type: cv_ramp
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A01, 1B02, 2C11, 2H12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
@@ -180,7 +180,7 @@ contacts:
         type: cv_ramp_vsrc
         description: Alternate diode CV with V Source.
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: []
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
@@ -194,7 +194,7 @@ contacts:
         type: cv_ramp
         enabled: false
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A01, 1B02, 2C11, 2H12]
             bias_voltage_start: 0 V
             bias_voltage_stop: 200 V
@@ -226,7 +226,7 @@ contacts:
       - name: GCD
         type: iv_ramp_bias_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2G09, 2A10, 1G02]
             voltage_start: -10 V
             voltage_stop: 10 V
@@ -238,7 +238,7 @@ contacts:
       - name: Polysilicon meander
         type: iv_ramp_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: -100 mV
             voltage_stop: 100 mV
@@ -251,7 +251,7 @@ contacts:
       - name: N+ linewidth structure
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
@@ -262,7 +262,7 @@ contacts:
       - name: P-stop linewidth structure
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D11, 2E09, 2F10, 2G12]
             current_start: -500 nA
             current_stop: 500 nA
@@ -273,7 +273,7 @@ contacts:
       - name: Dielectric Breakdown
         type: iv_ramp_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2C11, 2G12, 1A02]
             voltage_start: 0 V
             voltage_stop: 250 V
@@ -290,7 +290,7 @@ contacts:
       - name: Metal meander
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -1 mA
             current_stop: 1 mA
@@ -301,7 +301,7 @@ contacts:
       - name: Metal clover leaf Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 mA
             current_stop: 10 mA
@@ -312,7 +312,7 @@ contacts:
       - name: Reverse Metal clover leaf Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D12, 2E09, 2F10, 2G11]
             current_start: -10 mA
             current_stop: 10 mA
@@ -323,7 +323,7 @@ contacts:
       - name: P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -334,7 +334,7 @@ contacts:
       - name: Reverse P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D12, 2E09, 2F10, 2G11]
             current_start: -10 uA
             current_stop: 10 uA
@@ -345,7 +345,7 @@ contacts:
       - name: Bulk cross
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: 0 nA
             current_stop: 500 nA
@@ -356,7 +356,7 @@ contacts:
       - name: Diode IV
         type: iv_ramp_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A02, 2C11]
             voltage_start: 0 V
             voltage_stop: -1000 V
@@ -369,7 +369,7 @@ contacts:
       - name: Diode CV
         type: cv_ramp
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1A01, 1B02, 2H11, 2G12]
             bias_voltage_start: 0 V
             bias_voltage_stop: -500 V
@@ -397,7 +397,7 @@ contacts:
       - name: GCD05
         type: iv_ramp_bias_elm
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [1D02, 2G11, 2A10, 2C12]
             voltage_start: -10 V
             voltage_stop: 10 V
@@ -409,7 +409,7 @@ contacts:
       - name: N+ CBKR
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -420,7 +420,7 @@ contacts:
       - name: Polysilicon CBKR
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -431,7 +431,7 @@ contacts:
       - name: Polysilicon contact chain
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -442,7 +442,7 @@ contacts:
       - name: P+ contact chain
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
@@ -453,7 +453,7 @@ contacts:
       - name: N+ contact chain
         type: iv_ramp_4_wire
         parameters:
-            matrix_enabled: true
+            matrix_enable: true
             matrix_channels: [2D09, 2E10, 2F11, 2G12]
             current_start: -10 uA
             current_stop: 10 uA
