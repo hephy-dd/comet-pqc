@@ -1,11 +1,12 @@
 import comet
 from comet.resource import ResourceMixin, ResourceError
+from comet.process import ProcessMixin
 from comet.driver.corvus import Venus1
 
 from ..driver import EnvironmentBox
 from ..driver import K707B
 
-class StatusProcess(comet.Process, ResourceMixin):
+class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     """Reload instruments status."""
 
     def __init__(self, message, progress, **kwargs):
@@ -84,11 +85,10 @@ class StatusProcess(comet.Process, ResourceMixin):
         self.set("env_model", "")
         self.set("env_pc_data", None)
         try:
-            with self.resources.get("environ") as environ_res:
-                environ = EnvironmentBox(environ_res)
-                model = environ.identification
+            with self.processes.get("environment") as environment:
+                model = environment.identification()
                 self.set("env_model", model)
-                pc_data = environ.pc_data
+                pc_data = environment.pc_data()
                 self.set("env_pc_data", pc_data)
         except (ResourceError, OSError):
             pass

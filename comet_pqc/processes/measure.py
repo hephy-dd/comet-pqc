@@ -6,6 +6,7 @@ import os
 
 import comet
 from comet.resource import ResourceMixin, ResourceError
+from comet.process import ProcessMixin
 from comet.driver.corvus import Venus1
 
 from ..utils import format_metric
@@ -13,7 +14,7 @@ from ..measurements import measurement_factory
 from ..driver import EnvironmentBox
 from ..driver import K707B
 
-class BaseProcess(comet.Process, ResourceMixin):
+class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
@@ -45,10 +46,9 @@ class BaseProcess(comet.Process, ResourceMixin):
             resource.query("*OPC?")
         self.emit("message", "Initialized VSource.")
 
-    def discarge_decoupling(self, device):
+    def discharge_decoupling(self, context):
         self.emit("message", "Auto-discharging decoupling box...")
-        device.identification
-        device.discharge()
+        context.discharge()
         self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
@@ -74,9 +74,8 @@ class BaseProcess(comet.Process, ResourceMixin):
         except Exception:
             logging.warning("unable to connect with VSource")
         if self.get("use_environ"):
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                self.discarge_decoupling(environ)
+            with self.processes.get("environment") as environment:
+                self.discharge_decoupling(environment)
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)

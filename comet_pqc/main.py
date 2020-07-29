@@ -9,6 +9,7 @@ import comet
 
 from . import __version__
 
+from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import ControlProcess
 from .processes import MoveProcess
@@ -106,6 +107,10 @@ def main():
 
     # Register processes
 
+    app.processes.add("environment", EnvironmentProcess(
+        name="environ",
+        failed=on_show_error
+    ))
     app.processes.add("status", StatusProcess(
         finished=dashboard.on_status_finished,
         failed=on_show_error,
@@ -173,6 +178,9 @@ def main():
 
     # Load configurations
     dashboard.load_sequences()
+
+    # Start services
+    app.processes.get("environment").start()
 
     # Sync environment controls
     if dashboard.environment_groupbox.checked:

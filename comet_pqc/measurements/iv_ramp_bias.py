@@ -11,6 +11,7 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -22,7 +23,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampBiasMeasurement(MatrixMeasurement):
+class IVRampBiasMeasurement(MatrixMeasurement, EnvironmentMixin):
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias"
@@ -46,6 +47,7 @@ class IVRampBiasMeasurement(MatrixMeasurement):
         self.register_parameter('vsrc_filter_enable', False, type=bool)
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type','repeat', values=('repeat', 'moving'))
+        self.register_environment()
 
     def initialize(self, hvsrc, vsrc):
         self.process.emit("progress", 1, 5)
@@ -361,25 +363,12 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                     vsrc_current=vsrc_reading
                 ))
 
-                # Environment
-                if self.process.get("use_environ"):
-                    with self.resources.get("environ") as environ:
-                        pc_data = environ.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
-                else:
-                    temperature_box = float('nan')
-                    temperature_chuck = float('nan')
-                    humidity_box = float('nan')
+                self.environment_update()
 
                 self.process.emit("state", dict(
-                    env_chuck_temperature=temperature_chuck,
-                    env_box_temperature=temperature_box,
-                    env_box_humidity=humidity_box
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
                 ))
 
                 # Write reading
@@ -388,9 +377,9 @@ class IVRampBiasMeasurement(MatrixMeasurement):
                     voltage=voltage,
                     current=vsrc_reading,
                     bias_voltage=bias_voltage,
-                    temperature_box=temperature_box,
-                    temperature_chuck=temperature_chuck,
-                    humidity_box=humidity_box
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
                 ))
                 fmt.flush()
 

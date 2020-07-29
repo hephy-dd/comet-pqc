@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 
-from qutie.qt import QtGui
+from qutie.qt import QtCore, QtGui
 
 import comet
 
@@ -48,6 +48,15 @@ def create_icon(size, color):
     painter.drawEllipse(1, 1, size-2, size-2)
     del painter
     return comet.Icon(qt=pixmap)
+
+def handle_exception(func):
+    def catch_exception_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            logging.error(exc)
+            comet.show_exception(exc)
+    return catch_exception_wrapper
 
 class ToggleButton(comet.Button):
     """Colored checkable button."""
@@ -541,6 +550,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.append(self.tab_widget)
         self.stretch = 4, 9
 
+        # Experimental
+
+        # Install timer to update environment controls
+        self.environment_timer = QtCore.QTimer()
+        self.environment_timer.timeout.connect(self.sync_environment_controls)
+        self.environment_timer.start(1000)
+
     def load_sequences(self):
         """Load available sequence configurations."""
         current_sequence_id = self.settings.get("current_sequence_id")
@@ -700,17 +716,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Table calibration
 
+    @handle_exception
     def on_table_joystick_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.table_joystick_button.checked
-        try:
-            with self.resources.get("table") as table_resource:
-                table = Venus1(table_resource)
-                table.joystick = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.resources.get("table") as table_resource:
+            table = Venus1(table_resource)
+            table.joystick = state
 
     def on_table_controls_start(self):
         TableControlDialog().run()
@@ -724,160 +735,99 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         TableCalibrateDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_box_laser_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.box_laser_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.laser_sensor = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_laser_sensor(state)
 
+    @handle_exception
     def on_box_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.box_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.box_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_box_light(state)
 
+    @handle_exception
     def on_microscope_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_light(state)
 
+    @handle_exception
     def on_microscope_camera_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_camera_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_camera = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_camera(state)
 
+    @handle_exception
     def on_microscope_control_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_control_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_control = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_control(state)
 
+    @handle_exception
     def on_probecard_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.probecard_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.probecard_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_probecard_light(state)
 
+    @handle_exception
     def on_probecard_camera_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.probecard_camera_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.probecard_camera = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_probecard_camera(state)
 
+    @handle_exception
     def on_pid_control_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.pid_control_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.pid_control = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_pid_control(state)
 
     def switch_off_lights(self):
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                def has_light():
-                    relay_states = environ.pc_data.relay_states
-                    if relay_states.box_light:
-                        return True
-                    if relay_states.probecard_light:
-                        return True
-                    if relay_states.microscope_light:
-                        return True
-                    return False
-                if has_light():
-                    if comet.show_question(
-                        title="Box Lights",
-                        text="Do you want to switch off all box lights?"
-                    ):
-                        environ.box_light = False
-                        environ.probecard_light = False
-                        environ.microscope_light = False
-        except Exception as exc:
-            comet.show_exception(exc)
+        with self.processes.get("environment") as environment:
+            if environment.has_lights():
+                if comet.show_question(
+                    title="Box Lights",
+                    text="Do you want to switch off all box lights?"
+                ):
+                    environment.dim_lights()
 
+    @handle_exception
     def sync_environment_controls(self):
         """Syncronize environment controls."""
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                pc_data = environ.pc_data
-        except Exception as exc:
-            comet.show_exception(exc)
-            self.environment_groupbox.checked = False
-        else:
-            self.box_laser_button.checked = pc_data.relay_states.laser_sensor
-            self.box_light_button.checked = pc_data.relay_states.box_light
-            self.microscope_light_button.checked = pc_data.relay_states.microscope_light
-            self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
-            self.microscope_control_button.checked = pc_data.relay_states.microscope_control
-            self.probecard_light_button.checked = pc_data.relay_states.probecard_light
-            self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
-            self.pid_control_button.checked = pc_data.pid_status
+        if self.environment_groupbox.checked:
+            try:
+                with self.processes.get("environment") as environment:
+                    pc_data = environment.pc_data()
+                self.box_laser_button.checked = pc_data.relay_states.laser_sensor
+                self.box_light_button.checked = pc_data.relay_states.box_light
+                self.microscope_light_button.checked = pc_data.relay_states.microscope_light
+                self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+                self.microscope_control_button.checked = pc_data.relay_states.microscope_control
+                self.probecard_light_button.checked = pc_data.relay_states.probecard_light
+                self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
+                self.pid_control_button.checked = pc_data.pid_status
+            except:
+                self.environment_groupbox.checked = False
+                self.processes.get("environment").enabled = False
+                raise
 
+    @handle_exception
     def sync_table_controls(self):
         """Syncronize table controls."""
         try:
             with self.resources.get("table") as table_resource:
                 table = Venus1(table_resource)
                 joystick_state = table.joystick
-        except Exception as exc:
-            comet.show_exception(exc)
+        except:
             self.table_groupbox.checked = False
+            raise
         else:
             self.table_joystick_button.checked = joystick_state
 
     def on_environment_groupbox_toggled(self, state):
         self.settings["use_environ"] = state
-        if self.environment_groupbox.checked:
+        if state:
             self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):

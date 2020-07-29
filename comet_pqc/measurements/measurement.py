@@ -3,6 +3,7 @@ import logging
 
 import comet
 from comet.resource import ResourceMixin
+from comet.process import ProcessMixin
 
 from ..utils import format_metric
 from ..utils import std_mean_filter
@@ -12,6 +13,7 @@ __all__ = [
     'HVSourceMixin',
     'VSourceMixin',
     'LCRMixin',
+    'EnvironmentMixin'
 ]
 
 QUICK_RAMP_DELAY = 0.100
@@ -33,7 +35,7 @@ class ParameterType:
         self.type = type
         self.required = required
 
-class Measurement(ResourceMixin):
+class Measurement(ResourceMixin, ProcessMixin):
     """Base measurement class."""
 
     type = "measurement"
@@ -349,3 +351,25 @@ class LCRMixin:
                     return prim, sec
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
+
+class EnvironmentMixin:
+
+    def register_environment(self):
+        self.environment_clear()
+
+    def environment_clear(self):
+        self.environment_temperature_box = float('nan')
+        self.environment_temperature_chuck = float('nan')
+        self.environment_humidity_box = float('nan')
+
+    def environment_update(self):
+        self.environment_clear()
+        if self.process.get("use_environ"):
+            with self.processes.get("environment") as environment:
+                pc_data = environment.pc_data()
+            self.environment_temperature_box = pc_data.box_temperature
+            logging.info("temperature box: %s degC", self.environment_temperature_box)
+            self.environment_temperature_chuck = pc_data.chuck_temperature
+            logging.info("temperature chuck: %s degC", self.environment_temperature_chuck)
+            self.environment_humidity_box = pc_data.box_humidity
+            logging.info("humidity box: %s degC", self.environment_humidity_box)
