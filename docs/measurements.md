@@ -28,7 +28,7 @@ Type: `iv_ramp`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enable`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`            |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`             |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -73,7 +73,7 @@ Type: `iv_ramp_elm`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`              |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`               |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`                |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -268,7 +268,7 @@ Type: `cv_ramp`
 |`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
-|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
+|`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 
@@ -328,7 +328,7 @@ Type: `cv_ramp_vsrc`
 |`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
-|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
+|`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 
