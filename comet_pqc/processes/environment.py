@@ -24,11 +24,9 @@ class EnvironmentProcess(ResourceProcess):
 
     def dim_lights(self):
         """Switch off all light sources."""
-        def request(context):
-            context.box_light = False
-            context.microscope_light = False
-            context.probecard_light = False
-        return self.request(request)
+        self.set_box_light(False)
+        self.set_microscope_light(False)
+        self.set_probecard_light(False)
 
     def identification(self):
         def request(context):
@@ -36,76 +34,55 @@ class EnvironmentProcess(ResourceProcess):
         return self.request(request)
 
     def discharge(self):
+        logging.info("Discharge Decoupling Box...")
         def request(context):
             context.discharge()
         return self.request(request)
 
     def set_laser_sensor(self, state):
+        logging.info("Laser Sensor: %s", "ON" if state else "OFF")
         def request(context):
             context.laser_sensor = state
         return self.request(request)
 
     def set_box_light(self, state):
+        logging.info("Box Light: %s", "ON" if state else "OFF")
         def request(context):
             context.box_light = state
         return self.request(request)
 
     def set_microscope_light(self, state):
+        logging.info("Microscope Light: %s", "ON" if state else "OFF")
         def request(context):
             context.microscope_light = state
         return self.request(request)
 
     def set_microscope_camera(self, state):
+        logging.info("Microscope Camera: %s", "ON" if state else "OFF")
         def request(context):
             context.microscope_camera = state
         return self.request(request)
 
     def set_microscope_control(self, state):
+        logging.info("Microscope Power: %s", "ON" if state else "OFF")
         def request(context):
             context.microscope_control = state
         return self.request(request)
 
     def set_probecard_light(self, state):
+        logging.info("Probecard Light: %s", "ON" if state else "OFF")
         def request(context):
             context.probecard_light = state
         return self.request(request)
 
     def set_probecard_camera(self, state):
+        logging.info("Probecard Camera: %s", "ON" if state else "OFF")
         def request(context):
             context.probecard_camera = state
         return self.request(request)
 
     def set_pid_control(self, state):
+        logging.info("PID Control: %s", "ON" if state else "OFF")
         def request(context):
             context.pid_control = state
-        return self.request(request)
-
-    def toggle_box_light(self):
-        def request(context):
-            state = context.box_light
-            context.box_light = not state
-        return self.request(request)
-
-    def toggle_microscope_light(self):
-        def request(context):
-            state = context.microscope_light
-            context.microscope_light = not state
-        return self.request(request)
-
-    def toggle_microscope_camera(self):
-        def request(context):
-            state = context.microscope_camera
-            context.microscope_camera = not state
-        return self.request(request)
-
-    def toggle_probecard_light(self):
-        def request(context):
-            state = context.probecard_light
-            context.probecard_light = not state
-        return self.request(request)
-
-    def toggle_probecard_camera(self):
-        def request(context):
-            state = context.probecard_camera
-            context.probecard_camera = not state
         return self.request(request)
