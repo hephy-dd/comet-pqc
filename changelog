@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2020-07-29
+### Added
+- Restore previous window size (#30).
+
 ## [0.19.0] - 2020-07-28
 ### Added
 - Open correction mode and channel option for LCR meter (#24).
@@ -36,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.19.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.19.1...HEAD
+[0.19.1]: https://github.com/hephy-dd/comet-pqc/compare/0.19.0...0.19.1
 [0.19.0]: https://github.com/hephy-dd/comet-pqc/compare/0.18.0...0.19.0
 [0.18.0]: https://github.com/hephy-dd/comet-pqc/compare/0.17.1...0.18.0
 [0.17.1]: https://github.com/hephy-dd/comet-pqc/compare/0.17.0...0.17.1
