@@ -28,7 +28,7 @@ Type: `iv_ramp`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`           |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`            |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`             |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -49,7 +49,7 @@ Type: `iv_ramp`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: true
+      matrix_enable: true
       matrix_channels: [1A02, 2C11]
       voltage_start: 0 V
       voltage_stop: -1000 V
@@ -73,7 +73,7 @@ Type: `iv_ramp_elm`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enabled`              |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`              |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`               |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`                |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -103,7 +103,7 @@ Type: `iv_ramp_elm`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: true
+      matrix_enable: true
       matrix_channels: [1A02, 2C11]
       voltage_start: 0 V
       voltage_stop: -1000 V
@@ -132,7 +132,7 @@ Type: `iv_ramp_4_wire`
 
 | Parameter                | Type    | Default | Description |
 |--------------------------|---------|---------|-------------|
-|`matrix_enabled`          |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`           |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`         |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`current_start`           |`ampere` |required |Start current for V Source ramp. (`-250 mA` to `250 mA`). |
 |`current_stop`            |`ampere` |required |End current for V Source ramp. (`-250 mA` to `250 mA`). |
@@ -153,7 +153,7 @@ Type: `iv_ramp_4_wire`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: true
+      matrix_enable: true
       matrix_channels: [2D12, 2E09, 2F10, 2G11]
       current_start: -10 uA
       current_stop: 10 uA
@@ -174,7 +174,7 @@ Type: `iv_ramp_bias`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enabled`              |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_source`              |`str`    |`vsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
@@ -194,7 +194,7 @@ Type: `iv_ramp_bias`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: false
+      matrix_enable: false
       matrix_channels: []
 ```
 
@@ -206,7 +206,7 @@ Type: `iv_ramp_bias_elm`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enabled`              |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_source`              |`str`    |`vsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
@@ -235,7 +235,7 @@ Type: `iv_ramp_bias_elm`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: false
+      matrix_enable: false
       matrix_channels: []
 ```
 
@@ -247,26 +247,28 @@ Type: `cv_ramp`
 
 ### Parameters
 
-| Parameter                  | Type    | Default | Description |
-|----------------------------|---------|---------|-------------|
-|`matrix_enabled`            |`bool`   |`false`  |Enable matrix configuration. |
-|`matrix_channels`           |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
-|`bias_voltage_start`        |`volt`   |required | |
-|`bias_voltage_step`         |`volt`   |required | |
-|`bias_voltage_stop`         |`volt`   |required | |
-|`waiting_time`              |`second` |`1 s`    | |
-|`hvsrc_current_compliance`  |`ampere` |`1 uA`   | |
-|`hvsrc_route_termination`   |`str`    |`rear`   | |
-|`hvsrc_sense_mode`          |`str`    |`local`  | Possible values are: `local`, `remote`.
-|`hvsrc_filter_enable`       |`bool`   |`false`  | |
-|`hvsrc_filter_count`        |`int`    |`10`     | |
-|`hvsrc_filter_type`         |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
-|`lcr_soft_filter`           |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
-|`lcr_frequency`             |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
-|`lcr_amplitude`             |`volt`   |`250 mV` | |
-|`lcr_integration_time`      |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
-|`lcr_averaging_rate`        |`int`    |`1`      | Possible range from `1` to `10`. |
-|`lcr_auto_level_control`    |`bool`   |`true`   | |
+| Parameter                    | Type    | Default | Description |
+|------------------------------|---------|---------|-------------|
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`bias_voltage_start`          |`volt`   |required | |
+|`bias_voltage_step`           |`volt`   |required | |
+|`bias_voltage_stop`           |`volt`   |required | |
+|`waiting_time`                |`second` |`1 s`    | |
+|`hvsrc_current_compliance`    |`ampere` |`1 uA`   | |
+|`hvsrc_route_termination`     |`str`    |`rear`   | |
+|`hvsrc_sense_mode`            |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`hvsrc_filter_enable`         |`bool`   |`false`  | |
+|`hvsrc_filter_count`          |`int`    |`10`     | |
+|`hvsrc_filter_type`           |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`lcr_soft_filter`             |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
+|`lcr_frequency`               |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
+|`lcr_amplitude`               |`volt`   |`250 mV` | |
+|`lcr_integration_time`        |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
+|`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
+|`lcr_auto_level_control`      |`bool`   |`true`   | |
+|`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
+|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 
@@ -276,7 +278,7 @@ Type: `cv_ramp`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: true
+      matrix_enable: true
       matrix_channels: [1A01, 1B02, 2H11, 2G12]
       bias_voltage_start: -5 V
       bias_voltage_stop: 10 V
@@ -294,6 +296,8 @@ Type: `cv_ramp`
       lcr_integration_time: medium
       lcr_averaging_rate: 1
       lcr_auto_level_control: true
+      lcr_open_correction_mode: multi
+      lcr_open_correction_channel: 8
 ```
 
 ## CV Ramp (V Source)
@@ -304,25 +308,27 @@ Type: `cv_ramp_vsrc`
 
 ### Parameters
 
-| Parameter                 | Type    | Default | Description |
-|---------------------------|---------|---------|-------------|
-|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
-|`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
-|`bias_voltage_start`       |`volt`   |required | |
-|`bias_voltage_step`        |`volt`   |required | |
-|`bias_voltage_stop`        |`volt`   |required | |
-|`waiting_time`             |`second` |`1 s`    | |
-|`vsrc_current_compliance`  |`ampere` |`1 uA`   | |
-|`vsrc_sense_mode`          |`str`    |`local`  | Possible values are: `local`, `remote`.
-|`vsrc_filter_enable`       |`bool`   |`false`  | |
-|`vsrc_filter_count`        |`int`    |`10`     | |
-|`vsrc_filter_type`         |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
-|`lcr_soft_filter`          |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
-|`lcr_frequency`            |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
-|`lcr_amplitude`            |`volt`   |`250 mV` | |
-|`lcr_integration_time`     |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
-|`lcr_averaging_rate`       |`int`    |`1`      | Possible range from `1` to `10`. |
-|`lcr_auto_level_control`   |`bool`   |`true`   | |
+| Parameter                    | Type    | Default | Description |
+|------------------------------|---------|---------|-------------|
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`bias_voltage_start`          |`volt`   |required | |
+|`bias_voltage_step`           |`volt`   |required | |
+|`bias_voltage_stop`           |`volt`   |required | |
+|`waiting_time`                |`second` |`1 s`    | |
+|`vsrc_current_compliance`     |`ampere` |`1 uA`   | |
+|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_filter_enable`          |`bool`   |`false`  | |
+|`vsrc_filter_count`           |`int`    |`10`     | |
+|`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`lcr_soft_filter`             |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
+|`lcr_frequency`               |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
+|`lcr_amplitude`               |`volt`   |`250 mV` | |
+|`lcr_integration_time`        |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
+|`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
+|`lcr_auto_level_control`      |`bool`   |`true`   | |
+|`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
+|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 
@@ -332,7 +338,7 @@ Type: `cv_ramp_vsrc`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: true
+      matrix_enable: true
       matrix_channels: [1A01, 1B02, 2H11, 2G12]
       bias_voltage_start: -5 V
       bias_voltage_stop: 10 V
@@ -349,11 +355,13 @@ Type: `cv_ramp_vsrc`
       lcr_integration_time: medium
       lcr_averaging_rate: 1
       lcr_auto_level_control: true
+      lcr_open_correction_mode: multi
+      lcr_open_correction_channel: 8
 ```
 
 ## CV Ramp (LCR only)
 
-Available in future releases.
+**Note:** available in future releases.
 
 Type: `cv_ramp_alt`
 
@@ -361,7 +369,7 @@ Type: `cv_ramp_alt`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 
 ### Example configuration
@@ -372,13 +380,13 @@ Type: `cv_ramp_alt`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: false
+      matrix_enable: false
       matrix_channels: []
 ```
 
 ## Frequency Scan
 
-Available in future releases.
+**Note:** available in future releases.
 
 Type: `frequency_scan`
 
@@ -386,7 +394,7 @@ Type: `frequency_scan`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enabled`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 
 ### Example configuration
@@ -397,6 +405,6 @@ Type: `frequency_scan`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enabled: false
+      matrix_enable: false
       matrix_channels: []
 ```

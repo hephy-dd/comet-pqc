@@ -12,7 +12,7 @@ class MatrixMeasurement(Measurement):
 
     def __init__(self, process):
         super().__init__(process)
-        self.register_parameter('matrix_enabled', False, type=bool)
+        self.register_parameter('matrix_enable', False, type=bool)
         self.register_parameter('matrix_channels', [], type=list)
 
     def initialize_matrix(self):
@@ -46,12 +46,12 @@ class MatrixMeasurement(Measurement):
 
     def run(self, *args, **kwargs):
         logging.info(f"running {self.type}...")
-        matrix_enabled = self.get_parameter('matrix_enabled')
+        matrix_enable = self.get_parameter('matrix_enable')
         result = None
-        if matrix_enabled:
+        if matrix_enable:
             self.initialize_matrix()
         result = super().run(*args, **kwargs)
-        if matrix_enabled:
+        if matrix_enable:
             # Always reset matrix switch!
             self.finalize_matrix()
         logging.info(f"finished {self.type}.")

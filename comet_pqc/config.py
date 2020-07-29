@@ -176,7 +176,7 @@ class SequenceContact:
 class SequenceMeasurement:
     """Sequence measurement configuration."""
 
-    key_ignorelist = ["matrix_enabled", "matrix_channels"]
+    key_ignorelist = ["matrix_enable", "matrix_channels"]
 
     def __init__(self, name, type, enabled=True, description="", parameters=None):
         self.name = name

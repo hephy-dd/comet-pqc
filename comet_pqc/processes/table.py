@@ -71,7 +71,7 @@ class ControlProcess(comet.Process, ResourceMixin):
 class MoveProcess(comet.Process, ResourceMixin):
     """Move process for Corvus table."""
 
-    MAXIMUM_Z = 22000
+    MAXIMUM_Z = 23800
 
     def __init__(self, message, progress, **kwargs):
         super().__init__(**kwargs)
@@ -97,7 +97,7 @@ class MoveProcess(comet.Process, ResourceMixin):
         self.emit("message", "Moving...")
         x = self.get('x', 0)
         y = self.get('y', 0)
-        z = min(self.get('z', 0), self.MAXIMUM_Z)
+        z = min(self.get('z', 0), self.get('z_limit', self.MAXIMUM_Z))
         with self.resources.get('table') as resource:
             corvus = Venus1(resource)
             corvus.mode = 0

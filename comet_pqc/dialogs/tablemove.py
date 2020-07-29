@@ -81,6 +81,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
                 self.process.set('x', item.x)
                 self.process.set('y', item.y)
                 self.process.set('z', item.z)
+                self.process.set('z_limit', int(self.content.z_limit * 1e3)) # to micron
                 self.process.start()
 
     def on_stop(self):
@@ -89,9 +90,10 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
     def on_finished(self):
         name = self.process.get('name')
         if self.process.get("z_warning"):
+            z_limit = self.process.get("z_limit")
             comet.show_warning(
                 title="Safe Z Position",
-                text=f"Limited Z movement to {self.process.MAXIMUM_Z/1000.:.3f} mm to protect probe card."
+                text=f"Limited Z movement to {z_limit/1e3:.3f} mm to protect probe card."
             )
         if self.process.get("success", False):
             comet.show_info(title="Success", text=f"Moved table successfully to {name}.")
@@ -100,6 +102,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         self.process.set('y', 0)
         self.process.set('z', 0)
         self.start_button.enabled = True
+        self.stop_button.enabled = False
         self.close_button.enabled = True
         self.content.enabled = True
 
@@ -167,6 +170,8 @@ class TablePositionItem(comet.TreeItem):
 
 class TableMove(comet.Column, comet.SettingsMixin):
 
+    maximum_z_limit = 23.800
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.pos_x_label = comet.Label()
@@ -203,16 +208,25 @@ class TableMove(comet.Column, comet.SettingsMixin):
             enabled=False,
             clicked=self.on_remove_position
         )
-        self.positions_layout = comet.Row(
-            self.positions_tree,
-            comet.Column(
-                self.assign_button,
-                comet.Spacer(),
-                self.add_button,
-                self.edit_button,
-                self.remove_button
+        self.z_limit_label = comet.Label()
+        self.positions_layout = comet.Column(
+            comet.Row(
+                self.positions_tree,
+                comet.Column(
+                    self.assign_button,
+                    comet.Spacer(),
+                    self.add_button,
+                    self.edit_button,
+                    self.remove_button
+                ),
+                stretch=(1, 0)
             ),
-            stretch=(0, 1)
+            comet.Row(
+                self.z_limit_label,
+                comet.Button("...", width=32, clicked=self.edit_z_limit),
+                comet.Spacer(),
+                stretch=(0, 0, 1)
+            )
         )
         self.append(comet.Column(
             comet.Row(
@@ -258,13 +272,29 @@ class TableMove(comet.Column, comet.SettingsMixin):
                         )
                     )
                 ),
-                comet.Spacer(),
-                stretch=(0, 0, 0, 0, 0, 0, 0, 0, 1)
+                stretch=(0, 0, 0, 0, 0, 0, 0, 0)
             ),
             comet.Spacer(),
             stretch=(0, 1)
         ))
         self.position = 0, 0, 0
+        self.z_limit = 20.000
+
+    def set_z_limit(self, limit):
+        self.z_limit = min(self.maximum_z_limit, limit)
+        self.z_limit_label.text = f"Z Soft Limit: {self.z_limit:.3f} mm"
+
+    def edit_z_limit(self):
+        value = comet.get_number(
+            title="Z Soft Limit",
+            label="Z Soft Limit",
+            value=self.z_limit,
+            minimum=0,
+            maximum=self.maximum_z_limit,
+            decimals=3
+        )
+        if value is not None:
+            self.set_z_limit(value)
 
     def load_positions(self):
         self.positions_tree.clear()
@@ -275,6 +305,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
                 y=position.get('y'),
                 z=position.get('z')
             ))
+        self.set_z_limit(self.settings.get('table_z_limit', self.maximum_z_limit))
 
     def store_positions(self):
         positions = []
@@ -286,6 +317,16 @@ class TableMove(comet.Column, comet.SettingsMixin):
                 z=position.z
             ))
         self.settings['table_positions'] = positions
+        self.settings['table_z_limit'] = self.z_limit
+
+    @property
+    def z_limit(self):
+        return self.__z_limit
+
+    @z_limit.setter
+    def z_limit(self, value):
+        self.__z_limit = min(self.maximum_z_limit, value)
+        self.z_limit_label.text = f"Z Soft Limit: {self.__z_limit:.3f} mm"
 
     @property
     def position(self):
