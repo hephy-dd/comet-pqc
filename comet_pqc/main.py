@@ -149,8 +149,9 @@ def main():
     # Layout
 
     app.layout = dashboard
-    app.width = 1420
-    app.height = 920
+
+    # Restore window size
+    app.width, app.height = app.settings.get('window_size', (1420, 920))
 
     # Tweaks... there's no hook, so it's a hack.
     ui = app.qt.window.ui
@@ -177,7 +178,12 @@ def main():
     if dashboard.environment_groupbox.checked:
         dashboard.sync_environment_controls()
 
-    return app.run()
+    result = app.run()
+
+    # Store window size
+    app.settings['window_size'] = app.width, app.height
+
+    return result
 
 if __name__ == '__main__':
     sys.exit(main())
