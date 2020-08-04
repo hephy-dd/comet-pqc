@@ -93,6 +93,7 @@ def main():
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
         app.progress = None
+        logging.error(tb)
         comet.show_exception(exc, tb)
 
     def on_message(message):

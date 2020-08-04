@@ -32,6 +32,8 @@ from .dialogs import TableControlDialog
 from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
 
+from .logwindow import LogWidget
+
 from .driver import EnvironmentBox
 
 ENABLE_SEQUENCING = False
@@ -536,11 +538,20 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             layout=self.summary_tree
         )
 
+        self.log_widget = LogWidget()
+        self.log_widget.add_logger(logging.getLogger())
+
+        self.logging_tab = comet.Tab(
+            title="Logs",
+            layout=self.log_widget
+        )
+
         # Tabs
 
         self.tab_widget = comet.Tabs(
             self.measurement_tab,
             self.status_tab,
+            self.logging_tab,
             self.summary_tab
         )
 
