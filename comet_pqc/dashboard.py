@@ -771,11 +771,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def switch_off_lights(self):
         with self.processes.get("environment") as environment:
             if environment.has_lights():
-                if comet.show_question(
-                    title="Box Lights",
-                    text="Do you want to switch off all box lights?"
-                ):
-                    environment.dim_lights()
+                environment.dim_lights()
 
     @handle_exception
     def sync_environment_controls(self):
