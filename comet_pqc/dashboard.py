@@ -317,7 +317,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         )
 
         self.output_groupbox = comet.GroupBox(
-            title="Output",
+            title="Working Directory",
             layout=comet.Row(
                 self.output_text,
                 comet.Button(
@@ -572,12 +572,19 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.sequence_combobox.current = sequence
                 break
 
-    def create_output_dir(self, sample_name, sample_type):
-        """Create new timestamp prefixed output directory."""
-        base = self.output_text.value
-        iso_timestamp = comet.make_iso()
-        dirname = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
-        output_dir = os.path.join(base, dirname)
+    def output_dir(self):
+        """Return output path."""
+        base = os.path.realpath(self.output_text.value)
+        sample_name = self.sample_name_text.value
+        sample_type = self.sample_type_text.value
+        dirname = comet.safe_filename(f"{sample_name}-{sample_type}")
+        return os.path.join(base, dirname)
+
+    def create_output_dir(self):
+        """Create output directory for sample if not exists, return directory
+        path.
+        """
+        output_dir = self.output_dir()
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return output_dir
@@ -648,7 +655,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sequence_tree.reset()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
-        output_dir = self.create_output_dir(sample_name, sample_type)
+        output_dir = self.create_output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
         sequence.set("sample_type", sample_type)
@@ -821,7 +828,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_select_output(self):
         value = comet.directory_open(
-            title="Output",
+            title="Select working directory",
             path=self.output_text.value
         )
         if value:
@@ -864,7 +871,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.clear_readings()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
-        output_dir = self.output_text.value
+        output_dir = self.create_output_dir()
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
         measure.set("sample_type", sample_type)
