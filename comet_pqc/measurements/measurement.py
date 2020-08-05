@@ -10,6 +10,7 @@ from ..utils import std_mean_filter
 
 __all__ = [
     'Measurement',
+    'ComplianceError',
     'HVSourceMixin',
     'VSourceMixin',
     'LCRMixin',
@@ -17,6 +18,8 @@ __all__ = [
 ]
 
 QUICK_RAMP_DELAY = 0.100
+
+class ComplianceError(ValueError): pass
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""

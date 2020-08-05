@@ -14,6 +14,7 @@ from ..estimate import Estimate
 from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import HVSourceMixin
 from .measurement import LCRMixin
 from .measurement import EnvironmentMixin
@@ -131,7 +132,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
             compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
             if compliance_tripped:
                 logging.error("HV Source in compliance")
-                raise ValueError("compliance tripped!")
+                raise ComplianceError("compliance tripped!")
 
             if not self.process.running:
                 break
@@ -254,7 +255,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                     compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
                     if compliance_tripped:
                         logging.error("HV Source in compliance")
-                        raise ValueError("compliance tripped!")
+                        raise ComplianceError("compliance tripped!")
 
                     if not self.process.running:
                         break

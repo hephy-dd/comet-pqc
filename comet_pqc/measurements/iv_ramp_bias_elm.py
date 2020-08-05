@@ -14,6 +14,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
@@ -282,7 +283,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
             compliance_tripped = vsrc.source.compliance
             if compliance_tripped:
                 logging.error("V Source in compliance")
-                raise ValueError("V Source compliance tripped")
+                raise ComplianceError("V Source compliance tripped")
 
             if not self.process.running:
                 break
@@ -305,7 +306,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
             compliance_tripped = hvsrc.sense.current.protection.tripped
             if compliance_tripped:
                 logging.error("HV Source in compliance")
-                raise ValueError("HV Source compliance tripped")
+                raise ComplianceError("HV Source compliance tripped")
 
             if not self.process.running:
                 break
@@ -504,11 +505,11 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
                     compliance_tripped = hvsrc.sense.current.protection.tripped
                     if compliance_tripped:
                         logging.error("HV Source in compliance")
-                        raise ValueError("HV Source compliance tripped")
+                        raise ComplianceError("HV Source compliance tripped")
                     compliance_tripped = vsrc.source.compliance
                     if compliance_tripped:
                         logging.error("V Source in compliance")
-                        raise ValueError("V Source compliance tripped")
+                        raise ComplianceError("V Source compliance tripped")
                     if not self.process.running:
                         break
 

@@ -36,7 +36,7 @@ from .logwindow import LogWidget
 
 from .driver import EnvironmentBox
 
-ENABLE_SEQUENCING = False
+ENABLE_SEQUENCING = True
 """Switch to disable sequence execution from user interface."""
 
 def create_icon(size, color):
@@ -630,6 +630,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if isinstance(item, ContactTreeItem):
             pass
         if isinstance(item, MeasurementTreeItem):
+            self.panels.unmount()
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
@@ -638,9 +639,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.tab_widget.current = self.measurement_tab
 
     def on_sequence_start(self):
+        if isinstance(self.sequence_tree.current, MeasurementTreeItem):
+            contact_item = self.sequence_tree.current.contact
+        else:
+            contact_item = self.sequence_tree.current
         if not comet.show_question(
             title="Start sequence",
-            text="Are you sure to start a measurement sequence?"
+            text=f"Are you sure to start sequence '{contact_item.name}'?"
         ): return
         self.switch_off_lights()
         self.sync_environment_controls()
@@ -656,6 +661,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.measure_controls.enabled = False
         self.panels.lock()
         self.panels.store()
+        self.panels.unmount()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
         sample_name = self.sample_name_text.value
@@ -667,7 +673,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
         sequence.set("use_table", self.table_groupbox.checked)
-        sequence.sequence_tree = self.sequence_tree
+        sequence.contact_item = contact_item
+        # sequence.sequence_tree = self.sequence_tree
+        def show_measurement(prev, next):
+            if prev:
+                prev.selectable = False
+            next.selectable = True
+            self.panels.unmount()
+            self.panels.hide()
+            self.panels.clear_readings()
+            panel = self.panels.get(next.type)
+            panel.visible = True
+            panel.mount(next)
+            sequence.reading = panel.append_reading
+            sequence.update = panel.update_readings
+            sequence.state = panel.state
+        sequence.show_measurement = show_measurement
+        sequence.push_summary = self.on_insert_summary
         sequence.start()
 
     def on_autopilot_toggled(self, state):
@@ -723,6 +745,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
         sequence.set("output_dir", None)
+        sequence.set("contact_item", None)
         self.sync_environment_controls()
 
     # Table calibration
@@ -905,6 +928,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
         measure.state = panel.state
+        measure.push_summary = self.on_insert_summary
         # TODO
         measure.start()
 
@@ -930,21 +954,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unlock()
         measure = self.processes.get("measure")
         measure.reading = lambda data: None
-        # Append to summary
-        item = self.summary_tree.insert(0, [
-            datetime.datetime.now().isoformat(),
-            measure.get("sample_name"),
-            measure.get("sample_type"),
-            self.sequence_tree.current.contact.name,
-            self.sequence_tree.current.name,
-            self.sequence_tree.current[1].value or "Failed"
-        ])
-        # TODO
-        if item[5].value == "Failed":
-            item[5].color = "red"
-        else:
-            item[5].color = "green"
-        self.summary_tree.fit()
         self.sequence_tree.unlock()
 
     def on_status_start(self):
@@ -991,6 +1000,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
             self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
             self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
+
+    def on_insert_summary(self, timestamp, sample_name, sample_type, contact_name, measurement_name, measurement_state):
+        """Insert measurement data to summary"""
+        item = self.summary_tree.insert(0, [
+            timestamp.isoformat(),
+            sample_name,
+            sample_type,
+            contact_name,
+            measurement_name,
+            measurement_state
+        ])
+        # TODO
+        if item[5].value == "Success":
+            item[5].color = "green"
+        else:
+            item[5].color = "red"
+        self.summary_tree.fit()
 
     # Menu action callbacks
 

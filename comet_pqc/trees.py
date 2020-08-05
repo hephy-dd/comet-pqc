@@ -1,6 +1,7 @@
 import copy
 
 from comet.ui import Tree, TreeItem
+from PyQt5 import QtCore
 
 class SequenceTree(Tree):
 
@@ -27,12 +28,14 @@ class SequenceTreeItem(TreeItem):
         self[0].checkable = True
 
     def lock(self):
-        self[0].checkable = False
+        self.checkable = False
+        self.selectable = False
         for child in self.children:
             child.lock()
 
     def unlock(self):
-        self[0].checkable = True
+        self.checkable = True
+        self.selectable = True
         for child in self.children:
             child.unlock()
 
@@ -40,6 +43,19 @@ class SequenceTreeItem(TreeItem):
         self.state = None
         for child in self.children:
             child.reset()
+
+    @property
+    def selectable(self):
+        return self.qt.flags() & QtCore.Qt.ItemIsSelectable != 0
+
+    @selectable.setter
+    def selectable(self, value):
+        flags = self.qt.flags()
+        if value:
+            flags |= QtCore.Qt.ItemIsSelectable
+        else:
+            flags &= ~QtCore.Qt.ItemIsSelectable
+        self.qt.setFlags(flags)
 
     @property
     def enabled(self):

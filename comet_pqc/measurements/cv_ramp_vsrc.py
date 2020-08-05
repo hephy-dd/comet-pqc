@@ -13,6 +13,7 @@ from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import VSourceMixin
 from .measurement import LCRMixin
 from .measurement import EnvironmentMixin
@@ -127,7 +128,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
             compliance_tripped = self.vsrc_compliance_tripped(vsrc)
             if compliance_tripped:
                 logging.error("V Source in compliance")
-                raise ValueError("compliance tripped!")
+                raise ComplianceError("compliance tripped!")
 
             if not self.process.running:
                 break
@@ -248,7 +249,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                     compliance_tripped = self.vsrc_compliance_tripped(vsrc)
                     if compliance_tripped:
                         logging.error("V Source in compliance")
-                        raise ValueError("compliance tripped!")
+                        raise ComplianceError("compliance tripped!")
 
                     if not self.process.running:
                         break

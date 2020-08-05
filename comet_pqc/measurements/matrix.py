@@ -50,9 +50,12 @@ class MatrixMeasurement(Measurement):
         result = None
         if matrix_enable:
             self.initialize_matrix()
-        result = super().run(*args, **kwargs)
-        if matrix_enable:
-            # Always reset matrix switch!
-            self.finalize_matrix()
-        logging.info(f"finished {self.type}.")
+        try:
+            result = super().run(*args, **kwargs)
+            logging.info(f"finished {self.type}.")
+        finally:
+            if matrix_enable:
+                # Always reset matrix switch!
+                self.finalize_matrix()
+            logging.info(f"failed {self.type}.")
         return result

@@ -11,6 +11,7 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
@@ -158,7 +159,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
                 compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
                     logging.error("V Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 if not self.process.running:
                     break
 
@@ -266,7 +267,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
                 compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
                     logging.error("V Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 # check_error(vsrc)
                 if not self.process.running:
                     break

@@ -13,6 +13,7 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
@@ -204,7 +205,7 @@ class IVRampElmMeasurement(MatrixMeasurement, EnvironmentMixin):
                 compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
                     logging.error("HV Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 if not self.process.running:
                     break
 
@@ -409,7 +410,7 @@ class IVRampElmMeasurement(MatrixMeasurement, EnvironmentMixin):
                     compliance_tripped = hvsrc.sense.current.protection.tripped
                     if compliance_tripped:
                         logging.error("HV Source in compliance")
-                        raise ValueError("compliance tripped")
+                        raise ComplianceError("compliance tripped")
                     # check_error(hvsrc)
                     if not self.process.running:
                         break
