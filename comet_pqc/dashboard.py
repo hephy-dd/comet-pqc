@@ -162,20 +162,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             enabled=ENABLE_SEQUENCING
         )
 
-        self.autopilot_button = ToggleButton(
-            text="Autopilot",
-            tool_tip="Run next measurement automatically.",
-            checkable=True,
-            checked=False,
-            toggled=self.on_autopilot_toggled
-        )
-
-        self.continue_button = comet.Button(
-            text="Continue",
-            tool_tip="Run next measurement manually.",
-            enabled=False
-        )
-
         self.stop_button = comet.Button(
             text="Stop",
             tool_tip="Stop measurement sequence.",
@@ -189,10 +175,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.sequence_tree,
                 comet.Row(
                     self.start_button,
-                    self.autopilot_button,
-                    self.continue_button
-                ),
-                self.stop_button
+                    self.stop_button
+                )
             )
         )
 
@@ -654,8 +638,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.start_button.enabled = False
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
         self.stop_button.enabled = True
         self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
@@ -692,40 +674,11 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.push_summary = self.on_insert_summary
         sequence.start()
 
-    def on_autopilot_toggled(self, state):
-        sequence = self.processes.get("sequence")
-        sequence.set("autopilot", state)
-
-    def on_continue_measurement(self, measurement):
-        def on_continue():
-            if not comet.show_question(
-                title="Continue sequence",
-                text=f"Do you want to continue with {measurement.contact.name}, {measurement.name}?"
-            ): return
-            logging.info("Continuing sequence...")
-            self.continue_button.enabled = False
-            self.continue_button.clicked = None
-            self.sequence_tree.current = measurement
-            sequence = self.processes.get("sequence")
-            sequence.set("continue_measurement", True)
-        self.continue_button.enabled = True
-        self.continue_button.clicked = on_continue
-
-    def on_continue_contact(self, contact):
-        comet.show_info(
-            title=f"Contact {contact.name}",
-            text=f"Please contact with {contact.name}."
-        )
-        sequence = self.processes.get("sequence")
-        sequence.set("continue_contact", True)
-
     def on_measurement_state(self, item, state):
         item.state = state
 
     def on_sequence_stop(self):
         self.stop_button.enabled = False
-        self.autopilot_button.enabled = False
-        self.continue_button.enabled = False
         sequence = self.processes.get("sequence")
         sequence.stop()
 
@@ -735,8 +688,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.start_button.enabled = True
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
         self.stop_button.enabled = False
         self.reload_status_button.enabled = True
         self.measure_controls.enabled = True

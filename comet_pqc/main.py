@@ -146,8 +146,6 @@ def main():
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        continue_contact=dashboard.on_continue_contact,
-        continue_measurement=dashboard.on_continue_measurement,
         measurement_state=dashboard.on_measurement_state,
         reading=None
     ))

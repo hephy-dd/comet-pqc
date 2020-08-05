@@ -185,13 +185,10 @@ class SequenceProcess(BaseProcess):
     # sequence_tree = []
     contact_item = None
 
-    def __init__(self, message, progress, continue_contact, continue_measurement,
-                 measurement_state, reading, **kwargs):
+    def __init__(self, message, progress, measurement_state, reading, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
-        self.continue_contact = continue_contact
-        self.continue_measurement = continue_measurement
         self.measurement_state = measurement_state
         self.reading = reading
         self.stopped = False
@@ -211,20 +208,7 @@ class SequenceProcess(BaseProcess):
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
         contact_item = self.contact_item
-        # if not self.running:
-        #     break
-        # if not contact_item.enabled:
-        #     continue
         self.emit("measurement_state", contact_item, "Active")
-        #self.set("continue_contact", False)
-        #self.emit("continue_contact", contact_item)
-        # while self.running:
-        #     if self.get("continue_contact", False):
-        #         break
-        #     time.sleep(.100)
-        # self.set("continue_contact", False)
-        # if not self.running:
-        #     break
         logging.info(" => %s", contact_item.name)
         prev_measurement_item = None
         for measurement_item in contact_item.children:
@@ -233,20 +217,8 @@ class SequenceProcess(BaseProcess):
             if not measurement_item.enabled:
                 self.emit("measurement_state", measurement_item, "Skipped")
                 continue
-            autopilot = self.get("autopilot", False)
-            logging.info("Autopilot: %s", ["OFF", "ON"][autopilot])
-            if not autopilot:
-                logging.info("Waiting for %s", measurement_item.name)
-                self.emit("measurement_state", measurement_item, "Waiting")
-                self.set("continue_measurement", False)
-                self.emit("continue_measurement", measurement_item)
-                while self.running:
-                    if self.get("continue_measurement", False):
-                        break
-                    time.sleep(.100)
-                self.set("continue_measurement", False)
             if not self.running:
-                self.emit("measurement_state", measurement_item, "Aborted")
+                self.emit("measurement_state", measurement_item, "Stopped")
                 break
             logging.info("Run %s", measurement_item.name)
             # TODO
