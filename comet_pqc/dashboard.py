@@ -2,8 +2,10 @@ import copy
 import datetime
 import logging
 import os
+import traceback
 
 from qutie.qt import QtCore, QtGui
+from qutie import Timer
 
 import comet
 
@@ -33,6 +35,7 @@ from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
 
 from .logwindow import LogWidget
+from .summary import SummaryTree
 
 from .driver import EnvironmentBox
 
@@ -56,7 +59,9 @@ def handle_exception(func):
         try:
             return func(*args, **kwargs)
         except Exception as exc:
+            tb = traceback.format_exc()
             logging.error(exc)
+            logging.error(tb)
             comet.show_exception(exc)
     return catch_exception_wrapper
 
@@ -512,10 +517,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Summary tab
 
-        self.summary_tree = comet.Tree(
-            header=["Time", "Sample", "Type", "Contact", "Measurement", "Result"],
-            indentation=0
-        )
+        self.summary_tree = SummaryTree()
 
         self.summary_tab = comet.Tab(
             title="Summary",
@@ -548,9 +550,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Experimental
 
         # Install timer to update environment controls
-        self.environment_timer = QtCore.QTimer()
-        self.environment_timer.timeout.connect(self.sync_environment_controls)
-        self.environment_timer.start(1000)
+        self.environment_timer = Timer(timeout=self.sync_environment_controls)
+        self.environment_timer.start(1.0)
 
     def load_sequences(self):
         """Load available sequence configurations."""
@@ -678,7 +679,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             sequence.update = panel.update_readings
             sequence.state = panel.state
         sequence.show_measurement = show_measurement
-        sequence.push_summary = self.on_insert_summary
+        sequence.push_summary = self.summary_tree.append_result
         sequence.start()
 
     def on_measurement_state(self, item, state):
@@ -787,6 +788,10 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             try:
                 with self.processes.get("environment") as environment:
                     pc_data = environment.pc_data()
+            except:
+                self.environment_groupbox.checked = False
+                raise
+            else:
                 self.box_laser_button.checked = pc_data.relay_states.laser_sensor
                 self.box_light_button.checked = pc_data.relay_states.box_light
                 self.microscope_light_button.checked = pc_data.relay_states.microscope_light
@@ -795,10 +800,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.probecard_light_button.checked = pc_data.relay_states.probecard_light
                 self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
                 self.pid_control_button.checked = pc_data.pid_status
-            except:
-                self.environment_groupbox.checked = False
-                self.processes.get("environment").enabled = False
-                raise
 
     @handle_exception
     def sync_table_controls(self):
@@ -882,7 +883,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
         measure.state = panel.state
-        measure.push_summary = self.on_insert_summary
+        measure.push_summary = self.summary_tree.append_result
         # TODO
         measure.start()
 
@@ -954,23 +955,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
             self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
             self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
-
-    def on_insert_summary(self, timestamp, sample_name, sample_type, contact_name, measurement_name, measurement_state):
-        """Insert measurement data to summary"""
-        item = self.summary_tree.insert(0, [
-            timestamp.isoformat(),
-            sample_name,
-            sample_type,
-            contact_name,
-            measurement_name,
-            measurement_state
-        ])
-        # TODO
-        if item[5].value == "Success":
-            item[5].color = "green"
-        else:
-            item[5].color = "red"
-        self.summary_tree.fit()
 
     # Menu action callbacks
 
