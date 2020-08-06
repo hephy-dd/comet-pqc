@@ -62,7 +62,7 @@ def handle_exception(func):
             tb = traceback.format_exc()
             logging.error(exc)
             logging.error(tb)
-            comet.show_exception(exc)
+            comet.show_exception(exc, tb)
     return catch_exception_wrapper
 
 class ToggleButton(comet.Button):
@@ -716,14 +716,17 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             table = Venus1(table_resource)
             table.joystick = state
 
+    @handle_exception
     def on_table_controls_start(self):
         TableControlDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_table_move_start(self):
         TableMoveDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_table_calibrate_start(self):
         TableCalibrateDialog().run()
         self.sync_table_controls()

@@ -9,7 +9,7 @@ from comet.driver.corvus import Venus1
 UNIT_MICROMETER = 1
 UNIT_MILLIMETER = 2
 
-AXIS_OFFSET = 2e6
+AXIS_OFFSET = 2e9 # TODO
 RETRIES = 180
 
 class ControlProcess(comet.Process, ResourceMixin):
@@ -120,7 +120,6 @@ class MoveProcess(comet.Process, ResourceMixin):
 
             def handle_abort():
                 if not self.running:
-                    corvus.joystick = True
                     self.emit("progress", 0, 0)
                     self.emit("message", "Moving aborted.")
                     raise comet.StopRequest()
@@ -146,7 +145,7 @@ class MoveProcess(comet.Process, ResourceMixin):
                     break
                 time.sleep(delay)
             if pos[2] != 0:
-                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+                raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
             handle_abort()
             update_caldone()
@@ -162,7 +161,7 @@ class MoveProcess(comet.Process, ResourceMixin):
                     break
                 time.sleep(delay)
             if pos[:2] != (x, y):
-                raise RuntimeError("failed to absolute move, current pos: {}".format(pos))
+                raise RuntimeError(f"failed to absolute move, current pos: {pos}")
 
             self.emit("progress", 3, 4)
             self.emit("message", "Move up Z axis...")
@@ -175,7 +174,7 @@ class MoveProcess(comet.Process, ResourceMixin):
                     break
                 time.sleep(delay)
             if pos != (x, y, z):
-                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+                raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
             self.emit("progress", 7, 7)
             self.emit("message", "Movement successful.")
@@ -229,7 +228,6 @@ class CalibrateProcess(comet.Process, ResourceMixin):
 
             def handle_abort():
                 if not self.running:
-                    corvus.joystick = True
                     self.emit("progress", 0, 0)
                     self.emit("message", "Calibration aborted.")
                     raise comet.StopRequest()
@@ -352,7 +350,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     break
                 time.sleep(delay)
             if pos[:2] != (0, 0):
-                raise RuntimeError("failed to relative move, current pos: {}".format(pos))
+                raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
             handle_abort()
             update_caldone()
@@ -389,7 +387,7 @@ class CalibrateProcess(comet.Process, ResourceMixin):
                     break
                 time.sleep(delay)
             if pos != (0, 0, 0):
-                raise RuntimeError("failed to calibrate axes, current pos: {}".format(pos))
+                raise RuntimeError(f"failed to calibrate axes, current pos: {pos}")
 
             #handle_error()
             update_status()
