@@ -36,11 +36,11 @@ from .dialogs import TableCalibrateDialog
 
 from .logwindow import LogWidget
 from .summary import SummaryTree
+from .formatter import CSVFormatter
 
 from .driver import EnvironmentBox
 
-ENABLE_SEQUENCING = True
-"""Switch to disable sequence execution from user interface."""
+SUMMARY_FILENAME = "summary.csv"
 
 def create_icon(size, color):
     """Return circular colored icon."""
@@ -163,8 +163,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.start_button = comet.Button(
             text="Start",
             tool_tip="Start measurement sequence.",
-            clicked=self.on_sequence_start,
-            enabled=ENABLE_SEQUENCING
+            clicked=self.on_sequence_start
         )
 
         self.stop_button = comet.Button(
@@ -649,9 +648,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.stop_button.enabled = True
         self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
+        self.output_groupbox.enabled = False
         self.panels.lock()
         self.panels.store()
         self.panels.unmount()
+        self.panels.clear_readings()
+        # HACK oh dear...
+        for measurement_item in contact_item.children:
+            measurement_item.series.clear()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
         sample_name = self.sample_name_text.value
@@ -679,7 +683,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             sequence.update = panel.update_readings
             sequence.state = panel.state
         sequence.show_measurement = show_measurement
-        sequence.push_summary = self.summary_tree.append_result
+        sequence.push_summary = self.on_push_summary
         sequence.start()
 
     def on_measurement_state(self, item, state):
@@ -699,6 +703,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.stop_button.enabled = False
         self.reload_status_button.enabled = True
         self.measure_controls.enabled = True
+        self.output_groupbox.enabled = True
         self.panels.unlock()
         self.sequence_tree.unlock()
         sequence = self.processes.get("sequence")
@@ -838,6 +843,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if value:
             self.output_text.value = value
 
+    @handle_exception
+    def on_push_summary(self, *args):
+        """Push rsult to summary and write to sumamry file (experimantal)."""
+        item = self.summary_tree.append_result(*args)
+        output_path = self.settings.get("output_path")
+        if output_path and os.path.exists(output_path):
+            filename = os.path.join(output_path, SUMMARY_FILENAME)
+            has_header = os.path.exists(filename)
+            with open(filename, 'a') as f:
+                header = self.summary_tree.header_items
+                writer = CSVFormatter(f)
+                for key in header:
+                    writer.add_column(key)
+                if not has_header:
+                    writer.write_header()
+                writer.write_row({header[i]: item[i].value for i in range(len(header))})
+
     # Measurement control
 
     def on_measure_restore(self):
@@ -886,7 +908,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
         measure.state = panel.state
-        measure.push_summary = self.summary_tree.append_result
+        measure.push_summary = self.on_push_summary
         # TODO
         measure.start()
 

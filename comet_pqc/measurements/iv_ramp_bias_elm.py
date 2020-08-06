@@ -15,6 +15,7 @@ from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
+from .measurement import ElectrometerMixin
 from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
@@ -27,15 +28,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-def elm_check_error(elm):
-    code, label = elm.resource.query(":SYST:ERR?").split(",", 1)
-    code = int(code)
-    label = label.strip("\"")
-    if code != 0:
-        logging.error(f"Error {code}: {label} returned by '{message}'")
-        raise RuntimeError(f"Error {code}: {label} returned by '{message}'")
-
-class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
+class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixin):
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias_elm"
@@ -68,6 +61,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
         self.register_parameter('elm_current_autorange_enable', False, type=bool)
         self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
         self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
+        self.register_elm()
         self.register_environment()
 
     def initialize(self, hvsrc, vsrc, elm):
@@ -211,46 +205,40 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
 
         # Initialize Electrometer
 
-        def elm_safe_write(message):
-            """Write, wait for operation complete, test for errors."""
-            elm.resource.write(message)
-            elm.resource.query("*OPC?")
-            elm_check_error(elm)
-
-        elm_safe_write("*RST")
-        elm_safe_write("*CLS")
+        self.elm_safe_write(elm, "*RST")
+        self.elm_safe_write(elm, "*CLS")
 
         # Filter
-        elm_safe_write(f":SENS:CURR:AVER:COUN {elm_filter_count:d}")
+        self.elm_safe_write(elm, f":SENS:CURR:AVER:COUN {elm_filter_count:d}")
 
         if elm_filter_type == "repeat":
-            elm_safe_write(":SENS:CURR:AVER:TCON REP")
+            self.elm_safe_write(elm, ":SENS:CURR:AVER:TCON REP")
         elif elm_filter_type == "moving":
-            elm_safe_write(":SENS:CURR:AVER:TCON MOV")
+            self.elm_safe_write(elm, ":SENS:CURR:AVER:TCON MOV")
 
         if elm_filter_enable:
-            elm_safe_write(":SENS:CURR:AVER:STATE ON")
+            self.elm_safe_write(elm, ":SENS:CURR:AVER:STATE ON")
         else:
-            elm_safe_write(":SENS:CURR:AVER:STATE OFF")
+            self.elm_safe_write(elm, ":SENS:CURR:AVER:STATE OFF")
 
         nplc = elm_integration_rate / 10.
-        elm_safe_write(f":SENS:CURR:NPLC {nplc:02f}")
+        self.elm_safe_write(elm, f":SENS:CURR:NPLC {nplc:02f}")
 
-        elm_safe_write(":SYST:ZCH ON") # enable zero check
+        self.elm_safe_write(elm, ":SYST:ZCH ON") # enable zero check
         assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
 
-        elm_safe_write(":SENS:FUNC 'CURR'") # note the quotes!
+        self.elm_safe_write(elm, ":SENS:FUNC 'CURR'") # note the quotes!
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
 
-        elm_safe_write(f":SENS:CURR:RANG {elm_current_range:E}")
+        self.elm_safe_write(elm, f":SENS:CURR:RANG {elm_current_range:E}")
         if elm_zero_correction:
-            elm_safe_write(":SYST:ZCOR ON") # perform zero correction
+            self.elm_safe_write(elm, ":SYST:ZCOR ON") # perform zero correction
         # Auto range
-        elm_safe_write(f":SENS:CURR:RANG:AUTO {elm_current_autorange_enable:d}")
-        elm_safe_write(f":SENS:CURR:RANG:AUTO:LLIM {elm_current_autorange_minimum:E}")
-        elm_safe_write(f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
+        self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO {elm_current_autorange_enable:d}")
+        self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:LLIM {elm_current_autorange_minimum:E}")
+        self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
 
-        elm_safe_write(":SYST:ZCH OFF") # disable zero check
+        self.elm_safe_write(elm, ":SYST:ZCH OFF") # disable zero check
         assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
 
         # Output enable
@@ -349,6 +337,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
         elm_current_autorange_enable = bool(self.get_parameter('elm_current_autorange_enable'))
         elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
         elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
+        elm_read_timeout = self.get_parameter('elm_read_timeout')
 
         if not self.process.running:
             return
@@ -400,6 +389,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
             fmt.write_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
             fmt.write_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
             fmt.write_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
+            fmt.write_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
             fmt.flush()
 
             # Write header
@@ -414,7 +404,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
             # Electrometer reading format: READ
             elm.resource.write(":FORM:ELEM READ")
             elm.resource.query("*OPC?")
-            elm_check_error(elm)
+            self.elm_check_error(elm)
 
             voltage = hvsrc.source.voltage.level
 
@@ -457,8 +447,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, EnvironmentMixin):
 
                     # read ELM
                     with benchmark_elm:
-                        elm_reading = float(elm.resource.query(":READ?").split(',')[0])
-                    elm_check_error(elm)
+                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    self.elm_check_error(elm)
                     logging.info("ELM reading: %E", elm_reading)
                     self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 

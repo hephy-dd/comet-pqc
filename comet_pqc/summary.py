@@ -1,5 +1,7 @@
 import qutie as ui
 
+import comet
+
 __all__ = [
     'SummaryTreeItem'
     'SummaryTree',
@@ -18,16 +20,18 @@ class SummaryTreeItem(ui.TreeItem):
             measurement_state
         ])
         # TODO
-        if "Success" in item[5].value:
-            item[5].color = "green"
+        if "Success" in self[5].value:
+            self[5].color = "green"
         else:
-            item[5].color = "red"
+            self[5].color = "red"
 
-class SummaryTree(ui.Tree):
+class SummaryTree(ui.Tree, comet.SettingsMixin):
+
+    header_items = "Time", "Sample", "Type", "Contact", "Measurement", "Result"
 
     def __init__(self):
         super().__init__()
-        self.header = "Time", "Sample", "Type", "Contact", "Measurement", "Result"
+        self.header = self.header_items
         self.indentation = 0
 
     def append_result(self, *args):
@@ -35,3 +39,4 @@ class SummaryTree(ui.Tree):
         self.append(item)
         self.fit()
         self.scroll_to(item)
+        return item

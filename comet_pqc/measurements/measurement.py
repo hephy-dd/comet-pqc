@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 
 import comet
 from comet.resource import ResourceMixin
@@ -13,6 +14,7 @@ __all__ = [
     'ComplianceError',
     'HVSourceMixin',
     'VSourceMixin',
+    'ElectrometerMixin',
     'LCRMixin',
     'EnvironmentMixin'
 ]
@@ -273,6 +275,40 @@ class VSourceMixin:
         logging.info("set V Source output state: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
         vsrc.source.output = value
+
+class ElectrometerMixin:
+
+    def register_elm(self):
+        self.register_parameter('elm_read_timeout', comet.ureg('60 s'), unit='s')
+
+    def elm_check_error(self, elm):
+        result = elm.resource.query(":SYST:ERR?")
+        try:
+            code, label = result.split(",", 1)
+            code = int(code)
+        except ValueError as exc:
+            raise RuntimeError(f"failed to read electrometer error state, device returned '{result}'")
+        if code != 0:
+            label = label.strip("\"")
+            logging.error(f"Error {code}: {label}")
+            raise RuntimeError(f"Error {code}: {label}")
+
+    def elm_safe_write(self, elm, message):
+        """Write, wait for operation complete, test for errors."""
+        elm.resource.write(message)
+        elm.resource.query("*OPC?")
+        self.elm_check_error(elm)
+
+    def elm_read(self, elm, timeout=60.0, idle=0.25):
+        """Perform electrometer reading with timeout."""
+        elm.resource.write(":INIT?")
+        threshold = time.time() + timeout
+        idle = min(timeout, idle)
+        while time.time() < threshold:
+            if bool(int(elm.resource.query("*OPC?"))):
+                return float(elm.resource.query(":FETCH?").split(',')[0])
+            time.sleep(idle)
+        raise RuntimeError(f"electrometer reading timeout, exceeded {timeout:G} s")
 
 class LCRMixin:
 

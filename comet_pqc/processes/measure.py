@@ -215,7 +215,6 @@ class SequenceProcess(BaseProcess):
             if not self.running:
                 break
             if not measurement_item.enabled:
-                self.emit("measurement_state", measurement_item, "Skipped")
                 continue
             if not self.running:
                 self.emit("measurement_state", measurement_item, "Stopped")
