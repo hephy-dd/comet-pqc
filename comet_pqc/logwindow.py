@@ -50,6 +50,9 @@ class LogItem(comet.TreeItem):
         dt = QtCore.QDateTime.fromMSecsSinceEpoch(seconds * 1000)
         return dt.toString("yyyy-MM-dd hh:mm:ss")
 
+    def __str__(self):
+        return "\t".join((self[self.TimeColumn].value, self[self.LevelColumn].value, self[self.MessageColumn].value))
+
 class LogWidget(comet.Tree):
 
     def __init__(self):
@@ -62,6 +65,20 @@ class LogWidget(comet.Tree):
         self.level = logging.INFO
         self.qt.setColumnWidth(0, 128)
         self.qt.setColumnWidth(1, 64)
+        self.qt.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.qt.customContextMenuRequested.connect(self.on_context_menu)
+
+    def on_context_menu(self, pos):
+        item = self.qt.itemAt(pos)
+        if item:
+            def set_clipboard():
+                text = format(item.data(0, item.UserType))
+                QtWidgets.QApplication.clipboard().setText(text)
+            menu = QtWidgets.QMenu(self.qt)
+            copyAction = QtWidgets.QAction("&Copy to clipboard")
+            copyAction.triggered.connect(set_clipboard)
+            menu.addAction(copyAction)
+            menu.exec(self.qt.mapToGlobal(pos))
 
     @property
     def level(self):

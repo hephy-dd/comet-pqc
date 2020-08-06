@@ -13,14 +13,16 @@ from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
 from .measurement import VSourceMixin
 from .measurement import LCRMixin
+from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["CVRampHVMeasurement"]
 
-class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
+class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, EnvironmentMixin):
     """CV ramp measurement."""
 
     type = "cv_ramp_vsrc"
@@ -33,6 +35,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
         self.register_parameter('waiting_time', unit='s', required=True)
         self.register_vsource()
         self.register_lcr()
+        self.register_environment()
 
     def quick_ramp_zero(self, vsrc):
         """Ramp to zero voltage without measuring current."""
@@ -125,7 +128,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
             compliance_tripped = self.vsrc_compliance_tripped(vsrc)
             if compliance_tripped:
                 logging.error("V Source in compliance")
-                raise ValueError("compliance tripped!")
+                raise ComplianceError("compliance tripped!")
 
             if not self.process.running:
                 break
@@ -220,26 +223,12 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
                         vsrc_current=vsrc_reading
                     ))
 
-                    # Environment
-                    if self.process.get("use_environ"):
-                        with benchmark_environ:
-                            with self.resources.get("environ") as env:
-                                pc_data = env.query("GET:PC_DATA ?").split(",")
-                        temperature_box = float(pc_data[2])
-                        logging.info("temperature box: %s degC", temperature_box)
-                        temperature_chuck = float(pc_data[33])
-                        logging.info("temperature chuck: %s degC", temperature_chuck)
-                        humidity_box = float(pc_data[1])
-                        logging.info("humidity box: %s degC", humidity_box)
-                    else:
-                        temperature_box = float('nan')
-                        temperature_chuck = float('nan')
-                        humidity_box = float('nan')
+                    self.environment_update()
 
                     self.process.emit("state", dict(
-                        env_chuck_temperature=temperature_chuck,
-                        env_box_temperature=temperature_box,
-                        env_box_humidity=humidity_box
+                        env_chuck_temperature=self.environment_temperature_chuck,
+                        env_box_temperature=self.environment_temperature_box,
+                        env_box_humidity=self.environment_humidity_box
                     ))
 
                     # Write reading
@@ -250,9 +239,9 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
                         capacitance=lcr_prim,
                         capacitance2=lcr_prim2,
                         resistance=lcr_sec,
-                        temperature_box=temperature_box,
-                        temperature_chuck=temperature_chuck,
-                        humidity_box=humidity_box
+                        temperature_box=self.environment_temperature_box,
+                        temperature_chuck=self.environment_temperature_chuck,
+                        humidity_box=self.environment_humidity_box
                     ))
                     fmt.flush()
 
@@ -260,7 +249,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin):
                     compliance_tripped = self.vsrc_compliance_tripped(vsrc)
                     if compliance_tripped:
                         logging.error("V Source in compliance")
-                        raise ValueError("compliance tripped!")
+                        raise ComplianceError("compliance tripped!")
 
                     if not self.process.running:
                         break

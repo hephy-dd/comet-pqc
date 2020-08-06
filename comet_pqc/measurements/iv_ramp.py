@@ -13,12 +13,14 @@ from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
+from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
 __all__ = ["IVRampMeasurement"]
 
-class IVRampMeasurement(MatrixMeasurement):
+class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
     """IV ramp measurement.
 
     * set compliance
@@ -44,6 +46,7 @@ class IVRampMeasurement(MatrixMeasurement):
         self.register_parameter('hvsrc_filter_enable', False, type=bool)
         self.register_parameter('hvsrc_filter_count', 10, type=int)
         self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_environment()
 
     def initialize(self, hvsrc):
         self.process.emit("message", "Initialize...")
@@ -170,7 +173,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
                     logging.error("HV Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 if not self.process.running:
                     break
 
@@ -258,29 +261,22 @@ class IVRampMeasurement(MatrixMeasurement):
                 logging.info("HV Source reading: %E A", reading_current)
                 self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
-                # Environment
-                if self.process.get("use_environ"):
-                    with self.resources.get("environ") as environ:
-                        pc_data = environ.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
-                else:
-                    temperature_box = float('nan')
-                    temperature_chuck = float('nan')
-                    humidity_box = float('nan')
+                self.environment_update()
+
+                self.process.emit("state", dict(
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
+                ))
 
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=td,
                     hvsrc_voltage=voltage,
                     hvsrc_current=reading_current,
-                    temperature_box=temperature_box,
-                    temperature_chuck=temperature_chuck,
-                    humidity_box=humidity_box
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
                 ))
                 fmt.flush()
 
@@ -292,7 +288,7 @@ class IVRampMeasurement(MatrixMeasurement):
                 compliance_tripped = hvsrc.sense.current.protection.tripped
                 if compliance_tripped:
                     logging.error("HV Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 # hvsrc_proxy.assert_success()
                 if not self.process.running:
                     break

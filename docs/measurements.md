@@ -94,6 +94,7 @@ Type: `iv_ramp_elm`
 |`elm_current_autorange_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
 |`elm_zero_correction`         |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
+|`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
 
 ### Example configuration
 
@@ -226,6 +227,7 @@ Type: `iv_ramp_bias_elm`
 |`elm_current_autorange_maximum` |`ampere`    |`20 mA`     |Upper current limit for auto range. |
 |`elm_zero_correction`         |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
+|`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
 
 ### Example configuration
 

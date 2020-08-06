@@ -2,12 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='comet-pqc',
-    version='0.19.1',
+    version='0.20.0',
     author="Bernhard Arnold",
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'comet @ https://github.com/hephy-dd/comet/archive/0.10.2.zip#egg=comet-0.10.2',
+        'qutie>=1.4',
         'pyyaml',
         'jsonschema'
     ],

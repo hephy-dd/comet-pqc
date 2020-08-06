@@ -42,6 +42,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         self.content.assign_position = self.on_assign_position
         self.content.move_selected = self.on_move_selected
         self.close_event = self.on_close
+        self.minimum_size = 800, 480
 
     def on_close(self):
         """Prevent close dialog if process is still running."""
@@ -186,6 +187,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
         self.positions_tree = comet.Tree()
         self.positions_tree.header = "Name", "X", "Y", "Z"
         self.positions_tree.indentation = 0
+        self.positions_tree.minimum_width = 400
         self.positions_tree.selected = self.on_position_selected
         self.positions_tree.fit()
         # Layout
@@ -226,7 +228,8 @@ class TableMove(comet.Column, comet.SettingsMixin):
                 comet.Button("...", width=32, clicked=self.edit_z_limit),
                 comet.Spacer(),
                 stretch=(0, 0, 1)
-            )
+            ),
+            stretch=(1, 0)
         )
         self.append(comet.Column(
             comet.Row(
@@ -270,12 +273,13 @@ class TableMove(comet.Column, comet.SettingsMixin):
                                 self.rm_z_label
                             )
                         )
-                    )
+                    ),
+                    comet.Spacer(),
+                    stretch=(0, 0, 1)
                 ),
-                stretch=(0, 0, 0, 0, 0, 0, 0, 0)
+                stretch=(1, 0)
             ),
-            comet.Spacer(),
-            stretch=(0, 1)
+            stretch=(10, 1)
         ))
         self.position = 0, 0, 0
         self.z_limit = 20.000
@@ -305,6 +309,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
                 y=position.get('y'),
                 z=position.get('z')
             ))
+        self.positions_tree.fit()
         self.set_z_limit(self.settings.get('table_z_limit', self.maximum_z_limit))
 
     def store_positions(self):
@@ -382,6 +387,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
         name = comet.get_text(title="Add Position", label="Name", text="")
         if name:
             self.positions_tree.append(TablePositionItem(name, 0, 0, 0))
+            self.positions_tree.fit()
 
     def on_edit_position(self):
         item = self.positions_tree.current
@@ -389,6 +395,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
             text = comet.get_text(title="Edit Position Name", label="Name", text=item[0].value)
             if text:
                 item[0].value = text
+                self.positions_tree.fit()
 
     def on_remove_position(self):
         item = self.positions_tree.current
@@ -399,3 +406,4 @@ class TableMove(comet.Column, comet.SettingsMixin):
                     self.assign_button.enabled = False
                     self.edit_button.enabled = False
                     self.remove_button.enabled = False
+                self.positions_tree.fit()

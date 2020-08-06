@@ -11,6 +11,8 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
+from .measurement import ComplianceError
+from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -22,7 +24,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRamp4WireMeasurement(MatrixMeasurement):
+class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
     """IV ramp 4wire with electrometer measurement.
 
     * set compliance
@@ -52,6 +54,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
         self.register_parameter('vsrc_filter_enable', False, type=bool)
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type','repeat', values=('repeat', 'moving'))
+        self.register_environment()
 
     def initialize(self, vsrc):
         self.process.emit("progress", 0, 5)
@@ -156,7 +159,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
                     logging.error("V Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 if not self.process.running:
                     break
 
@@ -241,25 +244,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                     vsrc_voltage=vsrc_reading
                 ))
 
-                # Environment
-                if self.process.get("use_environ"):
-                    with self.resources.get("environ") as environ:
-                        pc_data = environ.query("GET:PC_DATA ?").split(",")
-                    temperature_box = float(pc_data[2])
-                    logging.info("temperature box: %s degC", temperature_box)
-                    temperature_chuck = float(pc_data[33])
-                    logging.info("temperature chuck: %s degC", temperature_chuck)
-                    humidity_box = float(pc_data[1])
-                    logging.info("humidity box: %s degC", humidity_box)
-                else:
-                    temperature_box = float('nan')
-                    temperature_chuck = float('nan')
-                    humidity_box = float('nan')
+                self.environment_update()
 
                 self.process.emit("state", dict(
-                    env_chuck_temperature=temperature_chuck,
-                    env_box_temperature=temperature_box,
-                    env_box_humidity=humidity_box
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
                 ))
 
                 # Write reading
@@ -267,9 +257,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                     timestamp=dt,
                     current=current,
                     voltage_vsrc=vsrc_reading,
-                    temperature_box=temperature_box,
-                    temperature_chuck=temperature_chuck,
-                    humidity_box=humidity_box
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
                 ))
                 fmt.flush()
 
@@ -277,7 +267,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement):
                 compliance_tripped = vsrc.source.compliance
                 if compliance_tripped:
                     logging.error("V Source in compliance")
-                    raise ValueError("compliance tripped")
+                    raise ComplianceError("compliance tripped")
                 # check_error(vsrc)
                 if not self.process.running:
                     break

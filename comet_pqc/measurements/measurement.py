@@ -1,20 +1,27 @@
 import datetime
 import logging
+import time
 
 import comet
 from comet.resource import ResourceMixin
+from comet.process import ProcessMixin
 
 from ..utils import format_metric
 from ..utils import std_mean_filter
 
 __all__ = [
     'Measurement',
+    'ComplianceError',
     'HVSourceMixin',
     'VSourceMixin',
+    'ElectrometerMixin',
     'LCRMixin',
+    'EnvironmentMixin'
 ]
 
 QUICK_RAMP_DELAY = 0.100
+
+class ComplianceError(ValueError): pass
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""
@@ -33,7 +40,7 @@ class ParameterType:
         self.type = type
         self.required = required
 
-class Measurement(ResourceMixin):
+class Measurement(ResourceMixin, ProcessMixin):
     """Base measurement class."""
 
     type = "measurement"
@@ -269,6 +276,40 @@ class VSourceMixin:
         value = {True: "ON", False: "OFF"}[enabled]
         vsrc.source.output = value
 
+class ElectrometerMixin:
+
+    def register_elm(self):
+        self.register_parameter('elm_read_timeout', comet.ureg('60 s'), unit='s')
+
+    def elm_check_error(self, elm):
+        result = elm.resource.query(":SYST:ERR?")
+        try:
+            code, label = result.split(",", 1)
+            code = int(code)
+        except ValueError as exc:
+            raise RuntimeError(f"failed to read electrometer error state, device returned '{result}'")
+        if code != 0:
+            label = label.strip("\"")
+            logging.error(f"Error {code}: {label}")
+            raise RuntimeError(f"Error {code}: {label}")
+
+    def elm_safe_write(self, elm, message):
+        """Write, wait for operation complete, test for errors."""
+        elm.resource.write(message)
+        elm.resource.query("*OPC?")
+        self.elm_check_error(elm)
+
+    def elm_read(self, elm, timeout=60.0, idle=0.25):
+        """Perform electrometer reading with timeout."""
+        elm.resource.write(":INIT?")
+        threshold = time.time() + timeout
+        idle = min(timeout, idle)
+        while time.time() < threshold:
+            if bool(int(elm.resource.query("*OPC?"))):
+                return float(elm.resource.query(":FETCH?").split(',')[0])
+            time.sleep(idle)
+        raise RuntimeError(f"electrometer reading timeout, exceeded {timeout:G} s")
+
 class LCRMixin:
 
     def register_lcr(self):
@@ -349,3 +390,25 @@ class LCRMixin:
                     return prim, sec
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
+
+class EnvironmentMixin:
+
+    def register_environment(self):
+        self.environment_clear()
+
+    def environment_clear(self):
+        self.environment_temperature_box = float('nan')
+        self.environment_temperature_chuck = float('nan')
+        self.environment_humidity_box = float('nan')
+
+    def environment_update(self):
+        self.environment_clear()
+        if self.process.get("use_environ"):
+            with self.processes.get("environment") as environment:
+                pc_data = environment.pc_data()
+            self.environment_temperature_box = pc_data.box_temperature
+            logging.info("temperature box: %s degC", self.environment_temperature_box)
+            self.environment_temperature_chuck = pc_data.chuck_temperature
+            logging.info("temperature chuck: %s degC", self.environment_temperature_chuck)
+            self.environment_humidity_box = pc_data.box_humidity
+            logging.info("humidity box: %s degC", self.environment_humidity_box)

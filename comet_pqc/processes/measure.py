@@ -1,19 +1,24 @@
+import datetime
 import logging
 import random
 import time
 import threading
 import os
 
+import pyvisa
+
 import comet
 from comet.resource import ResourceMixin, ResourceError
+from comet.process import ProcessMixin
 from comet.driver.corvus import Venus1
 
 from ..utils import format_metric
+from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
 from ..driver import EnvironmentBox
 from ..driver import K707B
 
-class BaseProcess(comet.Process, ResourceMixin):
+class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
@@ -45,10 +50,9 @@ class BaseProcess(comet.Process, ResourceMixin):
             resource.query("*OPC?")
         self.emit("message", "Initialized VSource.")
 
-    def discarge_decoupling(self, device):
+    def discharge_decoupling(self, context):
         self.emit("message", "Auto-discharging decoupling box...")
-        device.identification
-        device.discharge()
+        context.discharge()
         self.emit("message", "Auto-discharged decoupling box.")
 
     def initialize_matrix(self, resource):
@@ -74,9 +78,8 @@ class BaseProcess(comet.Process, ResourceMixin):
         except Exception:
             logging.warning("unable to connect with VSource")
         if self.get("use_environ"):
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                self.discarge_decoupling(environ)
+            with self.processes.get("environment") as environment:
+                self.discharge_decoupling(environment)
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
@@ -110,13 +113,21 @@ class MeasureProcess(BaseProcess):
         self.progress = progress
         self.measurement_state = measurement_state
         self.reading = reading
+        self.push_summary = None
+        self.stopped = False
+
+    def stop(self):
+        self.stopped = True
+        super().stop()
 
     def initialize(self):
         self.emit("message", "Initialize measurement...")
+        self.stopped = False
         self.safe_initialize()
 
     def process(self):
         self.emit("message", "Process measurement...")
+        timestamp = datetime.datetime.now()
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
@@ -126,19 +137,38 @@ class MeasureProcess(BaseProcess):
         measurement.sample_type = sample_type
         measurement.output_dir = output_dir
         measurement.measurement_item = self.measurement_item
+        state = "Active"
+        self.emit("measurement_state", self.measurement_item, state)
         try:
-            self.emit("measurement_state", self.measurement_item, "Active")
             measurement.run()
+        except ResourceError as e:
+            if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                state = "Timeout"
+            elif isinstance(e.exc, BrokenPipeError):
+                state = "Timeout"
+            else:
+                state = type(e.exc).__name__
+            raise
+        except ComplianceError:
+            state = "Compliance"
+            raise
         except Exception:
-            self.emit("measurement_state", self.measurement_item, "Failed")
+            state = "Error"
             raise
         else:
-            self.emit("measurement_state", self.measurement_item, "Success")
+            if self.stopped:
+                state = "Stopped"
+            else:
+                state = "Success"
+        finally:
+            self.emit("measurement_state", self.measurement_item, state)
+            self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
 
     def finalize(self):
         self.emit("message", "Finalize measurement...")
         self.measurement_item = None
         self.safe_finalize()
+        self.stopped = False
 
     def run(self):
         self.emit("message", "Starting measurement...")
@@ -152,20 +182,24 @@ class MeasureProcess(BaseProcess):
 class SequenceProcess(BaseProcess):
     """Sequence process executing a sequence of measurements."""
 
-    sequence_tree = []
+    # sequence_tree = []
+    contact_item = None
 
-    def __init__(self, message, progress, continue_contact, continue_measurement,
-                 measurement_state, reading, **kwargs):
+    def __init__(self, message, progress, measurement_state, reading, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
-        self.continue_contact = continue_contact
-        self.continue_measurement = continue_measurement
         self.measurement_state = measurement_state
         self.reading = reading
+        self.stopped = False
+
+    def stop(self):
+        self.stopped = True
+        super().stop()
 
     def initialize(self):
         self.emit("message", "Initialize sequence...")
+        self.stopped = False
         self.safe_initialize()
 
     def process(self):
@@ -173,66 +207,66 @@ class SequenceProcess(BaseProcess):
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
-        for contact_item in self.sequence_tree:
+        contact_item = self.contact_item
+        self.emit("measurement_state", contact_item, "Active")
+        logging.info(" => %s", contact_item.name)
+        prev_measurement_item = None
+        for measurement_item in contact_item.children:
             if not self.running:
                 break
-            if not contact_item.enabled:
+            if not measurement_item.enabled:
                 continue
-            self.emit("measurement_state", contact_item, "Active")
-            self.set("continue_contact", False)
-            self.emit("continue_contact", contact_item)
-            while self.running:
-                if self.get("continue_contact", False):
-                    break
-                time.sleep(.100)
-            self.set("continue_contact", False)
             if not self.running:
+                self.emit("measurement_state", measurement_item, "Stopped")
                 break
-            logging.info(" => %s", contact_item.name)
-            for measurement_item in contact_item.children:
-                if not self.running:
-                    break
-                if not measurement_item.enabled:
-                    self.emit("measurement_state", measurement_item, "Skipped")
-                    continue
-                autopilot = self.get("autopilot", False)
-                logging.info("Autopilot: %s", ["OFF", "ON"][autopilot])
-                if not autopilot:
-                    logging.info("Waiting for %s", measurement_item.name)
-                    self.emit("measurement_state", measurement_item, "Waiting")
-                    self.set("continue_measurement", False)
-                    self.emit("continue_measurement", measurement_item)
-                    while self.running:
-                        if self.get("continue_measurement", False):
-                            break
-                        time.sleep(.100)
-                    self.set("continue_measurement", False)
-                if not self.running:
-                    self.emit("measurement_state", measurement_item, "Aborted")
-                    break
-                logging.info("Run %s", measurement_item.name)
-                self.emit("measurement_state", measurement_item, "Active")
-                # TODO
-                measurement = measurement_factory(measurement_item.type, self)
-                measurement.sample_name = sample_name
-                measurement.sample_type = sample_type
-                measurement.output_dir = output_dir
-                measurement.measurement_item = measurement_item
-                try:
-                    measurement.run()
-                except Exception as e:
-                    logging.error(format(e))
-                    logging.error("%s failed.", measurement_item.name)
-                    self.emit("measurement_state", measurement_item, "Failed")
-                    ## raise
+            logging.info("Run %s", measurement_item.name)
+            # TODO
+            timestamp = datetime.datetime.now()
+            measurement = measurement_factory(measurement_item.type, self)
+            measurement.sample_name = sample_name
+            measurement.sample_type = sample_type
+            measurement.output_dir = output_dir
+            measurement.measurement_item = measurement_item
+            state = "Active"
+            self.emit("measurement_state", measurement_item, state)
+            self.emit('show_measurement', prev_measurement_item, measurement_item)
+            try:
+                measurement.run()
+            except ResourceError as e:
+                if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                    state = "Timeout"
+                elif isinstance(e.exc, BrokenPipeError):
+                    state = "Timeout"
                 else:
-                    logging.info("%s done.", measurement_item.name)
-                    self.emit("measurement_state", measurement_item, "Success")
+                    state = type(e.exc).__name__
+                logging.error(format(e))
+                logging.error("%s failed.", measurement_item.name)
+            except ComplianceError as e:
+                logging.error(format(e))
+                logging.error("%s failed.", measurement_item.name)
+                state = "Compliance"
+            except Exception as e:
+                logging.error(format(e))
+                logging.error("%s failed.", measurement_item.name)
+                state = "Error"
+            else:
+                if self.stopped:
+                    state = "Stopped"
+                else:
+                    state = "Success"
+                logging.info("%s done.", measurement_item.name)
+            finally:
+                self.emit("measurement_state", measurement_item, state)
+                self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
+
+            prev_measurement_item = measurement_item
             self.emit("measurement_state", contact_item, None)
 
     def finalize(self):
         self.emit("message", "Finalize sequence...")
-        self.sequence_tree = []
+        # self.sequence_tree = []
+        self.contact_item = None
+        self.stopped = False
         self.safe_finalize()
 
     def run(self):

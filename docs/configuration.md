@@ -20,7 +20,7 @@ Measurement sequences, silicon sample and chuck geometries can be configured usi
 
 ## Sequence
 
-A sequence defines a list of measurements to be executed at physical contact points located on a silicon sample. A sequence can be executed manually step-by-step or in a semi-automatic way (using the autopilot).
+A sequence defines a list of measurements to be executed at physical contact points located on a silicon sample.
 
 A sequence configuration must provide properties `id`, `name` and `contacts`. Optional properties are `description` and `enabled`.
 

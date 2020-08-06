@@ -2,8 +2,10 @@ import copy
 import datetime
 import logging
 import os
+import traceback
 
-from qutie.qt import QtGui
+from qutie.qt import QtCore, QtGui
+from qutie import Timer
 
 import comet
 
@@ -32,10 +34,13 @@ from .dialogs import TableControlDialog
 from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
 
+from .logwindow import LogWidget
+from .summary import SummaryTree
+from .formatter import CSVFormatter
+
 from .driver import EnvironmentBox
 
-ENABLE_SEQUENCING = False
-"""Switch to disable sequence execution from user interface."""
+SUMMARY_FILENAME = "summary.csv"
 
 def create_icon(size, color):
     """Return circular colored icon."""
@@ -48,6 +53,17 @@ def create_icon(size, color):
     painter.drawEllipse(1, 1, size-2, size-2)
     del painter
     return comet.Icon(qt=pixmap)
+
+def handle_exception(func):
+    def catch_exception_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            tb = traceback.format_exc()
+            logging.error(exc)
+            logging.error(tb)
+            comet.show_exception(exc, tb)
+    return catch_exception_wrapper
 
 class ToggleButton(comet.Button):
     """Colored checkable button."""
@@ -114,7 +130,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.sample_name_text = comet.Text(
             value=self.settings.get("sample_name", "Unnamed"),
-            changed=self.on_sample_name_changed
+            changed=self.on_sample_name_changed,
+            editing_finished=self.on_sample_name_editing_finished
         )
         self.sample_type_text = comet.Text(
             value=self.settings.get("sample_type", ""),
@@ -147,22 +164,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.start_button = comet.Button(
             text="Start",
             tool_tip="Start measurement sequence.",
-            clicked=self.on_sequence_start,
-            enabled=ENABLE_SEQUENCING
-        )
-
-        self.autopilot_button = ToggleButton(
-            text="Autopilot",
-            tool_tip="Run next measurement automatically.",
-            checkable=True,
-            checked=False,
-            toggled=self.on_autopilot_toggled
-        )
-
-        self.continue_button = comet.Button(
-            text="Continue",
-            tool_tip="Run next measurement manually.",
-            enabled=False
+            clicked=self.on_sequence_start
         )
 
         self.stop_button = comet.Button(
@@ -178,10 +180,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.sequence_tree,
                 comet.Row(
                     self.start_button,
-                    self.autopilot_button,
-                    self.continue_button
-                ),
-                self.stop_button
+                    self.stop_button
+                )
             )
         )
 
@@ -322,7 +322,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         )
 
         self.output_groupbox = comet.GroupBox(
-            title="Output",
+            title="Working Directory",
             layout=comet.Row(
                 self.output_text,
                 comet.Button(
@@ -517,14 +517,19 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Summary tab
 
-        self.summary_tree = comet.Tree(
-            header=["Time", "Sample", "Type", "Contact", "Measurement", "Result"],
-            indentation=0
-        )
+        self.summary_tree = SummaryTree()
 
         self.summary_tab = comet.Tab(
             title="Summary",
             layout=self.summary_tree
+        )
+
+        self.log_widget = LogWidget()
+        self.log_widget.add_logger(logging.getLogger())
+
+        self.logging_tab = comet.Tab(
+            title="Logs",
+            layout=self.log_widget
         )
 
         # Tabs
@@ -532,6 +537,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.tab_widget = comet.Tabs(
             self.measurement_tab,
             self.status_tab,
+            self.logging_tab,
             self.summary_tab
         )
 
@@ -540,6 +546,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.append(self.control_widget)
         self.append(self.tab_widget)
         self.stretch = 4, 9
+
+        # Experimental
+
+        # Install timer to update environment controls
+        self.environment_timer = Timer(timeout=self.sync_environment_controls)
+        self.environment_timer.start(1.0)
 
     def load_sequences(self):
         """Load available sequence configurations."""
@@ -561,12 +573,19 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.sequence_combobox.current = sequence
                 break
 
-    def create_output_dir(self, sample_name, sample_type):
-        """Create new timestamp prefixed output directory."""
-        base = self.output_text.value
-        iso_timestamp = comet.make_iso()
-        dirname = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}")
-        output_dir = os.path.join(base, dirname)
+    def output_dir(self):
+        """Return output path."""
+        base = os.path.realpath(self.output_text.value)
+        sample_name = self.sample_name_text.value
+        sample_type = self.sample_type_text.value
+        dirname = comet.safe_filename(f"{sample_name}-{sample_type}")
+        return os.path.join(base, dirname)
+
+    def create_output_dir(self):
+        """Create output directory for sample if not exists, return directory
+        path.
+        """
+        output_dir = self.output_dir()
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return output_dir
@@ -575,6 +594,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_sample_name_changed(self, value):
         self.settings["sample_name"] = value
+
+    def on_sample_name_editing_finished(self):
+        # Reset tree
+        sequence = self.sequence_combobox.current
+        if sequence:
+            self.on_load_sequence_tree(sequence.id)
 
     def on_sample_type_changed(self, value):
         self.settings["sample_type"] = value
@@ -603,6 +628,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if isinstance(item, ContactTreeItem):
             pass
         if isinstance(item, MeasurementTreeItem):
+            self.panels.unmount()
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
@@ -611,9 +637,13 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.tab_widget.current = self.measurement_tab
 
     def on_sequence_start(self):
+        if isinstance(self.sequence_tree.current, MeasurementTreeItem):
+            contact_item = self.sequence_tree.current.contact
+        else:
+            contact_item = self.sequence_tree.current
         if not comet.show_question(
             title="Start sequence",
-            text="Are you sure to start a measurement sequence?"
+            text=f"Are you sure to start sequence '{contact_item.name}'?"
         ): return
         self.switch_off_lights()
         self.sync_environment_controls()
@@ -622,61 +652,52 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.start_button.enabled = False
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
         self.stop_button.enabled = True
         self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
+        self.output_groupbox.enabled = False
         self.panels.lock()
         self.panels.store()
+        self.panels.unmount()
+        self.panels.clear_readings()
+        # HACK oh dear...
+        for measurement_item in contact_item.children:
+            measurement_item.series.clear()
         self.sequence_tree.lock()
         self.sequence_tree.reset()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
-        output_dir = self.create_output_dir(sample_name, sample_type)
+        output_dir = self.create_output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
         sequence.set("sample_type", sample_type)
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
         sequence.set("use_table", self.table_groupbox.checked)
-        sequence.sequence_tree = self.sequence_tree
+        sequence.contact_item = contact_item
+        # sequence.sequence_tree = self.sequence_tree
+        def show_measurement(prev, next):
+            if prev:
+                prev.selectable = False
+            next.selectable = True
+            self.panels.unmount()
+            self.panels.hide()
+            self.panels.clear_readings()
+            panel = self.panels.get(next.type)
+            panel.visible = True
+            panel.mount(next)
+            sequence.reading = panel.append_reading
+            sequence.update = panel.update_readings
+            sequence.state = panel.state
+        sequence.show_measurement = show_measurement
+        sequence.push_summary = self.on_push_summary
         sequence.start()
-
-    def on_autopilot_toggled(self, state):
-        sequence = self.processes.get("sequence")
-        sequence.set("autopilot", state)
-
-    def on_continue_measurement(self, measurement):
-        def on_continue():
-            if not comet.show_question(
-                title="Continue sequence",
-                text=f"Do you want to continue with {measurement.contact.name}, {measurement.name}?"
-            ): return
-            logging.info("Continuing sequence...")
-            self.continue_button.enabled = False
-            self.continue_button.clicked = None
-            self.sequence_tree.current = measurement
-            sequence = self.processes.get("sequence")
-            sequence.set("continue_measurement", True)
-        self.continue_button.enabled = True
-        self.continue_button.clicked = on_continue
-
-    def on_continue_contact(self, contact):
-        comet.show_info(
-            title=f"Contact {contact.name}",
-            text=f"Please contact with {contact.name}."
-        )
-        sequence = self.processes.get("sequence")
-        sequence.set("continue_contact", True)
 
     def on_measurement_state(self, item, state):
         item.state = state
 
     def on_sequence_stop(self):
         self.stop_button.enabled = False
-        self.autopilot_button.enabled = False
-        self.continue_button.enabled = False
         sequence = self.processes.get("sequence")
         sequence.stop()
 
@@ -686,198 +707,131 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.start_button.enabled = True
-        self.autopilot_button.enabled = True
-        self.continue_button.enabled = False
         self.stop_button.enabled = False
         self.reload_status_button.enabled = True
         self.measure_controls.enabled = True
+        self.output_groupbox.enabled = True
         self.panels.unlock()
         self.sequence_tree.unlock()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
         sequence.set("output_dir", None)
+        sequence.set("contact_item", None)
         self.sync_environment_controls()
 
     # Table calibration
 
+    @handle_exception
     def on_table_joystick_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.table_joystick_button.checked
-        try:
-            with self.resources.get("table") as table_resource:
-                table = Venus1(table_resource)
-                table.joystick = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.resources.get("table") as table_resource:
+            table = Venus1(table_resource)
+            table.joystick = state
 
+    @handle_exception
     def on_table_controls_start(self):
         TableControlDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_table_move_start(self):
         TableMoveDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_table_calibrate_start(self):
         TableCalibrateDialog().run()
         self.sync_table_controls()
 
+    @handle_exception
     def on_box_laser_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.box_laser_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.laser_sensor = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_laser_sensor(state)
 
+    @handle_exception
     def on_box_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.box_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.box_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_box_light(state)
 
+    @handle_exception
     def on_microscope_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_light(state)
 
+    @handle_exception
     def on_microscope_camera_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_camera_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_camera = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_camera(state)
 
+    @handle_exception
     def on_microscope_control_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.microscope_control_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.microscope_control = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_microscope_control(state)
 
+    @handle_exception
     def on_probecard_light_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.probecard_light_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.probecard_light = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_probecard_light(state)
 
+    @handle_exception
     def on_probecard_camera_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.probecard_camera_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.probecard_camera = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_probecard_camera(state)
 
+    @handle_exception
     def on_pid_control_clicked(self):
-        # TODO run in thread
-        self.enabled = False
         state = self.pid_control_button.checked
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                environ.pid_control = state
-        except Exception as exc:
-            comet.show_exception(exc)
-        self.enabled = True
+        with self.processes.get("environment") as environment:
+            environment.set_pid_control(state)
 
     def switch_off_lights(self):
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                def has_light():
-                    relay_states = environ.pc_data.relay_states
-                    if relay_states.box_light:
-                        return True
-                    if relay_states.probecard_light:
-                        return True
-                    if relay_states.microscope_light:
-                        return True
-                    return False
-                if has_light():
-                    if comet.show_question(
-                        title="Box Lights",
-                        text="Do you want to switch off all box lights?"
-                    ):
-                        environ.box_light = False
-                        environ.probecard_light = False
-                        environ.microscope_light = False
-        except Exception as exc:
-            comet.show_exception(exc)
+        with self.processes.get("environment") as environment:
+            if environment.has_lights():
+                environment.dim_lights()
 
+    @handle_exception
     def sync_environment_controls(self):
         """Syncronize environment controls."""
-        try:
-            with self.resources.get("environ") as environ_resource:
-                environ = EnvironmentBox(environ_resource)
-                pc_data = environ.pc_data
-        except Exception as exc:
-            comet.show_exception(exc)
-            self.environment_groupbox.checked = False
-        else:
-            self.box_laser_button.checked = pc_data.relay_states.laser_sensor
-            self.box_light_button.checked = pc_data.relay_states.box_light
-            self.microscope_light_button.checked = pc_data.relay_states.microscope_light
-            self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
-            self.microscope_control_button.checked = pc_data.relay_states.microscope_control
-            self.probecard_light_button.checked = pc_data.relay_states.probecard_light
-            self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
-            self.pid_control_button.checked = pc_data.pid_status
+        if self.environment_groupbox.checked:
+            try:
+                with self.processes.get("environment") as environment:
+                    pc_data = environment.pc_data()
+            except:
+                self.environment_groupbox.checked = False
+                raise
+            else:
+                self.box_laser_button.checked = pc_data.relay_states.laser_sensor
+                self.box_light_button.checked = pc_data.relay_states.box_light
+                self.microscope_light_button.checked = pc_data.relay_states.microscope_light
+                self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+                self.microscope_control_button.checked = pc_data.relay_states.microscope_control
+                self.probecard_light_button.checked = pc_data.relay_states.probecard_light
+                self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
+                self.pid_control_button.checked = pc_data.pid_status
 
+    @handle_exception
     def sync_table_controls(self):
         """Syncronize table controls."""
         try:
             with self.resources.get("table") as table_resource:
                 table = Venus1(table_resource)
                 joystick_state = table.joystick
-        except Exception as exc:
-            comet.show_exception(exc)
+        except:
             self.table_groupbox.checked = False
+            raise
         else:
             self.table_joystick_button.checked = joystick_state
 
     def on_environment_groupbox_toggled(self, state):
         self.settings["use_environ"] = state
-        if self.environment_groupbox.checked:
+        if state:
             self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
@@ -890,11 +844,28 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_select_output(self):
         value = comet.directory_open(
-            title="Output",
+            title="Select working directory",
             path=self.output_text.value
         )
         if value:
             self.output_text.value = value
+
+    @handle_exception
+    def on_push_summary(self, *args):
+        """Push rsult to summary and write to sumamry file (experimantal)."""
+        item = self.summary_tree.append_result(*args)
+        output_path = self.settings.get("output_path")
+        if output_path and os.path.exists(output_path):
+            filename = os.path.join(output_path, SUMMARY_FILENAME)
+            has_header = os.path.exists(filename)
+            with open(filename, 'a') as f:
+                header = self.summary_tree.header_items
+                writer = CSVFormatter(f)
+                for key in header:
+                    writer.add_column(key)
+                if not has_header:
+                    writer.write_header()
+                writer.write_row({header[i]: item[i].value for i in range(len(header))})
 
     # Measurement control
 
@@ -933,7 +904,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.clear_readings()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
-        output_dir = self.output_text.value
+        output_dir = self.create_output_dir()
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
         measure.set("sample_type", sample_type)
@@ -944,6 +915,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
         measure.state = panel.state
+        measure.push_summary = self.on_push_summary
         # TODO
         measure.start()
 
@@ -969,21 +941,6 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unlock()
         measure = self.processes.get("measure")
         measure.reading = lambda data: None
-        # Append to summary
-        item = self.summary_tree.insert(0, [
-            datetime.datetime.now().isoformat(),
-            measure.get("sample_name"),
-            measure.get("sample_type"),
-            self.sequence_tree.current.contact.name,
-            self.sequence_tree.current.name,
-            self.sequence_tree.current[1].value or "Failed"
-        ])
-        # TODO
-        if item[5].value == "Failed":
-            item[5].color = "red"
-        else:
-            item[5].color = "green"
-        self.summary_tree.fit()
         self.sequence_tree.unlock()
 
     def on_status_start(self):

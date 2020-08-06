@@ -9,6 +9,7 @@ import comet
 
 from . import __version__
 
+from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import ControlProcess
 from .processes import MoveProcess
@@ -92,6 +93,7 @@ def main():
     def on_show_error(exc, tb):
         app.message = "Exception occured!"
         app.progress = None
+        logging.error(tb)
         comet.show_exception(exc, tb)
 
     def on_message(message):
@@ -106,6 +108,10 @@ def main():
 
     # Register processes
 
+    app.processes.add("environment", EnvironmentProcess(
+        name="environ",
+        failed=on_show_error
+    ))
     app.processes.add("status", StatusProcess(
         finished=dashboard.on_status_finished,
         failed=on_show_error,
@@ -140,8 +146,6 @@ def main():
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        continue_contact=dashboard.on_continue_contact,
-        continue_measurement=dashboard.on_continue_measurement,
         measurement_state=dashboard.on_measurement_state,
         reading=None
     ))
@@ -173,6 +177,9 @@ def main():
 
     # Load configurations
     dashboard.load_sequences()
+
+    # Start services
+    app.processes.get("environment").start()
 
     # Sync environment controls
     if dashboard.environment_groupbox.checked:

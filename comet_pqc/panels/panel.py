@@ -6,7 +6,6 @@ import comet
 
 from ..utils import format_metric
 from ..metric import Metric
-from ..logwindow import LogWidget
 
 __all__ = [
     'Panel',
@@ -55,12 +54,8 @@ class Panel(comet.Widget):
             stretch=(0, 0, 0, 0, 1)
         )
         self.measurement = None
-        self.log_widget = LogWidget()
         self.data_tabs = comet.Tabs()
-        self.data_tabs.append(comet.Tab(title="Logs", layout=self.log_widget))
         self.data_panel.append(self.data_tabs)
-
-        self.bind("logs", self.log_widget, [])
 
     def bind(self, key, element, default=None, unit=None):
         """Bind measurement parameter to UI element for syncronization on mount
@@ -102,16 +97,9 @@ class Panel(comet.Widget):
                 setattr(element, "value", value)
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
-        # Load hiostory, attach logger
-        self.log_widget.load(self.measurement.parameters.get("history", []))
-        self.log_widget.add_logger(logging.getLogger())
 
     def unmount(self):
         """Unmount measurement from panel."""
-        # Detach logger
-        self.log_widget.remove_logger(logging.getLogger())
-        if self.measurement:
-            self.measurement.parameters["history"] = self.log_widget.dump()
         self.title_label.text = ""
         self.description_label.text = ""
         self.measurement = None
@@ -174,7 +162,7 @@ class Panel(comet.Widget):
         pass
 
     def clear_readings(self):
-        self.log_widget.clear()
+        pass
 
     def lock(self):
         for tab in self.control_tabs:
