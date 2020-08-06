@@ -130,7 +130,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.sample_name_text = comet.Text(
             value=self.settings.get("sample_name", "Unnamed"),
-            changed=self.on_sample_name_changed
+            changed=self.on_sample_name_changed,
+            editing_finished=self.on_sample_name_editing_finished
         )
         self.sample_type_text = comet.Text(
             value=self.settings.get("sample_type", ""),
@@ -593,6 +594,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_sample_name_changed(self, value):
         self.settings["sample_name"] = value
+
+    def on_sample_name_editing_finished(self):
+        # Reset tree
+        sequence = self.sequence_combobox.current
+        if sequence:
+            self.on_load_sequence_tree(sequence.id)
 
     def on_sample_type_changed(self, value):
         self.settings["sample_type"] = value
