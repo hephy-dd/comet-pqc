@@ -270,7 +270,7 @@ Type: `cv_ramp`
 |`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
-|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
+|`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 
@@ -330,7 +330,7 @@ Type: `cv_ramp_vsrc`
 |`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
-|`lcr_open_correction_channel` |`int`    |`1`      | Possible range from `0` to `127`. |
+|`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
 
 ### Example configuration
 

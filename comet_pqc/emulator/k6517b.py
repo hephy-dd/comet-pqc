@@ -16,6 +16,10 @@ class K6517BHandler(IEC60488Handler):
 
     zero_check = False
 
+    @message(r'\*(ESR)\?')
+    def query_esr(self, message):
+        return format(random.randint(0, 1))
+
     @message(r'\:?SYST\:ERR\?')
     def query_system_error(self, message):
         return '0, "no error"'
