@@ -99,6 +99,6 @@ class ResourceProcess(Process, ResourceMixin):
                     self.serve()
                 except Exception as exc:
                     logging.error("%s: %s", type(self).__name__, exc)
-                    tb = traceback.format_exc()
-                    self.emit('failed', exc, tb)
+                    #tb = traceback.format_exc()
+                    #self.emit('failed', exc, tb)
             time.sleep(self.throttle_time)

@@ -299,15 +299,20 @@ class ElectrometerMixin:
         elm.resource.query("*OPC?")
         self.elm_check_error(elm)
 
-    def elm_read(self, elm, timeout=60.0, idle=0.25):
+    def elm_read(self, elm, timeout=60.0, interval=0.25):
         """Perform electrometer reading with timeout."""
-        elm.resource.write(":INIT?")
+        # Request operation complete
+        elm.resource.write('*CLS')
+        elm.resource.write('*OPC')
+        # Initiate measurement
+        elm.resource.write(":INIT")
         threshold = time.time() + timeout
-        idle = min(timeout, idle)
+        interval = min(timeout, interval)
         while time.time() < threshold:
-            if bool(int(elm.resource.query("*OPC?"))):
+            # Read event status
+            if int(elm.resource.query('*ESR?')) & 0x1:
                 return float(elm.resource.query(":FETCH?").split(',')[0])
-            time.sleep(idle)
+            time.sleep(interval)
         raise RuntimeError(f"electrometer reading timeout, exceeded {timeout:G} s")
 
 class LCRMixin:
