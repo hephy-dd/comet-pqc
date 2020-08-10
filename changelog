@@ -6,10 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0]
+### Added
+- Configuration attribute `id` for connections and measurements (#36).
+### Changed
+- Measurement data filename schema (#45).
+- Keeping previous measurement states when running a sequence (#46).
+
 ## [0.20.1]
 ### Fixed
-- electrometer read
-- show error message on YAML parser errors
+- Electrometer read (#42).
+- Show error message on YAML parser errors (#43).
 
 ## [0.20.0]
 ### Added
@@ -59,7 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.20.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.21.0...HEAD
+[0.21.0]: https://github.com/hephy-dd/comet-pqc/compare/0.20.1...0.21.0
 [0.20.1]: https://github.com/hephy-dd/comet-pqc/compare/0.20.0...0.20.1
 [0.20.0]: https://github.com/hephy-dd/comet-pqc/compare/0.19.0...0.20.0
 [0.19.1]: https://github.com/hephy-dd/comet-pqc/compare/0.19.0...0.19.1

@@ -44,7 +44,8 @@ Type: `iv_ramp`
 ### Example configuration
 
 ```yaml
-- name: IV Example
+- id: iv_example
+  name: IV Example
   type: iv_ramp
   enabled: true
   description: An example measurement.
@@ -99,7 +100,8 @@ Type: `iv_ramp_elm`
 ### Example configuration
 
 ```yaml
-- name: IV Example
+- id: iv_example
+  name: IV Example
   type: iv_ramp_elm
   enabled: true
   description: An example measurement.
@@ -149,7 +151,8 @@ Type: `iv_ramp_4_wire`
 ### Example configuration
 
 ```yaml
-- name: IV 4-Wire Example
+- id: 4wire_example
+  name: IV 4-Wire Example
   type: iv_ramp_4_wire
   enabled: true
   description: An example measurement.
@@ -190,7 +193,8 @@ Type: `iv_ramp_bias`
 ### Example configuration
 
 ```yaml
-- name: IV Bias Example
+- id: iv_bias_example
+  name: IV Bias Example
   type: iv_ramp_bias
   enabled: true
   description: An example measurement.
@@ -232,7 +236,8 @@ Type: `iv_ramp_bias_elm`
 ### Example configuration
 
 ```yaml
-- name: IV Bias Example
+- id: iv_bias_example
+  name: IV Bias Example
   type: iv_ramp_bias_elm
   enabled: true
   description: An example measurement.
@@ -275,7 +280,8 @@ Type: `cv_ramp`
 ### Example configuration
 
 ```yaml
-- name: CV Example
+- id: cv_example
+  name: CV Example
   type: cv_ramp
   enabled: true
   description: An example measurement.
@@ -335,7 +341,8 @@ Type: `cv_ramp_vsrc`
 ### Example configuration
 
 ```yaml
-- name: CV Example
+- id: cv_example
+  name: CV Example
   type: cv_ramp_vsrc
   enabled: true
   description: An example measurement.
@@ -377,7 +384,8 @@ Type: `cv_ramp_alt`
 ### Example configuration
 
 ```yaml
-- name: CV Alternate Example
+- id: cv_alt_example
+  name: CV Alternate Example
   type: cv_ramp_alt
   enabled: true
   description: An example measurement.
@@ -402,7 +410,8 @@ Type: `frequency_scan`
 ### Example configuration
 
 ```yaml
-- name: Freq. Scan Example
+- id: fscan_example
+  name: Freq. Scan Example
   type: frequency_scan
   enabled: true
   description: An example measurement.

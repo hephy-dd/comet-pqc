@@ -1,6 +1,7 @@
 import copy
 import glob
 import os
+import re
 
 import jsonschema
 import yaml
@@ -160,7 +161,8 @@ class Sequence:
 class SequenceContact:
     """Sequence contact point."""
 
-    def __init__(self, name, contact_id, enabled=True, description="", measurements=None):
+    def __init__(self, name, contact_id, id=None, enabled=True, description="", measurements=None):
+        self.id = id or re.sub(r'\s+', '_', name.lower())
         self.name = name
         self.contact_id = contact_id
         self.enabled = enabled
@@ -178,7 +180,8 @@ class SequenceMeasurement:
 
     key_ignorelist = ["matrix_enable", "matrix_channels"]
 
-    def __init__(self, name, type, enabled=True, description="", parameters=None):
+    def __init__(self, name, type, id=None, enabled=True, description="", parameters=None):
+        self.id = id or re.sub(r'\s+', '_', name.lower())
         self.name = name
         self.type = type
         self.enabled = enabled
