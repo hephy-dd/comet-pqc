@@ -84,6 +84,7 @@ class ContactTreeItem(SequenceTreeItem):
 
     def __init__(self, contact):
         super().__init__([contact.name, None])
+        self.id = contact.id
         self.name = contact.name
         self.enabled = contact.enabled
         self.contact_id = contact.contact_id
@@ -96,6 +97,7 @@ class MeasurementTreeItem(SequenceTreeItem):
     def __init__(self, contact, measurement):
         super().__init__([measurement.name, None])
         self.contact = contact
+        self.id = measurement.id
         self.name = measurement.name
         self.type = measurement.type
         self.enabled = measurement.enabled

@@ -583,9 +583,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         """Return output path."""
         base = os.path.realpath(self.output_text.value)
         sample_name = self.sample_name_text.value
-        sample_type = self.sample_type_text.value
-        dirname = comet.safe_filename(f"{sample_name}-{sample_type}")
-        return os.path.join(base, dirname)
+        return os.path.join(base, sample_name)
 
     def create_output_dir(self):
         """Create output directory for sample if not exists, return directory
