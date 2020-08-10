@@ -4,6 +4,8 @@ import logging
 import os
 import traceback
 
+import yaml
+
 from qutie.qt import QtCore, QtGui
 from qutie import Timer
 
@@ -553,6 +555,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_timer = Timer(timeout=self.sync_environment_controls)
         self.environment_timer.start(1.0)
 
+    @handle_exception
     def load_sequences(self):
         """Load available sequence configurations."""
         current_sequence_id = self.settings.get("current_sequence_id")
@@ -563,7 +566,10 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         custom_sequences = []
         for filename in self.settings.get("custom_sequences") or []:
             if os.path.exists(filename):
-                sequence = config.load_sequence(filename)
+                try:
+                    sequence = config.load_sequence(filename)
+                except yaml.parser.ParserError as exc:
+                    raise RuntimeError(f"Failed to load configuration file {filename}:\n{exc}")
                 sequence.name = f"{sequence.name} (custom)"
                 self.sequence_combobox.append(sequence)
                 custom_sequences.append(filename)
