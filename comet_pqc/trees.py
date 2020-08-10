@@ -23,6 +23,14 @@ class SequenceTree(Tree):
 
 class SequenceTreeItem(TreeItem):
 
+    ProcessingState = "Processing..."
+    ActiveState = "Active"
+    SuccessState = "Success"
+    ComplianceState = "Compliance"
+    TimeoutState = "Timeout"
+    ErrorState = "Error"
+    StoppedState = "Stopped"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self[0].checkable = True
@@ -71,10 +79,12 @@ class SequenceTreeItem(TreeItem):
 
     @state.setter
     def state(self, value):
-        self[0].bold = (value == "Active")
-        if value == "Success":
+        self[0].bold = (value in (self.ActiveState, self.ProcessingState))
+        self[0].color = None
+        if value == self.SuccessState:
             self[1].color = "green"
-        elif value == "Active":
+        elif value in (self.ActiveState, self.ProcessingState):
+            self[0].color = "blue"
             self[1].color = "blue"
         else:
             self[1].color = "red"
