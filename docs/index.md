@@ -27,7 +27,7 @@ Process Quality Control for CMS tracker
 Install from GitHub using pip
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.20.1
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.21.0
 ```
 
 ### Setup

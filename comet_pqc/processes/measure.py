@@ -137,29 +137,29 @@ class MeasureProcess(BaseProcess):
         measurement.sample_type = sample_type
         measurement.output_dir = output_dir
         measurement.measurement_item = self.measurement_item
-        state = "Active"
+        state = self.measurement_item.ActiveState
         self.emit("measurement_state", self.measurement_item, state)
         try:
             measurement.run()
         except ResourceError as e:
             if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                state = "Timeout"
+                state = self.measurement_item.TimeoutState
             elif isinstance(e.exc, BrokenPipeError):
-                state = "Timeout"
+                state = self.measurement_item.TimeoutState
             else:
-                state = type(e.exc).__name__
+                state = self.measurement_item.ErrorState
             raise
         except ComplianceError:
-            state = "Compliance"
+            state = self.measurement_item.ComplianceState
             raise
         except Exception:
-            state = "Error"
+            state = self.measurement_item.ErrorState
             raise
         else:
             if self.stopped:
-                state = "Stopped"
+                state = self.measurement_item.StoppedState
             else:
-                state = "Success"
+                state = self.measurement_item.SuccessState
         finally:
             self.emit("measurement_state", self.measurement_item, state)
             self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
@@ -208,7 +208,7 @@ class SequenceProcess(BaseProcess):
         sample_type = self.get("sample_type")
         output_dir = self.get("output_dir")
         contact_item = self.contact_item
-        self.emit("measurement_state", contact_item, "Active")
+        self.emit("measurement_state", contact_item, contact_item.ProcessingState)
         logging.info(" => %s", contact_item.name)
         prev_measurement_item = None
         for measurement_item in contact_item.children:
@@ -217,7 +217,7 @@ class SequenceProcess(BaseProcess):
             if not measurement_item.enabled:
                 continue
             if not self.running:
-                self.emit("measurement_state", measurement_item, "Stopped")
+                self.emit("measurement_state", measurement_item, measurement_item.StoppedState)
                 break
             logging.info("Run %s", measurement_item.name)
             # TODO
@@ -229,16 +229,18 @@ class SequenceProcess(BaseProcess):
             measurement.measurement_item = measurement_item
             state = "Active"
             self.emit("measurement_state", measurement_item, state)
-            self.emit('show_measurement', prev_measurement_item, measurement_item)
+            if prev_measurement_item:
+                self.emit('hide_measurement', prev_measurement_item)
+            self.emit('show_measurement', measurement_item)
             try:
                 measurement.run()
             except ResourceError as e:
                 if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                    state = "Timeout"
+                    state = measurement_item.TimeoutState
                 elif isinstance(e.exc, BrokenPipeError):
-                    state = "Timeout"
+                    state = measurement_item.TimeoutState
                 else:
-                    state = type(e.exc).__name__
+                    state = measurement_item.ErrorState
                 logging.error(format(e))
                 logging.error("%s failed.", measurement_item.name)
             except ComplianceError as e:
@@ -248,19 +250,21 @@ class SequenceProcess(BaseProcess):
             except Exception as e:
                 logging.error(format(e))
                 logging.error("%s failed.", measurement_item.name)
-                state = "Error"
+                state = measurement_item.ErrorState
             else:
                 if self.stopped:
-                    state = "Stopped"
+                    state = measurement_item.StoppedState
                 else:
-                    state = "Success"
+                    state = measurement_item.SuccessState
                 logging.info("%s done.", measurement_item.name)
             finally:
                 self.emit("measurement_state", measurement_item, state)
                 self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
 
             prev_measurement_item = measurement_item
-            self.emit("measurement_state", contact_item, None)
+        self.emit("measurement_state", contact_item, None)
+        if prev_measurement_item:
+            self.emit('hide_measurement', prev_measurement_item)
 
     def finalize(self):
         self.emit("message", "Finalize sequence...")

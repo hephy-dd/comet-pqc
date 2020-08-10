@@ -7,7 +7,8 @@ nav_order: 3
 # Configuration
 {: .no_toc }
 
-Measurement sequences, silicon sample and chuck geometries can be configured using YAML configuration files.
+Measurement sequences, silicon sample and chuck geometries can be configured
+using YAML configuration files.
 {: .fs-6 .fw-300 }
 
 ## Table of contents
@@ -20,9 +21,11 @@ Measurement sequences, silicon sample and chuck geometries can be configured usi
 
 ## Sequence
 
-A sequence defines a list of measurements to be executed at physical contact points located on a silicon sample.
+A sequence defines a list of measurements to be executed at physical contact
+points located on a silicon sample.
 
-A sequence configuration must provide properties `id`, `name` and `contacts`. Optional properties are `description` and `enabled`.
+A sequence configuration must provide properties `id`, `name` and `contacts`.
+Optional properties are `description` and `enabled`.
 
 ```yaml
 id: my_sequence
@@ -34,15 +37,19 @@ contacts: []
 
 See [assets/config/sequence/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/sequence/default.yaml) for reference.
 
-Custom sequence configuration files can be imported using `File` &rarr; `Sequence` &rarr; `Import...`.
+Custom sequence configuration files can be imported using `File` &rarr;
+`Sequence` &rarr; `Import...`.
 
 ### Contacts
 
-A sequence consists of a list of contact points on a silicon sample. Such contact points are also referred as _flutes_.
+A sequence consists of a list of contact points on a silicon sample. Such
+contact points are also referred as _flutes_.
 
-A contact must provide properties `name`, `contact_id` and `measurements`. Optional properties are `description` and `enabled`.
+A contact must provide properties `id`, `name`, `contact_id` and `measurements`.
+Optional properties are `description` and `enabled`.
 
-Property `contact_id` must reflect a contact ID defined in the selected silicon `sample` configuration.
+Property `contact_id` must reflect a contact ID defined in the selected silicon
+`sample` configuration.
 
 ```yaml
 ...
@@ -56,18 +63,26 @@ contacts:
 
 ### Measurements
 
-A connection consists of a list of measurements to be performed with this connection.
+A connection consists of a list of measurements to be performed with this
+connection.
 
-A connection must provide properties `name`, `type` and `parameters`. Optional properties are `description` and `enabled`.
+A connection must provide properties `name`, `type` and `parameters`. Optional
+properties are `id`, `description` and `enabled`.
 
-Property `type` must reflect a built in measurement ID. Valid types are `iv_ramp`, `iv_ramp_bias`, `iv_ramp_4_wire`, `cv_ramp`, `cv_ramp_alt`, `frequency_scan`.
+Property `type` must reflect a built in measurement ID. Valid types are
+`iv_ramp`, `iv_ramp_bias`, `iv_ramp_4_wire`, `cv_ramp`, `cv_ramp_alt`,
+`frequency_scan`.
 
-Property `parameters` defines default values specified by an individual measurement.
+Property `parameters` defines default values specified by an individual
+measurement.
+
+If property `id` is omitted a string is generated using property `name`.
 
 ```yaml
 ...
     measurements:
-      - name: Polysilicon Van-der-Pauw cross
+      - id: poly_VdP
+        name: Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
             current_start: -10 uA
@@ -75,23 +90,28 @@ Property `parameters` defines default values specified by an individual measurem
             current_step: 500 nA
 ```
 
-If a parameter value is followed by a unit abbreviation [Pint](https://pint.readthedocs.io/en/latest/) is used to convert the
-value into a physical quantity of the specified unit. For example `10 V` will return a `<Quantity(10.0, 'Volt')>` object.
+If a parameter value is followed by a unit abbreviation
+[Pint](https://pint.readthedocs.io/en/latest/) is used to convert the value into
+a physical quantity of the specified unit. For example `10 V` will return a
+`<Quantity(10.0, 'Volt')>` object.
 
 ### Example
 
-This example defines a sequence consisting of a single contact _PQC Flute 1_ with a single measurement _Diode IV_ at this location.
+This example defines a sequence consisting of a single contact _PQC Flute 1_
+with a single measurement _Diode IV_ at this location.
 
 ```yaml
 id: default
 name: Default
 description: Default measurement sequence.
 contacts:
-  - name: PQC Flute 1
+  - id: flute_1
+    name: PQC Flute 1
     contact_id: flute_1  # refs. sample configuration
     enabled: true
     measurements:
-      - name: Diode IV
+      - id: diode_iv
+        name: Diode IV
         description: Performing IV ramp measurements.
         enabled: true
         type: iv_ramp
@@ -107,9 +127,13 @@ contacts:
 
 ## Sample
 
-A sample defines available contact points and geometry of a silicon sample (wafer slice with test structures and needle contact points).
+A sample defines available contact points and geometry of a silicon sample
+(wafer slice with test structures and needle contact points).
 
-A sample configuration must provide properties `id`, `name` and `contacts`. Optional properties are `description` and `enabled`.
+A sample configuration must provide properties `name` and `contacts`. Optional
+properties are `id`, `description` and `enabled`.
+
+If property `id` is omitted a string is generated using property `name`.
 
 ```yaml
 id: my_sample
@@ -123,11 +147,13 @@ See [assets/config/sample/default_hme_n.yaml](https://github.com/hephy-dd/comet-
 
 ### Contacts
 
-A sample consists of a list of contact points located on the silicon sample. A sequence must refer to contact points specified in the sample configuration.
+A sample consists of a list of contact points located on the silicon sample. A
+sequence must refer to contact points specified in the sample configuration.
 
 Contact points are also referred as _flutes_.
 
-A contact point must provide properties `id`, `name`, and `pos`. Optional properties are `description` and `enabled`.
+A contact point must provide properties `id`, `name`, and `pos`. Optional
+properties are `description` and `enabled`.
 
 ```yaml
 ...
@@ -142,9 +168,11 @@ contacts:
 
 ## Chuck
 
-A chuck defines the geometry of the available silicon sample positions on the chuck.
+A chuck defines the geometry of the available silicon sample positions on the
+chuck.
 
-A chuck configuration must provide properties `id`, `name`, and `positions`. Optional properties are `description` and `enabled`.
+A chuck configuration must provide properties `id`, `name`, and `positions`.
+Optional properties are `description` and `enabled`.
 
 ```yaml
 id: default
@@ -156,9 +184,11 @@ positions: []
 
 ### Positions
 
-A position defines an area on the chuck surface where a silicon sample can be placed. Usually there are multiple positions an a chuck.
+A position defines an area on the chuck surface where a silicon sample can be
+placed. Usually there are multiple positions an a chuck.
 
-A position must provide properties `id`, `name`, and `pos`. Optional property is `enabled`.
+A position must provide properties `id`, `name`, and `pos`. Optional property is
+`enabled`.
 
 ```yaml
 ...
@@ -172,4 +202,6 @@ positions:
         z: 0
 ```
 
-See [assets/config/chuck/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/chuck/default.yaml) for reference.
+See
+[assets/config/chuck/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/chuck/default.yaml)
+for reference.

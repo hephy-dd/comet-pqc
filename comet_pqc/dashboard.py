@@ -583,9 +583,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         """Return output path."""
         base = os.path.realpath(self.output_text.value)
         sample_name = self.sample_name_text.value
-        sample_type = self.sample_type_text.value
-        dirname = comet.safe_filename(f"{sample_name}-{sample_type}")
-        return os.path.join(base, dirname)
+        return os.path.join(base, sample_name)
 
     def create_output_dir(self):
         """Create output directory for sample if not exists, return directory
@@ -666,11 +664,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        # HACK oh dear...
-        for measurement_item in contact_item.children:
-            measurement_item.series.clear()
         self.sequence_tree.lock()
-        self.sequence_tree.reset()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
         output_dir = self.create_output_dir()
@@ -682,20 +676,24 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("use_table", self.table_groupbox.checked)
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
-        def show_measurement(prev, next):
-            if prev:
-                prev.selectable = False
-            next.selectable = True
+        def show_measurement(item):
+            item.selectable = True
+            item.series.clear()
+            item[0].color = 'blue'
             self.panels.unmount()
             self.panels.hide()
             self.panels.clear_readings()
-            panel = self.panels.get(next.type)
+            panel = self.panels.get(item.type)
             panel.visible = True
-            panel.mount(next)
+            panel.mount(item)
             sequence.reading = panel.append_reading
             sequence.update = panel.update_readings
             sequence.state = panel.state
+        def hide_measurement(item):
+            item.selectable = False
+            item[0].color = None
         sequence.show_measurement = show_measurement
+        sequence.hide_measurement = hide_measurement
         sequence.push_summary = self.on_push_summary
         sequence.start()
 
