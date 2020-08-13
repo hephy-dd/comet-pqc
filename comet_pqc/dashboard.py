@@ -795,10 +795,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         with self.processes.get("environment") as environment:
             environment.set_pid_control(state)
 
+    @handle_exception
     def switch_off_lights(self):
-        with self.processes.get("environment") as environment:
-            if environment.has_lights():
-                environment.dim_lights()
+        if self.environment_groupbox.checked:
+            with self.processes.get("environment") as environment:
+                if environment.has_lights():
+                    environment.dim_lights()
 
     @handle_exception
     def sync_environment_controls(self):

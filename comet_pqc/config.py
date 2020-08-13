@@ -27,6 +27,14 @@ CHUCK_DIR = os.path.join(CONFIG_DIR, 'chuck')
 SAMPLE_DIR = os.path.join(CONFIG_DIR, 'sample')
 SEQUENCE_DIR = os.path.join(CONFIG_DIR, 'sequence')
 
+def make_id(name):
+    """Construct a mixed case ID string without special characters from name.
+
+    >>> make_id('Nobody, expects THE (spanish) inquisition!')
+    'Nobody_expects_THE_spanish_inquisition_'
+    """
+    return re.sub(r'[^\w\-]+', '_', name.strip()).strip('_')
+
 def load_schema(name):
     """Loads a YAML validation schema from the schema directory.
 
@@ -162,7 +170,7 @@ class SequenceContact:
     """Sequence contact point."""
 
     def __init__(self, name, contact_id, id=None, enabled=True, description="", measurements=None):
-        self.id = id or re.sub(r'\s+', '_', name.lower())
+        self.id = id or make_id(name)
         self.name = name
         self.contact_id = contact_id
         self.enabled = enabled
@@ -181,7 +189,7 @@ class SequenceMeasurement:
     key_ignorelist = ["matrix_enable", "matrix_channels"]
 
     def __init__(self, name, type, id=None, enabled=True, description="", parameters=None):
-        self.id = id or re.sub(r'\s+', '_', name.lower())
+        self.id = id or make_id(name)
         self.name = name
         self.type = type
         self.enabled = enabled
