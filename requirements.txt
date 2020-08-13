@@ -1,4 +1,4 @@
-comet @ https://github.com/hephy-dd/comet/archive/0.10.2.zip#egg=comet-0.10.2
+comet @ https://github.com/hephy-dd/comet/archive/0.10.3.zip#egg=comet-0.10.3
 qutie>=1.4
 pyyaml
 jsonschema
