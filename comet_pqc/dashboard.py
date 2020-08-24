@@ -133,11 +133,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sample_name_text = comet.Text(
             value=self.settings.get("sample_name", "Unnamed"),
             changed=self.on_sample_name_changed,
-            editing_finished=self.on_sample_name_editing_finished
+            editing_finished=self.on_reset_sequence_state
         )
         self.sample_type_text = comet.Text(
             value=self.settings.get("sample_type", ""),
-            changed=self.on_sample_type_changed
+            changed=self.on_sample_type_changed,
+            editing_finished=self.on_reset_sequence_state
         )
         self.sequence_combobox = comet.ComboBox(
             changed=self.on_load_sequence_tree
@@ -176,13 +177,20 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_sequence_stop
         )
 
+        self.reset_button = comet.Button(
+            text="Reset",
+            tool_tip="Reset measurement sequence state.",
+            clicked=self.on_reset_sequence_state
+        )
+
         self.sequence_groupbox = comet.GroupBox(
             title="Sequence",
             layout=comet.Column(
                 self.sequence_tree,
                 comet.Row(
                     self.start_button,
-                    self.stop_button
+                    self.stop_button,
+                    self.reset_button
                 )
             )
         )
@@ -599,14 +607,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_sample_name_changed(self, value):
         self.settings["sample_name"] = value
 
-    def on_sample_name_editing_finished(self):
+    def on_sample_type_changed(self, value):
+        self.settings["sample_type"] = value
+
+    def on_reset_sequence_state(self):
         # Reset tree
         sequence = self.sequence_combobox.current
         if sequence:
             self.on_load_sequence_tree(sequence.id)
-
-    def on_sample_type_changed(self, value):
-        self.settings["sample_type"] = value
 
     def on_load_sequence_tree(self, index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
