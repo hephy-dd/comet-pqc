@@ -82,22 +82,22 @@ class TableControl(comet.Column):
         self.move = move
         # Control buttons
         self.back_button = SquareButton(
-            text="∆",
+            text="⊲",
             tool_tip="Move table to back.",
             clicked=self.on_back
         )
         self.front_button = SquareButton(
-            text="∇",
+            text="⊳",
             tool_tip="Move table to front.",
             clicked=self.on_front
         )
         self.left_button = SquareButton(
-            "⊲",
+            "∇",
             tool_tip="Move table left.",
             clicked=self.on_left
         )
         self.right_button = SquareButton(
-            "⊳",
+            "∆",
             tool_tip="Move table right.",
             clicked=self.on_right
         )
@@ -147,9 +147,9 @@ class TableControl(comet.Column):
             comet.Row(
                 comet.Spacer(),
                 comet.Row(
-                    comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
-                    comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
-                    comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+                    comet.Column(SquareSpacer(), self.back_button, SquareSpacer()),
+                    comet.Column(self.right_button, SquareLabel("X/Y"), self.left_button),
+                    comet.Column(SquareSpacer(), self.front_button, SquareSpacer())
                 ),
                 SquareSpacer(),
                 comet.Column(
@@ -173,9 +173,12 @@ class TableControl(comet.Column):
         )
         self.append(comet.Column(
             comet.Row(
-                comet.GroupBox(
-                    title="Control",
-                    layout=self.controls_layout
+                comet.Column(
+                    comet.GroupBox(
+                        title="Control",
+                        layout=self.controls_layout
+                    ),
+                    comet.Label("X/Y controls rotated to left to match rotated PC-camera.", enabled=False)
                 ),
                 comet.Column(
                     comet.GroupBox(
