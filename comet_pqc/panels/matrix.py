@@ -1,9 +1,10 @@
 import logging
 
 import comet
+from comet import ui
 from comet.resource import ResourceMixin
+from comet.driver.keithley import K707B
 
-from ..driver import K707B
 from .panel import Panel
 
 __all__ = ["MatrixPanel"]
@@ -14,7 +15,7 @@ def encode_matrix(values):
 def decode_matrix(value):
     return list(map(str.strip, value.split(",")))
 
-class MatrixChannelsText(comet.Text):
+class MatrixChannelsText(ui.Text):
     """Overloaded text input to handle matrix channel list."""
 
     def __init__(self, *args, **kwargs):
@@ -36,7 +37,7 @@ class MatrixPanel(Panel, ResourceMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.matrix_enable = comet.CheckBox(text="Enable Switching")
+        self.matrix_enable = ui.CheckBox(text="Enable Switching")
         self.matrix_channels = MatrixChannelsText(
             tool_tip="Matrix card switching channels, comma separated list."
         )
@@ -44,21 +45,21 @@ class MatrixPanel(Panel, ResourceMixin):
         self.bind("matrix_enable", self.matrix_enable, False)
         self.bind("matrix_channels", self.matrix_channels, [])
 
-        self.control_tabs.append(comet.Tab(
+        self.control_tabs.append(ui.Tab(
             title="Matrix",
-            layout=comet.Column(
-                comet.GroupBox(
+            layout=ui.Column(
+                ui.GroupBox(
                     title="Matrix",
-                    layout=comet.Column(
+                    layout=ui.Column(
                         self.matrix_enable,
-                        comet.Label(text="Channels"),
-                        comet.Row(
+                        ui.Label(text="Channels"),
+                        ui.Row(
                             self.matrix_channels,
-                            ## comet.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
+                            ## ui.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
                         )
                     )
                 ),
-                comet.Spacer(),
+                ui.Spacer(),
                 stretch=(0, 1)
             )
         ))
@@ -72,5 +73,5 @@ class MatrixPanel(Panel, ResourceMixin):
                 closed_channels = matrix.channel.getclose()
             self.matrix_channels.value = closed_channels
         except Exception as e:
-            comet.show_exception(e)
+            ui.show_exception(e)
         self.enabled = True

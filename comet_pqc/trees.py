@@ -1,7 +1,7 @@
 import copy
 
 from comet.ui import Tree, TreeItem
-from PyQt5 import QtCore
+from qutie.qt import QtCore
 
 class SequenceTree(Tree):
 

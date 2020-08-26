@@ -1,6 +1,5 @@
-import qutie as ui
-
 import comet
+from comet import ui
 
 __all__ = [
     'SummaryTreeItem'

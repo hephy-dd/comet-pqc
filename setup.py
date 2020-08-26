@@ -7,7 +7,7 @@ setup(
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'comet @ https://github.com/hephy-dd/comet/archive/0.10.3.zip#egg=comet-0.10.3',
+        'comet @ https://github.com/hephy-dd/comet/archive/0.11.0.zip#egg=comet-0.11.0',
         'qutie>=1.4',
         'pyyaml',
         'jsonschema'

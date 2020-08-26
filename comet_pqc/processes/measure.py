@@ -11,12 +11,12 @@ import comet
 from comet.resource import ResourceMixin, ResourceError
 from comet.process import ProcessMixin
 from comet.driver.corvus import Venus1
+from comet.driver.hephy import EnvironmentBox
+from comet.driver.keithley import K707B
 
 from ..utils import format_metric
 from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
-from ..driver import EnvironmentBox
-from ..driver import K707B
 
 class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 

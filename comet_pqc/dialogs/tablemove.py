@@ -1,6 +1,7 @@
 import logging
 
 import comet
+from comet import ui
 from comet.settings import SettingsMixin
 
 # Fix
@@ -8,30 +9,30 @@ comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
 
-class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
+class TableMoveDialog(ui.Dialog, comet.ProcessMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title="Move Table"
         self.content = TableMove()
-        self.start_button = comet.Button(
+        self.start_button = ui.Button(
             text="Start",
             enabled=False,
             clicked=self.on_start
         )
-        self.stop_button = comet.Button(
+        self.stop_button = ui.Button(
             text="Stop",
             enabled=False,
             clicked=self.on_stop
         )
-        self.close_button = comet.Button("&Close", clicked=self.close)
-        self.layout=comet.Column(
+        self.close_button = ui.Button("&Close", clicked=self.close)
+        self.layout=ui.Column(
             self.content,
-            comet.Row(
+            ui.Row(
                 self.start_button,
                 self.stop_button,
                 self.close_button,
-                comet.Spacer(vertical=False)
+                ui.Spacer(vertical=False)
             ),
         )
         self.process = self.processes.get('move')
@@ -47,13 +48,13 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
     def on_close(self):
         """Prevent close dialog if process is still running."""
         if self.process.alive:
-            if not comet.show_question(
+            if not ui.show_question(
                 title="Stop movement",
                 text="Do you want to stop the current movement?"
             ): return False
             self.process.stop()
             self.process.join()
-            comet.show_info(
+            ui.show_info(
                 title="Movement stopped",
                 text="Movement stopped."
             )
@@ -61,7 +62,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         return True
 
     def on_failed(self, *args):
-        comet.show_exception(*args)
+        ui.show_exception(*args)
         self.close()
 
     def on_position(self, x, y, z):
@@ -73,7 +74,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
     def on_start(self):
         item = self.content.positions_tree.current
         if item:
-            if comet.show_question(f"Do you want to move table to position '{item[0].value}'?"):
+            if ui.show_question(f"Do you want to move table to position '{item[0].value}'?"):
                 self.start_button.enabled = False
                 self.stop_button.enabled = True
                 self.close_button.enabled = False
@@ -92,12 +93,12 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         name = self.process.get('name')
         if self.process.get("z_warning"):
             z_limit = self.process.get("z_limit")
-            comet.show_warning(
+            ui.show_warning(
                 title="Safe Z Position",
                 text=f"Limited Z movement to {z_limit/1e3:.3f} mm to protect probe card."
             )
         if self.process.get("success", False):
-            comet.show_info(title="Success", text=f"Moved table successfully to {name}.")
+            ui.show_info(title="Success", text=f"Moved table successfully to {name}.")
         self.process.set('name', None)
         self.process.set('x', 0)
         self.process.set('y', 0)
@@ -128,7 +129,7 @@ class TableMoveDialog(comet.Dialog, comet.ProcessMixin):
         super().run()
         self.process.finished = None
 
-class TablePositionItem(comet.TreeItem):
+class TablePositionItem(ui.TreeItem):
 
     def __init__(self, name, x, y, z):
         super().__init__()
@@ -169,112 +170,112 @@ class TablePositionItem(comet.TreeItem):
     def z(self, value):
         self[3].value = float(value)
 
-class TableMove(comet.Column, comet.SettingsMixin):
+class TableMove(ui.Column, comet.SettingsMixin):
 
     maximum_z_limit = 23.800
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pos_x_label = comet.Label()
-        self.pos_y_label = comet.Label()
-        self.pos_z_label = comet.Label()
-        self.cal_x_label = comet.Label()
-        self.cal_y_label = comet.Label()
-        self.cal_z_label = comet.Label()
-        self.rm_x_label = comet.Label()
-        self.rm_y_label = comet.Label()
-        self.rm_z_label = comet.Label()
-        self.positions_tree = comet.Tree()
+        self.pos_x_label = ui.Label()
+        self.pos_y_label = ui.Label()
+        self.pos_z_label = ui.Label()
+        self.cal_x_label = ui.Label()
+        self.cal_y_label = ui.Label()
+        self.cal_z_label = ui.Label()
+        self.rm_x_label = ui.Label()
+        self.rm_y_label = ui.Label()
+        self.rm_z_label = ui.Label()
+        self.positions_tree = ui.Tree()
         self.positions_tree.header = "Name", "X", "Y", "Z"
         self.positions_tree.indentation = 0
         self.positions_tree.minimum_width = 400
         self.positions_tree.selected = self.on_position_selected
         self.positions_tree.fit()
         # Layout
-        self.assign_button = comet.Button(
+        self.assign_button = ui.Button(
             text="Assign Position",
             enabled=False,
             clicked=self.on_assign_position
         )
-        self.add_button = comet.Button(
+        self.add_button = ui.Button(
             text="&Add",
             clicked=self.on_add_position
         )
-        self.edit_button = comet.Button(
+        self.edit_button = ui.Button(
             text="&Edit Name",
             enabled=False,
             clicked=self.on_edit_position
         )
-        self.remove_button = comet.Button(
+        self.remove_button = ui.Button(
             text="&Remove",
             enabled=False,
             clicked=self.on_remove_position
         )
-        self.z_limit_label = comet.Label()
-        self.positions_layout = comet.Column(
-            comet.Row(
+        self.z_limit_label = ui.Label()
+        self.positions_layout = ui.Column(
+            ui.Row(
                 self.positions_tree,
-                comet.Column(
+                ui.Column(
                     self.assign_button,
-                    comet.Spacer(),
+                    ui.Spacer(),
                     self.add_button,
                     self.edit_button,
                     self.remove_button
                 ),
                 stretch=(1, 0)
             ),
-            comet.Row(
+            ui.Row(
                 self.z_limit_label,
-                comet.Button("...", width=32, clicked=self.edit_z_limit),
-                comet.Spacer(),
+                ui.Button("...", width=32, clicked=self.edit_z_limit),
+                ui.Spacer(),
                 stretch=(0, 0, 1)
             ),
             stretch=(1, 0)
         )
-        self.append(comet.Column(
-            comet.Row(
-                comet.GroupBox(
+        self.append(ui.Column(
+            ui.Row(
+                ui.GroupBox(
                     title="Table positions",
                     layout=self.positions_layout
                 ),
-                comet.Column(
-                    comet.GroupBox(
+                ui.Column(
+                    ui.GroupBox(
                         width=160,
                         title="Position",
-                        layout=comet.Row(
-                            comet.Column(
-                                comet.Label("X"),
-                                comet.Label("Y"),
-                                comet.Label("Z"),
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.pos_x_label,
                                 self.pos_y_label,
                                 self.pos_z_label
                             ),
                         )
                     ),
-                    comet.GroupBox(
+                    ui.GroupBox(
                         title="State",
-                        layout=comet.Row(
-                            comet.Column(
-                                comet.Label("X"),
-                                comet.Label("Y"),
-                                comet.Label("Z"),
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.cal_x_label,
                                 self.cal_y_label,
                                 self.cal_z_label
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.rm_x_label,
                                 self.rm_y_label,
                                 self.rm_z_label
                             )
                         )
                     ),
-                    comet.Spacer(),
+                    ui.Spacer(),
                     stretch=(0, 0, 1)
                 ),
                 stretch=(1, 0)
@@ -289,7 +290,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
         self.z_limit_label.text = f"Z Soft Limit: {self.z_limit:.3f} mm"
 
     def edit_z_limit(self):
-        value = comet.get_number(
+        value = ui.get_number(
             title="Z Soft Limit",
             label="Z Soft Limit",
             value=self.z_limit,
@@ -380,11 +381,11 @@ class TableMove(comet.Column, comet.SettingsMixin):
     def on_assign_position(self):
         item = self.positions_tree.current
         if item:
-            if comet.show_question(f"Do you want to assign current position to '{item[0].value}'?"):
+            if ui.show_question(f"Do you want to assign current position to '{item[0].value}'?"):
                 self.emit('assign_position')
 
     def on_add_position(self):
-        name = comet.get_text(title="Add Position", label="Name", text="")
+        name = ui.get_text(title="Add Position", label="Name", text="")
         if name:
             self.positions_tree.append(TablePositionItem(name, 0, 0, 0))
             self.positions_tree.fit()
@@ -392,7 +393,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
     def on_edit_position(self):
         item = self.positions_tree.current
         if item:
-            text = comet.get_text(title="Edit Position Name", label="Name", text=item[0].value)
+            text = ui.get_text(title="Edit Position Name", label="Name", text=item[0].value)
             if text:
                 item[0].value = text
                 self.positions_tree.fit()
@@ -400,7 +401,7 @@ class TableMove(comet.Column, comet.SettingsMixin):
     def on_remove_position(self):
         item = self.positions_tree.current
         if item:
-            if comet.show_question(f"Do you want to remove position '{item[0].value}'?"):
+            if ui.show_question(f"Do you want to remove position '{item[0].value}'?"):
                 self.positions_tree.remove(item)
                 if not len(self.positions_tree):
                     self.assign_button.enabled = False

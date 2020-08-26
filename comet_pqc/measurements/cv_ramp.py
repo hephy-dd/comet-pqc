@@ -6,8 +6,8 @@ import re
 
 import comet
 from comet.driver.keysight import E4980A
+from comet.driver.keithley import K2410
 
-from ..driver import K2410
 from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate

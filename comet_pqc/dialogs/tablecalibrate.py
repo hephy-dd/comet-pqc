@@ -1,66 +1,67 @@
 import comet
+from comet import ui
 
 __all__ = ['TableCalibrateDialog']
 
-class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
+class TableCalibrateDialog(ui.Dialog, comet.ProcessMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "Calibrate Table"
-        self.pos_x_label = comet.Label()
-        self.pos_y_label = comet.Label()
-        self.pos_z_label = comet.Label()
-        self.cal_x_label = comet.Label()
-        self.cal_y_label = comet.Label()
-        self.cal_z_label = comet.Label()
-        self.rm_x_label = comet.Label()
-        self.rm_y_label = comet.Label()
-        self.rm_z_label = comet.Label()
-        self.start_button = comet.Button(
+        self.pos_x_label = ui.Label()
+        self.pos_y_label = ui.Label()
+        self.pos_z_label = ui.Label()
+        self.cal_x_label = ui.Label()
+        self.cal_y_label = ui.Label()
+        self.cal_z_label = ui.Label()
+        self.rm_x_label = ui.Label()
+        self.rm_y_label = ui.Label()
+        self.rm_z_label = ui.Label()
+        self.start_button = ui.Button(
             text="Start",
             clicked=self.on_start
         )
-        self.stop_button = comet.Button(
+        self.stop_button = ui.Button(
             text="Stop",
             enabled=False,
             clicked=self.on_stop
         )
-        self.close_button = comet.Button(
+        self.close_button = ui.Button(
             text="Close",
             clicked=self.close
         )
-        self.layout = comet.Column(
-            comet.Row(
-                comet.GroupBox(
+        self.layout = ui.Column(
+            ui.Row(
+                ui.GroupBox(
                     width=160,
                     title="Position",
-                    layout=comet.Row(
-                        comet.Column(
-                            comet.Label("X"),
-                            comet.Label("Y"),
-                            comet.Label("Z"),
+                    layout=ui.Row(
+                        ui.Column(
+                            ui.Label("X"),
+                            ui.Label("Y"),
+                            ui.Label("Z"),
                         ),
-                        comet.Column(
+                        ui.Column(
                             self.pos_x_label,
                             self.pos_y_label,
                             self.pos_z_label
                         ),
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="State",
-                    layout=comet.Row(
-                        comet.Column(
-                            comet.Label("X"),
-                            comet.Label("Y"),
-                            comet.Label("Z"),
+                    layout=ui.Row(
+                        ui.Column(
+                            ui.Label("X"),
+                            ui.Label("Y"),
+                            ui.Label("Z"),
                         ),
-                        comet.Column(
+                        ui.Column(
                             self.cal_x_label,
                             self.cal_y_label,
                             self.cal_z_label
                         ),
-                        comet.Column(
+                        ui.Column(
                             self.rm_x_label,
                             self.rm_y_label,
                             self.rm_z_label
@@ -68,10 +69,10 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
                     )
                 )
             ),
-            comet.Row(
+            ui.Row(
                 self.start_button,
                 self.stop_button,
-                comet.Spacer(vertical=False),
+                ui.Spacer(vertical=False),
                 self.close_button,
             )
         )
@@ -104,7 +105,7 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
         self.rm_z_label.stylesheet = "color: green" if getrm(z) else "color: red"
 
     def on_start(self):
-        if not comet.show_question(
+        if not ui.show_question(
             title="Calibrate table",
             text="Are you sure you want to calibrate the table?",
             informative="Make sure to remove any needle positioners from inside the box."
@@ -123,18 +124,18 @@ class TableCalibrateDialog(comet.Dialog, comet.ProcessMixin):
         self.stop_button.enabled = False
         self.close_button.enabled = True
         if self.process.get("success", False):
-            comet.show_info(title="Success", text="Table calibrated successfully.")
+            ui.show_info(title="Success", text="Table calibrated successfully.")
 
     def on_close(self):
         """Prevent close dialog if process is still running."""
         if self.process.alive:
-            if not comet.show_question(
+            if not ui.show_question(
                 title="Stop calibration",
                 text="Do you want to stop the calibration?"
             ): return False
             self.process.stop()
             self.process.join()
-            comet.show_info(
+            ui.show_info(
                 title="Calibration stopped",
                 text="Calibration stopped."
             )

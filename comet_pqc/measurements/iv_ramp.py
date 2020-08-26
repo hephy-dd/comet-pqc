@@ -6,7 +6,7 @@ import os
 import re
 
 import comet
-from ..driver import K2410
+from comet.driver.keithley import K2410
 
 from ..proxy import create_proxy
 from ..utils import format_metric

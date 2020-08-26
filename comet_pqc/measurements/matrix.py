@@ -1,6 +1,6 @@
 import logging
 
-from ..driver import K707B
+from comet.driver.keithley import K707B
 from .measurement import Measurement
 
 __all__ = ["MatrixMeasurement"]
