@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.22.0]
+### Changed
+- Migrated to COMET 0.11.0 (#55)
+- Simplified Start/Stop mechanism (#54)
+- Rotated X/Y table controls (#52)
+- Set K2547A display (#51)
 
 ## [0.21.1]
 ### Fixed
