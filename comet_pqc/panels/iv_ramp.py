@@ -2,9 +2,9 @@ import logging
 import re
 
 import comet
+from comet import ui
 
 from ..utils import format_metric
-from ..metric import Metric
 from .matrix import MatrixPanel
 from .panel import HVSourceMixin
 from .panel import EnvironmentMixin
@@ -23,18 +23,18 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.register_vsource()
         self.register_environment()
 
-        self.plot = comet.Plot(height=300, legend="right")
+        self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
-        self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
+        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
-        self.voltage_start = comet.Number(decimals=3, suffix="V")
-        self.voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
+        self.voltage_start = ui.Number(decimals=3, suffix="V")
+        self.voltage_stop = ui.Number(decimals=3, suffix="V")
+        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
+        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
 
-        self.hvsrc_current_compliance = Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
@@ -43,30 +43,30 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
 
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
 
-        self.general_tab.layout = comet.Row(
-            comet.GroupBox(
+        self.general_tab.layout = ui.Row(
+            ui.GroupBox(
                 title="Ramp",
-                layout=comet.Column(
-                    comet.Label(text="Start"),
+                layout=ui.Column(
+                    ui.Label(text="Start"),
                     self.voltage_start,
-                    comet.Label(text="Stop"),
+                    ui.Label(text="Stop"),
                     self.voltage_stop,
-                    comet.Label(text="Step"),
+                    ui.Label(text="Step"),
                     self.voltage_step,
-                    comet.Label(text="Waiting Time"),
+                    ui.Label(text="Waiting Time"),
                     self.waiting_time,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.GroupBox(
+            ui.GroupBox(
                 title="HV Source",
-                layout=comet.Column(
-                    comet.Label(text="Compliance"),
+                layout=ui.Column(
+                    ui.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.Spacer(),
+            ui.Spacer(),
             stretch=(1, 1, 1)
         )
 

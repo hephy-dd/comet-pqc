@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0]
+### Changed
+- Migrated to COMET 0.11.0 (#55)
+- Simplified Start/Stop mechanism (#54)
+- Rotated X/Y table controls (#52)
+- Set K2547A display (#51)
+
 ## [0.21.1]
 ### Fixed
 - Auto generated `id` attributes can contain mixed case (#36).
@@ -70,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.21.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/hephy-dd/comet-pqc/compare/0.21.1...0.22.0
 [0.21.1]: https://github.com/hephy-dd/comet-pqc/compare/0.21.0...0.21.1
 [0.21.0]: https://github.com/hephy-dd/comet-pqc/compare/0.20.1...0.21.0
 [0.20.1]: https://github.com/hephy-dd/comet-pqc/compare/0.20.0...0.20.1

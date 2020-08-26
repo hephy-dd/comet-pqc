@@ -10,6 +10,7 @@ from qutie.qt import QtCore, QtGui
 from qutie import Timer
 
 import comet
+from comet import ui
 
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
@@ -40,7 +41,7 @@ from .logwindow import LogWidget
 from .summary import SummaryTree
 from .formatter import CSVFormatter
 
-from .driver import EnvironmentBox
+from comet.driver.hephy import EnvironmentBox
 
 SUMMARY_FILENAME = "summary.csv"
 
@@ -54,7 +55,7 @@ def create_icon(size, color):
     painter.setBrush(QtGui.QColor(color))
     painter.drawEllipse(1, 1, size-2, size-2)
     del painter
-    return comet.Icon(qt=pixmap)
+    return ui.Icon(qt=pixmap)
 
 def handle_exception(func):
     def catch_exception_wrapper(*args, **kwargs):
@@ -64,10 +65,10 @@ def handle_exception(func):
             tb = traceback.format_exc()
             logging.error(exc)
             logging.error(tb)
-            comet.show_exception(exc, tb)
+            ui.show_exception(exc, tb)
     return catch_exception_wrapper
 
-class ToggleButton(comet.Button):
+class ToggleButton(ui.Button):
     """Colored checkable button."""
 
     def __init__(self, *args, **kwargs):
@@ -79,7 +80,7 @@ class ToggleButton(comet.Button):
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
 
-class PanelStack(comet.Row):
+class PanelStack(ui.Row):
     """Stack of measurement panels."""
 
     def __init__(self):
@@ -125,33 +126,34 @@ class PanelStack(comet.Row):
                 return child
         return None
 
-class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
+class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def __init__(self):
         super().__init__()
 
-        self.sample_name_text = comet.Text(
+        self.sample_name_text = ui.Text(
             value=self.settings.get("sample_name", "Unnamed"),
             changed=self.on_sample_name_changed,
-            editing_finished=self.on_sample_name_editing_finished
+            editing_finished=self.on_reset_sequence_state
         )
-        self.sample_type_text = comet.Text(
+        self.sample_type_text = ui.Text(
             value=self.settings.get("sample_type", ""),
-            changed=self.on_sample_type_changed
+            changed=self.on_sample_type_changed,
+            editing_finished=self.on_reset_sequence_state
         )
-        self.sequence_combobox = comet.ComboBox(
+        self.sequence_combobox = ui.ComboBox(
             changed=self.on_load_sequence_tree
         )
 
-        self.sample_groupbox = comet.GroupBox(
+        self.sample_groupbox = ui.GroupBox(
             title="Sample",
-            layout=comet.Row(
-                comet.Column(
-                    comet.Label("Name"),
-                    comet.Label("Type"),
-                    comet.Label("Sequence")
+            layout=ui.Row(
+                ui.Column(
+                    ui.Label("Name"),
+                    ui.Label("Type"),
+                    ui.Label("Sequence")
                 ),
-                comet.Column(
+                ui.Column(
                     self.sample_name_text,
                     self.sample_type_text,
                     self.sequence_combobox
@@ -160,29 +162,42 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             )
         )
 
-        self.sequence_tree = SequenceTree(selected=self.on_tree_selected)
+        self.sequence_tree = SequenceTree(
+            selected=self.on_tree_selected,
+            double_clicked=lambda item, index: self.on_start()
+        )
+        self.sequence_tree.qt.setExpandsOnDoubleClick(False)
         self.sequence_tree.minimum_width = 360
 
-        self.start_button = comet.Button(
+        self.start_button = ui.Button(
             text="Start",
             tool_tip="Start measurement sequence.",
-            clicked=self.on_sequence_start
+            clicked=self.on_start,
+            stylesheet="QPushButton:enabled{color:green;font-weight:bold;}"
         )
 
-        self.stop_button = comet.Button(
+        self.stop_button = ui.Button(
             text="Stop",
             tool_tip="Stop measurement sequence.",
             enabled=False,
-            clicked=self.on_sequence_stop
+            clicked=self.on_stop,
+            stylesheet="QPushButton:enabled{color:red;font-weight:bold;}"
         )
 
-        self.sequence_groupbox = comet.GroupBox(
+        self.reset_button = ui.Button(
+            text="Reset",
+            tool_tip="Reset measurement sequence state.",
+            clicked=self.on_reset_sequence_state
+        )
+
+        self.sequence_groupbox = ui.GroupBox(
             title="Sequence",
-            layout=comet.Column(
+            layout=ui.Column(
                 self.sequence_tree,
-                comet.Row(
+                ui.Row(
                     self.start_button,
-                    self.stop_button
+                    self.stop_button,
+                    self.reset_button
                 )
             )
         )
@@ -253,19 +268,19 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_pid_control_clicked
         )
 
-        self.environment_groupbox = comet.GroupBox(
+        self.environment_groupbox = ui.GroupBox(
             title="Environment Box",
             checkable=True,
             checked=self.settings.get("use_environ", True),
             toggled=self.on_environment_groupbox_toggled,
-            layout=comet.Column(
-                comet.Row(
+            layout=ui.Column(
+                ui.Row(
                     self.box_laser_button,
                     self.box_light_button,
                     self.microscope_light_button,
                     self.probecard_light_button
                 ),
-                comet.Row(
+                ui.Row(
                     self.microscope_camera_button,
                     self.probecard_camera_button,
                     self.microscope_control_button,
@@ -284,32 +299,32 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_table_joystick_clicked
         )
 
-        self.table_control_button = comet.Button(
+        self.table_control_button = ui.Button(
             text="Control...",
             tool_tip="Virtual table joystick controls.",
             clicked=self.on_table_controls_start
         )
 
-        self.table_move_button = comet.Button(
+        self.table_move_button = ui.Button(
             text="Move to...",
             tool_tip="Move table to predefined positions.",
             clicked=self.on_table_move_start
         )
 
-        self.table_calibrate_button = comet.Button(
+        self.table_calibrate_button = ui.Button(
             text="Calibrate...",
             tool_tip="Calibrate table.",
             clicked=self.on_table_calibrate_start
         )
 
-        self.table_groupbox = comet.GroupBox(
+        self.table_groupbox = ui.GroupBox(
             title="Table",
             checkable=True,
             checked=self.settings.get("use_table", False),
             toggled=self.on_table_groupbox_toggled,
-            layout=comet.Row(
+            layout=ui.Row(
                 self.table_joystick_button,
-                comet.Spacer(vertical=False),
+                ui.Spacer(vertical=False),
                 self.table_control_button,
                 self.table_move_button,
                 self.table_calibrate_button
@@ -318,16 +333,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Output controls
 
-        self.output_text = comet.Text(
+        self.output_text = ui.Text(
             value=self.settings.get("output_path", os.path.join(os.path.expanduser("~"), "PQC")),
             changed=self.on_output_changed
         )
 
-        self.output_groupbox = comet.GroupBox(
+        self.output_groupbox = ui.GroupBox(
             title="Working Directory",
-            layout=comet.Row(
+            layout=ui.Row(
                 self.output_text,
-                comet.Button(
+                ui.Button(
                     text="...",
                     width=32,
                     clicked=self.on_select_output
@@ -337,7 +352,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Controls
 
-        self.control_widget = comet.Column(
+        self.control_widget = ui.Column(
             self.sample_groupbox,
             self.sequence_groupbox,
             self.environment_groupbox,
@@ -350,38 +365,23 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.panels = PanelStack()
 
-        self.measure_restore_button = comet.Button(
+        self.measure_restore_button = ui.Button(
             text="Restore Defaults",
             tool_tip="Restore default measurement parameters.",
             clicked=self.on_measure_restore
         )
 
-        self.measure_run_button = comet.Button(
-            text="Run",
-            tool_tip="Run current measurement.",
-            clicked=self.on_measure_run
-        )
-
-        self.measure_stop_button = comet.Button(
-            text="Stop",
-            tool_tip="Stop current measurement.",
-            clicked=self.on_measure_stop,
-            enabled=False
-        )
-
-        self.measure_controls = comet.Row(
+        self.measure_controls = ui.Row(
             self.measure_restore_button,
-            comet.Spacer(),
-            self.measure_run_button,
-            self.measure_stop_button,
+            ui.Spacer(),
             visible=False
         )
 
         # Measurement tab
 
-        self.measurement_tab = comet.Tab(
+        self.measurement_tab = ui.Tab(
             title="Measurement",
-            layout=comet.Column(
+            layout=ui.Column(
                 self.panels,
                 self.measure_controls,
                 stretch=(1, 0)
@@ -390,129 +390,129 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Status tab
 
-        self.matrix_model_text = comet.Text(readonly=True)
-        self.matrix_channels_text = comet.Text(readonly=True)
-        self.hvsrc_model_text = comet.Text(readonly=True)
-        self.vsrc_model_text = comet.Text(readonly=True)
-        self.lcr_model_text = comet.Text(readonly=True)
-        self.elm_model_text = comet.Text(readonly=True)
-        self.table_model_text = comet.Text(readonly=True)
-        self.table_state_text = comet.Text(readonly=True)
-        self.env_model_text = comet.Text(readonly=True)
-        self.env_box_temperature_text = comet.Text(readonly=True)
-        self.env_box_humidity_text = comet.Text(readonly=True)
-        self.env_chuck_temperature_text = comet.Text(readonly=True)
-        self.env_lux_text = comet.Text(readonly=True)
-        self.env_light_text = comet.Text(readonly=True)
-        self.env_door_text = comet.Text(readonly=True)
-        self.reload_status_button = comet.Button("&Reload", clicked=self.on_status_start)
+        self.matrix_model_text = ui.Text(readonly=True)
+        self.matrix_channels_text = ui.Text(readonly=True)
+        self.hvsrc_model_text = ui.Text(readonly=True)
+        self.vsrc_model_text = ui.Text(readonly=True)
+        self.lcr_model_text = ui.Text(readonly=True)
+        self.elm_model_text = ui.Text(readonly=True)
+        self.table_model_text = ui.Text(readonly=True)
+        self.table_state_text = ui.Text(readonly=True)
+        self.env_model_text = ui.Text(readonly=True)
+        self.env_box_temperature_text = ui.Text(readonly=True)
+        self.env_box_humidity_text = ui.Text(readonly=True)
+        self.env_chuck_temperature_text = ui.Text(readonly=True)
+        self.env_lux_text = ui.Text(readonly=True)
+        self.env_light_text = ui.Text(readonly=True)
+        self.env_door_text = ui.Text(readonly=True)
+        self.reload_status_button = ui.Button("&Reload", clicked=self.on_status_start)
 
-        self.status_tab = comet.Tab(
+        self.status_tab = ui.Tab(
             title="Status",
-            layout=comet.Column(
-                comet.GroupBox(
+            layout=ui.Column(
+                ui.GroupBox(
                     title="Matrix",
-                    layout=comet.Column(
-                        comet.Row(
-                            comet.Label("Model:"),
+                    layout=ui.Column(
+                        ui.Row(
+                            ui.Label("Model:"),
                             self.matrix_model_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Closed channels:"),
+                        ui.Row(
+                            ui.Label("Closed channels:"),
                             self.matrix_channels_text,
                             stretch=(1, 7)
                         )
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="HVSource",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
+                    layout=ui.Row(
+                        ui.Label("Model:"),
                         self.hvsrc_model_text,
                         stretch=(1, 7)
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="VSource",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
+                    layout=ui.Row(
+                        ui.Label("Model:"),
                         self.vsrc_model_text,
                         stretch=(1, 7)
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="LCRMeter",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
+                    layout=ui.Row(
+                        ui.Label("Model:"),
                         self.lcr_model_text,
                         stretch=(1, 7)
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="Electrometer",
-                    layout=comet.Row(
-                        comet.Label("Model:"),
+                    layout=ui.Row(
+                        ui.Label("Model:"),
                         self.elm_model_text,
                         stretch=(1, 7)
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="Table",
-                    layout=comet.Column(
-                        comet.Row(
-                            comet.Label("Model:"),
+                    layout=ui.Column(
+                        ui.Row(
+                            ui.Label("Model:"),
                             self.table_model_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("State:"),
+                        ui.Row(
+                            ui.Label("State:"),
                             self.table_state_text,
                             stretch=(1, 7)
                         )
                     )
                 ),
-                comet.GroupBox(
+                ui.GroupBox(
                     title="Environment Box",
-                    layout=comet.Column(
-                        comet.Row(
-                            comet.Label("Model:"),
+                    layout=ui.Column(
+                        ui.Row(
+                            ui.Label("Model:"),
                             self.env_model_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Box Temperat.:"),
+                        ui.Row(
+                            ui.Label("Box Temperat.:"),
                             self.env_box_temperature_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Box Humidity:"),
+                        ui.Row(
+                            ui.Label("Box Humidity:"),
                             self.env_box_humidity_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Chuck Temperat.:"),
+                        ui.Row(
+                            ui.Label("Chuck Temperat.:"),
                             self.env_chuck_temperature_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Box Lux:"),
+                        ui.Row(
+                            ui.Label("Box Lux:"),
                             self.env_lux_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Box Light State:"),
+                        ui.Row(
+                            ui.Label("Box Light State:"),
                             self.env_light_text,
                             stretch=(1, 7)
                         ),
-                        comet.Row(
-                            comet.Label("Box Door State:"),
+                        ui.Row(
+                            ui.Label("Box Door State:"),
                             self.env_door_text,
                             stretch=(1, 7)
                         ),
                     )
                 ),
-                comet.Spacer(),
+                ui.Spacer(),
                 self.reload_status_button
             )
         )
@@ -521,7 +521,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.summary_tree = SummaryTree()
 
-        self.summary_tab = comet.Tab(
+        self.summary_tab = ui.Tab(
             title="Summary",
             layout=self.summary_tree
         )
@@ -529,14 +529,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.log_widget = LogWidget()
         self.log_widget.add_logger(logging.getLogger())
 
-        self.logging_tab = comet.Tab(
+        self.logging_tab = ui.Tab(
             title="Logs",
             layout=self.log_widget
         )
 
         # Tabs
 
-        self.tab_widget = comet.Tabs(
+        self.tab_widget = ui.Tabs(
             self.measurement_tab,
             self.status_tab,
             self.logging_tab,
@@ -599,14 +599,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_sample_name_changed(self, value):
         self.settings["sample_name"] = value
 
-    def on_sample_name_editing_finished(self):
+    def on_sample_type_changed(self, value):
+        self.settings["sample_type"] = value
+
+    def on_reset_sequence_state(self):
         # Reset tree
         sequence = self.sequence_combobox.current
         if sequence:
             self.on_load_sequence_tree(sequence.id)
-
-    def on_sample_type_changed(self, value):
-        self.settings["sample_type"] = value
 
     def on_load_sequence_tree(self, index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
@@ -640,15 +640,24 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 
-    def on_sequence_start(self):
-        if isinstance(self.sequence_tree.current, MeasurementTreeItem):
-            contact_item = self.sequence_tree.current.contact
-        else:
-            contact_item = self.sequence_tree.current
-        if not comet.show_question(
-            title="Start sequence",
-            text=f"Are you sure to start sequence '{contact_item.name}'?"
-        ): return
+    def on_start(self):
+        current_item = self.sequence_tree.current
+        if isinstance(current_item, MeasurementTreeItem):
+            contact_item = current_item.contact
+            if not ui.show_question(
+                title="Run Measurement",
+                text=f"Are you sure to run measurement '{current_item.name}' for '{contact_item.name}'?"
+            ): return
+            self.on_measure_run()
+        elif isinstance(current_item, ContactTreeItem):
+            contact_item = current_item
+            if not ui.show_question(
+                title="Start sequence",
+                text=f"Are you sure to start sequence '{contact_item.name}'?"
+            ): return
+            self.on_sequence_start(contact_item)
+
+    def on_sequence_start(self, contact_item):
         self.switch_off_lights()
         self.sync_environment_controls()
         self.sample_groupbox.enabled = False
@@ -657,6 +666,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_groupbox.enabled = False
         self.start_button.enabled = False
         self.stop_button.enabled = True
+        self.reset_button.enabled = False
         self.reload_status_button.enabled = False
         self.measure_controls.enabled = False
         self.output_groupbox.enabled = False
@@ -700,10 +710,12 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_measurement_state(self, item, state):
         item.state = state
 
-    def on_sequence_stop(self):
+    def on_stop(self):
         self.stop_button.enabled = False
         sequence = self.processes.get("sequence")
         sequence.stop()
+        measure = self.processes.get("measure")
+        measure.stop()
 
     def on_sequence_finished(self):
         self.sample_groupbox.enabled = True
@@ -712,6 +724,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_groupbox.enabled = True
         self.start_button.enabled = True
         self.stop_button.enabled = False
+        self.reset_button.enabled = True
         self.reload_status_button.enabled = True
         self.measure_controls.enabled = True
         self.output_groupbox.enabled = True
@@ -849,7 +862,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.settings["output_path"] = value
 
     def on_select_output(self):
-        value = comet.directory_open(
+        value = ui.directory_open(
             title="Select working directory",
             path=self.output_text.value
         )
@@ -876,7 +889,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     # Measurement control
 
     def on_measure_restore(self):
-        if not comet.show_question(
+        if not ui.show_question(
             title="Restore Defaults",
             text="Do you want to restore to default parameters?"
         ): return
@@ -885,20 +898,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.restore()
 
     def on_measure_run(self):
-        if not comet.show_question(
-            title="Run Measurement",
-            text="Do you want to run the current selected measurement?"
-        ): return
         self.switch_off_lights()
         self.sync_environment_controls()
         self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.measure_restore_button.enabled = False
-        self.measure_run_button.enabled = False
-        self.measure_stop_button.enabled = True
         self.sample_groupbox.enabled = False
-        self.sequence_groupbox.enabled = False
+        self.start_button.enabled = False
+        self.stop_button.enabled = True
+        self.reset_button.enabled = False
         self.output_groupbox.enabled = False
         self.reload_status_button.enabled = False
         self.panels.lock()
@@ -925,23 +934,16 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # TODO
         measure.start()
 
-    def on_measure_stop(self):
-        self.measure_restore_button.enabled = False
-        self.measure_run_button.enabled = False
-        self.measure_stop_button.enabled = False
-        measure = self.processes.get("measure")
-        measure.stop()
-
     def on_measure_finished(self):
         self.sync_environment_controls()
         self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.measure_restore_button.enabled = True
-        self.measure_run_button.enabled = True
-        self.measure_stop_button.enabled = False
         self.sample_groupbox.enabled = True
-        self.sequence_groupbox.enabled = True
+        self.start_button.enabled = True
+        self.stop_button.enabled = False
+        self.reset_button.enabled = True
         self.output_groupbox.enabled = True
         self.reload_status_button.enabled = True
         self.panels.unlock()
@@ -971,6 +973,8 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         status.set("use_environ", self.environment_groupbox.checked)
         status.set("use_table", self.table_groupbox.checked)
         status.start()
+        # Fix: stay in status tab
+        self.tab_widget.current = self.status_tab
 
     def on_status_finished(self):
         self.enabled = True
@@ -997,7 +1001,7 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     # Menu action callbacks
 
     def on_import_sequence(self):
-        filename = comet.filename_open(
+        filename = ui.filename_open(
             title="Import Sequence",
             filter="YAML (*.yaml *.yml)"
         )
@@ -1007,14 +1011,14 @@ class Dashboard(comet.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             sequence = config.load_sequence(filename)
         except Exception as e:
             logging.error(e)
-            comet.show_exception(e)
+            ui.show_exception(e)
             return
         # backup callback
         on_changed = self.sequence_combobox.changed
         self.sequence_combobox.changed = None
         for item in self.sequence_combobox:
             if item.id == sequence.id or item.name == sequence.name:
-                result = comet.show_question(
+                result = ui.show_question(
                     title="Sequence already loaded",
                     text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
                 )

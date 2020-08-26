@@ -1,6 +1,7 @@
 import logging
 
 import comet
+from comet import ui
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
@@ -21,20 +22,20 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
         self.register_lcr()
         self.register_environment()
 
-        self.plot = comet.Plot(height=300, legend="right")
+        self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Cap.")
         self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
-        self.data_tabs.insert(0, comet.Tab(title="CV Curve", layout=self.plot))
+        self.data_tabs.insert(0, ui.Tab(title="CV Curve", layout=self.plot))
 
-        self.voltage_start = comet.Number(decimals=3, suffix="V")
-        self.voltage_stop = comet.Number(decimals=3, suffix="V")
-        self.voltage_step = comet.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.current_compliance = comet.Number(decimals=3, suffix="uA")
+        self.voltage_start = ui.Number(decimals=3, suffix="V")
+        self.voltage_stop = ui.Number(decimals=3, suffix="V")
+        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
+        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.current_compliance = ui.Number(decimals=3, suffix="uA")
 
-        self.lcr_frequency = comet.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
-        self.lcr_amplitude = comet.Number(minimum=0, decimals=3, suffix="mV")
+        self.lcr_frequency = ui.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
+        self.lcr_amplitude = ui.Number(minimum=0, decimals=3, suffix="mV")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 0, unit="V")
@@ -44,37 +45,37 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
         self.bind("lcr_frequency", self.lcr_frequency, 1, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
-        self.general_tab.layout = comet.Row(
-            comet.GroupBox(
+        self.general_tab.layout = ui.Row(
+            ui.GroupBox(
                 title="LCR Ramp",
-                layout=comet.Column(
-                    comet.Label(text="Start"),
+                layout=ui.Column(
+                    ui.Label(text="Start"),
                     self.voltage_start,
-                    comet.Label(text="Stop"),
+                    ui.Label(text="Stop"),
                     self.voltage_stop,
-                    comet.Label(text="Step"),
+                    ui.Label(text="Step"),
                     self.voltage_step,
-                    comet.Label(text="Waiting Time"),
+                    ui.Label(text="Waiting Time"),
                     self.waiting_time,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.GroupBox(
+            ui.GroupBox(
                 title="LCR",
-                layout=comet.Column(
-                    comet.Label(text="Compliance"),
+                layout=ui.Column(
+                    ui.Label(text="Compliance"),
                     self.current_compliance,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.GroupBox(
+            ui.GroupBox(
                 title="LCR Freq.",
-                layout=comet.Column(
-                    comet.Label(text="AC Frequency"),
+                layout=ui.Column(
+                    ui.Label(text="AC Frequency"),
                     self.lcr_frequency,
-                    comet.Label(text="AC Amplitude"),
+                    ui.Label(text="AC Amplitude"),
                     self.lcr_amplitude,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
             stretch=(1, 1, 1)

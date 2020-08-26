@@ -1,29 +1,27 @@
 import logging
 
 import comet
-
-# fixes
-import qutie
-comet.RadioButton = qutie.RadioButton
+from comet import ui
+from qutie.qt import QtCore
 
 __all__ = ['TableControlDialog']
 
-class TableControlDialog(comet.Dialog, comet.ProcessMixin):
+class TableControlDialog(ui.Dialog, comet.ProcessMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title="Table Control"
         self.control = TableControl()
-        self.layout=comet.Column(
+        self.layout=ui.Column(
             self.control,
-            comet.Row(
-                comet.Button("&Close", clicked=self.close),
-                comet.Spacer(vertical=False)
+            ui.Row(
+                ui.Button("&Close", clicked=self.close),
+                ui.Spacer(vertical=False)
             ),
         )
         self.process = self.processes.get('control')
         def on_failed(*args):
-            comet.show_exception(*args)
+            ui.show_exception(*args)
             self.close()
         self.process.failed = on_failed
         def on_close():
@@ -46,29 +44,29 @@ class TableControlDialog(comet.Dialog, comet.ProcessMixin):
         self.process.stop()
         self.process.join()
 
-class SquareSpacer(comet.Spacer):
+class SquareSpacer(ui.Spacer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.width = 32
         self.height = 32
 
-class SquareButton(comet.Button):
+class SquareButton(ui.Button):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.width = 32
         self.height = 32
 
-class SquareLabel(comet.Label):
+class SquareLabel(ui.Label):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.width = 32
         self.height = 32
-        self.qt.setAlignment(qutie.qt.QtCore.Qt.AlignCenter)
+        self.qt.setAlignment(QtCore.Qt.AlignCenter)
 
-class TableControl(comet.Column):
+class TableControl(ui.Column):
 
     movement_widths = (
         (1.0, "fine", "green"),
@@ -82,22 +80,22 @@ class TableControl(comet.Column):
         self.move = move
         # Control buttons
         self.back_button = SquareButton(
-            text="∆",
+            text="⊲",
             tool_tip="Move table to back.",
             clicked=self.on_back
         )
         self.front_button = SquareButton(
-            text="∇",
+            text="⊳",
             tool_tip="Move table to front.",
             clicked=self.on_front
         )
         self.left_button = SquareButton(
-            "⊲",
+            "∇",
             tool_tip="Move table left.",
             clicked=self.on_left
         )
         self.right_button = SquareButton(
-            "⊳",
+            "∆",
             tool_tip="Move table right.",
             clicked=self.on_right
         )
@@ -120,9 +118,9 @@ class TableControl(comet.Column):
             self.down_button
         )
         # Create movement radio buttons
-        self.movement_buttons = comet.Column()
+        self.movement_buttons = ui.Column()
         for width, name, color in self.movement_widths:
-            button = comet.RadioButton(
+            button = ui.RadioButton(
                 text=f"{name.title()} ({width} μm)",
                 tool_tip=f"Move in {name} steps.",
                 stylesheet=f"QRadioButton{{color:{color};}}",
@@ -132,82 +130,85 @@ class TableControl(comet.Column):
             button.movement_name = name
             button.movement_color = color
             self.movement_buttons.append(button)
-        self.pos_x_label = comet.Label()
-        self.pos_y_label = comet.Label()
-        self.pos_z_label = comet.Label()
-        self.cal_x_label = comet.Label()
-        self.cal_y_label = comet.Label()
-        self.cal_z_label = comet.Label()
-        self.rm_x_label = comet.Label()
-        self.rm_y_label = comet.Label()
-        self.rm_z_label = comet.Label()
+        self.pos_x_label = ui.Label()
+        self.pos_y_label = ui.Label()
+        self.pos_z_label = ui.Label()
+        self.cal_x_label = ui.Label()
+        self.cal_y_label = ui.Label()
+        self.cal_z_label = ui.Label()
+        self.rm_x_label = ui.Label()
+        self.rm_y_label = ui.Label()
+        self.rm_z_label = ui.Label()
         # Layout
-        self.controls_layout = comet.Column(
-            comet.Spacer(),
-            comet.Row(
-                comet.Spacer(),
-                comet.Row(
-                    comet.Column(SquareSpacer(), self.left_button, SquareSpacer()),
-                    comet.Column(self.back_button, SquareLabel("X/Y"), self.front_button),
-                    comet.Column(SquareSpacer(), self.right_button, SquareSpacer())
+        self.controls_layout = ui.Column(
+            ui.Spacer(),
+            ui.Row(
+                ui.Spacer(),
+                ui.Row(
+                    ui.Column(SquareSpacer(), self.back_button, SquareSpacer()),
+                    ui.Column(self.right_button, SquareLabel("X/Y"), self.left_button),
+                    ui.Column(SquareSpacer(), self.front_button, SquareSpacer())
                 ),
                 SquareSpacer(),
-                comet.Column(
+                ui.Column(
                     self.up_button,
                     SquareLabel("Z"),
                     self.down_button
                 ),
                 SquareSpacer(),
-                comet.Column(
-                    comet.GroupBox(
+                ui.Column(
+                    ui.GroupBox(
                         title="Movement",
                         layout=self.movement_buttons
                     ),
-                    comet.Spacer(horizontal=False)
+                    ui.Spacer(horizontal=False)
                 ),
-                comet.Spacer(),
+                ui.Spacer(),
                 stretch=(1, 0, 0, 0, 0, 0, 1)
             ),
-            comet.Spacer(),
+            ui.Spacer(),
             stretch=(1, 0, 1)
         )
-        self.append(comet.Column(
-            comet.Row(
-                comet.GroupBox(
-                    title="Control",
-                    layout=self.controls_layout
+        self.append(ui.Column(
+            ui.Row(
+                ui.Column(
+                    ui.GroupBox(
+                        title="Control",
+                        layout=self.controls_layout
+                    ),
+                    ui.Label("X/Y controls rotated to left to match rotated PC-camera.", enabled=False)
                 ),
-                comet.Column(
-                    comet.GroupBox(
+                ui.Column(
+                    ui.GroupBox(
                         width=160,
                         title="Position",
-                        layout=comet.Row(
-                            comet.Column(
-                                comet.Label("X"),
-                                comet.Label("Y"),
-                                comet.Label("Z"),
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.pos_x_label,
                                 self.pos_y_label,
                                 self.pos_z_label
                             ),
                         )
                     ),
-                    comet.GroupBox(
+                    ui.GroupBox(
                         title="State",
-                        layout=comet.Row(
-                            comet.Column(
-                                comet.Label("X"),
-                                comet.Label("Y"),
-                                comet.Label("Z"),
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.cal_x_label,
                                 self.cal_y_label,
                                 self.cal_z_label
                             ),
-                            comet.Column(
+                            ui.Column(
                                 self.rm_x_label,
                                 self.rm_y_label,
                                 self.rm_z_label
@@ -215,10 +216,10 @@ class TableControl(comet.Column):
                         )
                     )
                 ),
-                comet.Spacer(),
+                ui.Spacer(),
                 stretch=(0, 0, 0, 0, 0, 0, 0, 0, 1)
             ),
-            comet.Spacer(),
+            ui.Spacer(),
             stretch=(0, 1)
         ))
         # Init buttons

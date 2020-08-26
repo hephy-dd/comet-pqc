@@ -1,4 +1,5 @@
 import comet
+from comet import ui
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
@@ -19,17 +20,17 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.register_hvsource()
         self.register_environment()
 
-        self.plot = comet.Plot(height=300, legend="right")
+        self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
         self.plot.add_axis("y", align="right", text="Voltage [V]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="red")
-        self.data_tabs.insert(0, comet.Tab(title="IV Curve", layout=self.plot))
+        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
-        self.current_start = comet.Number(decimals=3, suffix="uA")
-        self.current_stop = comet.Number(decimals=3, suffix="uA")
-        self.current_step = comet.Number(minimum=0, decimals=3, suffix="uA")
-        self.waiting_time = comet.Number(minimum=0, decimals=2, suffix="s")
-        self.vsrc_voltage_compliance = comet.Number(decimals=3, suffix="V")
+        self.current_start = ui.Number(decimals=3, suffix="uA")
+        self.current_stop = ui.Number(decimals=3, suffix="uA")
+        self.current_step = ui.Number(minimum=0, decimals=3, suffix="uA")
+        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.vsrc_voltage_compliance = ui.Number(decimals=3, suffix="V")
 
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
@@ -37,30 +38,30 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("vsrc_voltage_compliance", self.vsrc_voltage_compliance, 0, unit="V")
 
-        self.general_tab.layout = comet.Row(
-            comet.GroupBox(
+        self.general_tab.layout = ui.Row(
+            ui.GroupBox(
                 title="Ramp",
-                layout=comet.Column(
-                    comet.Label(text="Start"),
+                layout=ui.Column(
+                    ui.Label(text="Start"),
                     self.current_start,
-                    comet.Label(text="Stop"),
+                    ui.Label(text="Stop"),
                     self.current_stop,
-                    comet.Label(text="Step"),
+                    ui.Label(text="Step"),
                     self.current_step,
-                    comet.Label(text="Waiting Time"),
+                    ui.Label(text="Waiting Time"),
                     self.waiting_time,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.GroupBox(
+            ui.GroupBox(
                 title="V Source",
-                layout=comet.Column(
-                    comet.Label(text="Compliance"),
+                layout=ui.Column(
+                    ui.Label(text="Compliance"),
                     self.vsrc_voltage_compliance,
-                    comet.Spacer()
+                    ui.Spacer()
                 )
             ),
-            comet.Spacer(),
+            ui.Spacer(),
             stretch=(1, 1, 1)
         )
 

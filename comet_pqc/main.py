@@ -6,6 +6,7 @@ import sys
 from PyQt5 import QtWidgets
 
 import comet
+from comet import ui
 
 from . import __version__
 
@@ -94,7 +95,7 @@ def main():
         app.message = "Exception occured!"
         app.progress = None
         logging.error(tb)
-        comet.show_exception(exc, tb)
+        ui.show_exception(exc, tb)
 
     def on_message(message):
         logging.info(message)
@@ -158,22 +159,21 @@ def main():
     app.width, app.height = app.settings.get('window_size', (1420, 920))
 
     # Tweaks... there's no hook, so it's a hack.
-    ui = app.qt.window.ui
     sequenceMenu = QtWidgets.QMenu("&Sequence")
-    ui.fileMenu.insertMenu(ui.quitAction, sequenceMenu)
+    app.window.file_menu.qt.insertMenu(app.window.quit_action.qt, sequenceMenu)
     importAction = QtWidgets.QAction("&Import...")
     importAction.triggered.connect(dashboard.on_import_sequence)
     sequenceMenu.addAction(importAction)
-    ui.fileMenu.insertSeparator(ui.quitAction)
+    app.window.file_menu.qt.insertSeparator(app.window.quit_action.qt)
     githubAction = QtWidgets.QAction("&GitHub")
     githubAction.triggered.connect(
-        lambda: webbrowser.open(app.qt.window.property('githubUrl'))
+        lambda: webbrowser.open(app.window.qt.property('githubUrl'))
     )
-    ui.helpMenu.insertAction(ui.aboutQtAction, githubAction)
+    app.window.help_menu.qt.insertAction(app.window.about_qt_action.qt, githubAction)
 
     # Set contents URL
-    app.qt.window.setProperty('contentsUrl', CONTENTS_URL)
-    app.qt.window.setProperty('githubUrl', GITHUB_URL)
+    app.window.qt.setProperty('contentsUrl', CONTENTS_URL)
+    app.window.qt.setProperty('githubUrl', GITHUB_URL)
 
     # Load configurations
     dashboard.load_sequences()

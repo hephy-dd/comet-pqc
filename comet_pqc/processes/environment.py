@@ -1,8 +1,8 @@
 import logging
 import time
 
+from comet.driver.hephy import EnvironmentBox
 from .resource import ResourceProcess
-from ..driver.environmentbox import EnvironmentBox
 
 class EnvironmentProcess(ResourceProcess):
 

@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
-import comet
+from comet import ui
 
 __all__ = ['LogWidget']
 
@@ -18,7 +18,7 @@ class LogHandler(logging.Handler):
     def emit(self, record):
         self.context.emit('message', record)
 
-class LogItem(comet.TreeItem):
+class LogItem(ui.TreeItem):
 
     TimeColumn = 0
     LevelColumn = 1
@@ -53,7 +53,7 @@ class LogItem(comet.TreeItem):
     def __str__(self):
         return "\t".join((self[self.TimeColumn].value, self[self.LevelColumn].value, self[self.MessageColumn].value))
 
-class LogWidget(comet.Tree):
+class LogWidget(ui.Tree):
 
     def __init__(self):
         super().__init__()

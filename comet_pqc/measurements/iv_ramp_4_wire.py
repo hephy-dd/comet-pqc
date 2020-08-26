@@ -5,8 +5,8 @@ import os
 import re
 
 import comet
+from comet.driver.keithley import K2657A
 
-from ..driver import K2657A
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
@@ -109,8 +109,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
         vsrc.source.limitv = vsrc_voltage_compliance
         check_error(vsrc)
 
-        # Range
-        # TODO
+        # Override display
+        vsrc.resource.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
+        check_error(vsrc)
 
         # Filter
         vsrc.measure.filter.count = vsrc_filter_count

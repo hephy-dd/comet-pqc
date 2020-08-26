@@ -6,8 +6,8 @@ import re
 
 import comet
 from comet.driver.keithley import K6517B
+from comet.driver.keithley import K2410
 
-from ..driver import K2410
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
