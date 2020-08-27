@@ -67,6 +67,13 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def safe_initialize(self):
         try:
+            if self.get("use_environ"):
+                print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                with self.processes.get("environment") as environment:
+                    environment.set_test_led(True)
+        except Exception:
+            logging.warning("unable to connect with environment box")
+        try:
             with self.resources.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
         except Exception:
@@ -77,9 +84,12 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
             logging.warning("unable to connect with VSource")
-        if self.get("use_environ"):
-            with self.processes.get("environment") as environment:
-                self.discharge_decoupling(environment)
+        try:
+            if self.get("use_environ"):
+                with self.processes.get("environment") as environment:
+                    self.discharge_decoupling(environment)
+        except Exception:
+            logging.warning("unable to connect with environment box")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
@@ -101,6 +111,12 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         except Exception:
             logging.warning("unable to connect with: Matrix")
             raise RuntimeError("Failed to connect with Matrix")
+        try:
+            if self.get("use_environ"):
+                with self.processes.get("environment") as environment:
+                    environment.set_test_led(False)
+        except Exception:
+            logging.warning("unable to connect with environment box")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a single measurements."""
