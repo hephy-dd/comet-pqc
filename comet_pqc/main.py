@@ -1,5 +1,4 @@
 import argparse
-import webbrowser
 import logging
 import sys
 
@@ -158,20 +157,26 @@ def main():
     # Restore window size
     app.width, app.height = app.settings.get('window_size', (1420, 920))
 
-    # Tweaks... there's no hook, so it's a hack.
-    sequenceMenu = QtWidgets.QMenu("&Sequence")
-    app.window.file_menu.qt.insertMenu(app.window.quit_action.qt, sequenceMenu)
-    importAction = QtWidgets.QAction("&Import...")
-    importAction.triggered.connect(dashboard.on_import_sequence)
-    sequenceMenu.addAction(importAction)
-    app.window.file_menu.qt.insertSeparator(app.window.quit_action.qt)
-    githubAction = QtWidgets.QAction("&GitHub")
-    githubAction.triggered.connect(
-        lambda: webbrowser.open(app.window.qt.property('githubUrl'))
+    # Extend actions
+    app.window.import_action = ui.Action(
+        text="&Import...",
+        triggered=dashboard.on_import_sequence
     )
-    app.window.help_menu.qt.insertAction(app.window.about_qt_action.qt, githubAction)
+    app.window.github_action = ui.Action(
+        text="&GitHub",
+        triggered=dashboard.on_github
+    )
 
-    # Set contents URL
+    # Extend menus
+    app.window.sequence_menu = ui.Menu(
+        app.window.import_action,
+        text="&Sequence"
+    )
+    app.window.file_menu.insert(0, app.window.sequence_menu)
+    app.window.file_menu.insert(-1, ui.Action(separator=True))
+    app.window.help_menu.insert(1, app.window.github_action)
+
+    # Set URLs
     app.window.qt.setProperty('contentsUrl', CONTENTS_URL)
     app.window.qt.setProperty('githubUrl', GITHUB_URL)
 

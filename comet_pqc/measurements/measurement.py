@@ -6,6 +6,8 @@ from comet.process import ProcessMixin
 
 __all__ = ['Measurement']
 
+QUICK_RAMP_DELAY = 0.100
+
 class ComplianceError(ValueError): pass
 
 def format_estimate(est):
