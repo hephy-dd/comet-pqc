@@ -156,6 +156,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
             fmt.write_meta("sample_name", sample_name)
             fmt.write_meta("sample_type", sample_type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("operator", self.operator)
             fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
             fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
             fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")

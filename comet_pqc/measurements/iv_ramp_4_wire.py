@@ -199,6 +199,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
             fmt.write_meta("measurement_name", measurement_name)
             fmt.write_meta("measurement_type", self.type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("operator", self.operator)
             fmt.write_meta("current_start", f"{current_start:G} A")
             fmt.write_meta("current_stop", f"{current_stop:G} A")
             fmt.write_meta("current_step", f"{current_step:G} A")

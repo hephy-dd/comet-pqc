@@ -292,6 +292,7 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
             fmt.write_meta("measurement_name", measurement_name)
             fmt.write_meta("measurement_type", self.type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("operator", self.operator)
             fmt.write_meta("voltage_start", f"{voltage_start:G} V")
             fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")

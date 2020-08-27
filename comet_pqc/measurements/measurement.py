@@ -34,6 +34,7 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     sample_name = ""
     sample_type = ""
+    operator = ""
     output_dir = ""
 
     measurement_item = None

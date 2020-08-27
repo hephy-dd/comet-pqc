@@ -351,6 +351,31 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             )
         )
 
+        # Operator
+
+        self.operator_combobox = ui.ComboBox()
+        self.operator_combobox.qt.setEditable(True)
+        self.operator_combobox.qt.setDuplicatesEnabled(False)
+        try: index = int(self.settings.get("current_operator", 0))
+        except: index = 0
+        self.operator_combobox.qt.addItems(self.settings.get("operators") or [])
+        self.operator_combobox.qt.setCurrentIndex(index)
+        def on_operator_changed(_):
+            self.settings["current_operator"] = max(0, self.operator_combobox.qt.currentIndex())
+            operators = []
+            for index in range(self.operator_combobox.qt.count()):
+                operators.append(self.operator_combobox.qt.itemText(index))
+            self.settings["operators"] = operators
+        self.operator_combobox.qt.editTextChanged.connect(on_operator_changed)
+        self.operator_combobox.qt.currentIndexChanged.connect(on_operator_changed)
+
+        self.operator_groupbox = ui.GroupBox(
+            title="Operator",
+            layout=ui.Row(
+                self.operator_combobox
+            )
+        )
+
         # Controls
 
         self.control_widget = ui.Column(
@@ -358,7 +383,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.sequence_groupbox,
             self.environment_groupbox,
             self.table_groupbox,
-            self.output_groupbox,
+            ui.Row(
+                self.operator_groupbox,
+                self.output_groupbox,
+                stretch=(3, 7)
+            ),
             stretch=(0, 1, 0, 0)
         )
 
@@ -622,6 +651,38 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.sequence_tree.current = self.sequence_tree[0]
         self.settings["current_sequence_id"] = sequence.id
 
+    def lock_controls(self):
+        """Lock dashboard controls."""
+        self.sample_groupbox.enabled = False
+        self.table_calibrate_button.enabled = False
+        self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
+        self.start_button.enabled = False
+        self.stop_button.enabled = True
+        self.reset_button.enabled = False
+        self.reload_status_button.enabled = False
+        self.measure_controls.enabled = False
+        self.output_groupbox.enabled = False
+        self.operator_groupbox.enabled = False
+        self.panels.lock()
+        self.sequence_tree.lock()
+
+    def unlock_controls(self):
+        """Unlock dashboard controls."""
+        self.sample_groupbox.enabled = True
+        self.table_calibrate_button.enabled = True
+        self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
+        self.start_button.enabled = True
+        self.stop_button.enabled = False
+        self.reset_button.enabled = True
+        self.reload_status_button.enabled = True
+        self.measure_controls.enabled = True
+        self.output_groupbox.enabled = True
+        self.operator_groupbox.enabled = True
+        self.panels.unlock()
+        self.sequence_tree.unlock()
+
     # Sequence control
 
     def on_tree_selected(self, item):
@@ -661,27 +722,18 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_sequence_start(self, contact_item):
         self.switch_off_lights()
         self.sync_environment_controls()
-        self.sample_groupbox.enabled = False
-        self.table_calibrate_button.enabled = False
-        self.environment_groupbox.enabled = False
-        self.table_groupbox.enabled = False
-        self.start_button.enabled = False
-        self.stop_button.enabled = True
-        self.reset_button.enabled = False
-        self.reload_status_button.enabled = False
-        self.measure_controls.enabled = False
-        self.output_groupbox.enabled = False
-        self.panels.lock()
+        self.lock_controls()
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        self.sequence_tree.lock()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
+        operator = self.operator_combobox.qt.currentText()
         output_dir = self.create_output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
         sequence.set("sample_type", sample_type)
+        sequence.set("operator", operator)
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
         sequence.set("use_table", self.table_groupbox.checked)
@@ -719,23 +771,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.stop()
 
     def on_sequence_finished(self):
-        self.sample_groupbox.enabled = True
-        self.table_calibrate_button.enabled = True
-        self.environment_groupbox.enabled = True
-        self.table_groupbox.enabled = True
-        self.start_button.enabled = True
-        self.stop_button.enabled = False
-        self.reset_button.enabled = True
-        self.reload_status_button.enabled = True
-        self.measure_controls.enabled = True
-        self.output_groupbox.enabled = True
-        self.panels.unlock()
-        self.sequence_tree.unlock()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
         sequence.set("output_dir", None)
         sequence.set("contact_item", None)
         self.sync_environment_controls()
+        self.unlock_controls()
 
     # Measurement control
 
@@ -751,18 +792,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_measure_run(self):
         self.switch_off_lights()
         self.sync_environment_controls()
-        self.table_calibrate_button.enabled = False
-        self.environment_groupbox.enabled = False
-        self.table_groupbox.enabled = False
-        self.measure_restore_button.enabled = False
-        self.sample_groupbox.enabled = False
-        self.start_button.enabled = False
-        self.stop_button.enabled = True
-        self.reset_button.enabled = False
-        self.output_groupbox.enabled = False
-        self.reload_status_button.enabled = False
-        self.panels.lock()
-        self.sequence_tree.lock()
+        self.lock_controls()
         measurement = self.sequence_tree.current
         panel = self.panels.get(measurement.type)
         panel.store()
@@ -770,10 +800,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.clear_readings()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
+        operator = self.operator_combobox.qt.currentText()
         output_dir = self.create_output_dir()
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
         measure.set("sample_type", sample_type)
+        measure.set("operator", operator)
         measure.set("output_dir", output_dir)
         measure.set("use_environ", self.environment_groupbox.checked)
         measure.set("use_table", self.table_groupbox.checked)
@@ -787,23 +819,13 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_measure_finished(self):
         self.sync_environment_controls()
-        self.table_calibrate_button.enabled = True
-        self.environment_groupbox.enabled = True
-        self.table_groupbox.enabled = True
-        self.measure_restore_button.enabled = True
-        self.sample_groupbox.enabled = True
-        self.start_button.enabled = True
-        self.stop_button.enabled = False
-        self.reset_button.enabled = True
-        self.output_groupbox.enabled = True
-        self.reload_status_button.enabled = True
-        self.panels.unlock()
+        self.unlock_controls()
         measure = self.processes.get("measure")
         measure.reading = lambda data: None
         self.sequence_tree.unlock()
 
     def on_status_start(self):
-        self.enabled = False
+        self.lock_controls()
         self.matrix_model_text.value = ""
         self.matrix_channels_text.value = ""
         self.hvsrc_model_text.value = ""
@@ -828,7 +850,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.tab_widget.current = self.status_tab
 
     def on_status_finished(self):
-        self.enabled = True
+        self.unlock_controls()
         self.reload_status_button.enabled = True
         status = self.processes.get("status")
         self.matrix_model_text.value = status.get("matrix_model") or "n/a"
