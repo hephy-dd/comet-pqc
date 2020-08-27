@@ -1,6 +1,9 @@
 include README.md
 include LICENSE
 
+include pyinstaller.spec
+recursive-include tests *py
+
 include docs/_config.yml
 recursive-include docs *.md
 

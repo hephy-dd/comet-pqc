@@ -1,5 +1,4 @@
 import os
-import logging
 import unittest
 
 from comet_pqc import config

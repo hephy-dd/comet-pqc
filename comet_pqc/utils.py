@@ -7,8 +7,7 @@ __all__ = [
     'PACKAGE_PATH',
     'make_path',
     'format_metric',
-    'std_mean_filter',
-    'Position'
+    'std_mean_filter'
 ]
 
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -67,20 +66,3 @@ def std_mean_filter(values, threshold):
     sample_std_dev = np.std(values, ddof=1)
     ratio = sample_std_dev / mean
     return ratio < threshold
-
-class Position:
-    """Three-dimensional Cartesian coordinate."""
-
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __add__(self, rhs):
-        return type(self)(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
-
-    def __sub__(self, rhs):
-        return type(self)(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.x}, {self.y}, {self.z})"
