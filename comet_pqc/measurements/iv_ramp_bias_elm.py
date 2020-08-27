@@ -15,10 +15,10 @@ from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
-from .measurement import ElectrometerMixin
-from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import ElectrometerMixin
+from .mixins import EnvironmentMixin
 
 __all__ = ["IVRampBiasElmMeasurement"]
 

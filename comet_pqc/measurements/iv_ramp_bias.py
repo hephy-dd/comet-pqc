@@ -13,9 +13,9 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
-from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import EnvironmentMixin
 
 __all__ = ["IVRampBiasMeasurement"]
 

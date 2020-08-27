@@ -14,11 +14,11 @@ from ..estimate import Estimate
 from ..benchmark import Benchmark
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
-from .measurement import VSourceMixin
-from .measurement import LCRMixin
-from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import VSourceMixin
+from .mixins import LCRMixin
+from .mixins import EnvironmentMixin
 
 __all__ = ["CVRampHVMeasurement"]
 
