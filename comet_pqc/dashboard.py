@@ -270,7 +270,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox = ui.GroupBox(
             title="Environment Box",
             checkable=True,
-            checked=self.settings.get("use_environ", True),
+            checked=self.settings.get("use_environ", False),
             toggled=self.on_environment_groupbox_toggled,
             layout=ui.Column(
                 ui.Row(
