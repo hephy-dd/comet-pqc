@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.23.0]
 ### Added
 - Operator name for measurement results (#57)
+- Save plots to PNG image and preferences option (#58)
 - Set environment TEST LED (#60)
 
 ## [0.22.0]
