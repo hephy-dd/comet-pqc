@@ -202,7 +202,8 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
+
+        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")

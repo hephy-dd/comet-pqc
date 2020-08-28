@@ -68,11 +68,10 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
     def safe_initialize(self):
         try:
             if self.get("use_environ"):
-                print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                 with self.processes.get("environment") as environment:
                     environment.set_test_led(True)
         except Exception:
-            logging.warning("unable to connect with environment box")
+            logging.warning("unable to connect with environment box (test LED ON)")
         try:
             with self.resources.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
@@ -89,7 +88,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
                 with self.processes.get("environment") as environment:
                     self.discharge_decoupling(environment)
         except Exception:
-            logging.warning("unable to connect with environment box")
+            logging.warning("unable to connect with environment box (discharge decoupling)")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
@@ -116,19 +115,20 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
                 with self.processes.get("environment") as environment:
                     environment.set_test_led(False)
         except Exception:
-            logging.warning("unable to connect with environment box")
+            logging.warning("unable to connect with environment box (test LED OFF)")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a single measurements."""
 
     measurement_item = None
 
-    def __init__(self, message, progress, measurement_state, reading, **kwargs):
+    def __init__(self, message, progress, measurement_state, reading, save_to_image, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
         self.measurement_state = measurement_state
         self.reading = reading
+        self.save_to_image = save_to_image
         self.push_summary = None
         self.stopped = False
 
@@ -180,6 +180,7 @@ class MeasureProcess(BaseProcess):
                 state = self.measurement_item.SuccessState
         finally:
             self.emit("measurement_state", self.measurement_item, state)
+            self.emit("save_to_image", self.measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
             self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
 
     def finalize(self):
@@ -203,12 +204,13 @@ class SequenceProcess(BaseProcess):
     # sequence_tree = []
     contact_item = None
 
-    def __init__(self, message, progress, measurement_state, reading, **kwargs):
+    def __init__(self, message, progress, measurement_state, reading, save_to_image, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
         self.measurement_state = measurement_state
         self.reading = reading
+        self.save_to_image = save_to_image
         self.stopped = False
 
     def stop(self):
@@ -279,6 +281,7 @@ class SequenceProcess(BaseProcess):
                 logging.info("%s done.", measurement_item.name)
             finally:
                 self.emit("measurement_state", measurement_item, state)
+                self.emit("save_to_image", measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
                 self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
 
             prev_measurement_item = measurement_item

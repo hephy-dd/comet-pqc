@@ -342,9 +342,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
         if not self.process.running:
             return
 
-        iso_timestamp = comet.make_iso()
-        filename = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
-        with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
+        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")

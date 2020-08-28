@@ -3,11 +3,14 @@ import re
 
 import numpy as np
 
+from qutie.qt import QtCore, QtGui
+
 __all__ = [
     'PACKAGE_PATH',
     'make_path',
     'format_metric',
-    'std_mean_filter'
+    'std_mean_filter',
+    'stitch_pixmaps',
 ]
 
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -66,3 +69,26 @@ def std_mean_filter(values, threshold):
     sample_std_dev = np.std(values, ddof=1)
     ratio = sample_std_dev / mean
     return ratio < threshold
+
+def stitch_pixmaps(pixmaps, vertical=True):
+    """Stitch together multiple QPixmaps to a single QPixmap."""
+    # Calculate size of stitched image
+    if vertical:
+        width = max([pixmap.width() for pixmap in pixmaps])
+        height = sum([pixmap.height() for pixmap in pixmaps])
+    else:
+        width = sum([pixmap.width() for pixmap in pixmaps])
+        height = max([pixmap.height() for pixmap in pixmaps])
+    canvas = QtGui.QPixmap(width, height)
+    canvas.fill(QtCore.Qt.white)
+    painter = QtGui.QPainter(canvas)
+    offset = 0
+    for pixmap in pixmaps:
+        if vertical:
+            painter.drawPixmap(0, offset, pixmap)
+            offset += pixmap.height()
+        else:
+            painter.drawPixmap(offset, 0, pixmap)
+            offset += pixmap.height()
+    painter.end()
+    return canvas

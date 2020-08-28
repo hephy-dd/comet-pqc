@@ -42,8 +42,6 @@ from .logwindow import LogWidget
 from .summary import SummaryTree
 from .formatter import CSVFormatter
 
-from comet.driver.hephy import EnvironmentBox
-
 SUMMARY_FILENAME = "summary.csv"
 
 def create_icon(size, color):
@@ -762,6 +760,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_measurement_state(self, item, state):
         item.state = state
+
+    def on_save_to_image(self, item, filename):
+        plot_png = self.settings.get("png_plots") or False
+        panel = self.panels.get(item.type)
+        if panel and plot_png:
+            panel.save_to_image(filename)
 
     def on_stop(self):
         self.stop_button.enabled = False

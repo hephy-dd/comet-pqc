@@ -6,6 +6,7 @@ import comet
 from comet import ui
 
 from ..utils import format_metric
+from ..utils import stitch_pixmaps
 
 __all__ = ['Panel']
 
@@ -168,3 +169,15 @@ class Panel(ui.Widget):
     def unlock(self):
         for tab in self.control_tabs:
             tab.enabled = True
+
+    def save_to_image(self, filename):
+        """Save screenshots of data tabs to stitched image."""
+        current = self.data_tabs.current
+        pixmaps = []
+        for tab in self.data_tabs:
+            self.data_tabs.current = tab
+            if isinstance(tab.layout, ui.Plot):
+                tab.layout.fit()
+            pixmaps.append(self.data_tabs.qt.grab())
+        self.data_tabs.current = current
+        stitch_pixmaps(pixmaps).save(filename)

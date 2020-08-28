@@ -1,4 +1,5 @@
 import datetime
+import time
 
 import comet
 from comet.resource import ResourceMixin
@@ -39,6 +40,10 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     measurement_item = None
 
+    timestamp_start = None
+    timestamp_stop = None
+    output_basename = None
+
     def __init__(self, process):
         self.process = process
         self.registered_parameters = {}
@@ -72,13 +77,13 @@ class Measurement(ResourceMixin, ProcessMixin):
                 raise ValueError(f"invalid parameter value: {value}")
         return value
 
-    def create_filename(self, dt=None, suffix=None):
+    def create_filename(self, dt=None, suffix=''):
         """Return standardized measurement filename.
 
-        >>> self.create_filename()
+        >>> self.create_filename(suffix='.txt')
         'HPK_VPX1234_001_HM_WW_PQCFlutesRight_PQC_Flute_1_Diode_IV_2020-03-04T12-27-03.txt'
         """
-        iso_timestamp = comet.make_iso(dt)
+        iso_timestamp = comet.make_iso(dt or self.timestamp_start)
         sample_name = self.sample_name
         sample_type = self.sample_type
         contact_id = self.measurement_item.contact.id
@@ -90,12 +95,15 @@ class Measurement(ResourceMixin, ProcessMixin):
             measurement_id,
             iso_timestamp
         ))
-        suffix = suffix or "txt"
-        return comet.safe_filename(f"{basename}.{suffix}")
+        return comet.safe_filename(f"{basename}{suffix}")
 
     def run(self, *args, **kwargs):
         """Run measurement."""
-        return self.code(**kwargs)
+        self.timestamp_start = time.time()
+        self.timestamp_stop = 0
+        result = self.code(**kwargs)
+        self.timestamp_stop = time.time()
+        return result
 
     def code(self, *args, **kwargs):
         """Implement custom measurement logic in method `code()`."""

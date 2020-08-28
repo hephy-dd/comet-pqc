@@ -18,6 +18,7 @@ from .processes import MeasureProcess
 from .processes import SequenceProcess
 
 from .dashboard import Dashboard
+from .preferences import OptionsTab
 
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
@@ -139,6 +140,7 @@ def main():
         message=on_message,
         progress=on_progress,
         measurement_state=dashboard.on_measurement_state,
+        save_to_image=dashboard.on_save_to_image,
         reading=None
     ))
     app.processes.add("sequence", SequenceProcess(
@@ -147,6 +149,7 @@ def main():
         message=on_message,
         progress=on_progress,
         measurement_state=dashboard.on_measurement_state,
+        save_to_image=dashboard.on_save_to_image,
         reading=None
     ))
 
@@ -176,6 +179,10 @@ def main():
     app.window.file_menu.insert(-1, ui.Action(separator=True))
     app.window.help_menu.insert(1, app.window.github_action)
 
+    # Extend preferences
+    options_tab = OptionsTab()
+    app.window.preferences_dialog.tab_widget.append(options_tab)
+    app.window.preferences_dialog.options_tab = options_tab
     # Set URLs
     app.window.qt.setProperty('contentsUrl', CONTENTS_URL)
     app.window.qt.setProperty('githubUrl', GITHUB_URL)
