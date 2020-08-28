@@ -3,9 +3,9 @@ from comet import ui
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import HVSourceMixin
-from .panel import VSourceMixin
-from .panel import EnvironmentMixin
+from .mixins import HVSourceMixin
+from .mixins import VSourceMixin
+from .mixins import EnvironmentMixin
 
 __all__ = ["IVRampBiasPanel"]
 

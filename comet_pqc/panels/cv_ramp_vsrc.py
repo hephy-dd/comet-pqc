@@ -5,9 +5,9 @@ from comet import ui
 
 from ..utils import format_metric
 from .matrix import MatrixPanel
-from .panel import VSourceMixin
-from .panel import LCRMixin
-from .panel import EnvironmentMixin
+from .mixins import VSourceMixin
+from .mixins import LCRMixin
+from .mixins import EnvironmentMixin
 
 __all__ = ["CVRampHVPanel"]
 

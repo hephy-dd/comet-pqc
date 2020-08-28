@@ -3,12 +3,14 @@ import re
 
 import numpy as np
 
+from qutie.qt import QtCore, QtGui
+
 __all__ = [
     'PACKAGE_PATH',
     'make_path',
     'format_metric',
     'std_mean_filter',
-    'Position'
+    'stitch_pixmaps',
 ]
 
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -68,19 +70,25 @@ def std_mean_filter(values, threshold):
     ratio = sample_std_dev / mean
     return ratio < threshold
 
-class Position:
-    """Three-dimensional Cartesian coordinate."""
-
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __add__(self, rhs):
-        return type(self)(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
-
-    def __sub__(self, rhs):
-        return type(self)(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.x}, {self.y}, {self.z})"
+def stitch_pixmaps(pixmaps, vertical=True):
+    """Stitch together multiple QPixmaps to a single QPixmap."""
+    # Calculate size of stitched image
+    if vertical:
+        width = max([pixmap.width() for pixmap in pixmaps])
+        height = sum([pixmap.height() for pixmap in pixmaps])
+    else:
+        width = sum([pixmap.width() for pixmap in pixmaps])
+        height = max([pixmap.height() for pixmap in pixmaps])
+    canvas = QtGui.QPixmap(width, height)
+    canvas.fill(QtCore.Qt.white)
+    painter = QtGui.QPainter(canvas)
+    offset = 0
+    for pixmap in pixmaps:
+        if vertical:
+            painter.drawPixmap(0, offset, pixmap)
+            offset += pixmap.height()
+        else:
+            painter.drawPixmap(offset, 0, pixmap)
+            offset += pixmap.height()
+    painter.end()
+    return canvas

@@ -15,11 +15,11 @@ from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
-from .measurement import HVSourceMixin
-from .measurement import LCRMixin
-from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import HVSourceMixin
+from .mixins import LCRMixin
+from .mixins import EnvironmentMixin
 
 __all__ = ["CVRampMeasurement"]
 
@@ -140,7 +140,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
+        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")
@@ -160,6 +160,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
             fmt.write_meta("sample_name", sample_name)
             fmt.write_meta("sample_type", sample_type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("operator", self.operator)
             fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
             fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
             fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")

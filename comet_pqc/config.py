@@ -10,7 +10,7 @@ import pint.errors
 import comet
 
 from .utils import make_path
-from .utils import Position
+from .position import Position
 
 __all__ = [
     'load_config',

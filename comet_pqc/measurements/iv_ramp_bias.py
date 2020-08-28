@@ -13,9 +13,9 @@ from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
-from .measurement import EnvironmentMixin
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import EnvironmentMixin
 
 __all__ = ["IVRampBiasMeasurement"]
 
@@ -272,9 +272,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, EnvironmentMixin):
         if not self.process.running:
             return
 
-        iso_timestamp = comet.make_iso()
-        filename = comet.safe_filename(f"{iso_timestamp}-{sample_name}-{sample_type}-{contact_name}-{measurement_name}.txt")
-        with open(os.path.join(output_dir, self.create_filename()), "w", newline="") as f:
+        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")
@@ -292,6 +290,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, EnvironmentMixin):
             fmt.write_meta("measurement_name", measurement_name)
             fmt.write_meta("measurement_type", self.type)
             fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
+            fmt.write_meta("operator", self.operator)
             fmt.write_meta("voltage_start", f"{voltage_start:G} V")
             fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
             fmt.write_meta("voltage_step", f"{voltage_step:G} V")

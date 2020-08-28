@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import traceback
+import webbrowser
 
 import yaml
 
@@ -19,9 +20,9 @@ from comet.driver.corvus import Venus1
 
 from . import config
 
-from .trees import SequenceTree
-from .trees import ContactTreeItem
-from .trees import MeasurementTreeItem
+from .sequence import SequenceTree
+from .sequence import ContactTreeItem
+from .sequence import MeasurementTreeItem
 
 from .panels import IVRampPanel
 from .panels import IVRampElmPanel
@@ -40,8 +41,6 @@ from .dialogs import TableCalibrateDialog
 from .logwindow import LogWidget
 from .summary import SummaryTree
 from .formatter import CSVFormatter
-
-from comet.driver.hephy import EnvironmentBox
 
 SUMMARY_FILENAME = "summary.csv"
 
@@ -350,6 +349,31 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             )
         )
 
+        # Operator
+
+        self.operator_combobox = ui.ComboBox()
+        self.operator_combobox.qt.setEditable(True)
+        self.operator_combobox.qt.setDuplicatesEnabled(False)
+        try: index = int(self.settings.get("current_operator", 0))
+        except: index = 0
+        self.operator_combobox.qt.addItems(self.settings.get("operators") or [])
+        self.operator_combobox.qt.setCurrentIndex(index)
+        def on_operator_changed(_):
+            self.settings["current_operator"] = max(0, self.operator_combobox.qt.currentIndex())
+            operators = []
+            for index in range(self.operator_combobox.qt.count()):
+                operators.append(self.operator_combobox.qt.itemText(index))
+            self.settings["operators"] = operators
+        self.operator_combobox.qt.editTextChanged.connect(on_operator_changed)
+        self.operator_combobox.qt.currentIndexChanged.connect(on_operator_changed)
+
+        self.operator_groupbox = ui.GroupBox(
+            title="Operator",
+            layout=ui.Row(
+                self.operator_combobox
+            )
+        )
+
         # Controls
 
         self.control_widget = ui.Column(
@@ -357,7 +381,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.sequence_groupbox,
             self.environment_groupbox,
             self.table_groupbox,
-            self.output_groupbox,
+            ui.Row(
+                self.operator_groupbox,
+                self.output_groupbox,
+                stretch=(3, 7)
+            ),
             stretch=(0, 1, 0, 0)
         )
 
@@ -621,6 +649,38 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.sequence_tree.current = self.sequence_tree[0]
         self.settings["current_sequence_id"] = sequence.id
 
+    def lock_controls(self):
+        """Lock dashboard controls."""
+        self.sample_groupbox.enabled = False
+        self.table_calibrate_button.enabled = False
+        self.environment_groupbox.enabled = False
+        self.table_groupbox.enabled = False
+        self.start_button.enabled = False
+        self.stop_button.enabled = True
+        self.reset_button.enabled = False
+        self.reload_status_button.enabled = False
+        self.measure_controls.enabled = False
+        self.output_groupbox.enabled = False
+        self.operator_groupbox.enabled = False
+        self.panels.lock()
+        self.sequence_tree.lock()
+
+    def unlock_controls(self):
+        """Unlock dashboard controls."""
+        self.sample_groupbox.enabled = True
+        self.table_calibrate_button.enabled = True
+        self.environment_groupbox.enabled = True
+        self.table_groupbox.enabled = True
+        self.start_button.enabled = True
+        self.stop_button.enabled = False
+        self.reset_button.enabled = True
+        self.reload_status_button.enabled = True
+        self.measure_controls.enabled = True
+        self.output_groupbox.enabled = True
+        self.operator_groupbox.enabled = True
+        self.panels.unlock()
+        self.sequence_tree.unlock()
+
     # Sequence control
 
     def on_tree_selected(self, item):
@@ -660,27 +720,18 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_sequence_start(self, contact_item):
         self.switch_off_lights()
         self.sync_environment_controls()
-        self.sample_groupbox.enabled = False
-        self.table_calibrate_button.enabled = False
-        self.environment_groupbox.enabled = False
-        self.table_groupbox.enabled = False
-        self.start_button.enabled = False
-        self.stop_button.enabled = True
-        self.reset_button.enabled = False
-        self.reload_status_button.enabled = False
-        self.measure_controls.enabled = False
-        self.output_groupbox.enabled = False
-        self.panels.lock()
+        self.lock_controls()
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        self.sequence_tree.lock()
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
+        operator = self.operator_combobox.qt.currentText()
         output_dir = self.create_output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
         sequence.set("sample_type", sample_type)
+        sequence.set("operator", operator)
         sequence.set("output_dir", output_dir)
         sequence.set("use_environ", self.environment_groupbox.checked)
         sequence.set("use_table", self.table_groupbox.checked)
@@ -710,6 +761,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_measurement_state(self, item, state):
         item.state = state
 
+    def on_save_to_image(self, item, filename):
+        plot_png = self.settings.get("png_plots") or False
+        panel = self.panels.get(item.type)
+        if panel and plot_png:
+            panel.save_to_image(filename)
+
     def on_stop(self):
         self.stop_button.enabled = False
         sequence = self.processes.get("sequence")
@@ -718,23 +775,105 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.stop()
 
     def on_sequence_finished(self):
-        self.sample_groupbox.enabled = True
-        self.table_calibrate_button.enabled = True
-        self.environment_groupbox.enabled = True
-        self.table_groupbox.enabled = True
-        self.start_button.enabled = True
-        self.stop_button.enabled = False
-        self.reset_button.enabled = True
-        self.reload_status_button.enabled = True
-        self.measure_controls.enabled = True
-        self.output_groupbox.enabled = True
-        self.panels.unlock()
-        self.sequence_tree.unlock()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", None)
         sequence.set("output_dir", None)
         sequence.set("contact_item", None)
         self.sync_environment_controls()
+        self.unlock_controls()
+
+    # Measurement control
+
+    def on_measure_restore(self):
+        if not ui.show_question(
+            title="Restore Defaults",
+            text="Do you want to restore to default parameters?"
+        ): return
+        measurement = self.sequence_tree.current
+        panel = self.panels.get(measurement.type)
+        panel.restore()
+
+    def on_measure_run(self):
+        self.switch_off_lights()
+        self.sync_environment_controls()
+        self.lock_controls()
+        measurement = self.sequence_tree.current
+        panel = self.panels.get(measurement.type)
+        panel.store()
+        # TODO
+        panel.clear_readings()
+        sample_name = self.sample_name_text.value
+        sample_type = self.sample_type_text.value
+        operator = self.operator_combobox.qt.currentText()
+        output_dir = self.create_output_dir()
+        measure = self.processes.get("measure")
+        measure.set("sample_name", sample_name)
+        measure.set("sample_type", sample_type)
+        measure.set("operator", operator)
+        measure.set("output_dir", output_dir)
+        measure.set("use_environ", self.environment_groupbox.checked)
+        measure.set("use_table", self.table_groupbox.checked)
+        measure.measurement_item = measurement
+        measure.reading = panel.append_reading
+        measure.update = panel.update_readings
+        measure.state = panel.state
+        measure.push_summary = self.on_push_summary
+        # TODO
+        measure.start()
+
+    def on_measure_finished(self):
+        self.sync_environment_controls()
+        self.unlock_controls()
+        measure = self.processes.get("measure")
+        measure.reading = lambda data: None
+        self.sequence_tree.unlock()
+
+    def on_status_start(self):
+        self.lock_controls()
+        self.matrix_model_text.value = ""
+        self.matrix_channels_text.value = ""
+        self.hvsrc_model_text.value = ""
+        self.vsrc_model_text.value = ""
+        self.lcr_model_text.value = ""
+        self.elm_model_text.value = ""
+        self.table_model_text.value = ""
+        self.table_state_text.value = ""
+        self.env_model_text.value = ""
+        self.env_box_temperature_text.value = ""
+        self.env_box_humidity_text.value = ""
+        self.env_chuck_temperature_text.value = ""
+        self.env_lux_text.value = ""
+        self.env_light_text.value = ""
+        self.env_door_text.value = ""
+        self.reload_status_button.enabled = False
+        status = self.processes.get("status")
+        status.set("use_environ", self.environment_groupbox.checked)
+        status.set("use_table", self.table_groupbox.checked)
+        status.start()
+        # Fix: stay in status tab
+        self.tab_widget.current = self.status_tab
+
+    def on_status_finished(self):
+        self.unlock_controls()
+        self.reload_status_button.enabled = True
+        status = self.processes.get("status")
+        self.matrix_model_text.value = status.get("matrix_model") or "n/a"
+        self.matrix_channels_text.value = status.get("matrix_channels")
+        self.hvsrc_model_text.value = status.get("hvsrc_model") or "n/a"
+        self.vsrc_model_text.value = status.get("vsrc_model") or "n/a"
+        self.lcr_model_text.value = status.get("lcr_model") or "n/a"
+        self.elm_model_text.value = status.get("elm_model") or "n/a"
+        self.table_model_text.value = status.get("table_model") or "n/a"
+        self.table_state_text.value = status.get("table_state") or "n/a"
+        self.env_model_text.value = status.get("env_model") or "n/a"
+        pc_data = status.get("env_pc_data")
+        if pc_data:
+            self.env_box_temperature_text.value = f"{pc_data.box_temperature:.1f} °C"
+            self.env_box_humidity_text.value = f"{pc_data.box_humidity:.1f} %rH"
+            self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
+            self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
+            self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
+            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
 
     # Table calibration
 
@@ -886,118 +1025,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                     writer.write_header()
                 writer.write_row({header[i]: item[i].value for i in range(len(header))})
 
-    # Measurement control
-
-    def on_measure_restore(self):
-        if not ui.show_question(
-            title="Restore Defaults",
-            text="Do you want to restore to default parameters?"
-        ): return
-        measurement = self.sequence_tree.current
-        panel = self.panels.get(measurement.type)
-        panel.restore()
-
-    def on_measure_run(self):
-        self.switch_off_lights()
-        self.sync_environment_controls()
-        self.table_calibrate_button.enabled = False
-        self.environment_groupbox.enabled = False
-        self.table_groupbox.enabled = False
-        self.measure_restore_button.enabled = False
-        self.sample_groupbox.enabled = False
-        self.start_button.enabled = False
-        self.stop_button.enabled = True
-        self.reset_button.enabled = False
-        self.output_groupbox.enabled = False
-        self.reload_status_button.enabled = False
-        self.panels.lock()
-        self.sequence_tree.lock()
-        measurement = self.sequence_tree.current
-        panel = self.panels.get(measurement.type)
-        panel.store()
-        # TODO
-        panel.clear_readings()
-        sample_name = self.sample_name_text.value
-        sample_type = self.sample_type_text.value
-        output_dir = self.create_output_dir()
-        measure = self.processes.get("measure")
-        measure.set("sample_name", sample_name)
-        measure.set("sample_type", sample_type)
-        measure.set("output_dir", output_dir)
-        measure.set("use_environ", self.environment_groupbox.checked)
-        measure.set("use_table", self.table_groupbox.checked)
-        measure.measurement_item = measurement
-        measure.reading = panel.append_reading
-        measure.update = panel.update_readings
-        measure.state = panel.state
-        measure.push_summary = self.on_push_summary
-        # TODO
-        measure.start()
-
-    def on_measure_finished(self):
-        self.sync_environment_controls()
-        self.table_calibrate_button.enabled = True
-        self.environment_groupbox.enabled = True
-        self.table_groupbox.enabled = True
-        self.measure_restore_button.enabled = True
-        self.sample_groupbox.enabled = True
-        self.start_button.enabled = True
-        self.stop_button.enabled = False
-        self.reset_button.enabled = True
-        self.output_groupbox.enabled = True
-        self.reload_status_button.enabled = True
-        self.panels.unlock()
-        measure = self.processes.get("measure")
-        measure.reading = lambda data: None
-        self.sequence_tree.unlock()
-
-    def on_status_start(self):
-        self.enabled = False
-        self.matrix_model_text.value = ""
-        self.matrix_channels_text.value = ""
-        self.hvsrc_model_text.value = ""
-        self.vsrc_model_text.value = ""
-        self.lcr_model_text.value = ""
-        self.elm_model_text.value = ""
-        self.table_model_text.value = ""
-        self.table_state_text.value = ""
-        self.env_model_text.value = ""
-        self.env_box_temperature_text.value = ""
-        self.env_box_humidity_text.value = ""
-        self.env_chuck_temperature_text.value = ""
-        self.env_lux_text.value = ""
-        self.env_light_text.value = ""
-        self.env_door_text.value = ""
-        self.reload_status_button.enabled = False
-        status = self.processes.get("status")
-        status.set("use_environ", self.environment_groupbox.checked)
-        status.set("use_table", self.table_groupbox.checked)
-        status.start()
-        # Fix: stay in status tab
-        self.tab_widget.current = self.status_tab
-
-    def on_status_finished(self):
-        self.enabled = True
-        self.reload_status_button.enabled = True
-        status = self.processes.get("status")
-        self.matrix_model_text.value = status.get("matrix_model") or "n/a"
-        self.matrix_channels_text.value = status.get("matrix_channels")
-        self.hvsrc_model_text.value = status.get("hvsrc_model") or "n/a"
-        self.vsrc_model_text.value = status.get("vsrc_model") or "n/a"
-        self.lcr_model_text.value = status.get("lcr_model") or "n/a"
-        self.elm_model_text.value = status.get("elm_model") or "n/a"
-        self.table_model_text.value = status.get("table_model") or "n/a"
-        self.table_state_text.value = status.get("table_state") or "n/a"
-        self.env_model_text.value = status.get("env_model") or "n/a"
-        pc_data = status.get("env_pc_data")
-        if pc_data:
-            self.env_box_temperature_text.value = f"{pc_data.box_temperature:.1f} °C"
-            self.env_box_humidity_text.value = f"{pc_data.box_humidity:.1f} %rH"
-            self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
-            self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
-            self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
-            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
-
     # Menu action callbacks
 
     def on_import_sequence(self):
@@ -1038,3 +1065,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             custom_sequences.append(filename)
         self.settings["custom_sequences"] = custom_sequences
         self.settings["current_sequence_id"] = sequence.id
+
+    def on_github(self):
+        webbrowser.open(comet.app().window.qt.property('githubUrl'))

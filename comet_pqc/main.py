@@ -1,5 +1,4 @@
 import argparse
-import webbrowser
 import logging
 import sys
 
@@ -19,6 +18,7 @@ from .processes import MeasureProcess
 from .processes import SequenceProcess
 
 from .dashboard import Dashboard
+from .preferences import OptionsTab
 
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
@@ -140,6 +140,7 @@ def main():
         message=on_message,
         progress=on_progress,
         measurement_state=dashboard.on_measurement_state,
+        save_to_image=dashboard.on_save_to_image,
         reading=None
     ))
     app.processes.add("sequence", SequenceProcess(
@@ -148,6 +149,7 @@ def main():
         message=on_message,
         progress=on_progress,
         measurement_state=dashboard.on_measurement_state,
+        save_to_image=dashboard.on_save_to_image,
         reading=None
     ))
 
@@ -158,20 +160,30 @@ def main():
     # Restore window size
     app.width, app.height = app.settings.get('window_size', (1420, 920))
 
-    # Tweaks... there's no hook, so it's a hack.
-    sequenceMenu = QtWidgets.QMenu("&Sequence")
-    app.window.file_menu.qt.insertMenu(app.window.quit_action.qt, sequenceMenu)
-    importAction = QtWidgets.QAction("&Import...")
-    importAction.triggered.connect(dashboard.on_import_sequence)
-    sequenceMenu.addAction(importAction)
-    app.window.file_menu.qt.insertSeparator(app.window.quit_action.qt)
-    githubAction = QtWidgets.QAction("&GitHub")
-    githubAction.triggered.connect(
-        lambda: webbrowser.open(app.window.qt.property('githubUrl'))
+    # Extend actions
+    app.window.import_action = ui.Action(
+        text="&Import...",
+        triggered=dashboard.on_import_sequence
     )
-    app.window.help_menu.qt.insertAction(app.window.about_qt_action.qt, githubAction)
+    app.window.github_action = ui.Action(
+        text="&GitHub",
+        triggered=dashboard.on_github
+    )
 
-    # Set contents URL
+    # Extend menus
+    app.window.sequence_menu = ui.Menu(
+        app.window.import_action,
+        text="&Sequence"
+    )
+    app.window.file_menu.insert(0, app.window.sequence_menu)
+    app.window.file_menu.insert(-1, ui.Action(separator=True))
+    app.window.help_menu.insert(1, app.window.github_action)
+
+    # Extend preferences
+    options_tab = OptionsTab()
+    app.window.preferences_dialog.tab_widget.append(options_tab)
+    app.window.preferences_dialog.options_tab = options_tab
+    # Set URLs
     app.window.qt.setProperty('contentsUrl', CONTENTS_URL)
     app.window.qt.setProperty('githubUrl', GITHUB_URL)
 

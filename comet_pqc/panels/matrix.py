@@ -1,6 +1,5 @@
 import logging
 
-import comet
 from comet import ui
 from comet.resource import ResourceMixin
 from comet.driver.keithley import K707B

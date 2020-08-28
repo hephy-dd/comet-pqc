@@ -86,3 +86,9 @@ class EnvironmentProcess(ResourceProcess):
         def request(context):
             context.pid_control = state
         return self.request(request)
+
+    def set_test_led(self, state):
+        logging.info("Test LED: %s", "ON" if state else "OFF")
+        def request(context):
+            context.test_led = state
+        return self.request(request)
