@@ -78,7 +78,6 @@ a = Analysis(['entry_point.pyw'],
     ],
     binaries=[],
     datas=[
-        (os.path.join(comet_root, 'widgets', '*.ui'), os.path.join('comet', 'widgets')),
         (os.path.join(comet_root, 'assets', 'icons', '*.svg'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join(comet_root, 'assets', 'icons', '*.ico'), os.path.join('comet', 'assets', 'icons')),
         (os.path.join('comet_pqc', 'assets', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'chuck')),
