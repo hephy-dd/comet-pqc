@@ -700,7 +700,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 
+    @handle_exception
     def on_start(self):
+        # Create output directory
+        self.create_output_dir()
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
@@ -727,7 +730,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
         operator = self.operator_combobox.qt.currentText()
-        output_dir = self.create_output_dir()
+        output_dir = self.output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
         sequence.set("sample_type", sample_type)
@@ -805,7 +808,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sample_name = self.sample_name_text.value
         sample_type = self.sample_type_text.value
         operator = self.operator_combobox.qt.currentText()
-        output_dir = self.create_output_dir()
+        output_dir = self.output_dir()
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
         measure.set("sample_type", sample_type)
