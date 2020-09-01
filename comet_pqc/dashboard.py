@@ -352,12 +352,14 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Operator
 
         self.operator_combobox = ui.ComboBox()
-        self.operator_combobox.qt.setEditable(True)
-        self.operator_combobox.qt.setDuplicatesEnabled(False)
+        self.operator_combobox.editable = True
+        self.operator_combobox.duplicates_enabled = False
+        # Set current operator
         try: index = int(self.settings.get("current_operator", 0))
         except: index = 0
-        self.operator_combobox.qt.addItems(self.settings.get("operators") or [])
-        self.operator_combobox.qt.setCurrentIndex(index)
+        index = max(0, min(index, len(self.operator_combobox)))
+        self.operator_combobox.items = self.settings.get("operators") or []
+        self.operator_combobox.current = self.operator_combobox[index]
         def on_operator_changed(_):
             self.settings["current_operator"] = max(0, self.operator_combobox.qt.currentIndex())
             operators = []
@@ -607,10 +609,22 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.sequence_combobox.current = sequence
                 break
 
+    def sample_name(self):
+        """Return sample name."""
+        return self.sample_name_text.value.strip()
+
+    def sample_type(self):
+        """Return sample type."""
+        return self.sample_type_text.value.strip()
+
+    def operator(self):
+        """Return current operator."""
+        return self.operator_combobox.qt.currentText().strip()
+
     def output_dir(self):
         """Return output path."""
-        base = os.path.realpath(self.output_text.value)
-        sample_name = self.sample_name_text.value
+        base = os.path.realpath(self.output_text.value.strip())
+        sample_name = self.sample_name()
         return os.path.join(base, sample_name)
 
     def create_output_dir(self):
@@ -727,9 +741,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        sample_name = self.sample_name_text.value
-        sample_type = self.sample_type_text.value
-        operator = self.operator_combobox.qt.currentText()
+        sample_name = self.sample_name()
+        sample_type = self.sample_type()
+        operator = self.operator()
         output_dir = self.output_dir()
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", sample_name)
@@ -805,9 +819,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.store()
         # TODO
         panel.clear_readings()
-        sample_name = self.sample_name_text.value
-        sample_type = self.sample_type_text.value
-        operator = self.operator_combobox.qt.currentText()
+        sample_name = self.sample_name()
+        sample_type = self.sample_type()
+        operator = self.operator()
         output_dir = self.output_dir()
         measure = self.processes.get("measure")
         measure.set("sample_name", sample_name)
