@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.23.1]
 ### Fixed
-- application crash if working directory permission denied
+- application crash if working directory permission denied (#62)
+- mirrored table X/Y controls to match camera image movement (#52)
 
 ## [0.23.0]
 ### Added

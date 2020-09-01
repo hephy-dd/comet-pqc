@@ -80,22 +80,22 @@ class TableControl(ui.Column):
         self.move = move
         # Control buttons
         self.back_button = SquareButton(
-            text="⊲",
+            text="⊳",
             tool_tip="Move table to back.",
             clicked=self.on_back
         )
         self.front_button = SquareButton(
-            text="⊳",
+            text="⊲",
             tool_tip="Move table to front.",
             clicked=self.on_front
         )
         self.left_button = SquareButton(
-            "∇",
+            "∆",
             tool_tip="Move table left.",
             clicked=self.on_left
         )
         self.right_button = SquareButton(
-            "∆",
+            "∇",
             tool_tip="Move table right.",
             clicked=self.on_right
         )
@@ -145,9 +145,21 @@ class TableControl(ui.Column):
             ui.Row(
                 ui.Spacer(),
                 ui.Row(
-                    ui.Column(SquareSpacer(), self.back_button, SquareSpacer()),
-                    ui.Column(self.right_button, SquareLabel("X/Y"), self.left_button),
-                    ui.Column(SquareSpacer(), self.front_button, SquareSpacer())
+                    ui.Column(
+                        SquareSpacer(),
+                        self.front_button,
+                        SquareSpacer()
+                    ),
+                    ui.Column(
+                        self.left_button,
+                        SquareLabel("X/Y"),
+                        self.right_button
+                    ),
+                    ui.Column(
+                        SquareSpacer(),
+                        self.back_button,
+                        SquareSpacer()
+                    )
                 ),
                 SquareSpacer(),
                 ui.Column(
@@ -176,7 +188,7 @@ class TableControl(ui.Column):
                         title="Control",
                         layout=self.controls_layout
                     ),
-                    ui.Label("X/Y controls rotated to left to match rotated PC-camera.", enabled=False)
+                    ui.Label("All controls relative to Probe-Card camera image.", enabled=False)
                 ),
                 ui.Column(
                     ui.GroupBox(
