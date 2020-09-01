@@ -617,6 +617,14 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         """Return sample type."""
         return self.sample_type_text.value.strip()
 
+    def use_environment(self):
+        """Return True if environment box enabled."""
+        return self.environment_groupbox.checked
+
+    def use_table(self):
+        """Return True if table control enabled."""
+        return self.table_groupbox.checked
+
     def operator(self):
         """Return current operator."""
         return self.operator_combobox.qt.currentText().strip()
@@ -750,8 +758,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("sample_type", sample_type)
         sequence.set("operator", operator)
         sequence.set("output_dir", output_dir)
-        sequence.set("use_environ", self.environment_groupbox.checked)
-        sequence.set("use_table", self.table_groupbox.checked)
+        sequence.set("use_environ", self.use_environment())
+        sequence.set("use_table", self.use_table())
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
         def show_measurement(item):
@@ -819,17 +827,14 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.store()
         # TODO
         panel.clear_readings()
-        sample_name = self.sample_name()
-        sample_type = self.sample_type()
-        operator = self.operator()
-        output_dir = self.output_dir()
         measure = self.processes.get("measure")
-        measure.set("sample_name", sample_name)
-        measure.set("sample_type", sample_type)
-        measure.set("operator", operator)
-        measure.set("output_dir", output_dir)
-        measure.set("use_environ", self.environment_groupbox.checked)
-        measure.set("use_table", self.table_groupbox.checked)
+        # Set process parameters
+        measure.set("sample_name", self.sample_name())
+        measure.set("sample_type", self.sample_type())
+        measure.set("operator", self.operator())
+        measure.set("output_dir", self.output_dir())
+        measure.set("use_environ", self.use_environment())
+        measure.set("use_table", self.use_table())
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
@@ -864,8 +869,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.env_door_text.value = ""
         self.reload_status_button.enabled = False
         status = self.processes.get("status")
-        status.set("use_environ", self.environment_groupbox.checked)
-        status.set("use_table", self.table_groupbox.checked)
+        status.set("use_environ", self.use_environment())
+        status.set("use_table", self.use_table())
         status.start()
         # Fix: stay in status tab
         self.tab_widget.current = self.status_tab
@@ -966,7 +971,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def switch_off_lights(self):
-        if self.environment_groupbox.checked:
+        if self.use_environment():
             with self.processes.get("environment") as environment:
                 if environment.has_lights():
                     environment.dim_lights()
@@ -974,7 +979,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     @handle_exception
     def sync_environment_controls(self):
         """Syncronize environment controls."""
-        if self.environment_groupbox.checked:
+        if self.use_environment():
             try:
                 with self.processes.get("environment") as environment:
                     pc_data = environment.pc_data()
@@ -1011,7 +1016,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_table_groupbox_toggled(self, state):
         self.settings["use_table"] = state
-        if self.table_groupbox.checked:
+        if self.use_table():
             self.sync_table_controls()
 
     def on_output_changed(self, value):
