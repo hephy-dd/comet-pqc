@@ -1089,4 +1089,4 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.settings["current_sequence_id"] = sequence.id
 
     def on_github(self):
-        webbrowser.open(comet.app().window.qt.property('githubUrl'))
+        webbrowser.open(comet.app().window.github_url)
