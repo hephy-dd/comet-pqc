@@ -6,10 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.2]
+### Fixed
+- Contents URL
+
 ## [0.23.1]
 ### Fixed
-- application crash if working directory permission denied (#62)
-- mirrored table X/Y controls to match camera image movement (#52)
+- Application crash if working directory permission denied (#62)
+- Mirrored table X/Y controls to match camera image movement (#52)
 
 ## [0.23.0]
 ### Added
@@ -88,7 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.23.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.23.2...HEAD
+[0.23.2]: https://github.com/hephy-dd/comet-pqc/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/hephy-dd/comet-pqc/compare/0.23.0...0.23.1
 [0.23.0]: https://github.com/hephy-dd/comet-pqc/compare/0.22.0...0.23.0
 [0.22.0]: https://github.com/hephy-dd/comet-pqc/compare/0.21.1...0.22.0

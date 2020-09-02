@@ -183,9 +183,10 @@ def main():
     options_tab = OptionsTab()
     app.window.preferences_dialog.tab_widget.append(options_tab)
     app.window.preferences_dialog.options_tab = options_tab
+
     # Set URLs
-    app.window.qt.setProperty('contentsUrl', CONTENTS_URL)
-    app.window.qt.setProperty('githubUrl', GITHUB_URL)
+    app.window.contents_url = CONTENTS_URL
+    app.window.github_url = GITHUB_URL
 
     # Load configurations
     dashboard.load_sequences()
