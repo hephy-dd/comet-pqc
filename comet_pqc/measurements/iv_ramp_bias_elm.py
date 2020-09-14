@@ -480,7 +480,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
                     fmt.write_row(dict(
                         timestamp=dt,
                         voltage=voltage,
-                        elm_current=vsrc_reading,
+                        elm_current=elm_reading,
                         vsrc_current=vsrc_reading,
                         hvsrc_current=hvsrc_reading,
                         bias_voltage=bias_voltage,
