@@ -180,12 +180,6 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
         self.process.emit("progress", 5, 5)
 
     def measure(self, hvsrc):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
         voltage_start = self.get_parameter('voltage_start')
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
@@ -197,103 +191,91 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
         hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
+        self.data["meta"]["voltage_start"] = f"{voltage_start:G} V"
+        self.data["meta"]["voltage_stop"] = f"{voltage_stop:G} V"
+        self.data["meta"]["voltage_step"] = f"{voltage_step:G} V"
+        self.data["meta"]["waiting_time"] = f"{waiting_time:G} s"
+        self.data["meta"]["hvsrc_current_compliance"] = f"{hvsrc_current_compliance:G} A"
+        self.data["meta"]["hvsrc_sense_mode"] = hvsrc_sense_mode
+        self.data["meta"]["hvsrc_route_termination"] = hvsrc_route_termination
+        self.data["meta"]["hvsrc_filter_enable"] = format(hvsrc_filter_enable).lower()
+        self.data["meta"]["hvsrc_filter_count"] = format(hvsrc_filter_count)
+        self.data["meta"]["hvsrc_filter_type"] = hvsrc_filter_type
+
+        # Series units
+        self.data["series_units"]["timestamp"] = "s"
+        self.data["series_units"]["voltage"] = "V"
+        self.data["series_units"]["current_hvsrc"] = "A"
+        self.data["series_units"]["temperature_box"] = "degC"
+        self.data["series_units"]["temperature_chuck"] = "degC"
+        self.data["series_units"]["humidity_box"] = "%"
+
+        # Series
+        self.data["series"]["timestamp"] = []
+        self.data["series"]["voltage"] = []
+        self.data["series"]["current_hvsrc"] = []
+        self.data["series"]["temperature_box"] = []
+        self.data["series"]["temperature_chuck"] = []
+        self.data["series"]["humidity_box"] = []
+
         hvsrc_proxy = create_proxy(hvsrc)
 
         if not self.process.running:
             return
 
+        voltage = hvsrc_proxy.source_voltage_level
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("voltage", "E", unit="V")
-            fmt.add_column("current_hvsrc", "E", unit="A")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # HV Source reading format: CURR
+        hvsrc.resource.write(":FORM:ELEM CURR")
+        hvsrc.resource.query("*OPC?")
 
-            # Write meta data
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("voltage_start", f"{voltage_start:G} V")
-            fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
-            fmt.write_meta("voltage_step", f"{voltage_step:G} V")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-            fmt.write_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-            fmt.write_meta("hvsrc_route_termination", hvsrc_route_termination)
-            fmt.write_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
-            fmt.write_meta("hvsrc_filter_count", format(hvsrc_filter_count))
-            fmt.write_meta("hvsrc_filter_type", hvsrc_filter_type)
+        t0 = time.time()
 
-            fmt.flush()
+        ramp = comet.Range(voltage, voltage_stop, voltage_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        for voltage in ramp:
+            logging.info("set voltage: %E V", voltage)
+            hvsrc_proxy.source_voltage_level = voltage
+            # hvsrc_proxy.assert_success()
 
-            voltage = hvsrc_proxy.source_voltage_level
+            time.sleep(waiting_time)
 
-            # HV Source reading format: CURR
-            hvsrc.resource.write(":FORM:ELEM CURR")
-            hvsrc.resource.query("*OPC?")
+            td = time.time() - t0
+            reading_current = float(hvsrc.resource.query(":READ?").split(',')[0])
+            logging.info("HV Source reading: %E A", reading_current)
+            self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
-            t0 = time.time()
+            self.environment_update()
 
-            ramp = comet.Range(voltage, voltage_stop, voltage_step)
-            est = Estimate(ramp.count)
+            self.process.emit("state", dict(
+                env_chuck_temperature=self.environment_temperature_chuck,
+                env_box_temperature=self.environment_temperature_box,
+                env_box_humidity=self.environment_humidity_box
+            ))
+
+            # Add series data
+            self.data["series"]["timestamp"].append(td)
+            self.data["series"]["voltage"].append(voltage)
+            self.data["series"]["current_hvsrc"].append(reading_current)
+            self.data["series"]["temperature_box"].append(self.environment_temperature_box)
+            self.data["series"]["temperature_chuck"].append(self.environment_temperature_chuck)
+            self.data["series"]["humidity_box"].append(self.environment_humidity_box)
+
+            est.next()
+            self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
             self.process.emit("progress", *est.progress)
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
-            for voltage in ramp:
-                logging.info("set voltage: %E V", voltage)
-                hvsrc_proxy.source_voltage_level = voltage
-                # hvsrc_proxy.assert_success()
-
-                time.sleep(waiting_time)
-
-                td = time.time() - t0
-                reading_current = float(hvsrc.resource.query(":READ?").split(',')[0])
-                logging.info("HV Source reading: %E A", reading_current)
-                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
-
-                # Write reading
-                fmt.write_row(dict(
-                    timestamp=td,
-                    voltage=voltage,
-                    current_hvsrc=reading_current,
-                    temperature_box=self.environment_temperature_box,
-                    temperature_chuck=self.environment_temperature_chuck,
-                    humidity_box=self.environment_humidity_box
-                ))
-                fmt.flush()
-
-                est.next()
-                self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-                self.process.emit("progress", *est.progress)
-
-                # Compliance?
-                compliance_tripped = hvsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ComplianceError("compliance tripped")
-                # hvsrc_proxy.assert_success()
-                if not self.process.running:
-                    break
+            # Compliance?
+            compliance_tripped = hvsrc.sense.current.protection.tripped
+            if compliance_tripped:
+                logging.error("HV Source in compliance")
+                raise ComplianceError("compliance tripped")
+            # hvsrc_proxy.assert_success()
+            if not self.process.running:
+                break
 
         self.process.emit("progress", 0, 0)
 
