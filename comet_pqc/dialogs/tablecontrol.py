@@ -32,6 +32,19 @@ class TableControlDialog(ui.Dialog, comet.ProcessMixin):
             self.process.push(x, y, z)
         def on_position(x, y, z):
             self.control.position = x, y, z
+            # Fetch laser sensor state
+            laser_state = "n/a"
+            laser_style = ""
+            try:
+                with self.processes.get("environment") as environ:
+                    pc_data = environ.pc_data()
+                    laser_sensor = pc_data.relay_states.laser_sensor
+                    laser_state = {False: "OFF", True: "ON"}.get(laser_sensor, "n/a")
+                    laser_style = {False: "QLabel{color:red;font-weight:bold}", True: "QLabel{color:green;font-weight:bold}"}.get(laser_sensor, "")
+            except Exception as e:
+                logging.error(e)
+            self.control.laser_state_label.text = laser_state
+            self.control.laser_state_label.stylesheet = laser_style
         def on_caldone(x, y, z):
             self.control.caldone = x, y, z
         self.process.position = on_position
@@ -139,6 +152,7 @@ class TableControl(ui.Column):
         self.rm_x_label = ui.Label()
         self.rm_y_label = ui.Label()
         self.rm_z_label = ui.Label()
+        self.laser_state_label = ui.Label("n/a")
         # Layout
         self.controls_layout = ui.Column(
             ui.Spacer(),
@@ -226,10 +240,15 @@ class TableControl(ui.Column):
                                 self.rm_z_label
                             )
                         )
+                    ),
+                    ui.Row(
+                        ui.Label("Laser Sensor"),
+                        self.laser_state_label,
+                        stretch=(0, 1)
                     )
                 ),
                 ui.Spacer(),
-                stretch=(0, 0, 0, 0, 0, 0, 0, 0, 1)
+                stretch=(0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
             ),
             ui.Spacer(),
             stretch=(0, 1)
