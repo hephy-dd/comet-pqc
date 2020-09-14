@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.4]
+### Fixed
+- Inconsistent data column names (#69)
+- Incorrect data values for column `current_elm` in `iv_ramp_bias_elm` (#68)
+
 ## [0.23.3]
 ### Changed
 - Migrated to COMET 0.11.1
@@ -96,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.23.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.23.4...HEAD
+[0.23.4]: https://github.com/hephy-dd/comet-pqc/compare/0.23.3...0.23.4
 [0.23.3]: https://github.com/hephy-dd/comet-pqc/compare/0.23.2...0.23.3
 [0.23.2]: https://github.com/hephy-dd/comet-pqc/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/hephy-dd/comet-pqc/compare/0.23.0...0.23.1
