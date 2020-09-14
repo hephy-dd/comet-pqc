@@ -41,6 +41,17 @@ Type: `iv_ramp`
 |`hvsrc_filter_count`       |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`        |`str`    |`moving` |Type of applied HV Source filter.  Possible values are: `moving`, `repeat`. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage`                  |`volt`   |Voltage assigned to HV source. |
+|`current_hvsrc`            |`ampere` |Current reading of HV source. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
+
 ### Example configuration
 
 ```yaml
@@ -97,6 +108,18 @@ Type: `iv_ramp_elm`
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 |`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage`                  |`volt`   |Voltage assigned to HV source. |
+|`current_hvsrc`            |`ampere` |Current reading of HV source. |
+|`current_elm`              |`ampere` |Current reading of electrometer. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
+
 ### Example configuration
 
 ```yaml
@@ -148,6 +171,17 @@ Type: `iv_ramp_4_wire`
 |`vsrc_filter_count`       |`int`    |`10`     |V Source filter count (`1` to `100`). |
 |`vsrc_filter_type`        |`str`    |`repeat` |Type of applied V Source filter. Possible values are: `moving`, `repeat`. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`current`                  |`ampere` |Current assigned to V source. |
+|`voltage_vsrc`             |`volt`   |Voltage reading of V source. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
+
 ### Example configuration
 
 ```yaml
@@ -189,6 +223,18 @@ Type: `iv_ramp_bias`
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
+
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage`                  |`volt`   |Voltage assigned to HV source. |
+|`current_hvsrc`            |`ampere` |Current reading of HV source. |
+|`bias_voltage`             |`volt`   |Bias voltage assigned to V source. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
 
 ### Example configuration
 
@@ -233,6 +279,20 @@ Type: `iv_ramp_bias_elm`
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 |`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage`                  |`volt`   |Voltage assigned to HV source. |
+|`current_elm`              |`ampere` |Current reading of electrometer. |
+|`current_vsrc`             |`ampere` |Current reading of V source. |
+|`current_hvsrc`            |`ampere` |Current reading of HV source. |
+|`bias_voltage`             |`volt`   |Bias voltage assigned to V source. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
+
 ### Example configuration
 
 ```yaml
@@ -276,6 +336,20 @@ Type: `cv_ramp`
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
 |`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
+
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage_hvsrc`            |`volt`   |Voltage assigned to HV source. |
+|`current_hvsrc`            |`ampere` |Current reading of HV source. |
+|`capacitance`              |`farad`  |First value of Cp reading of LCR. |
+|`capacitance2`             |`float`  |Second value of Cp reading of LCR. |
+|`resistance`               |`ohm`    |Resistance reading of LCR. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
 
 ### Example configuration
 
@@ -338,6 +412,20 @@ Type: `cv_ramp_vsrc`
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
 |`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage_vsrc`             |`volt`   |Voltage assigned to V source. |
+|`current_vsrc`             |`ampere` |Current reading of V source. |
+|`capacitance`              |`farad`  |First value of Cp reading of LCR. |
+|`capacitance2`             |`float`  |Second value of Cp reading of LCR. |
+|`resistance`               |`ohm`    |Resistance reading of LCR. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
+
 ### Example configuration
 
 ```yaml
@@ -381,6 +469,11 @@ Type: `cv_ramp_alt`
 |`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
+
 ### Example configuration
 
 ```yaml
@@ -406,6 +499,11 @@ Type: `frequency_scan`
 |---------------------------|---------|---------|-------------|
 |`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+
+### Data columns
+
+| Column                    | Type    | Description |
+|---------------------------|---------|-------------|
 
 ### Example configuration
 

@@ -207,8 +207,8 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
             # Create formatter
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("hvsrc_voltage", "E", unit="V")
-            fmt.add_column("hvsrc_current", "E", unit="A")
+            fmt.add_column("voltage", "E", unit="V")
+            fmt.add_column("current_hvsrc", "E", unit="A")
             fmt.add_column("temperature_box", "E", unit="degC")
             fmt.add_column("temperature_chuck", "E", unit="degC")
             fmt.add_column("humidity_box", "E", unit="%")
@@ -274,8 +274,8 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
                 # Write reading
                 fmt.write_row(dict(
                     timestamp=td,
-                    hvsrc_voltage=voltage,
-                    hvsrc_current=reading_current,
+                    voltage=voltage,
+                    current_hvsrc=reading_current,
                     temperature_box=self.environment_temperature_box,
                     temperature_chuck=self.environment_temperature_chuck,
                     humidity_box=self.environment_humidity_box
