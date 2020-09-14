@@ -347,9 +347,9 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
             fmt = PQCFormatter(f)
             fmt.add_column("timestamp", ".3f", unit="s")
             fmt.add_column("voltage", "E", unit="V")
-            fmt.add_column("elm_current", "E", unit="A")
-            fmt.add_column("vsrc_current", "E", unit="A")
-            fmt.add_column("hvsrc_current", "E", unit="A")
+            fmt.add_column("current_elm", "E", unit="A")
+            fmt.add_column("current_vsrc", "E", unit="A")
+            fmt.add_column("current_hvsrc", "E", unit="A")
             fmt.add_column("bias_voltage", "E", unit="V")
             fmt.add_column("temperature_box", "E", unit="degC")
             fmt.add_column("temperature_chuck", "E", unit="degC")
@@ -480,9 +480,9 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
                     fmt.write_row(dict(
                         timestamp=dt,
                         voltage=voltage,
-                        elm_current=elm_reading,
-                        vsrc_current=vsrc_reading,
-                        hvsrc_current=hvsrc_reading,
+                        current_elm=elm_reading,
+                        current_vsrc=vsrc_reading,
+                        current_hvsrc=hvsrc_reading,
                         bias_voltage=bias_voltage,
                         temperature_box=self.environment_temperature_box,
                         temperature_chuck=self.environment_temperature_chuck,
