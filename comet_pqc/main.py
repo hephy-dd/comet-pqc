@@ -32,13 +32,15 @@ def main():
 
     args = parse_args()
 
+    # Logging
+
+    logging.getLogger().setLevel(logging.INFO)
+    logging.info("PQC version %s", __version__)
+
     app = comet.Application("comet-pqc")
     app.version = __version__
     app.title = f"PQC {__version__}"
     app.about = f"COMET application for PQC measurements, version {__version__}."
-
-    logging.getLogger().setLevel(logging.INFO)
-    logging.info("PQC version %s", __version__)
 
     # Register devices
 
