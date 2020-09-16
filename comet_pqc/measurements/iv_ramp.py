@@ -191,32 +191,33 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
         hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
 
-        self.data["meta"]["voltage_start"] = f"{voltage_start:G} V"
-        self.data["meta"]["voltage_stop"] = f"{voltage_stop:G} V"
-        self.data["meta"]["voltage_step"] = f"{voltage_step:G} V"
-        self.data["meta"]["waiting_time"] = f"{waiting_time:G} s"
-        self.data["meta"]["hvsrc_current_compliance"] = f"{hvsrc_current_compliance:G} A"
-        self.data["meta"]["hvsrc_sense_mode"] = hvsrc_sense_mode
-        self.data["meta"]["hvsrc_route_termination"] = hvsrc_route_termination
-        self.data["meta"]["hvsrc_filter_enable"] = format(hvsrc_filter_enable).lower()
-        self.data["meta"]["hvsrc_filter_count"] = format(hvsrc_filter_count)
-        self.data["meta"]["hvsrc_filter_type"] = hvsrc_filter_type
+        # Extend meta data
+        self.set_meta("voltage_start", f"{voltage_start:G} V")
+        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
+        self.set_meta("voltage_step", f"{voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
+        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
+        self.set_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
+        self.set_meta("hvsrc_filter_count", format(hvsrc_filter_count))
+        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
 
         # Series units
-        self.data["series_units"]["timestamp"] = "s"
-        self.data["series_units"]["voltage"] = "V"
-        self.data["series_units"]["current_hvsrc"] = "A"
-        self.data["series_units"]["temperature_box"] = "degC"
-        self.data["series_units"]["temperature_chuck"] = "degC"
-        self.data["series_units"]["humidity_box"] = "%"
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
         # Series
-        self.data["series"]["timestamp"] = []
-        self.data["series"]["voltage"] = []
-        self.data["series"]["current_hvsrc"] = []
-        self.data["series"]["temperature_box"] = []
-        self.data["series"]["temperature_chuck"] = []
-        self.data["series"]["humidity_box"] = []
+        self.register_series("timestamp")
+        self.register_series("voltage")
+        self.register_series("current_hvsrc")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
         hvsrc_proxy = create_proxy(hvsrc)
 
@@ -256,14 +257,15 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
                 env_box_humidity=self.environment_humidity_box
             ))
 
-            # Add series data
-            self.data["series"]["timestamp"].append(td)
-            self.data["series"]["voltage"].append(voltage)
-            self.data["series"]["current_hvsrc"].append(reading_current)
-            self.data["series"]["temperature_box"].append(self.environment_temperature_box)
-            self.data["series"]["temperature_chuck"].append(self.environment_temperature_chuck)
-            self.data["series"]["humidity_box"].append(self.environment_humidity_box)
-
+            # Append series data
+            self.append_series(
+                timestamp=td,
+                voltage=voltage,
+                current_hvsrc=reading_current,
+                temperature_box=self.environment_temperature_box,
+                temperature_chuck=self.environment_temperature_chuck,
+                humidity_box=self.environment_humidity_box
+            )
             est.next()
             self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
             self.process.emit("progress", *est.progress)
@@ -299,11 +301,7 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
 
         self.process.emit("progress", 5, 5)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("hvsrc") as hvsrc_res:
             hvsrc = K2410(hvsrc_res)
-            try:
-                self.initialize(hvsrc)
-                self.measure(hvsrc)
-            finally:
-                self.finalize(hvsrc)
+            super().run(hvsrc=hvsrc)

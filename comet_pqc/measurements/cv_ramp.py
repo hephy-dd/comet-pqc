@@ -140,131 +140,127 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("voltage_hvsrc", "E", unit="V")
-            fmt.add_column("current_hvsrc", "E", unit="A")
-            fmt.add_column("capacitance", "E", unit="F")
-            fmt.add_column("capacitance2", "E", unit="1")
-            fmt.add_column("resistance", "E", unit="Ohm")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # Extend meta data
+        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
+        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
+        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("ac_frequency", f"{lcr_frequency:G} Hz")
+        self.set_meta("ac_amplitude", f"{lcr_amplitude:G} V")
 
-            # Write meta data
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
-            fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
-            fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-            fmt.write_meta("ac_frequency", f"{lcr_frequency:G} Hz")
-            fmt.write_meta("ac_amplitude", f"{lcr_amplitude:G} V")
-            fmt.flush()
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage_hvsrc", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("capacitance", "F")
+        self.set_series_unit("capacitance2", "1")
+        self.set_series_unit("resistance", "Ohm")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage_hvsrc")
+        self.register_series("current_hvsrc")
+        self.register_series("capacitance")
+        self.register_series("capacitance2")
+        self.register_series("resistance")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
-            hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
+        hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-            ramp = comet.Range(hvsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
-            est = Estimate(ramp.count)
-            self.process.emit("progress", *est.progress)
+        ramp = comet.Range(hvsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
 
-            t0 = time.time()
+        t0 = time.time()
 
-            self.hvsrc_safe_write(hvsrc, "*CLS")
-            # HV Source reading format: CURR
-            self.hvsrc_safe_write(hvsrc, ":FORM:ELEM CURR")
+        self.hvsrc_safe_write(hvsrc, "*CLS")
+        # HV Source reading format: CURR
+        self.hvsrc_safe_write(hvsrc, ":FORM:ELEM CURR")
 
-            benchmark_step = Benchmark("Single_Step")
-            benchmark_lcr = Benchmark("Read_LCR")
-            benchmark_hvsrc = Benchmark("Read_HV_Source")
-            benchmark_environ = Benchmark("Read_Environment")
+        benchmark_step = Benchmark("Single_Step")
+        benchmark_lcr = Benchmark("Read_LCR")
+        benchmark_hvsrc = Benchmark("Read_HV_Source")
+        benchmark_environ = Benchmark("Read_Environment")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
-            for voltage in ramp:
-                with benchmark_step:
-                    self.hvsrc_set_voltage_level(hvsrc, voltage)
+        logging.info("ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
+        for voltage in ramp:
+            with benchmark_step:
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
 
-                    # Delay
-                    time.sleep(waiting_time)
+                # Delay
+                time.sleep(waiting_time)
 
-                    # hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
-                    dt = time.time() - t0
-                    est.next()
-                    self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-                    self.process.emit("progress", *est.progress)
+                # hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
+                dt = time.time() - t0
+                est.next()
+                self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
+                self.process.emit("progress", *est.progress)
 
-                    # read LCR, for CpRp -> prim: Cp, sec: Rp
-                    with benchmark_lcr:
-                        if lcr_soft_filter:
-                            lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
-                        else:
-                            lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
-                        try:
-                            lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
-                        except ZeroDivisionError:
-                            lcr_prim2 = 0.0
+                # read LCR, for CpRp -> prim: Cp, sec: Rp
+                with benchmark_lcr:
+                    if lcr_soft_filter:
+                        lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
+                    else:
+                        lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
+                    try:
+                        lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
+                    except ZeroDivisionError:
+                        lcr_prim2 = 0.0
 
-                    # read HV Source
-                    with benchmark_hvsrc:
-                        hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-                    logging.info("HV Source reading: %E", hvsrc_reading)
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
+                logging.info("HV Source reading: %E", hvsrc_reading)
 
-                    self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
-                    self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
+                self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
+                self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
-                    self.process.emit("update", )
-                    self.process.emit("state", dict(
-                        hvsrc_voltage=voltage,
-                        hvsrc_current=hvsrc_reading
-                    ))
+                self.process.emit("update", )
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                    hvsrc_current=hvsrc_reading
+                ))
 
-                    self.environment_update()
+                self.environment_update()
 
-                    self.process.emit("state", dict(
-                        env_chuck_temperature=self.environment_temperature_chuck,
-                        env_box_temperature=self.environment_temperature_box,
-                        env_box_humidity=self.environment_humidity_box
-                    ))
+                self.process.emit("state", dict(
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
+                ))
 
-                    # Write reading
-                    fmt.write_row(dict(
-                        timestamp=dt,
-                        voltage_hvsrc=voltage,
-                        current_hvsrc=hvsrc_reading,
-                        capacitance=lcr_prim,
-                        capacitance2=lcr_prim2,
-                        resistance=lcr_sec,
-                        temperature_box=self.environment_temperature_box,
-                        temperature_chuck=self.environment_temperature_chuck,
-                        humidity_box=self.environment_humidity_box
-                    ))
-                    fmt.flush()
+                # Append series data
+                self.append_series(
+                    timestamp=dt,
+                    voltage_hvsrc=voltage,
+                    current_hvsrc=hvsrc_reading,
+                    capacitance=lcr_prim,
+                    capacitance2=lcr_prim2,
+                    resistance=lcr_sec,
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
+                )
 
-                    # Compliance?
-                    compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
-                    if compliance_tripped:
-                        logging.error("HV Source in compliance")
-                        raise ComplianceError("compliance tripped!")
+                # Compliance?
+                compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
+                if compliance_tripped:
+                    logging.error("HV Source in compliance")
+                    raise ComplianceError("compliance tripped!")
 
-                    if not self.process.running:
-                        break
+                if not self.process.running:
+                    break
 
-            logging.info(benchmark_step)
-            logging.info(benchmark_lcr)
-            logging.info(benchmark_hvsrc)
-            logging.info(benchmark_environ)
+        logging.info(benchmark_step)
+        logging.info(benchmark_lcr)
+        logging.info(benchmark_hvsrc)
+        logging.info(benchmark_environ)
 
     def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 1, 2)
@@ -287,13 +283,10 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         self.process.emit("progress", 2, 2)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                hvsrc = K2410(hvsrc_res)
-                lcr = E4980A(lcr_res)
-                try:
-                    self.initialize(hvsrc, lcr)
-                    self.measure(hvsrc, lcr)
-                finally:
-                    self.finalize(hvsrc, lcr)
+                super().run(
+                    hvsrc=K2410(hvsrc_res),
+                    lcr=E4980A(lcr_res)
+                )

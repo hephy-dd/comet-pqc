@@ -54,7 +54,7 @@ class MatrixPanel(Panel, ResourceMixin):
                         ui.Label(text="Channels"),
                         ui.Row(
                             self.matrix_channels,
-                            ## ui.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
+                            # ui.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
                         )
                     )
                 ),
@@ -63,14 +63,14 @@ class MatrixPanel(Panel, ResourceMixin):
             )
         ))
 
-    def load_matrix_channels(self):
-        """Load closed matrix channels for slot 1 from instrument."""
-        self.enabled = False
-        try:
-            with self.resources.get("matrix") as matrix_res:
-                matrix = K707B(matrix_res)
-                closed_channels = matrix.channel.getclose()
-            self.matrix_channels.value = closed_channels
-        except Exception as e:
-            ui.show_exception(e)
-        self.enabled = True
+    # def load_matrix_channels(self):
+    #     """Load closed matrix channels for slot 1 from instrument."""
+    #     self.enabled = False
+    #     try:
+    #         with self.resources.get("matrix") as matrix_res:
+    #             matrix = K707B(matrix_res)
+    #             closed_channels = matrix.channel.getclose()
+    #         self.matrix_channels.value = closed_channels
+    #     except Exception as e:
+    #         ui.show_exception(e)
+    #     self.enabled = True

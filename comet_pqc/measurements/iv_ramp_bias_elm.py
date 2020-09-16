@@ -342,171 +342,167 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("voltage", "E", unit="V")
-            fmt.add_column("current_elm", "E", unit="A")
-            fmt.add_column("current_vsrc", "E", unit="A")
-            fmt.add_column("current_hvsrc", "E", unit="A")
-            fmt.add_column("bias_voltage", "E", unit="V")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # Extend meta data
+        self.set_meta("voltage_start", f"{voltage_start:G} V")
+        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
+        self.set_meta("voltage_step", f"{voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("bias_voltage", f"{bias_voltage:G} V")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
+        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
+        self.set_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
+        self.set_meta("hvsrc_filter_count", format(hvsrc_filter_count))
+        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
+        self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("vsrc_sense_mode", vsrc_sense_mode)
+        self.set_meta("vsrc_filter_enable", format(vsrc_filter_enable).lower())
+        self.set_meta("vsrc_filter_count", format(vsrc_filter_count))
+        self.set_meta("vsrc_filter_type", vsrc_filter_type)
+        self.set_meta("elm_filter_enable", format(elm_filter_enable).lower())
+        self.set_meta("elm_filter_count", format(elm_filter_count))
+        self.set_meta("elm_filter_type", elm_filter_type)
+        self.set_meta("elm_zero_correction", format(elm_zero_correction))
+        self.set_meta("elm_integration_rate", format(elm_integration_rate))
+        self.set_meta("elm_current_range", format(elm_current_range, 'G'))
+        self.set_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
+        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
+        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
+        self.set_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
 
-            # Write meta data
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("voltage_start", f"{voltage_start:G} V")
-            fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
-            fmt.write_meta("voltage_step", f"{voltage_step:G} V")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("bias_voltage", f"{bias_voltage:G} V")
-            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-            fmt.write_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-            fmt.write_meta("hvsrc_route_termination", hvsrc_route_termination)
-            fmt.write_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
-            fmt.write_meta("hvsrc_filter_count", format(hvsrc_filter_count))
-            fmt.write_meta("hvsrc_filter_type", hvsrc_filter_type)
-            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
-            fmt.write_meta("vsrc_sense_mode", vsrc_sense_mode)
-            fmt.write_meta("vsrc_filter_enable", format(vsrc_filter_enable).lower())
-            fmt.write_meta("vsrc_filter_count", format(vsrc_filter_count))
-            fmt.write_meta("vsrc_filter_type", vsrc_filter_type)
-            fmt.write_meta("elm_filter_enable", format(elm_filter_enable).lower())
-            fmt.write_meta("elm_filter_count", format(elm_filter_count))
-            fmt.write_meta("elm_filter_type", elm_filter_type)
-            fmt.write_meta("elm_zero_correction", format(elm_zero_correction))
-            fmt.write_meta("elm_integration_rate", format(elm_integration_rate))
-            fmt.write_meta("elm_current_range", format(elm_current_range, 'G'))
-            fmt.write_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
-            fmt.write_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
-            fmt.write_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
-            fmt.write_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
-            fmt.flush()
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage", "V")
+        self.set_series_unit("current_elm", "A")
+        self.set_series_unit("current_vsrc", "A")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("bias_voltage", "V")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage")
+        self.register_series("current_elm")
+        self.register_series("current_vsrc")
+        self.register_series("current_hvsrc")
+        self.register_series("bias_voltage")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
-            # HV Source reading format: CURR
-            hvsrc.resource.write(":FORM:ELEM CURR")
-            hvsrc.resource.query("*OPC?")
+        # HV Source reading format: CURR
+        hvsrc.resource.write(":FORM:ELEM CURR")
+        hvsrc.resource.query("*OPC?")
 
 
-            # Electrometer reading format: READ
-            elm.resource.write(":FORM:ELEM READ")
-            elm.resource.query("*OPC?")
-            self.elm_check_error(elm)
+        # Electrometer reading format: READ
+        elm.resource.write(":FORM:ELEM READ")
+        elm.resource.query("*OPC?")
+        self.elm_check_error(elm)
 
-            voltage = hvsrc.source.voltage.level
+        voltage = hvsrc.source.voltage.level
 
-            ramp = comet.Range(voltage, voltage_stop, voltage_step)
-            est = Estimate(ramp.count)
-            self.process.emit("progress", *est.progress)
+        ramp = comet.Range(voltage, voltage_stop, voltage_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
 
-            t0 = time.time()
+        t0 = time.time()
 
-            benchmark_step = Benchmark("Single_Step")
-            benchmark_elm = Benchmark("Read_ELM")
-            benchmark_hvsrc = Benchmark("Read_HV_Source")
-            benchmark_vsrc = Benchmark("Read_V_Source")
-            benchmark_environ = Benchmark("Read_Environment")
+        benchmark_step = Benchmark("Single_Step")
+        benchmark_elm = Benchmark("Read_ELM")
+        benchmark_hvsrc = Benchmark("Read_HV_Source")
+        benchmark_vsrc = Benchmark("Read_V_Source")
+        benchmark_environ = Benchmark("Read_Environment")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
-            for voltage in ramp:
-                with benchmark_step:
-                    logging.info("set voltage: %E V", voltage)
-                    hvsrc.source.voltage.level = voltage
+        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        for voltage in ramp:
+            with benchmark_step:
+                logging.info("set voltage: %E V", voltage)
+                hvsrc.source.voltage.level = voltage
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                ))
+                # Move bias TODO
+                if bias_mode == "offset":
+                    bias_voltage += abs(ramp.step) if ramp.begin <= ramp.end else -abs(ramp.step)
+                    logging.info("set bias voltage: %E V", bias_voltage)
+                    vsrc.source.levelv = bias_voltage
                     self.process.emit("state", dict(
-                        hvsrc_voltage=voltage,
-                    ))
-                    # Move bias TODO
-                    if bias_mode == "offset":
-                        bias_voltage += abs(ramp.step) if ramp.begin <= ramp.end else -abs(ramp.step)
-                        logging.info("set bias voltage: %E V", bias_voltage)
-                        vsrc.source.levelv = bias_voltage
-                        self.process.emit("state", dict(
-                            vsrc_voltage=bias_voltage,
-                        ))
-
-                    time.sleep(waiting_time)
-
-                    dt = time.time() - t0
-
-                    est.next()
-                    self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
-                    self.process.emit("progress", *est.progress)
-
-                    # read ELM
-                    with benchmark_elm:
-                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
-                    self.elm_check_error(elm)
-                    logging.info("ELM reading: %E", elm_reading)
-                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
-
-                    # read V Source
-                    with benchmark_vsrc:
-                        vsrc_reading = vsrc.measure.i()
-                    logging.info("V Source reading: %E A", vsrc_reading)
-
-                    # read HV Source
-                    with benchmark_hvsrc:
-                        hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-                    logging.info("HV Source bias reading: %E A", hvsrc_reading)
-
-                    self.process.emit("update")
-                    self.process.emit("state", dict(
-                        elm_current=elm_reading,
-                        hvsrc_current=hvsrc_reading,
-                        vsrc_current=vsrc_reading,
+                        vsrc_voltage=bias_voltage,
                     ))
 
-                    self.environment_update()
+                time.sleep(waiting_time)
 
-                    self.process.emit("state", dict(
-                        env_chuck_temperature=self.environment_temperature_chuck,
-                        env_box_temperature=self.environment_temperature_box,
-                        env_box_humidity=self.environment_humidity_box
-                    ))
+                dt = time.time() - t0
 
-                    # Write reading
-                    fmt.write_row(dict(
-                        timestamp=dt,
-                        voltage=voltage,
-                        current_elm=elm_reading,
-                        current_vsrc=vsrc_reading,
-                        current_hvsrc=hvsrc_reading,
-                        bias_voltage=bias_voltage,
-                        temperature_box=self.environment_temperature_box,
-                        temperature_chuck=self.environment_temperature_chuck,
-                        humidity_box=self.environment_humidity_box
-                    ))
-                    fmt.flush()
+                est.next()
+                self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
+                self.process.emit("progress", *est.progress)
 
-                    # Compliance?
-                    compliance_tripped = hvsrc.sense.current.protection.tripped
-                    if compliance_tripped:
-                        logging.error("HV Source in compliance")
-                        raise ComplianceError("HV Source compliance tripped")
-                    compliance_tripped = vsrc.source.compliance
-                    if compliance_tripped:
-                        logging.error("V Source in compliance")
-                        raise ComplianceError("V Source compliance tripped")
-                    if not self.process.running:
-                        break
+                # read ELM
+                with benchmark_elm:
+                    elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                self.elm_check_error(elm)
+                logging.info("ELM reading: %E", elm_reading)
+                self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-            logging.info(benchmark_step)
-            logging.info(benchmark_elm)
-            logging.info(benchmark_hvsrc)
-            logging.info(benchmark_vsrc)
-            logging.info(benchmark_environ)
+                # read V Source
+                with benchmark_vsrc:
+                    vsrc_reading = vsrc.measure.i()
+                logging.info("V Source reading: %E A", vsrc_reading)
+
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
+                logging.info("HV Source bias reading: %E A", hvsrc_reading)
+
+                self.process.emit("update")
+                self.process.emit("state", dict(
+                    elm_current=elm_reading,
+                    hvsrc_current=hvsrc_reading,
+                    vsrc_current=vsrc_reading,
+                ))
+
+                self.environment_update()
+
+                self.process.emit("state", dict(
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
+                ))
+
+                # Append series data
+                self.append_series(
+                    timestamp=dt,
+                    voltage=voltage,
+                    current_elm=elm_reading,
+                    current_vsrc=vsrc_reading,
+                    current_hvsrc=hvsrc_reading,
+                    bias_voltage=bias_voltage,
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
+                )
+
+                # Compliance?
+                compliance_tripped = hvsrc.sense.current.protection.tripped
+                if compliance_tripped:
+                    logging.error("HV Source in compliance")
+                    raise ComplianceError("HV Source compliance tripped")
+                compliance_tripped = vsrc.source.compliance
+                if compliance_tripped:
+                    logging.error("V Source in compliance")
+                    raise ComplianceError("V Source compliance tripped")
+                if not self.process.running:
+                    break
+
+        logging.info(benchmark_step)
+        logging.info(benchmark_elm)
+        logging.info(benchmark_hvsrc)
+        logging.info(benchmark_vsrc)
+        logging.info(benchmark_environ)
 
         self.process.emit("progress", 2, 2)
 
@@ -566,15 +562,12 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, ElectrometerMixin, Environment
 
         self.process.emit("progress", 2, 2)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("vsrc") as vsrc_res:
                 with self.resources.get("elm") as elm_res:
-                    hvsrc = K2410(hvsrc_res)
-                    vsrc = K2657A(vsrc_res)
-                    elm = K6517B(elm_res)
-                    try:
-                        self.initialize(hvsrc, vsrc, elm)
-                        self.measure(hvsrc, vsrc, elm)
-                    finally:
-                        self.finalize(hvsrc, vsrc, elm)
+                    super().run(
+                        hvsrc=K2410(hvsrc_res),
+                        vsrc=K2657A(vsrc_res),
+                        elm=K6517B(elm_res)
+                    )
