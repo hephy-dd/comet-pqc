@@ -23,6 +23,7 @@ from . import config
 from .sequence import SequenceTree
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
+from .sequence import SequenceManager
 
 from .panels import IVRampPanel
 from .panels import IVRampElmPanel
@@ -143,6 +144,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sequence_combobox = ui.ComboBox(
             changed=self.on_load_sequence_tree
         )
+        self.sequence_manager_button = ui.Button(
+            text="...",
+            tool_tip="Manage sequences",
+            width=32,
+            clicked=self.on_sequence_manager_clicked
+        )
 
         self.sample_groupbox = ui.GroupBox(
             title="Sample",
@@ -155,7 +162,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 ui.Column(
                     self.sample_name_text,
                     self.sample_type_text,
-                    self.sequence_combobox
+                    ui.Row(
+                        self.sequence_combobox,
+                        self.sequence_manager_button,
+                        stretch=(1, 0)
+                    ),
                 ),
                 stretch=(0, 1)
             )
@@ -677,6 +688,16 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if len(self.sequence_tree):
             self.sequence_tree.current = self.sequence_tree[0]
         self.settings["current_sequence_id"] = sequence.id
+
+    def on_sequence_manager_clicked(self):
+        dialog = SequenceManager()
+        custom_sequences = sorted(self.settings.get("custom_sequences"))
+        dialog.load_settings()
+        dialog.run()
+        dialog.store_settings()
+        # Re-load only on changes
+        if custom_sequences != sorted(self.settings.get("custom_sequences")):
+            self.load_sequences()
 
     def lock_controls(self):
         """Lock dashboard controls."""

@@ -163,21 +163,12 @@ def main():
     app.width, app.height = app.settings.get('window_size', (1420, 920))
 
     # Extend actions
-    app.window.import_action = ui.Action(
-        text="&Import...",
-        triggered=dashboard.on_import_sequence
-    )
     app.window.github_action = ui.Action(
         text="&GitHub",
         triggered=dashboard.on_github
     )
 
     # Extend menus
-    app.window.sequence_menu = ui.Menu(
-        app.window.import_action,
-        text="&Sequence"
-    )
-    app.window.file_menu.insert(0, app.window.sequence_menu)
     app.window.file_menu.insert(-1, ui.Action(separator=True))
     app.window.help_menu.insert(1, app.window.github_action)
 
