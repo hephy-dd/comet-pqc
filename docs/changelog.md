@@ -1,0 +1,111 @@
+---
+layout: default
+title: Changelog
+nav_order: 10
+---
+
+# Changelog
+{: .no_toc }
+
+## 0.24.0
+### Added
+- Sequence manager dialog.
+- Changelog in online documentation.
+- Write measurement data in JSON.
+- Write measurement log files and.
+- Laser sensor state in table control dialog.
+
+## 0.23.4
+### Fixed
+- Inconsistent data column names.
+- Incorrect data values for column `current_elm` in `iv_ramp_bias_elm`.
+
+## 0.23.3
+### Changed
+- Migrated to COMET 0.11.1.
+
+## 0.23.2
+### Fixed
+- Contents URL.
+
+## 0.23.1
+### Fixed
+- Application crash if working directory permission denied.
+- Mirrored table X/Y controls to match camera image movement.
+
+## 0.23.0
+### Added
+- Operator name for measurement results.
+- Save plots to PNG image and preferences option.
+- Set environment TEST LED.
+
+## 0.22.0
+### Changed
+- Migrated to COMET 0.11.0.
+- Simplified Start/Stop mechanism.
+- Rotated X/Y table controls.
+- Set K2547A display.
+
+## 0.21.1
+### Fixed
+- Auto generated `id` attributes can contain mixed case.
+
+## 0.21.0
+### Added
+- Configuration attribute `id` for connections and measurements.
+### Changed
+- Measurement data filename schema.
+- Keeping previous measurement states when running a sequence.
+
+## 0.20.1
+### Fixed
+- Electrometer read.
+- Show error message on YAML parser errors.
+
+## 0.20.0
+### Added
+- Resource process.
+- Environment process.
+- Additional measurement states.
+- Reset sequence tree on sample name changes.
+### Changed
+- Environment access using a process.
+- Resized dialogs for table HiDPI screens.
+- Simplified output directory structure.
+### Fixed
+- Sequence execution
+- Timeouts while reading from electrometer.
+
+## 0.19.1
+### Added
+- Restore previous window size.
+
+## 0.19.0
+### Added
+- Open correction mode and channel option for LCR meter.
+- Auto switch of box lights on start sequence/measurement.
+- Configurable Z soft limit for table movements.
+- This changelog file.
+
+## 0.18.0
+### Added
+- Laser sensor toggle button.
+- Microscope control toggle button.
+
+## 0.17.1
+### Changed
+- Reduced ramp delays for initial/final ramps to speed up measurements.
+
+## 0.17.0
+### Added
+- Table calibration dialog and process.
+- Table control dialog and process.
+- Table move dialog and process.
+- Metric widget for numeric unit inputs.
+- Property `passed` to Estimate class.
+### Changed
+- Moved config and schema to assets directory.
+- Updated default matrix channel configurations.
+### Fixed
+- Filter selection for type `moving`.
+- Default HV source route termination `rear`.

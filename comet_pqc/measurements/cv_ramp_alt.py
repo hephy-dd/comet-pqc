@@ -32,11 +32,8 @@ class CVRampAltMeasurement(MatrixMeasurement):
         self.process.emit("progress", 0, 0)
         self.process.emit("progress", 1, 1)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("lcr") as lcr_resource:
-            lcr = E4980A(lcr_resource)
-            try:
-                self.initialize(lcr)
-                self.measure(lcr)
-            finally:
-                self.finalize(lcr)
+            super().run(
+                lcr=E4980A(lcr_resource)
+            )

@@ -182,97 +182,90 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("current", "E", unit="A")
-            fmt.add_column("voltage_vsrc", "E", unit="V")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # Extend meta data
+        self.set_meta("current_start", f"{current_start:G} A")
+        self.set_meta("current_stop", f"{current_stop:G} A")
+        self.set_meta("current_step", f"{current_step:G} A")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
 
-            # Write meta data
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("current_start", f"{current_start:G} A")
-            fmt.write_meta("current_stop", f"{current_stop:G} A")
-            fmt.write_meta("current_step", f"{current_step:G} A")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
-            fmt.flush()
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("current", "A")
+        self.set_series_unit("voltage_vsrc", "V")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        # Series
+        self.register_series("timestamp")
+        self.register_series("current")
+        self.register_series("voltage_vsrc")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
-            current = vsrc.source.leveli
+        current = vsrc.source.leveli
 
-            ramp = comet.Range(current, current_stop, current_step)
-            est = Estimate(ramp.count)
+        ramp = comet.Range(current, current_stop, current_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
+
+        t0 = time.time()
+
+        logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
+        for current in ramp:
+            logging.info("set current: %E A", current)
+            vsrc.clear()
+            vsrc.source.leveli = current
+            self.process.emit("state", dict(
+                vsrc_current=current,
+            ))
+
+            time.sleep(waiting_time)
+            # check_error(vsrc)
+            dt = time.time() - t0
+
+            est.next()
+            self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
             self.process.emit("progress", *est.progress)
 
-            t0 = time.time()
+            # read V Source
+            vsrc_reading = vsrc.measure.v()
+            logging.info("V Source reading: %E V", vsrc_reading)
+            self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
 
-            logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
-            for current in ramp:
-                logging.info("set current: %E A", current)
-                vsrc.clear()
-                vsrc.source.leveli = current
-                self.process.emit("state", dict(
-                    vsrc_current=current,
-                ))
+            self.process.emit("update")
+            self.process.emit("state", dict(
+                vsrc_voltage=vsrc_reading
+            ))
 
-                time.sleep(waiting_time)
-                # check_error(vsrc)
-                dt = time.time() - t0
+            self.environment_update()
 
-                est.next()
-                self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
-                self.process.emit("progress", *est.progress)
+            self.process.emit("state", dict(
+                env_chuck_temperature=self.environment_temperature_chuck,
+                env_box_temperature=self.environment_temperature_box,
+                env_box_humidity=self.environment_humidity_box
+            ))
 
-                # read V Source
-                vsrc_reading = vsrc.measure.v()
-                logging.info("V Source reading: %E V", vsrc_reading)
-                self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
+            # Append series data
+            self.append_series(
+                timestamp=dt,
+                current=current,
+                voltage_vsrc=vsrc_reading,
+                temperature_box=self.environment_temperature_box,
+                temperature_chuck=self.environment_temperature_chuck,
+                humidity_box=self.environment_humidity_box
+            )
 
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    vsrc_voltage=vsrc_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
-
-                # Write reading
-                fmt.write_row(dict(
-                    timestamp=dt,
-                    current=current,
-                    voltage_vsrc=vsrc_reading,
-                    temperature_box=self.environment_temperature_box,
-                    temperature_chuck=self.environment_temperature_chuck,
-                    humidity_box=self.environment_humidity_box
-                ))
-                fmt.flush()
-
-                # Compliance?
-                compliance_tripped = vsrc.source.compliance
-                if compliance_tripped:
-                    logging.error("V Source in compliance")
-                    raise ComplianceError("compliance tripped")
-                # check_error(vsrc)
-                if not self.process.running:
-                    break
+            # Compliance?
+            compliance_tripped = vsrc.source.compliance
+            if compliance_tripped:
+                logging.error("V Source in compliance")
+                raise ComplianceError("compliance tripped")
+            # check_error(vsrc)
+            if not self.process.running:
+                break
 
         self.process.emit("progress", 4, 5)
 
@@ -307,11 +300,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
 
         self.process.emit("progress", 5, 5)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("vsrc") as vsrc_res:
-            vsrc = K2657A(vsrc_res)
-            try:
-                self.initialize(vsrc)
-                self.measure(vsrc)
-            finally:
-                self.finalize(vsrc)
+            super().run(
+                vsrc=K2657A(vsrc_res)
+            )

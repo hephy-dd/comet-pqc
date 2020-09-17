@@ -1,3 +1,5 @@
+import datetime
+
 import comet
 from comet import ui
 
@@ -11,7 +13,7 @@ class SummaryTreeItem(ui.TreeItem):
     def __init__(self, timestamp, sample_name, sample_type, contact_name,
                  measurement_name, measurement_state):
         super().__init__([
-            timestamp.isoformat(),
+            datetime.datetime.fromtimestamp(timestamp).isoformat(),
             sample_name,
             sample_type,
             contact_name,

@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 import json
 import os
@@ -40,17 +41,32 @@ class Measurement(ResourceMixin, ProcessMixin):
     sample_type = ""
     operator = ""
     output_dir = ""
+    write_logfiles = False
 
     measurement_item = None
-
-    timestamp_start = None
-    timestamp_stop = None
     output_basename = None
+
+    KEY_META = "meta"
+    KEY_SERIES = "series"
+    KEY_SERIES_UNITS = "series_units"
+
+    FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
     def __init__(self, process):
         self.process = process
         self.registered_parameters = {}
+        self.__timestamp_start = 0
         self.__data = {}
+
+    @property
+    def timestamp_start(self):
+        """Returns start timestamp in seconds."""
+        return self.__timestamp_start
+
+    @property
+    def timestamp_start_iso(self):
+        """Returns start timestamp as ISO formatted string."""
+        return datetime.datetime.fromtimestamp(self.timestamp_start).strftime(self.FORMAT_ISO)
 
     @property
     def data(self):
@@ -106,6 +122,37 @@ class Measurement(ResourceMixin, ProcessMixin):
         ))
         return comet.safe_filename(f"{basename}{suffix}")
 
+    def set_meta(self, key, value):
+        self.data.get(self.KEY_META)[key] = value
+
+    def set_series_unit(self, key, value):
+        self.data.get(self.KEY_SERIES_UNITS)[key] = value
+
+    def register_series(self, key):
+        series = self.data.get(self.KEY_SERIES)
+        if key in series:
+            raise KeyError(f"Series already exists: {key}")
+        series[key] = []
+
+    def append_series(self, **kwargs):
+        series = self.data.get(self.KEY_SERIES)
+        if sorted(series.keys()) != sorted(kwargs.keys()):
+            raise KeyError("Inconsistent series keys")
+        for key, value in kwargs.items():
+            series.get(key).append(value)
+
+    def create_logger(self):
+        """Create log file handler."""
+        log_filename = os.path.join(self.output_dir, self.create_filename(suffix='.log'))
+        if not os.path.exists(os.path.dirname(log_filename)):
+            os.makedirs(os.path.dirname(log_filename))
+        log_handler = logging.FileHandler(filename=log_filename)
+        log_handler.setFormatter(logging.Formatter(
+            fmt='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
+            datefmt='%Y-%m-%dT%H:%M:%S'
+        ))
+        return log_handler
+
     def serialize_json(self):
         """Serialize data dictionary to JSON."""
         with open(os.path.join(self.output_dir, self.create_filename(suffix='.json')), 'w') as f:
@@ -137,28 +184,63 @@ class Measurement(ResourceMixin, ProcessMixin):
                     fmt.write_row(row)
             fmt.flush()
 
-    def run(self, *args, **kwargs):
-        """Run measurement."""
-        self.timestamp_start = time.time()
-        self.timestamp_stop = 0
-        # Initialize data
+    def before_initialize(self, **kwargs):
         self.data.clear()
         self.data["meta"] = {}
-        self.data["meta"]["sample_name"] =  self.sample_name
-        self.data["meta"]["sample_type"] = self.sample_type
-        self.data["meta"]["contact_name"] = self.measurement_item.contact.name
-        self.data["meta"]["measurement_name"] = self.measurement_item.name
-        self.data["meta"]["measurement_type"] = self.type
-        self.data["meta"]["start_timestamp"] = self.timestamp_start
-        self.data["meta"]["operator"] = self.operator
         self.data["series_units"] = {}
         self.data["series"] = {}
-        result = self.code(**kwargs)
-        self.timestamp_stop = time.time()
-        self.serialize_json()
-        self.serialize_txt()
-        return result
+        self.set_meta("sample_name", self.sample_name)
+        self.set_meta("sample_type", self.sample_type)
+        self.set_meta("contact_name", self.measurement_item.contact.name)
+        self.set_meta("measurement_name", self.measurement_item.name)
+        self.set_meta("measurement_type", self.type)
+        self.set_meta("start_timestamp", self.timestamp_start_iso)
+        self.set_meta("operator", self.operator)
 
-    def code(self, *args, **kwargs):
-        """Implement custom measurement logic in method `code()`."""
-        raise NotImplementedError(f"Method `{self.__class__.__name__}.code()` not implemented.")
+    def initialize(self, **kwargs):
+        pass
+
+    def after_initialize(self, **kwargs):
+        pass
+
+    def measure(self, **kwargs):
+        pass
+
+    def before_finalize(self, **kwargs):
+        pass
+
+    def finalize(self, **kwargs):
+        pass
+
+    def after_finalize(self, **kwargs):
+        pass
+
+    def run(self, **kwargs):
+        """Run measurement."""
+        self.__timestamp_start = time.time()
+        # Start measurement log file
+        log_handler = None
+        if self.write_logfiles:
+            log_handler = self.create_logger()
+            logging.getLogger().addHandler(log_handler)
+        try:
+            logging.info(f"Initialize...")
+            self.before_initialize(**kwargs)
+            self.initialize(**kwargs)
+            self.after_initialize(**kwargs)
+            logging.info(f"Initialize... done.")
+            logging.info(f"Measure...")
+            self.measure(**kwargs)
+            logging.info(f"Measure... done.")
+        except Exception as exc:
+            logging.error(exc)
+            raise
+        finally:
+            logging.info(f"Finalize...")
+            self.before_finalize(**kwargs)
+            self.finalize(**kwargs)
+            self.after_finalize(**kwargs)
+            # Stop measurement log file
+            if log_handler is not None:
+                logging.getLogger().removeHandler(log_handler)
+            logging.info(f"Finalize... done.")

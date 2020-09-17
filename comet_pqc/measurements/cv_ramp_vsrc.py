@@ -136,129 +136,125 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("voltage_vsrc", "E", unit="V")
-            fmt.add_column("current_vsrc", "E", unit="A")
-            fmt.add_column("capacitance", "E", unit="F")
-            fmt.add_column("capacitance2", "E", unit="1")
-            fmt.add_column("resistance", "E", unit="Ohm")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # Extend meta data
+        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
+        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
+        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("ac_frequency", f"{lcr_frequency:G} Hz")
+        self.set_meta("ac_amplitude", f"{lcr_amplitude:G} V")
 
-            # Write meta data
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
-            fmt.write_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
-            fmt.write_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
-            fmt.write_meta("ac_frequency", f"{lcr_frequency:G} Hz")
-            fmt.write_meta("ac_amplitude", f"{lcr_amplitude:G} V")
-            fmt.flush()
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage_vsrc", "V")
+        self.set_series_unit("current_vsrc", "A")
+        self.set_series_unit("capacitance", "F")
+        self.set_series_unit("capacitance2", "1")
+        self.set_series_unit("resistance", "Ohm")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage_vsrc")
+        self.register_series("current_vsrc")
+        self.register_series("capacitance")
+        self.register_series("capacitance2")
+        self.register_series("resistance")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
-            vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+        vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 
-            ramp = comet.Range(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
-            est = Estimate(ramp.count)
-            self.process.emit("progress", *est.progress)
+        ramp = comet.Range(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
 
-            t0 = time.time()
+        t0 = time.time()
 
-            vsrc.clear()
+        vsrc.clear()
 
-            benchmark_step = Benchmark("Single_Step")
-            benchmark_lcr = Benchmark("Read_LCR")
-            benchmark_vsrc = Benchmark("Read_V_Source")
-            benchmark_environ = Benchmark("Read_Environment")
+        benchmark_step = Benchmark("Single_Step")
+        benchmark_lcr = Benchmark("Read_LCR")
+        benchmark_vsrc = Benchmark("Read_V_Source")
+        benchmark_environ = Benchmark("Read_Environment")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
-            for voltage in ramp:
-                with benchmark_step:
-                    self.vsrc_set_voltage_level(vsrc, voltage)
+        logging.info("ramp to end voltage: from %E V to %E V with step %E V", vsrc_voltage_level, ramp.end, ramp.step)
+        for voltage in ramp:
+            with benchmark_step:
+                self.vsrc_set_voltage_level(vsrc, voltage)
 
-                    # Delay
-                    time.sleep(waiting_time)
+                # Delay
+                time.sleep(waiting_time)
 
-                    # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
-                    dt = time.time() - t0
-                    est.next()
-                    self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-                    self.process.emit("progress", *est.progress)
+                # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
+                dt = time.time() - t0
+                est.next()
+                self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
+                self.process.emit("progress", *est.progress)
 
-                    # read LCR, for CpRp -> prim: Cp, sec: Rp
-                    with benchmark_lcr:
-                        if lcr_soft_filter:
-                            lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
-                        else:
-                            lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
-                        try:
-                            lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
-                        except ZeroDivisionError:
-                            lcr_prim2 = 0.0
+                # read LCR, for CpRp -> prim: Cp, sec: Rp
+                with benchmark_lcr:
+                    if lcr_soft_filter:
+                        lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
+                    else:
+                        lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
+                    try:
+                        lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
+                    except ZeroDivisionError:
+                        lcr_prim2 = 0.0
 
-                    # read V Source
-                    with benchmark_vsrc:
-                        vsrc_reading = vsrc.measure.i()
-                    logging.info("V Source reading: %E A", vsrc_reading)
+                # read V Source
+                with benchmark_vsrc:
+                    vsrc_reading = vsrc.measure.i()
+                logging.info("V Source reading: %E A", vsrc_reading)
 
-                    self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
-                    self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
+                self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
+                self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
-                    self.process.emit("update", )
-                    self.process.emit("state", dict(
-                        vsrc_voltage=voltage,
-                        vsrc_current=vsrc_reading
-                    ))
+                self.process.emit("update", )
+                self.process.emit("state", dict(
+                    vsrc_voltage=voltage,
+                    vsrc_current=vsrc_reading
+                ))
 
-                    self.environment_update()
+                self.environment_update()
 
-                    self.process.emit("state", dict(
-                        env_chuck_temperature=self.environment_temperature_chuck,
-                        env_box_temperature=self.environment_temperature_box,
-                        env_box_humidity=self.environment_humidity_box
-                    ))
+                self.process.emit("state", dict(
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
+                ))
 
-                    # Write reading
-                    fmt.write_row(dict(
-                        timestamp=dt,
-                        voltage_vsrc=voltage,
-                        current_vsrc=vsrc_reading,
-                        capacitance=lcr_prim,
-                        capacitance2=lcr_prim2,
-                        resistance=lcr_sec,
-                        temperature_box=self.environment_temperature_box,
-                        temperature_chuck=self.environment_temperature_chuck,
-                        humidity_box=self.environment_humidity_box
-                    ))
-                    fmt.flush()
+                # Append series data
+                self.append_series(
+                    timestamp=dt,
+                    voltage_vsrc=voltage,
+                    current_vsrc=vsrc_reading,
+                    capacitance=lcr_prim,
+                    capacitance2=lcr_prim2,
+                    resistance=lcr_sec,
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
+                )
 
-                    # Compliance?
-                    compliance_tripped = self.vsrc_compliance_tripped(vsrc)
-                    if compliance_tripped:
-                        logging.error("V Source in compliance")
-                        raise ComplianceError("compliance tripped!")
+                # Compliance?
+                compliance_tripped = self.vsrc_compliance_tripped(vsrc)
+                if compliance_tripped:
+                    logging.error("V Source in compliance")
+                    raise ComplianceError("compliance tripped!")
 
-                    if not self.process.running:
-                        break
+                if not self.process.running:
+                    break
 
-            logging.info(benchmark_step)
-            logging.info(benchmark_lcr)
-            logging.info(benchmark_vsrc)
-            logging.info(benchmark_environ)
+        logging.info(benchmark_step)
+        logging.info(benchmark_lcr)
+        logging.info(benchmark_vsrc)
+        logging.info(benchmark_environ)
 
     def finalize(self, vsrc, lcr):
         self.process.emit("progress", 1, 2)
@@ -280,13 +276,10 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         self.process.emit("progress", 2, 2)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("vsrc") as vsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                vsrc = K2657A(vsrc_res)
-                lcr = E4980A(lcr_res)
-                try:
-                    self.initialize(vsrc, lcr)
-                    self.measure(vsrc, lcr)
-                finally:
-                    self.finalize(vsrc, lcr)
+                super().run(
+                    vsrc=K2657A(vsrc_res),
+                    lcr=E4980A(lcr_res)
+                )

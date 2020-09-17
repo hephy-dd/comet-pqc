@@ -43,13 +43,10 @@ class FrequencyScanMeasurement(MatrixMeasurement):
 
         self.process.emit("progress", 1, 1)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("lcr") as lcr_res:
-                hvsrc = K2410(hvsrc_res)
-                lcr = E4980A(lcr_res)
-                try:
-                    self.initialize(hvsrc, lcr)
-                    self.measure(hvsrc, lcr)
-                finally:
-                    self.finalize(hvsrc, lcr)
+                super().run(
+                    hvsrc=K2410(hvsrc_res),
+                    lcr=E4980A(lcr_res)
+                )

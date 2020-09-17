@@ -23,6 +23,7 @@ from . import config
 from .sequence import SequenceTree
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
+from .sequence import SequenceManager
 
 from .panels import IVRampPanel
 from .panels import IVRampElmPanel
@@ -143,6 +144,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.sequence_combobox = ui.ComboBox(
             changed=self.on_load_sequence_tree
         )
+        self.sequence_manager_button = ui.Button(
+            text="...",
+            tool_tip="Manage sequences",
+            width=32,
+            clicked=self.on_sequence_manager_clicked
+        )
 
         self.sample_groupbox = ui.GroupBox(
             title="Sample",
@@ -155,7 +162,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 ui.Column(
                     self.sample_name_text,
                     self.sample_type_text,
-                    self.sequence_combobox
+                    ui.Row(
+                        self.sequence_combobox,
+                        self.sequence_manager_button,
+                        stretch=(1, 0)
+                    ),
                 ),
                 stretch=(0, 1)
             )
@@ -588,26 +599,33 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     @handle_exception
     def load_sequences(self):
         """Load available sequence configurations."""
-        current_sequence_id = self.settings.get("current_sequence_id")
-        self.sequence_combobox.clear()
-        for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
-            sequence = config.load_sequence(filename)
-            self.sequence_combobox.append(sequence)
-        custom_sequences = []
-        for filename in self.settings.get("custom_sequences") or []:
-            if os.path.exists(filename):
-                try:
-                    sequence = config.load_sequence(filename)
-                except yaml.parser.ParserError as exc:
-                    raise RuntimeError(f"Failed to load configuration file {filename}:\n{exc}")
-                sequence.name = f"{sequence.name} (custom)"
+        # Mute events
+        self.sequence_combobox.changed = None
+        try:
+            current_sequence_id = self.settings.get("current_sequence_id")
+            self.sequence_combobox.clear()
+            for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
+                sequence = config.load_sequence(filename)
+                sequence.name = f"{sequence.name} (built-in)"
                 self.sequence_combobox.append(sequence)
-                custom_sequences.append(filename)
-        self.settings["custom_sequences"] = custom_sequences
-        for sequence in self.sequence_combobox:
-            if sequence.id == current_sequence_id:
-                self.sequence_combobox.current = sequence
-                break
+            custom_sequences = []
+            for filename in self.settings.get("custom_sequences") or []:
+                if os.path.exists(filename):
+                    try:
+                        sequence = config.load_sequence(filename)
+                    except yaml.parser.ParserError as exc:
+                        raise RuntimeError(f"Failed to load configuration file {filename}:\n{exc}")
+                    sequence.name = f"{sequence.name} (user)"
+                    self.sequence_combobox.append(sequence)
+                    custom_sequences.append(filename)
+            self.settings["custom_sequences"] = custom_sequences
+        finally:
+            # Restore events
+            self.sequence_combobox.changed=self.on_load_sequence_tree
+            for sequence in self.sequence_combobox:
+                if sequence.id == current_sequence_id:
+                    self.sequence_combobox.current = sequence
+                    break
 
     def sample_name(self):
         """Return sample name."""
@@ -670,6 +688,16 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if len(self.sequence_tree):
             self.sequence_tree.current = self.sequence_tree[0]
         self.settings["current_sequence_id"] = sequence.id
+
+    def on_sequence_manager_clicked(self):
+        dialog = SequenceManager()
+        custom_sequences = sorted(self.settings.get("custom_sequences"))
+        dialog.load_settings()
+        dialog.run()
+        dialog.store_settings()
+        # Re-load only on changes
+        if custom_sequences != sorted(self.settings.get("custom_sequences")):
+            self.load_sequences()
 
     def lock_controls(self):
         """Lock dashboard controls."""
@@ -749,17 +777,16 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        sample_name = self.sample_name()
-        sample_type = self.sample_type()
-        operator = self.operator()
-        output_dir = self.output_dir()
         sequence = self.processes.get("sequence")
-        sequence.set("sample_name", sample_name)
-        sequence.set("sample_type", sample_type)
-        sequence.set("operator", operator)
-        sequence.set("output_dir", output_dir)
+        sequence.set("sample_name", self.sample_name())
+        sequence.set("sample_type", self.sample_type())
+        sequence.set("operator", self.operator())
+        sequence.set("output_dir", self.output_dir())
+        sequence.set("write_logfiles", self.settings.get("write_logfiles", True))
         sequence.set("use_environ", self.use_environment())
         sequence.set("use_table", self.use_table())
+        sequence.set("serialize_json", self.settings.get("export_json", False))
+        sequence.set("serialize_txt", self.settings.get("export_txt", True))
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
         def show_measurement(item):
@@ -833,8 +860,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.set("sample_type", self.sample_type())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
+        measure.set("write_logfiles", self.settings.get("write_logfiles", True))
         measure.set("use_environ", self.use_environment())
         measure.set("use_table", self.use_table())
+        measure.set("serialize_json", self.settings.get("export_json", False))
+        measure.set("serialize_txt", self.settings.get("export_txt", True))
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
@@ -1048,45 +1078,46 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 writer.write_row({header[i]: item[i].value for i in range(len(header))})
 
     # Menu action callbacks
-
+    #
     def on_import_sequence(self):
-        filename = ui.filename_open(
-            title="Import Sequence",
-            filter="YAML (*.yaml *.yml)"
-        )
-        if not filename:
-            return
-        try:
-            sequence = config.load_sequence(filename)
-        except Exception as e:
-            logging.error(e)
-            ui.show_exception(e)
-            return
-        # backup callback
-        on_changed = self.sequence_combobox.changed
-        self.sequence_combobox.changed = None
-        for item in self.sequence_combobox:
-            if item.id == sequence.id or item.name == sequence.name:
-                result = ui.show_question(
-                    title="Sequence already loaded",
-                    text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
-                )
-                if result:
-                    self.sequence_combobox.remove(item)
-                    break
-                else:
-                    self.sequence_combobox.changed = on_changed
-                    return
-        sequence.name = f"{sequence.name} (custom)"
-        self.sequence_combobox.append(sequence)
-        # Restore callback
-        self.sequence_combobox.changed = on_changed
-        self.sequence_combobox.current = sequence
-        custom_sequences = self.settings.get("custom_sequences") or []
-        if filename not in custom_sequences:
-            custom_sequences.append(filename)
-        self.settings["custom_sequences"] = custom_sequences
-        self.settings["current_sequence_id"] = sequence.id
+        pass
+    #     filename = ui.filename_open(
+    #         title="Import Sequence",
+    #         filter="YAML (*.yaml *.yml)"
+    #     )
+    #     if not filename:
+    #         return
+    #     try:
+    #         sequence = config.load_sequence(filename)
+    #     except Exception as e:
+    #         logging.error(e)
+    #         ui.show_exception(e)
+    #         return
+    #     # backup callback
+    #     on_changed = self.sequence_combobox.changed
+    #     self.sequence_combobox.changed = None
+    #     for item in self.sequence_combobox:
+    #         if item.id == sequence.id or item.name == sequence.name:
+    #             result = ui.show_question(
+    #                 title="Sequence already loaded",
+    #                 text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
+    #             )
+    #             if result:
+    #                 self.sequence_combobox.remove(item)
+    #                 break
+    #             else:
+    #                 self.sequence_combobox.changed = on_changed
+    #                 return
+    #     sequence.name = f"{sequence.name} (custom)"
+    #     self.sequence_combobox.append(sequence)
+    #     # Restore callback
+    #     self.sequence_combobox.changed = on_changed
+    #     self.sequence_combobox.current = sequence
+    #     custom_sequences = self.settings.get("custom_sequences") or []
+    #     if filename not in custom_sequences:
+    #         custom_sequences.append(filename)
+    #     self.settings["custom_sequences"] = custom_sequences
+    #     self.settings["current_sequence_id"] = sequence.id
 
     def on_github(self):
         webbrowser.open(comet.app().window.github_url)

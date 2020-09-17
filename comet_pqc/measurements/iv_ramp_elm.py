@@ -272,142 +272,136 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
         if not self.process.running:
             return
 
-        with open(os.path.join(output_dir, self.create_filename(suffix='.txt')), "w", newline="") as f:
-            # Create formatter
-            fmt = PQCFormatter(f)
-            fmt.add_column("timestamp", ".3f", unit="s")
-            fmt.add_column("voltage", "E", unit="V")
-            fmt.add_column("current_hvsrc", "E", unit="A")
-            fmt.add_column("current_elm", "E", unit="A")
-            fmt.add_column("temperature_box", "E", unit="degC")
-            fmt.add_column("temperature_chuck", "E", unit="degC")
-            fmt.add_column("humidity_box", "E", unit="%")
+        # Extend meta data
+        self.set_meta("voltage_start", f"{voltage_start:G} V")
+        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
+        self.set_meta("voltage_step", f"{voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
+        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
+        self.set_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
+        self.set_meta("hvsrc_filter_count", format(hvsrc_filter_count))
+        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
+        self.set_meta("elm_filter_enable", format(elm_filter_enable).lower())
+        self.set_meta("elm_filter_count", format(elm_filter_count))
+        self.set_meta("elm_filter_type", elm_filter_type)
+        self.set_meta("elm_zero_correction", format(elm_zero_correction))
+        self.set_meta("elm_integration_rate", format(elm_integration_rate))
+        self.set_meta("elm_current_range", format(elm_current_range, 'G'))
+        self.set_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
+        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
+        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
+        self.set_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
 
-            # Write meta data
-            fmt.write_meta("sample_name", sample_name)
-            fmt.write_meta("sample_type", sample_type)
-            fmt.write_meta("contact_name", contact_name)
-            fmt.write_meta("measurement_name", measurement_name)
-            fmt.write_meta("measurement_type", self.type)
-            fmt.write_meta("start_timestamp", datetime.datetime.now(), "%Y-%m-%d %H:%M:%S")
-            fmt.write_meta("operator", self.operator)
-            fmt.write_meta("voltage_start", f"{voltage_start:G} V")
-            fmt.write_meta("voltage_stop", f"{voltage_stop:G} V")
-            fmt.write_meta("voltage_step", f"{voltage_step:G} V")
-            fmt.write_meta("waiting_time", f"{waiting_time:G} s")
-            fmt.write_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-            fmt.write_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-            fmt.write_meta("hvsrc_route_termination", hvsrc_route_termination)
-            fmt.write_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
-            fmt.write_meta("hvsrc_filter_count", format(hvsrc_filter_count))
-            fmt.write_meta("hvsrc_filter_type", hvsrc_filter_type)
-            fmt.write_meta("elm_filter_enable", format(elm_filter_enable).lower())
-            fmt.write_meta("elm_filter_count", format(elm_filter_count))
-            fmt.write_meta("elm_filter_type", elm_filter_type)
-            fmt.write_meta("elm_zero_correction", format(elm_zero_correction))
-            fmt.write_meta("elm_integration_rate", format(elm_integration_rate))
-            fmt.write_meta("elm_current_range", format(elm_current_range, 'G'))
-            fmt.write_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
-            fmt.write_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
-            fmt.write_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
-            fmt.write_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
-            fmt.flush()
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("current_elm", "A")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-            # Write header
-            fmt.write_header()
-            fmt.flush()
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage")
+        self.register_series("current_hvsrc")
+        self.register_series("current_elm")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
-            voltage = hvsrc.source.voltage.level
+        voltage = hvsrc.source.voltage.level
 
-            # HV Source reading format: CURR
-            hvsrc.resource.write(":FORM:ELEM CURR")
-            hvsrc.resource.query("*OPC?")
+        # HV Source reading format: CURR
+        hvsrc.resource.write(":FORM:ELEM CURR")
+        hvsrc.resource.query("*OPC?")
 
-            # Electrometer reading format: READ
-            elm.resource.write(":FORM:ELEM READ")
-            elm.resource.query("*OPC?")
-            self.elm_check_error(elm)
+        # Electrometer reading format: READ
+        elm.resource.write(":FORM:ELEM READ")
+        elm.resource.query("*OPC?")
+        self.elm_check_error(elm)
 
-            ramp = comet.Range(voltage, voltage_stop, voltage_step)
-            est = Estimate(ramp.count)
-            self.process.emit("progress", *est.progress)
+        ramp = comet.Range(voltage, voltage_stop, voltage_step)
+        est = Estimate(ramp.count)
+        self.process.emit("progress", *est.progress)
 
-            t0 = time.time()
+        t0 = time.time()
 
-            benchmark_step = Benchmark("Single_Step")
-            benchmark_elm = Benchmark("Read_ELM")
-            benchmark_hvsrc = Benchmark("Read_HV_Source")
-            benchmark_environ = Benchmark("Read_Environment")
+        benchmark_step = Benchmark("Single_Step")
+        benchmark_elm = Benchmark("Read_ELM")
+        benchmark_hvsrc = Benchmark("Read_HV_Source")
+        benchmark_environ = Benchmark("Read_Environment")
 
-            logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
-            for voltage in ramp:
-                with benchmark_step:
-                    logging.info("set voltage: %E V", voltage)
-                    hvsrc.clear()
-                    hvsrc.source.voltage.level = voltage
-                    # check_error(hvsrc)
+        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        for voltage in ramp:
+            with benchmark_step:
+                logging.info("set voltage: %E V", voltage)
+                hvsrc.clear()
+                hvsrc.source.voltage.level = voltage
+                # check_error(hvsrc)
 
-                    time.sleep(waiting_time)
+                time.sleep(waiting_time)
 
-                    dt = time.time() - t0
+                dt = time.time() - t0
 
-                    est.next()
-                    self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-                    self.process.emit("progress", *est.progress)
+                est.next()
+                self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
+                self.process.emit("progress", *est.progress)
 
-                    # read ELM
-                    with benchmark_elm:
-                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
-                    self.elm_check_error(elm)
-                    logging.info("ELM reading: %E", elm_reading)
-                    self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
+                # read ELM
+                with benchmark_elm:
+                    elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                self.elm_check_error(elm)
+                logging.info("ELM reading: %E", elm_reading)
+                self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                    # read HV Source
-                    with benchmark_hvsrc:
-                        hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-                    logging.info("HV Source reading: %E", hvsrc_reading)
-                    self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
+                logging.info("HV Source reading: %E", hvsrc_reading)
+                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
-                    self.process.emit("update")
-                    self.process.emit("state", dict(
-                        hvsrc_voltage=voltage,
-                        hvsrc_current=hvsrc_reading,
-                        elm_current=elm_reading
-                    ))
+                self.process.emit("update")
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                    hvsrc_current=hvsrc_reading,
+                    elm_current=elm_reading
+                ))
 
-                    self.environment_update()
+                self.environment_update()
 
-                    self.process.emit("state", dict(
-                        env_chuck_temperature=self.environment_temperature_chuck,
-                        env_box_temperature=self.environment_temperature_box,
-                        env_box_humidity=self.environment_humidity_box
-                    ))
+                self.process.emit("state", dict(
+                    env_chuck_temperature=self.environment_temperature_chuck,
+                    env_box_temperature=self.environment_temperature_box,
+                    env_box_humidity=self.environment_humidity_box
+                ))
 
-                    # Write reading
-                    fmt.write_row(dict(
-                        timestamp=dt,
-                        voltage=voltage,
-                        current_hvsrc=hvsrc_reading,
-                        current_elm=elm_reading,
-                        temperature_box=self.environment_temperature_box,
-                        temperature_chuck=self.environment_temperature_chuck,
-                        humidity_box=self.environment_humidity_box
-                    ))
-                    fmt.flush()
+                # Append series data
+                self.append_series(
+                    timestamp=dt,
+                    voltage=voltage,
+                    current_hvsrc=hvsrc_reading,
+                    current_elm=elm_reading,
+                    temperature_box=self.environment_temperature_box,
+                    temperature_chuck=self.environment_temperature_chuck,
+                    humidity_box=self.environment_humidity_box
+                )
 
-                    # Compliance?
-                    compliance_tripped = hvsrc.sense.current.protection.tripped
-                    if compliance_tripped:
-                        logging.error("HV Source in compliance")
-                        raise ComplianceError("compliance tripped")
-                    # check_error(hvsrc)
-                    if not self.process.running:
-                        break
+                # Compliance?
+                compliance_tripped = hvsrc.sense.current.protection.tripped
+                if compliance_tripped:
+                    logging.error("HV Source in compliance")
+                    raise ComplianceError("compliance tripped")
+                # check_error(hvsrc)
+                if not self.process.running:
+                    break
 
-            logging.info(benchmark_step)
-            logging.info(benchmark_elm)
-            logging.info(benchmark_hvsrc)
-            logging.info(benchmark_environ)
+        logging.info(benchmark_step)
+        logging.info(benchmark_elm)
+        logging.info(benchmark_hvsrc)
+        logging.info(benchmark_environ)
 
         self.process.emit("progress", 4, 5)
 
@@ -446,13 +440,10 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
 
         self.process.emit("progress", 5, 5)
 
-    def code(self, *args, **kwargs):
+    def run(self):
         with self.resources.get("hvsrc") as hvsrc_res:
             with self.resources.get("elm") as elm_res:
-                hvsrc = K2410(hvsrc_res)
-                elm = K6517B(elm_res)
-                try:
-                    self.initialize(hvsrc, elm)
-                    self.measure(hvsrc, elm)
-                finally:
-                    self.finalize(hvsrc, elm)
+                super().run(
+                    hvsrc=K2410(hvsrc_res),
+                    elm=K6517B(elm_res)
+                )
