@@ -41,6 +41,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     sample_type = ""
     operator = ""
     output_dir = ""
+    write_logfiles = False
 
     measurement_item = None
     output_basename = None
@@ -218,8 +219,10 @@ class Measurement(ResourceMixin, ProcessMixin):
         """Run measurement."""
         self.__timestamp_start = time.time()
         # Start measurement log file
-        log_handler = self.create_logger()
-        logging.getLogger().addHandler(log_handler)
+        log_handler = None
+        if self.write_logfiles:
+            log_handler = self.create_logger()
+            logging.getLogger().addHandler(log_handler)
         try:
             logging.info(f"Initialize...")
             self.before_initialize(**kwargs)
@@ -238,5 +241,6 @@ class Measurement(ResourceMixin, ProcessMixin):
             self.finalize(**kwargs)
             self.after_finalize(**kwargs)
             # Stop measurement log file
-            logging.getLogger().removeHandler(log_handler)
+            if log_handler is not None:
+                logging.getLogger().removeHandler(log_handler)
             logging.info(f"Finalize... done.")

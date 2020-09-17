@@ -6,61 +6,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0]
-
-## [0.23.4]
-### Fixed
-- Inconsistent data column names (#69)
-- Incorrect data values for column `current_elm` in `iv_ramp_bias_elm` (#68)
-
-## [0.23.3]
-### Changed
-- Migrated to COMET 0.11.1
-
-## [0.23.2]
-### Fixed
-- Contents URL
-
-## [0.23.1]
-### Fixed
-- Application crash if working directory permission denied (#62)
-- Mirrored table X/Y controls to match camera image movement (#52)
-
-## [0.23.0]
+## [0.24.0] - 2020-09-17
 ### Added
-- Operator name for measurement results (#57)
-- Save plots to PNG image and preferences option (#58)
-- Set environment TEST LED (#60)
+- Sequence manager dialog (#75).
+- Changelog in online documentation (#73).
+- Write measurement data in JSON (#49).
+- Write measurement log files and (#72).
+- Laser sensor state in table control dialog (#71).
 
-## [0.22.0]
+## [0.23.4] - 2020-09-14
+### Fixed
+- Inconsistent data column names (#69).
+- Incorrect data values for column `current_elm` in `iv_ramp_bias_elm` (#68).
+
+## [0.23.3] - 2020-09-03
 ### Changed
-- Migrated to COMET 0.11.0 (#55)
-- Simplified Start/Stop mechanism (#54)
-- Rotated X/Y table controls (#52)
-- Set K2547A display (#51)
+- Migrated to COMET 0.11.1.
 
-## [0.21.1]
+## [0.23.2] - 2020-09-02
+### Fixed
+- Contents URL.
+
+## [0.23.1] - 2020-09-01
+### Fixed
+- Application crash if working directory permission denied (#62).
+- Mirrored table X/Y controls to match camera image movement (#52).
+
+## [0.23.0] - 2020-08-28
+### Added
+- Operator name for measurement results (#57).
+- Save plots to PNG image and preferences option (#58).
+- Set environment TEST LED (#60).
+
+## [0.22.0] - 2020-08-26
+### Changed
+- Migrated to COMET 0.11.0 (#55).
+- Simplified Start/Stop mechanism (#54).
+- Rotated X/Y table controls (#52).
+- Set K2547A display (#51).
+
+## [0.21.1] - 2020-08-13
 ### Fixed
 - Auto generated `id` attributes can contain mixed case (#36).
 
-## [0.21.0]
+## [0.21.0] - 2020-08-10
 ### Added
 - Configuration attribute `id` for connections and measurements (#36).
 ### Changed
 - Measurement data filename schema (#45).
 - Keeping previous measurement states when running a sequence (#46).
 
-## [0.20.1]
+## [0.20.1] - 2020-08-10
 ### Fixed
 - Electrometer read (#42).
 - Show error message on YAML parser errors (#43).
 
-## [0.20.0]
+## [0.20.0] - 2020-08-06
 ### Added
 - Resource process.
 - Environment process (#12).
-- Additional measurement states (#35)
-- Reset sequence tree on sample name changes (#37)
+- Additional measurement states (#35).
+- Reset sequence tree on sample name changes (#37).
 ### Changed
 - Environment access using a process.
 - Resized dialogs for table HiDPI screens (#32).

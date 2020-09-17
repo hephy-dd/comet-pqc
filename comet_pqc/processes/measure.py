@@ -147,12 +147,14 @@ class MeasureProcess(BaseProcess):
         sample_type = self.get("sample_type")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
+        write_logfiles = self.get("write_logfiles")
         # TODO
         measurement = measurement_factory(self.measurement_item.type, self)
         measurement.sample_name = sample_name
         measurement.sample_type = sample_type
         measurement.operator = operator
         measurement.output_dir = output_dir
+        measurement.write_logfiles = write_logfiles
         measurement.measurement_item = self.measurement_item
         state = self.measurement_item.ActiveState
         self.emit("measurement_state", self.measurement_item, state)
@@ -231,6 +233,7 @@ class SequenceProcess(BaseProcess):
         sample_type = self.get("sample_type")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
+        write_logfiles = self.get("write_logfiles")
         contact_item = self.contact_item
         self.emit("measurement_state", contact_item, contact_item.ProcessingState)
         logging.info(" => %s", contact_item.name)
@@ -250,6 +253,7 @@ class SequenceProcess(BaseProcess):
             measurement.sample_type = sample_type
             measurement.operator = operator
             measurement.output_dir = output_dir
+            measurement.write_logfiles = write_logfiles
             measurement.measurement_item = measurement_item
             state = "Active"
             self.emit("measurement_state", measurement_item, state)
