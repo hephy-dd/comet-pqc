@@ -2,10 +2,15 @@ include README.md
 include LICENSE
 
 include pyinstaller.spec
-recursive-include tests *py
+recursive-include tests *.py
 
 include docs/_config.yml
 recursive-include docs *.md
 
-recursive-include comet_pqc/assets/config *.yaml
-recursive-include comet_pqc/assets/schema *.yaml
+recursive-include comet_pqc/assets/config/chuck *.yaml
+recursive-include comet_pqc/assets/config/sample *.yaml
+recursive-include comet_pqc/assets/config/sequence *.yaml
+
+include comet_pqc/assets/schema/chuck.yaml
+include comet_pqc/assets/schema/sample.yaml
+include comet_pqc/assets/schema/sequence.yaml

@@ -1,9 +1,12 @@
 import datetime
 import time
+import json
+import os
 
 import comet
 from comet.resource import ResourceMixin
 from comet.process import ProcessMixin
+from ..formatter import PQCFormatter
 
 __all__ = ['Measurement']
 
@@ -47,6 +50,12 @@ class Measurement(ResourceMixin, ProcessMixin):
     def __init__(self, process):
         self.process = process
         self.registered_parameters = {}
+        self.__data = {}
+
+    @property
+    def data(self):
+        """Measurement data property."""
+        return self.__data
 
     def register_parameter(self, key, default=None, *, values=None, unit=None, type=None,
                            required=False):
@@ -97,12 +106,57 @@ class Measurement(ResourceMixin, ProcessMixin):
         ))
         return comet.safe_filename(f"{basename}{suffix}")
 
+    def serialize_json(self):
+        """Serialize data dictionary to JSON."""
+        with open(os.path.join(self.output_dir, self.create_filename(suffix='.json')), 'w') as f:
+            json.dump(self.data, f, indent=2)
+
+    def serialize_txt(self):
+        """Serialize data dictionary to plain text."""
+        with open(os.path.join(self.output_dir, self.create_filename(suffix='.txt')), 'w') as f:
+            meta = self.data.get("meta", {})
+            series_units = self.data.get("series_units", {})
+            series = self.data.get("series", {})
+            fmt = PQCFormatter(f)
+            # Write meta data
+            for key, value in meta.items():
+                fmt.write_meta(key, value)
+            # Create columns
+            columns = list(series.keys())
+            for key in columns:
+                fmt.add_column(key, "E", unit=series_units.get(key))
+            # Write header
+            fmt.write_header()
+            # Write series
+            if columns:
+                size = len(series.get(columns[0]))
+                for i in range(size):
+                    row = {}
+                    for key in columns:
+                        row[key] = series.get(key)[i]
+                    fmt.write_row(row)
+            fmt.flush()
+
     def run(self, *args, **kwargs):
         """Run measurement."""
         self.timestamp_start = time.time()
         self.timestamp_stop = 0
+        # Initialize data
+        self.data.clear()
+        self.data["meta"] = {}
+        self.data["meta"]["sample_name"] =  self.sample_name
+        self.data["meta"]["sample_type"] = self.sample_type
+        self.data["meta"]["contact_name"] = self.measurement_item.contact.name
+        self.data["meta"]["measurement_name"] = self.measurement_item.name
+        self.data["meta"]["measurement_type"] = self.type
+        self.data["meta"]["start_timestamp"] = self.timestamp_start
+        self.data["meta"]["operator"] = self.operator
+        self.data["series_units"] = {}
+        self.data["series"] = {}
         result = self.code(**kwargs)
         self.timestamp_stop = time.time()
+        self.serialize_json()
+        self.serialize_txt()
         return result
 
     def code(self, *args, **kwargs):

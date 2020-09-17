@@ -20,6 +20,19 @@ from ..measurements import measurement_factory
 
 class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
+    def create_logger(self, measurement):
+        # Start measurement log file
+        log_filename = os.path.join(measurement.output_dir, measurement.create_filename(suffix='.log'))
+        if not os.path.exists(os.path.dirname(log_filename)):
+            os.makedirs(os.path.dirname(log_filename))
+        log_handler = logging.FileHandler(filename=log_filename)
+        log_handler.setFormatter(logging.Formatter(
+            fmt='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
+            datefmt='%Y-%m-%dT%H:%M:%S'
+        ))
+        logging.getLogger().addHandler(log_handler)
+        return log_handler
+
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
         if int(resource.query(":OUTP:STAT?")):
@@ -157,6 +170,9 @@ class MeasureProcess(BaseProcess):
         measurement.measurement_item = self.measurement_item
         state = self.measurement_item.ActiveState
         self.emit("measurement_state", self.measurement_item, state)
+        # Start measurement log file
+        log_handler = self.create_logger(measurement)
+        logging.getLogger().addHandler(log_handler)
         try:
             measurement.run()
         except ResourceError as e:
@@ -182,6 +198,8 @@ class MeasureProcess(BaseProcess):
             self.emit("measurement_state", self.measurement_item, state)
             self.emit("save_to_image", self.measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
             self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
+            # Stop measurement log file
+            logging.getLogger().removeHandler(log_handler)
 
     def finalize(self):
         self.emit("message", "Finalize measurement...")
@@ -254,6 +272,9 @@ class SequenceProcess(BaseProcess):
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
             self.emit('show_measurement', measurement_item)
+            # Start measurement log file
+            log_handler = self.create_logger(measurement)
+            logging.getLogger().addHandler(log_handler)
             try:
                 measurement.run()
             except ResourceError as e:
@@ -283,6 +304,8 @@ class SequenceProcess(BaseProcess):
                 self.emit("measurement_state", measurement_item, state)
                 self.emit("save_to_image", measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
                 self.emit('push_summary', timestamp, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
+                # Stop measurement log file
+                logging.getLogger().removeHandler(log_handler)
 
             prev_measurement_item = measurement_item
         self.emit("measurement_state", contact_item, None)
