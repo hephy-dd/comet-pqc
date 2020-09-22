@@ -25,22 +25,15 @@ from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
 from .sequence import SequenceManager
 
-from .panels import IVRampPanel
-from .panels import IVRampElmPanel
-from .panels import IVRampBiasPanel
-from .panels import IVRampBiasElmPanel
-from .panels import IVRamp4WirePanel
-from .panels import CVRampPanel
-from .panels import CVRampHVPanel
-from .panels import CVRampAltPanel
-from .panels import FrequencyScanPanel
-
 from .dialogs import TableControlDialog
 from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
 
+from .tabs import EnvironmentTab
+from .tabs import MeasurementTab
+from .tabs import StatusTab
+from .tabs import SummaryTab
 from .logwindow import LogWidget
-from .summary import SummaryTree
 from .formatter import CSVFormatter
 
 SUMMARY_FILENAME = "summary.csv"
@@ -79,52 +72,6 @@ class ToggleButton(ui.Button):
 
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
-
-class PanelStack(ui.Row):
-    """Stack of measurement panels."""
-
-    def __init__(self):
-        super().__init__()
-        self.append(IVRampPanel(visible=False))
-        self.append(IVRampElmPanel(visible=False))
-        self.append(IVRampBiasPanel(visible=False))
-        self.append(IVRampBiasElmPanel(visible=False))
-        self.append(CVRampPanel(visible=False))
-        self.append(CVRampHVPanel(visible=False))
-        self.append(CVRampAltPanel(visible=False))
-        self.append(IVRamp4WirePanel(visible=False))
-        self.append(FrequencyScanPanel(visible=False))
-
-    def store(self):
-        for child in self:
-            child.store()
-
-    def unmount(self):
-        for child in self:
-            child.unmount()
-
-    def clear_readings(self):
-        for child in self:
-            child.clear_readings()
-
-    def hide(self):
-        for child in self:
-            child.visible = False
-
-    def lock(self):
-        for child in self:
-            child.lock()
-
-    def unlock(self):
-        for child in self:
-            child.unlock()
-
-    def get(self, type):
-        """Get panel by type."""
-        for child in self.children:
-            if child.type == type:
-                return child
-        return None
 
 class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
@@ -402,170 +349,14 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             stretch=(0, 1, 0, 0)
         )
 
-        # Measurement panel stack
+        # Tabs
 
-        self.panels = PanelStack()
+        self.measurement_tab = MeasurementTab(restore=self.on_measure_restore)
+        self.environment_tab = EnvironmentTab()
+        self.status_tab = StatusTab(reload=self.on_status_start)
+        self.summary_tab = SummaryTab()
 
-        self.measure_restore_button = ui.Button(
-            text="Restore Defaults",
-            tool_tip="Restore default measurement parameters.",
-            clicked=self.on_measure_restore
-        )
-
-        self.measure_controls = ui.Row(
-            self.measure_restore_button,
-            ui.Spacer(),
-            visible=False
-        )
-
-        # Measurement tab
-
-        self.measurement_tab = ui.Tab(
-            title="Measurement",
-            layout=ui.Column(
-                self.panels,
-                self.measure_controls,
-                stretch=(1, 0)
-            )
-        )
-
-        # Status tab
-
-        self.matrix_model_text = ui.Text(readonly=True)
-        self.matrix_channels_text = ui.Text(readonly=True)
-        self.hvsrc_model_text = ui.Text(readonly=True)
-        self.vsrc_model_text = ui.Text(readonly=True)
-        self.lcr_model_text = ui.Text(readonly=True)
-        self.elm_model_text = ui.Text(readonly=True)
-        self.table_model_text = ui.Text(readonly=True)
-        self.table_state_text = ui.Text(readonly=True)
-        self.env_model_text = ui.Text(readonly=True)
-        self.env_box_temperature_text = ui.Text(readonly=True)
-        self.env_box_humidity_text = ui.Text(readonly=True)
-        self.env_chuck_temperature_text = ui.Text(readonly=True)
-        self.env_lux_text = ui.Text(readonly=True)
-        self.env_light_text = ui.Text(readonly=True)
-        self.env_door_text = ui.Text(readonly=True)
-        self.reload_status_button = ui.Button("&Reload", clicked=self.on_status_start)
-
-        self.status_tab = ui.Tab(
-            title="Status",
-            layout=ui.Column(
-                ui.GroupBox(
-                    title="Matrix",
-                    layout=ui.Column(
-                        ui.Row(
-                            ui.Label("Model:"),
-                            self.matrix_model_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Closed channels:"),
-                            self.matrix_channels_text,
-                            stretch=(1, 7)
-                        )
-                    )
-                ),
-                ui.GroupBox(
-                    title="HVSource",
-                    layout=ui.Row(
-                        ui.Label("Model:"),
-                        self.hvsrc_model_text,
-                        stretch=(1, 7)
-                    )
-                ),
-                ui.GroupBox(
-                    title="VSource",
-                    layout=ui.Row(
-                        ui.Label("Model:"),
-                        self.vsrc_model_text,
-                        stretch=(1, 7)
-                    )
-                ),
-                ui.GroupBox(
-                    title="LCRMeter",
-                    layout=ui.Row(
-                        ui.Label("Model:"),
-                        self.lcr_model_text,
-                        stretch=(1, 7)
-                    )
-                ),
-                ui.GroupBox(
-                    title="Electrometer",
-                    layout=ui.Row(
-                        ui.Label("Model:"),
-                        self.elm_model_text,
-                        stretch=(1, 7)
-                    )
-                ),
-                ui.GroupBox(
-                    title="Table",
-                    layout=ui.Column(
-                        ui.Row(
-                            ui.Label("Model:"),
-                            self.table_model_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("State:"),
-                            self.table_state_text,
-                            stretch=(1, 7)
-                        )
-                    )
-                ),
-                ui.GroupBox(
-                    title="Environment Box",
-                    layout=ui.Column(
-                        ui.Row(
-                            ui.Label("Model:"),
-                            self.env_model_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Box Temperat.:"),
-                            self.env_box_temperature_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Box Humidity:"),
-                            self.env_box_humidity_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Chuck Temperat.:"),
-                            self.env_chuck_temperature_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Box Lux:"),
-                            self.env_lux_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Box Light State:"),
-                            self.env_light_text,
-                            stretch=(1, 7)
-                        ),
-                        ui.Row(
-                            ui.Label("Box Door State:"),
-                            self.env_door_text,
-                            stretch=(1, 7)
-                        ),
-                    )
-                ),
-                ui.Spacer(),
-                self.reload_status_button
-            )
-        )
-
-        # Summary tab
-
-        self.summary_tree = SummaryTree()
-
-        self.summary_tab = ui.Tab(
-            title="Summary",
-            layout=self.summary_tree
-        )
+        self.panels = self.measurement_tab.panels
 
         self.log_widget = LogWidget()
         self.log_widget.add_logger(logging.getLogger())
@@ -579,6 +370,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.tab_widget = ui.Tabs(
             self.measurement_tab,
+            self.environment_tab,
             self.status_tab,
             self.logging_tab,
             self.summary_tab
@@ -708,12 +500,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.start_button.enabled = False
         self.stop_button.enabled = True
         self.reset_button.enabled = False
-        self.reload_status_button.enabled = False
-        self.measure_controls.enabled = False
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
-        self.panels.lock()
+        self.measurement_tab.lock()
         self.sequence_tree.lock()
+        self.status_tab.lock()
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
@@ -724,12 +515,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.start_button.enabled = True
         self.stop_button.enabled = False
         self.reset_button.enabled = True
-        self.reload_status_button.enabled = True
-        self.measure_controls.enabled = True
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
-        self.panels.unlock()
+        self.measurement_tab.unlock()
         self.sequence_tree.unlock()
+        self.status_tab.unlock()
 
     # Sequence control
 
@@ -738,7 +528,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.unmount()
         self.panels.clear_readings()
         self.panels.hide()
-        self.measure_controls.visible = False
+        self.measurement_tab.measure_controls.visible = False
         if isinstance(item, ContactTreeItem):
             pass
         if isinstance(item, MeasurementTreeItem):
@@ -746,7 +536,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
-            self.measure_controls.visible = True
+            self.measurement_tab.measure_controls.visible = True
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 
@@ -882,22 +672,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_status_start(self):
         self.lock_controls()
-        self.matrix_model_text.value = ""
-        self.matrix_channels_text.value = ""
-        self.hvsrc_model_text.value = ""
-        self.vsrc_model_text.value = ""
-        self.lcr_model_text.value = ""
-        self.elm_model_text.value = ""
-        self.table_model_text.value = ""
-        self.table_state_text.value = ""
-        self.env_model_text.value = ""
-        self.env_box_temperature_text.value = ""
-        self.env_box_humidity_text.value = ""
-        self.env_chuck_temperature_text.value = ""
-        self.env_lux_text.value = ""
-        self.env_light_text.value = ""
-        self.env_door_text.value = ""
-        self.reload_status_button.enabled = False
+        self.status_tab.reset()
         status = self.processes.get("status")
         status.set("use_environ", self.use_environment())
         status.set("use_table", self.use_table())
@@ -907,25 +682,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_status_finished(self):
         self.unlock_controls()
-        self.reload_status_button.enabled = True
         status = self.processes.get("status")
-        self.matrix_model_text.value = status.get("matrix_model") or "n/a"
-        self.matrix_channels_text.value = status.get("matrix_channels")
-        self.hvsrc_model_text.value = status.get("hvsrc_model") or "n/a"
-        self.vsrc_model_text.value = status.get("vsrc_model") or "n/a"
-        self.lcr_model_text.value = status.get("lcr_model") or "n/a"
-        self.elm_model_text.value = status.get("elm_model") or "n/a"
-        self.table_model_text.value = status.get("table_model") or "n/a"
-        self.table_state_text.value = status.get("table_state") or "n/a"
-        self.env_model_text.value = status.get("env_model") or "n/a"
-        pc_data = status.get("env_pc_data")
-        if pc_data:
-            self.env_box_temperature_text.value = f"{pc_data.box_temperature:.1f} °C"
-            self.env_box_humidity_text.value = f"{pc_data.box_humidity:.1f} %rH"
-            self.env_chuck_temperature_text.value = f"{pc_data.chuck_block_temperature:.1f} °C"
-            self.env_lux_text.value =  f"{pc_data.box_lux:.1f} lux"
-            self.env_light_text.value = "ON" if pc_data.box_light_state else "OFF"
-            self.env_door_text.value = "OPEN" if pc_data.box_door_state else "CLOSED"
+        self.status_tab.update_status(status)
 
     # Table calibration
 
@@ -1015,6 +773,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                     pc_data = environment.pc_data()
             except:
                 self.environment_groupbox.checked = False
+                self.environment_tab.enabled = False
                 raise
             else:
                 self.box_laser_button.checked = pc_data.relay_states.laser_sensor
@@ -1025,6 +784,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.probecard_light_button.checked = pc_data.relay_states.probecard_light
                 self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
                 self.pid_control_button.checked = pc_data.pid_status
+                self.environment_tab.enabled = True
+                self.environment_tab.update_data(pc_data)
+        else:
+            self.environment_tab.enabled = False
 
     @handle_exception
     def sync_table_controls(self):
@@ -1063,61 +826,19 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     @handle_exception
     def on_push_summary(self, *args):
         """Push rsult to summary and write to sumamry file (experimantal)."""
-        item = self.summary_tree.append_result(*args)
+        item = self.summary_tab.append_result(*args)
         output_path = self.settings.get("output_path")
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)
             with open(filename, 'a') as f:
-                header = self.summary_tree.header_items
+                header = self.summary_tab.header()
                 writer = CSVFormatter(f)
                 for key in header:
                     writer.add_column(key)
                 if not has_header:
                     writer.write_header()
                 writer.write_row({header[i]: item[i].value for i in range(len(header))})
-
-    # Menu action callbacks
-    #
-    def on_import_sequence(self):
-        pass
-    #     filename = ui.filename_open(
-    #         title="Import Sequence",
-    #         filter="YAML (*.yaml *.yml)"
-    #     )
-    #     if not filename:
-    #         return
-    #     try:
-    #         sequence = config.load_sequence(filename)
-    #     except Exception as e:
-    #         logging.error(e)
-    #         ui.show_exception(e)
-    #         return
-    #     # backup callback
-    #     on_changed = self.sequence_combobox.changed
-    #     self.sequence_combobox.changed = None
-    #     for item in self.sequence_combobox:
-    #         if item.id == sequence.id or item.name == sequence.name:
-    #             result = ui.show_question(
-    #                 title="Sequence already loaded",
-    #                 text=f"Do you want to replace already loaded sequence '{sequence.name}'?"
-    #             )
-    #             if result:
-    #                 self.sequence_combobox.remove(item)
-    #                 break
-    #             else:
-    #                 self.sequence_combobox.changed = on_changed
-    #                 return
-    #     sequence.name = f"{sequence.name} (custom)"
-    #     self.sequence_combobox.append(sequence)
-    #     # Restore callback
-    #     self.sequence_combobox.changed = on_changed
-    #     self.sequence_combobox.current = sequence
-    #     custom_sequences = self.settings.get("custom_sequences") or []
-    #     if filename not in custom_sequences:
-    #         custom_sequences.append(filename)
-    #     self.settings["custom_sequences"] = custom_sequences
-    #     self.settings["current_sequence_id"] = sequence.id
 
     def on_github(self):
         webbrowser.open(comet.app().window.github_url)

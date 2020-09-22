@@ -64,7 +64,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def read_table(self):
         self.set("table_model", "")
-        self.set("table_state", "N/A")
+        self.set("table_state", "")
         try:
             with self.resources.get("table") as table_res:
                 table = Venus1(table_res)
