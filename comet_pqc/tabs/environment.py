@@ -1,3 +1,5 @@
+import time
+
 from comet import ui
 
 __all__ = ['EnvironmentTab']
@@ -7,8 +9,20 @@ class EnvironmentTab(ui.Tab):
     LightStates = {True: "ON", False: "OFF", None: "n/a"}
     DoorStates = {True: "OPEN", False: "CLOSED", None: "n/a"}
 
+    SampleCount = 60 * 60 * 12
+
     def __init__(self):
         super().__init__(title="Environment")
+        # Data series
+        self.box_temperature_series = []
+        self.box_humidity_series = []
+        # Plot
+        self.plot = ui.Plot(legend="bottom")
+        self.plot.add_axis("x", align="bottom", type="datetime")
+        self.plot.add_axis("y1", align="left", text="Temperature [°C]", color="red")
+        self.plot.add_axis("y2", align="right", text="Humidity [%rH]", color="blue")
+        self.plot.add_series("box_temperature", "x", "y1", text="Box Temperature", color="red")
+        self.plot.add_series("box_humidity", "x", "y2", text="Box Humidity", color="blue")
         # Inputs
         self.box_temperature_number = ui.Number(suffix="°C", decimals=1, readonly=True)
         self.box_humidity_number = ui.Number(suffix="%rH", decimals=1, readonly=True)
@@ -18,6 +32,7 @@ class EnvironmentTab(ui.Tab):
         self.box_door_text = ui.Text(readonly=True)
         # Layout
         self.layout = ui.Column(
+            self.plot,
             ui.Label("Box Temperature"),
             self.box_temperature_number,
             ui.Label("Box Humidity"),
@@ -34,9 +49,23 @@ class EnvironmentTab(ui.Tab):
         )
 
     def update_data(self, pc_data):
+        x = time.time()
         self.box_temperature_number.value = pc_data.box_temperature
         self.box_humidity_number.value = pc_data.box_humidity
         self.chuck_temperature_number.value = pc_data.chuck_block_temperature
         self.box_lux_number.value = pc_data.box_lux
         self.box_light_text.value = self.LightStates.get(pc_data.box_light_state)
         self.box_door_text.value = self.DoorStates.get(pc_data.box_door_state)
+        self.box_temperature_series.append((x, pc_data.box_temperature))
+        self.box_humidity_series.append((x, pc_data.box_humidity))
+        self.box_temperature_series = self.box_temperature_series[-self.SampleCount:]
+        self.box_humidity_series = self.box_humidity_series[-self.SampleCount:]
+        self.update_plot()
+
+    def update_plot(self):
+        self.plot.series.get("box_temperature").replace(self.box_temperature_series)
+        self.plot.series.get("box_humidity").replace(self.box_humidity_series)
+        if self.plot.zoomed:
+            self.plot.update("x")
+        else:
+            self.plot.fit()

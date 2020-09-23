@@ -183,6 +183,7 @@ def main():
 
     # Load configurations
     dashboard.load_sequences()
+    dashboard.on_reset_sequence_state()
 
     # Start services
     app.processes.get("environment").start()

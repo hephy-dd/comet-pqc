@@ -80,13 +80,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.sample_name_text = ui.Text(
             value=self.settings.get("sample_name", "Unnamed"),
-            changed=self.on_sample_name_changed,
-            editing_finished=self.on_reset_sequence_state
+            editing_finished=self.on_sample_name_changed
         )
         self.sample_type_text = ui.Text(
             value=self.settings.get("sample_type", ""),
-            changed=self.on_sample_type_changed,
-            editing_finished=self.on_reset_sequence_state
+            editing_finished=self.on_sample_type_changed
         )
         self.sequence_combobox = ui.ComboBox(
             changed=self.on_load_sequence_tree
@@ -456,11 +454,17 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Callbacks
 
-    def on_sample_name_changed(self, value):
-        self.settings["sample_name"] = value
+    def on_sample_name_changed(self):
+        sample_name = self.sample_name()
+        if self.settings.get("sample_name") != sample_name:
+            self.settings["sample_name"] = sample_name
+            self.on_reset_sequence_state()
 
-    def on_sample_type_changed(self, value):
-        self.settings["sample_type"] = value
+    def on_sample_type_changed(self):
+        sample_type = self.sample_type()
+        if self.settings.get("sample_type") != sample_type:
+            self.settings["sample_type"] = sample_type
+            self.on_reset_sequence_state()
 
     def on_reset_sequence_state(self):
         # Reset tree
