@@ -33,6 +33,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
         self.register_vsource()
         self.register_lcr()
         self.register_environment()
@@ -67,12 +68,47 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 6)
 
+        # Parameters
+        bias_voltage_start = self.get_parameter('bias_voltage_start')
+        bias_voltage_step = self.get_parameter('bias_voltage_step')
+        bias_voltage_stop = self.get_parameter('bias_voltage_stop')
+        waiting_time = self.get_parameter('waiting_time')
+        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+
+        # Extend meta data
+        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
+        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
+        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.vsrc_update_meta()
+        self.lcr_update_meta()
+        self.environment_update_meta()
+
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage_vsrc", "V")
+        self.set_series_unit("current_vsrc", "A")
+        self.set_series_unit("capacitance", "F")
+        self.set_series_unit("capacitance2", "1")
+        self.set_series_unit("resistance", "Ohm")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
+
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage_vsrc")
+        self.register_series("current_vsrc")
+        self.register_series("capacitance")
+        self.register_series("capacitance2")
+        self.register_series("resistance")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
+
         # Initialize V Source
 
-        # Bring down V Source voltage if output enabeled
-        # Prevents a voltage jump for at device reset.
-        self.quick_ramp_zero(vsrc)
-        self.vsrc_set_output_state(vsrc, False)
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 2, 6)
 
@@ -80,6 +116,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("progress", 3, 6)
 
         self.vsrc_setup(vsrc)
+        self.vsrc_set_current_compliance(vsrc, vsrc_current_compliance)
         self.process.emit("progress", 4, 6)
 
         self.vsrc_set_output_state(vsrc, True)
@@ -96,20 +133,12 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("progress", 6, 6)
 
     def measure(self, vsrc, lcr):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
+        # Parameters
         bias_voltage_start = self.get_parameter('bias_voltage_start')
         bias_voltage_step = self.get_parameter('bias_voltage_step')
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
         lcr_soft_filter = self.get_parameter('lcr_soft_filter')
-        lcr_frequency = self.get_parameter('lcr_frequency')
-        lcr_amplitude = self.get_parameter('lcr_amplitude')
 
         # Ramp to start voltage
 
@@ -136,36 +165,6 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         if not self.process.running:
             return
 
-        # Extend meta data
-        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
-        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
-        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
-        self.set_meta("waiting_time", f"{waiting_time:G} s")
-        self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
-        self.set_meta("ac_frequency", f"{lcr_frequency:G} Hz")
-        self.set_meta("ac_amplitude", f"{lcr_amplitude:G} V")
-
-        # Series units
-        self.set_series_unit("timestamp", "s")
-        self.set_series_unit("voltage_vsrc", "V")
-        self.set_series_unit("current_vsrc", "A")
-        self.set_series_unit("capacitance", "F")
-        self.set_series_unit("capacitance2", "1")
-        self.set_series_unit("resistance", "Ohm")
-        self.set_series_unit("temperature_box", "degC")
-        self.set_series_unit("temperature_chuck", "degC")
-        self.set_series_unit("humidity_box", "%")
-
-        # Series
-        self.register_series("timestamp")
-        self.register_series("voltage_vsrc")
-        self.register_series("current_vsrc")
-        self.register_series("capacitance")
-        self.register_series("capacitance2")
-        self.register_series("resistance")
-        self.register_series("temperature_box")
-        self.register_series("temperature_chuck")
-        self.register_series("humidity_box")
 
         vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 

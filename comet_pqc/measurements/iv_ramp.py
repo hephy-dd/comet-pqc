@@ -16,11 +16,12 @@ from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import HVSourceMixin
 from .mixins import EnvironmentMixin
 
 __all__ = ["IVRampMeasurement"]
 
-class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
+class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
     """IV ramp measurement.
 
     * set compliance
@@ -41,94 +42,63 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
         self.register_parameter('voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
-        self.register_parameter('hvsrc_filter_enable', False, type=bool)
-        self.register_parameter('hvsrc_filter_count', 10, type=int)
-        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_hvsource()
         self.register_environment()
 
     def initialize(self, hvsrc):
         self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 0, 5)
+        self.process.emit("progress", 1, 4)
 
+        # Parameters
         voltage_start = self.get_parameter('voltage_start')
+        voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
+
+        # Extend meta data
+        self.set_meta("voltage_start", f"{voltage_start:G} V")
+        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
+        self.set_meta("voltage_step", f"{voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.hvsrc_update_meta()
+        self.environment_update_meta()
+
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
+
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage")
+        self.register_series("current_hvsrc")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
         hvsrc_proxy = create_proxy(hvsrc)
 
         self.process.emit("state", dict(
             hvsrc_voltage=hvsrc_proxy.source_voltage_level,
             hvsrc_current=None,
-            hvsrc_output=hvsrc_proxy.output_enable
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
-        hvsrc_proxy.reset()
-        hvsrc_proxy.assert_success()
-        hvsrc_proxy.clear()
-        hvsrc_proxy.assert_success()
+        self.hvsrc_reset(hvsrc)
+        self.hvsrc_setup(hvsrc)
 
-        # Beeper off
-        hvsrc_proxy.beeper_enable = False
-        hvsrc_proxy.assert_success()
-        self.process.emit("progress", 1, 5)
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
 
-        # Select rear terminal
-        logging.info("set route termination: '%s'", hvsrc_route_termination)
-        if hvsrc_route_termination == "front":
-            hvsrc.resource.write(":ROUT:TERM FRONT")
-        elif hvsrc_route_termination == "rear":
-            hvsrc.resource.write(":ROUT:TERM REAR")
-        hvsrc.resource.query("*OPC?")
-        hvsrc_proxy.assert_success()
-        self.process.emit("progress", 2, 5)
-
-        # set sense mode
-        logging.info("set sense mode: '%s'", hvsrc_sense_mode)
-        if hvsrc_sense_mode == "remote":
-            hvsrc.resource.write(":SYST:RSEN ON")
-        elif hvsrc_sense_mode == "local":
-            hvsrc.resource.write(":SYST:RSEN OFF")
-        else:
-            raise ValueError(f"invalid sense mode: {hvsrc_sense_mode}")
-        hvsrc.resource.query("*OPC?")
-        hvsrc_proxy.assert_success()
-        self.process.emit("progress", 3, 5)
-
-        # Compliance
-        logging.info("set compliance: %E A", hvsrc_current_compliance)
-        hvsrc.sense.current.protection.level = hvsrc_current_compliance
-        hvsrc_proxy.assert_success()
-
-        # Range
-        current_range = 1.05E-6
-        hvsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
-        hvsrc.resource.query("*OPC?")
-        hvsrc_proxy.assert_success()
-        #hvsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #hvsrc.resource.query("*OPC?")
-        #hvsrc_proxy.assert_success()
-
-        # Filter
-
-        hvsrc_proxy.filter_count = hvsrc_filter_count
-        hvsrc_proxy.assert_success()
-        hvsrc_proxy.filter_type = hvsrc_filter_type.upper()
-        hvsrc_proxy.assert_success()
-        hvsrc_proxy.filter_enable = hvsrc_filter_enable
-        hvsrc_proxy.assert_success()
-
-        self.process.emit("progress", 5, 5)
+        self.process.emit("progress", 2, 4)
 
         # If output enabled
-        if hvsrc_proxy.output_enable:
+        if self.hvsrc_get_output_state(hvsrc):
             voltage = hvsrc_proxy.source_voltage_level
 
             logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
@@ -145,11 +115,15 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
             voltage = 0
             hvsrc_proxy.source_voltage_level = voltage
             hvsrc_proxy.assert_success()
-            hvsrc_proxy.output_enable = True
-            hvsrc_proxy.assert_success()
+            self.hvsrc_set_output_state(hvsrc, True)
             time.sleep(.100)
 
-        self.process.emit("progress", 2, 5)
+        self.process.emit("state", dict(
+            hvsrc_voltage=voltage,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
+        ))
+
+        self.process.emit("progress", 3, 4)
 
         if self.process.running:
 
@@ -177,47 +151,19 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
                 if not self.process.running:
                     break
 
-        self.process.emit("progress", 5, 5)
+        self.process.emit("state", dict(
+            hvsrc_voltage=voltage,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
+        ))
+
+        self.process.emit("progress", 4, 4)
 
     def measure(self, hvsrc):
+        # Parameters
         voltage_start = self.get_parameter('voltage_start')
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
-
-        # Extend meta data
-        self.set_meta("voltage_start", f"{voltage_start:G} V")
-        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
-        self.set_meta("voltage_step", f"{voltage_step:G} V")
-        self.set_meta("waiting_time", f"{waiting_time:G} s")
-        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
-        self.set_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
-        self.set_meta("hvsrc_filter_count", format(hvsrc_filter_count))
-        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
-
-        # Series units
-        self.set_series_unit("timestamp", "s")
-        self.set_series_unit("voltage", "V")
-        self.set_series_unit("current_hvsrc", "A")
-        self.set_series_unit("temperature_box", "degC")
-        self.set_series_unit("temperature_chuck", "degC")
-        self.set_series_unit("humidity_box", "%")
-
-        # Series
-        self.register_series("timestamp")
-        self.register_series("voltage")
-        self.register_series("current_hvsrc")
-        self.register_series("temperature_box")
-        self.register_series("temperature_chuck")
-        self.register_series("humidity_box")
 
         hvsrc_proxy = create_proxy(hvsrc)
 
@@ -288,16 +234,29 @@ class IVRampMeasurement(MatrixMeasurement, EnvironmentMixin):
 
         voltage = hvsrc_proxy.source_voltage_level
 
+        self.process.emit("state", dict(
+            hvsrc_voltage=voltage,
+            hvsrc_current=None,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
+        ))
+
         logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
             logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             hvsrc_proxy.source_voltage_level = voltage
+            self.process.emit("state", dict(
+                hvsrc_voltage=voltage
+            ))
             time.sleep(QUICK_RAMP_DELAY)
             # hvsrc_proxy.assert_success()
 
-        hvsrc_proxy.output_enable = False
-        hvsrc_proxy.assert_success()
+        self.hvsrc_set_output_state(hvsrc, False)
+
+        self.process.emit("state", dict(
+            hvsrc_voltage=hvsrc_proxy.source_voltage_level,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
+        ))
 
         self.process.emit("progress", 5, 5)
 

@@ -16,6 +16,7 @@ from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+from .mixins import HVSourceMixin
 from .mixins import ElectrometerMixin
 from .mixins import EnvironmentMixin
 
@@ -27,7 +28,7 @@ def check_error(hvsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixin):
+class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
     """IV ramp with electrometer measurement.
 
     * set compliance
@@ -48,11 +49,6 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
         self.register_parameter('voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', 1.0, unit='s')
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
-        self.register_parameter('hvsrc_filter_enable', False, type=bool)
-        self.register_parameter('hvsrc_filter_count', 10, type=int)
-        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
         self.register_parameter('elm_filter_enable', False, type=bool)
         self.register_parameter('elm_filter_count', 10, type=int)
         self.register_parameter('elm_filter_type', 'repeat')
@@ -62,21 +58,19 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
         self.register_parameter('elm_current_autorange_enable', False, type=bool)
         self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
         self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
+        self.register_hvsource()
         self.register_elm()
         self.register_environment()
 
     def initialize(self, hvsrc, elm):
         self.process.emit("progress", 0, 5)
 
+        # Parameters
         voltage_start = self.get_parameter('voltage_start')
+        voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
         elm_filter_enable = self.get_parameter('elm_filter_enable')
         elm_filter_count = self.get_parameter('elm_filter_count')
         elm_filter_type = self.get_parameter('elm_filter_type')
@@ -86,21 +80,49 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
         elm_current_autorange_enable = self.get_parameter('elm_current_autorange_enable')
         elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
         elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
+        elm_read_timeout = self.get_parameter('elm_read_timeout')
 
-        self.process.emit("progress", 2, 5)
+        # Extend meta data
+        self.set_meta("voltage_start", f"{voltage_start:G} V")
+        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
+        self.set_meta("voltage_step", f"{voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.hvsrc_update_meta()
+        self.set_meta("elm_filter_enable", elm_filter_enable)
+        self.set_meta("elm_filter_count", elm_filter_count)
+        self.set_meta("elm_filter_type", elm_filter_type)
+        self.set_meta("elm_zero_correction", elm_zero_correction)
+        self.set_meta("elm_integration_rate", elm_integration_rate)
+        self.set_meta("elm_current_range", format(elm_current_range, 'G'))
+        self.set_meta("elm_current_autorange_enable", elm_current_autorange_enable)
+        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
+        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
+        self.set_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
+        self.elm_update_meta()
+        self.environment_update_meta()
 
-        self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc.source.voltage.level,
-            hvsrc_current=None,
-            hvsrc_output=hvsrc.output,
-            elm_current=None,
-        ))
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("current_elm", "A")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
 
-        # Beeper off
-        hvsrc.reset()
-        hvsrc.clear()
-        hvsrc.system.beeper.status = False
-        check_error(hvsrc)
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage")
+        self.register_series("current_hvsrc")
+        self.register_series("current_elm")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
+
+        self.hvsrc_reset(hvsrc)
+        self.hvsrc_setup(hvsrc)
+        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
 
         self.process.emit("state", dict(
             hvsrc_voltage=hvsrc.source.voltage.level,
@@ -108,60 +130,6 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
             hvsrc_output=hvsrc.output,
             elm_current=None
         ))
-
-        # Select rear terminal
-        logging.info("set route termination: '%s'", hvsrc_route_termination)
-        if hvsrc_route_termination == "front":
-            hvsrc.resource.write(":ROUT:TERM FRONT")
-        elif hvsrc_route_termination == "rear":
-            hvsrc.resource.write(":ROUT:TERM REAR")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
-
-        # set sense mode
-        logging.info("set sense mode: '%s'", hvsrc_sense_mode)
-        if hvsrc_sense_mode == "remote":
-            hvsrc.resource.write(":SYST:RSEN ON")
-        elif hvsrc_sense_mode == "local":
-            hvsrc.resource.write(":SYST:RSEN OFF")
-        else:
-            raise ValueError(f"invalid sense mode: {hvsrc_sense_mode}")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
-
-        # Compliance
-        logging.info("set compliance: %E A", hvsrc_current_compliance)
-        hvsrc.sense.current.protection.level = hvsrc_current_compliance
-        check_error(hvsrc)
-
-        # Range
-        current_range = 1.05E-6
-        hvsrc.resource.write(":SENS:CURR:RANG:AUTO ON")
-        hvsrc.resource.write(":SENS:VOLT:RANG:AUTO ON")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
-        #hvsrc.resource.write(f":SENS:CURR:RANG {current_range:E}")
-        #hvsrc.resource.query("*OPC?")
-        #check_error(hvsrc)
-
-        # Filter
-        hvsrc.resource.write(f":SENS:AVER:COUN {hvsrc_filter_count:d}")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
-
-        if hvsrc_filter_type == "repeat":
-            hvsrc.resource.write(":SENS:AVER:TCON REP")
-        elif hvsrc_filter_type == "moving":
-            hvsrc.resource.write(":SENS:AVER:TCON MOV")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
-
-        if hvsrc_filter_enable:
-            hvsrc.resource.write(":SENS:AVER:STATE ON")
-        else:
-            hvsrc.resource.write(":SENS:AVER:STATE OFF")
-        hvsrc.resource.query("*OPC?")
-        check_error(hvsrc)
 
         self.process.emit("progress", 1, 5)
 
@@ -242,75 +210,15 @@ class IVRampElmMeasurement(MatrixMeasurement, ElectrometerMixin, EnvironmentMixi
         self.process.emit("progress", 3, 5)
 
     def measure(self, hvsrc, elm):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
+        # Parameters
         voltage_start = self.get_parameter('voltage_start')
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
-        elm_filter_enable = self.get_parameter('elm_filter_enable')
-        elm_filter_count = self.get_parameter('elm_filter_count')
-        elm_filter_type = self.get_parameter('elm_filter_type')
-        elm_zero_correction = self.get_parameter('elm_zero_correction')
-        elm_integration_rate = self.get_parameter('elm_integration_rate')
-        elm_current_range = self.get_parameter('elm_current_range')
-        elm_current_autorange_enable = self.get_parameter('elm_current_autorange_enable')
-        elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
-        elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
         elm_read_timeout = self.get_parameter('elm_read_timeout')
 
         if not self.process.running:
             return
-
-        # Extend meta data
-        self.set_meta("voltage_start", f"{voltage_start:G} V")
-        self.set_meta("voltage_stop", f"{voltage_stop:G} V")
-        self.set_meta("voltage_step", f"{voltage_step:G} V")
-        self.set_meta("waiting_time", f"{waiting_time:G} s")
-        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
-        self.set_meta("hvsrc_filter_enable", format(hvsrc_filter_enable).lower())
-        self.set_meta("hvsrc_filter_count", format(hvsrc_filter_count))
-        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
-        self.set_meta("elm_filter_enable", format(elm_filter_enable).lower())
-        self.set_meta("elm_filter_count", format(elm_filter_count))
-        self.set_meta("elm_filter_type", elm_filter_type)
-        self.set_meta("elm_zero_correction", format(elm_zero_correction))
-        self.set_meta("elm_integration_rate", format(elm_integration_rate))
-        self.set_meta("elm_current_range", format(elm_current_range, 'G'))
-        self.set_meta("elm_current_autorange_enable", format(elm_current_autorange_enable).lower())
-        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
-        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
-        self.set_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
-
-        # Series units
-        self.set_series_unit("timestamp", "s")
-        self.set_series_unit("voltage", "V")
-        self.set_series_unit("current_hvsrc", "A")
-        self.set_series_unit("current_elm", "A")
-        self.set_series_unit("temperature_box", "degC")
-        self.set_series_unit("temperature_chuck", "degC")
-        self.set_series_unit("humidity_box", "%")
-
-        # Series
-        self.register_series("timestamp")
-        self.register_series("voltage")
-        self.register_series("current_hvsrc")
-        self.register_series("current_elm")
-        self.register_series("temperature_box")
-        self.register_series("temperature_chuck")
-        self.register_series("humidity_box")
 
         voltage = hvsrc.source.voltage.level
 

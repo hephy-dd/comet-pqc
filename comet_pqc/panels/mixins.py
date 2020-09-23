@@ -29,13 +29,22 @@ class HVSourceMixin:
         self.hvsrc_filter_type = ui.ComboBox(items=["repeat", "moving"])
         self.hvsrc_filter_type_label = ui.Label(text="Type")
 
+        def toggle_hvsrc_source_voltage_autorange(enabled):
+            self.hvsrc_source_voltage_range.enabled = not enabled
+
+        self.hvsrc_source_voltage_autorange_enable = ui.CheckBox(text="Autorange", changed=toggle_hvsrc_source_voltage_autorange)
+        self.hvsrc_source_voltage_range = ui.Number(minimum=-1100, maximum=1100, decimals=1, suffix="V")
+
         toggle_hvsrc_filter(False)
+        toggle_hvsrc_source_voltage_autorange(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
         self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "rear")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
+        self.bind("hvsrc_source_voltage_autorange_enable", self.hvsrc_source_voltage_autorange_enable, True)
+        self.bind("hvsrc_source_voltage_range", self.hvsrc_source_voltage_range, 20, unit="V")
 
         self.status_hvsrc_voltage = ui.Text(value="---", readonly=True)
         self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, "---")
@@ -79,6 +88,15 @@ class HVSourceMixin:
                     )
                 ),
                 ui.GroupBox(
+                    title="Source Voltage Range",
+                    layout=ui.Column(
+                        self.hvsrc_source_voltage_autorange_enable,
+                        ui.Label(text="Range"),
+                        self.hvsrc_source_voltage_range,
+                        ui.Spacer()
+                    )
+                ),
+                ui.GroupBox(
                     title="Options",
                     layout=ui.Column(
                         ui.Label(text="Sense Mode"),
@@ -88,7 +106,6 @@ class HVSourceMixin:
                         ui.Spacer()
                     )
                 ),
-                ui.Spacer(),
                 stretch=(1, 1, 1)
             )
         ))
