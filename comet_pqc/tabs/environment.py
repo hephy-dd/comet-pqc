@@ -15,13 +15,15 @@ class EnvironmentTab(ui.Tab):
         super().__init__(title="Environment")
         # Data series
         self.box_temperature_series = []
+        self.chuck_temperature_series = []
         self.box_humidity_series = []
         # Plot
-        self.plot = ui.Plot(legend="bottom")
+        self.plot = ui.Plot(legend="right")
         self.plot.add_axis("x", align="bottom", type="datetime")
         self.plot.add_axis("y1", align="left", text="Temperature [°C]", color="red")
         self.plot.add_axis("y2", align="right", text="Humidity [%rH]", color="blue")
         self.plot.add_series("box_temperature", "x", "y1", text="Box Temperature", color="red")
+        self.plot.add_series("chuck_temperature", "x", "y1", text="Chuck Temperature", color="magenta")
         self.plot.add_series("box_humidity", "x", "y2", text="Box Humidity", color="blue")
         # Inputs
         self.box_temperature_number = ui.Number(suffix="°C", decimals=1, readonly=True)
@@ -57,13 +59,16 @@ class EnvironmentTab(ui.Tab):
         self.box_light_text.value = self.LightStates.get(pc_data.box_light_state)
         self.box_door_text.value = self.DoorStates.get(pc_data.box_door_state)
         self.box_temperature_series.append((x, pc_data.box_temperature))
+        self.chuck_temperature_series.append((x, pc_data.chuck_temperature))
         self.box_humidity_series.append((x, pc_data.box_humidity))
         self.box_temperature_series = self.box_temperature_series[-self.SampleCount:]
+        self.chuck_temperature_series = self.chuck_temperature_series[-self.SampleCount:]
         self.box_humidity_series = self.box_humidity_series[-self.SampleCount:]
         self.update_plot()
 
     def update_plot(self):
         self.plot.series.get("box_temperature").replace(self.box_temperature_series)
+        self.plot.series.get("chuck_temperature").replace(self.chuck_temperature_series)
         self.plot.series.get("box_humidity").replace(self.box_humidity_series)
         if self.plot.zoomed:
             self.plot.update("x")
