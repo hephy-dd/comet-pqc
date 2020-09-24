@@ -8,6 +8,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'comet @ https://github.com/hephy-dd/comet/archive/0.11.1.zip#egg=comet-0.11.1',
+        'analysis-pqc @ https://github.com/hephy-dd/analysis-pqc/archive/master.zip#egg=analysis-pqc-0.1.0',
         'qutie>=1.5.2',
         'pyyaml',
         'jsonschema'
