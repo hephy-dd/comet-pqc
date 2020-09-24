@@ -180,7 +180,7 @@ class MeasureProcess(BaseProcess):
             else:
                 state = self.measurement_item.SuccessState
         finally:
-            self.emit("measurement_state", self.measurement_item, state)
+            self.emit("measurement_state", self.measurement_item, state, measurement.quality)
             self.emit("save_to_image", self.measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
             self.emit('push_summary', measurement.timestamp_start, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
             if self.get("serialize_json"):
@@ -286,7 +286,7 @@ class SequenceProcess(BaseProcess):
                     state = measurement_item.SuccessState
                 logging.info("%s done.", measurement_item.name)
             finally:
-                self.emit("measurement_state", measurement_item, state)
+                self.emit("measurement_state", measurement_item, state, measurement.quality)
                 self.emit("save_to_image", measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
                 self.emit('push_summary', measurement.timestamp_start, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
                 if self.get("serialize_json"):
@@ -295,7 +295,7 @@ class SequenceProcess(BaseProcess):
                     measurement.serialize_txt()
 
             prev_measurement_item = measurement_item
-        self.emit("measurement_state", contact_item, None)
+        self.emit("measurement_state", contact_item)
         if prev_measurement_item:
             self.emit('hide_measurement', prev_measurement_item)
 

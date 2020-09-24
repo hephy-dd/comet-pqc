@@ -54,6 +54,7 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     def __init__(self, process):
         self.process = process
+        self.quality = "Check"
         self.registered_parameters = {}
         self.__timestamp_start = 0
         self.__data = {}

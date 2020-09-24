@@ -609,8 +609,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.push_summary = self.on_push_summary
         sequence.start()
 
-    def on_measurement_state(self, item, state):
+    def on_measurement_state(self, item, state=None, quality=None):
         item.state = state
+        item.quality = quality
 
     def on_save_to_image(self, item, filename):
         plot_png = self.settings.get("png_plots") or False

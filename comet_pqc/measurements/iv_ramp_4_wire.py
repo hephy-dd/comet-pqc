@@ -7,6 +7,8 @@ import re
 import comet
 from comet.driver.keithley import K2657A
 
+from analysis_pqc import analyse_van_der_pauw
+
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
@@ -230,6 +232,27 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
             # check_error(vsrc)
             if not self.process.running:
                 break
+
+        # Analyze
+        def to_dict(result):
+            d = {}
+            for key, value in r._asdict().items():
+                if type(value).__name__ == 'ndarray':
+                    value = value.tolist()
+                d[key] = value
+            return d
+        i = self.get_series('current')
+        v = self.get_series('voltage_vsrc')
+        if len(i) > 1:
+            r = analyse_van_der_pauw(i, v)
+            logging.info("Result %s", r)
+            logging.info("State %s", r.status)
+            for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                self.process.emit("reading", "xfit", x, y)
+            self.process.emit("update")
+            self.quality = r.status
+            analysis = self.data.setdefault("analysis", {})
+            analysis["van_der_pauw"] = to_dict(r)
 
         self.process.emit("progress", 4, 5)
 
