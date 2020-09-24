@@ -119,7 +119,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.sequence_tree = SequenceTree(
             selected=self.on_tree_selected,
-            double_clicked=lambda item, index: self.on_start()
+            double_clicked=self.on_tree_double_clicked
         )
         self.sequence_tree.qt.setExpandsOnDoubleClick(False)
         self.sequence_tree.minimum_width = 360
@@ -501,6 +501,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
+        self.sequence_tree.double_clicked = None
         self.start_button.enabled = False
         self.stop_button.enabled = True
         self.reset_button.enabled = False
@@ -516,6 +517,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
+        self.sequence_tree.double_clicked = self.on_tree_double_clicked
         self.start_button.enabled = True
         self.stop_button.enabled = False
         self.reset_button.enabled = True
@@ -543,6 +545,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.measurement_tab.measure_controls.visible = True
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
+
+    def on_tree_double_clicked(self, item, index):
+        self.on_start()
 
     @handle_exception
     def on_start(self):
