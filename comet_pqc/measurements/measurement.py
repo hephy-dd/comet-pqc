@@ -134,6 +134,9 @@ class Measurement(ResourceMixin, ProcessMixin):
             raise KeyError(f"Series already exists: {key}")
         series[key] = []
 
+    def get_series(self, key):
+        return self.data.get(self.KEY_SERIES).get(key)
+
     def append_series(self, **kwargs):
         series = self.data.get(self.KEY_SERIES)
         if sorted(series.keys()) != sorted(kwargs.keys()):

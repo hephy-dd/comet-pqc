@@ -314,6 +314,15 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 4, 5)
 
     def finalize(self, hvsrc, elm):
+        try:
+            # Analyse
+            v = self.get_series("voltage")
+            i = self.get_series("current_elm")
+            result = analyse_iv(v, i)
+            logging.info("Analysis: %s", result)
+        except:
+            pass
+
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 

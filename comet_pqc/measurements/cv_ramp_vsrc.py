@@ -5,8 +5,9 @@ import os
 import re
 
 import comet
-from comet.driver.keysight import E4980A
+# from comet.driver.keysight import E4980A
 from comet.driver.keithley import K2657A
+from ..driver import E4980A
 
 from ..utils import format_metric
 from ..formatter import PQCFormatter
@@ -214,7 +215,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
-                self.process.emit("update", )
+                self.process.emit("update")
                 self.process.emit("state", dict(
                     vsrc_voltage=voltage,
                     vsrc_current=vsrc_reading

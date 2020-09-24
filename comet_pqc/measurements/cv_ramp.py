@@ -5,8 +5,9 @@ import os
 import re
 
 import comet
-from comet.driver.keysight import E4980A
+# from comet.driver.keysight import E4980A
 from comet.driver.keithley import K2410
+from ..driver import E4980A
 
 from ..utils import format_metric
 from ..formatter import PQCFormatter

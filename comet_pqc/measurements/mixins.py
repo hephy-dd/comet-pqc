@@ -316,9 +316,11 @@ class LCRMixin:
         self.lcr_check_error(device)
 
     def lcr_reset(self, lcr):
-        self.lcr_safe_write(lcr, "*RST")
-        self.lcr_safe_write(lcr, "*CLS")
-        self.lcr_safe_write(lcr, ":SYST:BEEP:STAT OFF")
+        lcr.reset()
+        lcr.clear()
+        self.lcr_check_error(lcr)
+        lcr.system.beeper.state = False
+        self.lcr_check_error(lcr)
 
     def lcr_setup(self, lcr):
         lcr_amplitude = self.get_parameter('lcr_amplitude')
@@ -345,9 +347,8 @@ class LCRMixin:
     def lcr_acquire_reading(self, lcr):
         """Return primary and secondary LCR reading."""
         self.lcr_safe_write(lcr, "TRIG:IMM")
-        result = lcr.resource.query("FETC?")
-        logging.info("lcr reading: %s", result)
-        prim, sec = [float(value) for value in result.split(",")[:2]]
+        prim, sec = lcr.fetch()
+        logging.info("lcr reading: %s-%s", prim, sec)
         return prim, sec
 
     def lcr_acquire_filter_reading(self, lcr, maximum=64, threshold=0.005, size=2):
@@ -367,6 +368,25 @@ class LCRMixin:
                     return prim, sec
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
+
+    def lcr_get_bias_voltage_level(self, lcr):
+        return lcr.bias.voltage.level
+
+    def lcr_set_bias_voltage_level(self, lcr, voltage):
+        logging.info("set LCR voltage level: %s", format_metric(voltage, "V"))
+        lcr.bias.voltage.level = voltage
+        self.lcr_check_error(lcr)
+
+    def lcr_get_bias_polarity_current_level(self, lcr):
+        return lcr.bias.polarity.current.level
+
+    def lcr_get_bias_state(self, lcr):
+        return lcr.bias.state
+
+    def lcr_set_bias_state(self, lcr, enabled):
+        logging.info("set LCR voltage output state: %s", enabled)
+        lcr.bias.state = enabled
+        self.lcr_check_error(lcr)
 
 class EnvironmentMixin:
 
