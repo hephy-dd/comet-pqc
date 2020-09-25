@@ -612,6 +612,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_measurement_state(self, item, state=None, quality=None):
         item.state = state
         item.quality = quality
+        self.sequence_tree.fit()
 
     def on_save_to_image(self, item, filename):
         plot_png = self.settings.get("png_plots") or False

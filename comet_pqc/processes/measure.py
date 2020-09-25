@@ -18,7 +18,46 @@ from ..utils import format_metric
 from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
 
+class LogFileHandler:
+    """Context manager for log files."""
+
+    Format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
+    DateFormat = '%Y-%m-%dT%H:%M:%S'
+
+    def __init__(self, filename=None):
+        self.__filename = filename
+        self.__handler = None
+        self.__logger = logging.getLogger()
+
+    def create_path(self, filename):
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+
+    def create_handler(self, filename):
+        self.create_path(filename)
+        handler = logging.FileHandler(filename=filename)
+        handler.setFormatter(logging.Formatter(
+            fmt=self.Format,
+            datefmt=self.DateFormat
+        ))
+        return handler
+
+    def __enter__(self):
+        if self.__filename:
+            self.__handler = self.create_handler(self.__filename)
+            self.__logger.addHandler(self.__handler)
+        return self
+
+    def __exit__(self, *exc):
+        if self.__handler is not None:
+            self.__logger.removeHandler(self.__handler)
+        return False
+
 class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
+
+    def create_filename(self, measurement, suffix=''):
+        filename = comet.safe_filename(f"{measurement.basename}{suffix}")
+        return os.path.join(self.get('output_dir'), filename)
 
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
@@ -149,44 +188,50 @@ class MeasureProcess(BaseProcess):
         output_dir = self.get("output_dir")
         write_logfiles = self.get("write_logfiles")
         # TODO
-        measurement = measurement_factory(self.measurement_item.type, self)
-        measurement.sample_name = sample_name
-        measurement.sample_type = sample_type
-        measurement.operator = operator
-        measurement.output_dir = output_dir
-        measurement.write_logfiles = write_logfiles
+        measurement = measurement_factory(
+            self.measurement_item.type,
+            process=self,
+            sample_name=sample_name,
+            sample_type=sample_type,
+            operator=operator
+        )
         measurement.measurement_item = self.measurement_item
+        log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
+        plot_filename = self.create_filename(measurement, suffix='.png')
         state = self.measurement_item.ActiveState
         self.emit("measurement_state", self.measurement_item, state)
-        try:
-            measurement.run()
-        except ResourceError as e:
-            if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                state = self.measurement_item.TimeoutState
-            elif isinstance(e.exc, BrokenPipeError):
-                state = self.measurement_item.TimeoutState
-            else:
+        with LogFileHandler(log_filename):
+            try:
+                measurement.run()
+            except ResourceError as e:
+                if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                    state = self.measurement_item.TimeoutState
+                elif isinstance(e.exc, BrokenPipeError):
+                    state = self.measurement_item.TimeoutState
+                else:
+                    state = self.measurement_item.ErrorState
+                raise
+            except ComplianceError:
+                state = self.measurement_item.ComplianceState
+                raise
+            except Exception:
                 state = self.measurement_item.ErrorState
-            raise
-        except ComplianceError:
-            state = self.measurement_item.ComplianceState
-            raise
-        except Exception:
-            state = self.measurement_item.ErrorState
-            raise
-        else:
-            if self.stopped:
-                state = self.measurement_item.StoppedState
+                raise
             else:
-                state = self.measurement_item.SuccessState
-        finally:
-            self.emit("measurement_state", self.measurement_item, state, measurement.quality)
-            self.emit("save_to_image", self.measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
-            self.emit('push_summary', measurement.timestamp_start, self.get("sample_name"), self.get("sample_type"), self.measurement_item.contact.name, self.measurement_item.name, state)
-            if self.get("serialize_json"):
-                measurement.serialize_json()
-            if self.get("serialize_txt"):
-                measurement.serialize_txt()
+                if self.stopped:
+                    state = self.measurement_item.StoppedState
+                else:
+                    state = self.measurement_item.SuccessState
+            finally:
+                self.emit("measurement_state", self.measurement_item, state, measurement.quality)
+                self.emit("save_to_image", self.measurement_item, plot_filename)
+                self.emit('push_summary', measurement.timestamp, sample_name, sample_type, self.measurement_item.contact.name, self.measurement_item.name, state)
+                if self.get("serialize_json"):
+                    with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
+                        measurement.serialize_json(fp)
+                if self.get("serialize_txt"):
+                    with open(self.create_filename(measurement, suffix='.txt'), 'w') as fp:
+                        measurement.serialize_txt(fp)
 
     def finalize(self):
         self.emit("message", "Finalize measurement...")
@@ -248,51 +293,57 @@ class SequenceProcess(BaseProcess):
                 break
             logging.info("Run %s", measurement_item.name)
             # TODO
-            measurement = measurement_factory(measurement_item.type, self)
-            measurement.sample_name = sample_name
-            measurement.sample_type = sample_type
-            measurement.operator = operator
-            measurement.output_dir = output_dir
-            measurement.write_logfiles = write_logfiles
+            measurement = measurement_factory(
+                measurement_item.type,
+                process=self,
+                sample_name=sample_name,
+                sample_type=sample_type,
+                operator=operator
+            )
             measurement.measurement_item = measurement_item
+            log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
+            plot_filename = self.create_filename(measurement, suffix='.png')
             state = "Active"
             self.emit("measurement_state", measurement_item, state)
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
             self.emit('show_measurement', measurement_item)
-            try:
-                measurement.run()
-            except ResourceError as e:
-                if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                    state = measurement_item.TimeoutState
-                elif isinstance(e.exc, BrokenPipeError):
-                    state = measurement_item.TimeoutState
-                else:
+            with LogFileHandler(log_filename):
+                try:
+                    measurement.run()
+                except ResourceError as e:
+                    if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                        state = measurement_item.TimeoutState
+                    elif isinstance(e.exc, BrokenPipeError):
+                        state = measurement_item.TimeoutState
+                    else:
+                        state = measurement_item.ErrorState
+                    logging.error(format(e))
+                    logging.error("%s failed.", measurement_item.name)
+                except ComplianceError as e:
+                    logging.error(format(e))
+                    logging.error("%s failed.", measurement_item.name)
+                    state = "Compliance"
+                except Exception as e:
+                    logging.error(format(e))
+                    logging.error("%s failed.", measurement_item.name)
                     state = measurement_item.ErrorState
-                logging.error(format(e))
-                logging.error("%s failed.", measurement_item.name)
-            except ComplianceError as e:
-                logging.error(format(e))
-                logging.error("%s failed.", measurement_item.name)
-                state = "Compliance"
-            except Exception as e:
-                logging.error(format(e))
-                logging.error("%s failed.", measurement_item.name)
-                state = measurement_item.ErrorState
-            else:
-                if self.stopped:
-                    state = measurement_item.StoppedState
                 else:
-                    state = measurement_item.SuccessState
-                logging.info("%s done.", measurement_item.name)
-            finally:
-                self.emit("measurement_state", measurement_item, state, measurement.quality)
-                self.emit("save_to_image", measurement_item, os.path.join(output_dir, measurement.create_filename(suffix='.png')))
-                self.emit('push_summary', measurement.timestamp_start, self.get("sample_name"), self.get("sample_type"), measurement_item.contact.name, measurement_item.name, state)
-                if self.get("serialize_json"):
-                    measurement.serialize_json()
-                if self.get("serialize_txt"):
-                    measurement.serialize_txt()
+                    if self.stopped:
+                        state = measurement_item.StoppedState
+                    else:
+                        state = measurement_item.SuccessState
+                    logging.info("%s done.", measurement_item.name)
+                finally:
+                    self.emit("measurement_state", measurement_item, state, measurement.quality)
+                    self.emit("save_to_image", measurement_item, plot_filename)
+                    self.emit('push_summary', measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
+                    if self.get("serialize_json"):
+                        with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
+                            measurement.serialize_json(fp)
+                    if self.get("serialize_txt"):
+                        with open(self.create_filename(measurement, suffix='.txt'), 'w') as fp:
+                            measurement.serialize_txt(fp)
 
             prev_measurement_item = measurement_item
         self.emit("measurement_state", contact_item)

@@ -27,7 +27,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
         self.plot.add_axis("y", align="right", text="Voltage [V]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="red")
+        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
         self.current_start = ui.Number(decimals=3, suffix="uA")
@@ -69,7 +69,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
-        self.series_transform = defaultdict(lambda: lambda x, y: (x, y))
+        self.series_transform = {}
+        self.series_transform_default = lambda x, y: (x, y)
 
         ampere = comet.ureg('A')
         volt = comet.ureg('V')
@@ -82,7 +83,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
-            tr = self.series_transform.get(name)
+            tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
                 self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
@@ -93,7 +94,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                tr = self.series_transform.get(name)
+                tr = self.series_transform.get(name, self.series_transform_default)
                 self.plot.series.get(name).append(*tr(x, y))
 
     def update_readings(self):

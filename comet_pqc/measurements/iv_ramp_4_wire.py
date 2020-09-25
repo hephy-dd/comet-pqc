@@ -7,15 +7,17 @@ import re
 import comet
 from comet.driver.keithley import K2657A
 
-from analysis_pqc import analyse_van_der_pauw
+import analysis_pqc
 
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
 
@@ -41,8 +43,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
 
     type = "iv_ramp_4_wire"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('current_start', unit='A', required=True)
         self.register_parameter('current_stop', unit='A', required=True)
         self.register_parameter('current_step', unit='A', required=True)
@@ -156,12 +158,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
         self.process.emit("progress", 3, 5)
 
     def measure(self, vsrc):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
         current_start = self.get_parameter('current_start')
         current_step = self.get_parameter('current_step')
         current_stop = self.get_parameter('current_stop')
@@ -233,28 +229,65 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
             if not self.process.running:
                 break
 
-        # Analyze
-        def to_dict(result):
-            d = {}
-            for key, value in r._asdict().items():
-                if type(value).__name__ == 'ndarray':
-                    value = value.tolist()
-                d[key] = value
-            return d
-        i = self.get_series('current')
-        v = self.get_series('voltage_vsrc')
-        if len(i) > 1:
-            r = analyse_van_der_pauw(i, v)
-            logging.info("Result %s", r)
-            logging.info("State %s", r.status)
-            for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                self.process.emit("reading", "xfit", x, y)
-            self.process.emit("update")
-            self.quality = r.status
-            analysis = self.data.setdefault("analysis", {})
-            analysis["van_der_pauw"] = to_dict(r)
+    def analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
+        self.process.emit("progress", 1, 2)
 
-        self.process.emit("progress", 4, 5)
+        quality = set()
+        xfit = []
+
+        if 'van_der_pauw' in self.analyze_functions:
+            i = self.get_series('current')
+            v = self.get_series('voltage_vsrc')
+            if len(i) > 1 and len(v) > 1:
+                r = analysis_pqc.analyse_van_der_pauw(i, v)
+                logging.info("Analyze van_der_pauw: %s", r.status)
+                if not xfit:
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        xfit.append((x, y))
+                quality.add(r.status)
+                analysis = self.data.setdefault("analysis", {})
+                analysis["van_der_pauw"] = r._asdict()
+
+        if 'cross' in self.analyze_functions:
+            i = self.get_series('current')
+            v = self.get_series('voltage_vsrc')
+            if len(i) > 1 and len(v) > 1:
+                r = analysis_pqc.analyse_cross(i, v)
+                logging.info("Analyze cross: %s", r.status)
+                if not xfit:
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        xfit.append((x, y))
+                quality.add(r.status)
+                analysis = self.data.setdefault("analysis", {})
+                analysis["cross"] = r._asdict()
+
+        if 'cbkr' in self.analyze_functions:
+            i = self.get_series('current')
+            v = self.get_series('voltage_vsrc')
+            if len(i) > 1 and len(v) > 1:
+                r = analysis_pqc.analyse_cbkr(i, v, r_sheet=-1, cut_param=0.01)
+                logging.info("Analyze CBKR: %s", r.status)
+                if not xfit:
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        xfit.append((x, y))
+                quality.add(r.status)
+                analysis = self.data.setdefault("analysis", {})
+                analysis["cross"] = r._asdict()
+
+        for x, y in xfit:
+            self.process.emit("reading", "xfit", x, y)
+        self.process.emit("update")
+
+        # TODO
+        if len(quality) > 1:
+            self.quality = "low"
+        if analysis_pqc.STATUS_PASSED not in quality:
+            self.quality = "bad"
+        else:
+            self.quality = analysis_pqc.STATUS_PASSED
+
+        self.process.emit("progress", 2, 2)
 
     def finalize(self, vsrc):
         self.process.emit("state", dict(

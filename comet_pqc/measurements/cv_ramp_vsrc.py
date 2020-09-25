@@ -13,10 +13,12 @@ from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import VSourceMixin
 from .mixins import LCRMixin
 from .mixins import EnvironmentMixin
@@ -28,8 +30,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
     type = "cv_ramp_vsrc"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('bias_voltage_start', unit='V', required=True)
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)

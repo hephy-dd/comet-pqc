@@ -10,8 +10,8 @@ class MatrixMeasurement(Measurement):
 
     type = "matrix"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('matrix_enable', False, type=bool)
         self.register_parameter('matrix_channels', [], type=list)
 

@@ -12,10 +12,12 @@ from ..proxy import create_proxy
 from ..utils import format_metric
 from ..formatter import PQCFormatter
 from ..estimate import Estimate
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import HVSourceMixin
 from .mixins import EnvironmentMixin
 
@@ -35,8 +37,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
 
     type = "iv_ramp"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('voltage_start', unit='V', required=True)
         self.register_parameter('voltage_stop', unit='V', required=True)
         self.register_parameter('voltage_step', unit='V', required=True)

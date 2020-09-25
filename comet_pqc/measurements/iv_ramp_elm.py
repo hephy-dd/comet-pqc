@@ -12,10 +12,12 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import HVSourceMixin
 from .mixins import ElectrometerMixin
 from .mixins import EnvironmentMixin
@@ -42,8 +44,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
     type = "iv_ramp_elm"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('voltage_start', unit='V', required=True)
         self.register_parameter('voltage_stop', unit='V', required=True)
         self.register_parameter('voltage_step', unit='V', required=True)
@@ -314,15 +316,6 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 4, 5)
 
     def finalize(self, hvsrc, elm):
-        try:
-            # Analyse
-            v = self.get_series("voltage")
-            i = self.get_series("current_elm")
-            result = analyse_iv(v, i)
-            logging.info("Analysis: %s", result)
-        except:
-            pass
-
         elm.resource.write(":SYST:ZCH ON")
         elm.resource.query("*OPC?")
 

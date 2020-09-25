@@ -16,6 +16,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw, cross]
       - name: Reverse Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -27,6 +28,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -38,6 +40,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: Reverse N+ Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -49,6 +52,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -60,6 +64,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: Reverse P-stop Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
@@ -71,6 +76,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: FET
         type: iv_ramp_bias_elm
         parameters:
@@ -83,6 +89,7 @@ contacts:
             bias_voltage: 100 mV
             hvsrc_current_compliance: 10 uA
             vsrc_current_compliance: 10 uA
+            analyze_functions: [fet]
       - name: MOS capacitor (HV Source)
         type: cv_ramp
         description: Variant using HVSource and LCR
@@ -97,6 +104,7 @@ contacts:
             hvsrc_route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
+            analyze_functions: [mos]
       - name: MOS capacitor (LCR)
         type: cv_ramp_alt
         enabled: false
@@ -112,6 +120,7 @@ contacts:
             route_termination: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
+            analyze_functions: [mos]
       - name: Capacitor test structure (HV Source)
         type: cv_ramp
         description: Variant using HVSource and LCR
@@ -225,6 +234,7 @@ contacts:
     measurements:
       - name: GCD
         type: iv_ramp_bias_elm
+
         parameters:
             matrix_enable: true
             matrix_channels: [2D11, 2G09, 2A10, 1G02]
@@ -235,6 +245,7 @@ contacts:
             bias_voltage: 5 V
             hvsrc_current_compliance: 10 uA
             vsrc_current_compliance: 10 uA
+            analyze_functions: [gcd]
       - name: Polysilicon meander
         type: iv_ramp_elm
         parameters:
@@ -309,6 +320,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: Reverse Metal clover leaf Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -320,6 +332,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -331,6 +344,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: Reverse P+ cross-bridge Van-der-Pauw
         type: iv_ramp_4_wire
         parameters:
@@ -342,6 +356,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [van_der_pauw]
       - name: Bulk cross
         type: iv_ramp_4_wire
         parameters:
@@ -406,6 +421,7 @@ contacts:
             bias_voltage: 5 V
             hvsrc_current_compliance: 10 uA
             vsrc_current_compliance: 10 uA
+            analyze_functions: [gcd]
       - name: N+ CBKR
         type: iv_ramp_4_wire
         parameters:
@@ -417,6 +433,7 @@ contacts:
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
             vsrc_sense_mode: remote
+            analyze_functions: [cbkr]
       - name: Polysilicon CBKR
         type: iv_ramp_4_wire
         parameters:

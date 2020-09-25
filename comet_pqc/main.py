@@ -100,7 +100,7 @@ def main():
         ui.show_exception(exc, tb)
 
     def on_message(message):
-        logging.info(message)
+        ## logging.info(message)
         app.message = message
 
     def on_progress(value, maximum):
@@ -180,6 +180,9 @@ def main():
     # Set URLs
     app.window.contents_url = CONTENTS_URL
     app.window.github_url = GITHUB_URL
+
+    # Fix progress bar width
+    app.window.progress_bar.width = 600
 
     # Load configurations
     dashboard.load_sequences()

@@ -13,10 +13,12 @@ from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import HVSourceMixin
 from .mixins import VSourceMixin
 from .mixins import ElectrometerMixin
@@ -35,8 +37,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
 
     type = "iv_ramp_bias_elm"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('voltage_start', unit='V', required=True)
         self.register_parameter('voltage_stop', unit='V', required=True)
         self.register_parameter('voltage_step', unit='V', required=True)
