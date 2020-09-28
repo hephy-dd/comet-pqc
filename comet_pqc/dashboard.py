@@ -625,6 +625,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             for sequence in self.sequence_combobox:
                 if sequence.id == current_sequence_id:
                     self.sequence_combobox.current = sequence
+                    self.on_load_sequence_tree(sequence.id)
                     break
 
     def sample_name(self):
