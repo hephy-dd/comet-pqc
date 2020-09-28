@@ -161,7 +161,8 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     def serialize_txt(self):
         """Serialize data dictionary to plain text."""
-        with open(os.path.join(self.output_dir, self.create_filename(suffix='.txt')), 'w') as f:
+        # NOTE: see https://docs.python.org/3/library/csv.html#csv.DictWriter
+        with open(os.path.join(self.output_dir, self.create_filename(suffix='.txt')), 'w', newline='') as f:
             meta = self.data.get("meta", {})
             series_units = self.data.get("series_units", {})
             series = self.data.get("series", {})
