@@ -635,6 +635,19 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         """Return sample type."""
         return self.sample_type_text.value.strip()
 
+    def table_position(self):
+        """Return table position as tuple. If table not available return
+        (0, 0, 0).
+        """
+        if self.use_table:
+            try:
+                with self.resources.get("table") as table_resource:
+                    table = Venus1(table_resource)
+                    return table.pos
+            except:
+                pass
+        return (0, 0, 0)
+
     def use_environment(self):
         """Return True if environment box enabled."""
         return self.environment_groupbox.checked
@@ -780,6 +793,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence = self.processes.get("sequence")
         sequence.set("sample_name", self.sample_name())
         sequence.set("sample_type", self.sample_type())
+        sequence.set("table_position", self.table_position())
         sequence.set("operator", self.operator())
         sequence.set("output_dir", self.output_dir())
         sequence.set("write_logfiles", self.settings.get("write_logfiles", True))
@@ -858,6 +872,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Set process parameters
         measure.set("sample_name", self.sample_name())
         measure.set("sample_type", self.sample_type())
+        measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
         measure.set("write_logfiles", self.settings.get("write_logfiles", True))
