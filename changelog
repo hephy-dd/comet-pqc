@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.1] - 2020-09-28
+### Added
+- Table coordinates to measurement meta data (#86).
+### Fixed
+- Laser sensor state freezing control dialog (#71).
+- Newline issue with CSV writer (#85).
+
 ## [0.24.0] - 2020-09-17
 ### Added
 - Sequence manager dialog (#75).
