@@ -39,6 +39,7 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     sample_name = ""
     sample_type = ""
+    table_position = [0, 0, 0]
     operator = ""
     output_dir = ""
     write_logfiles = False
@@ -160,7 +161,8 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     def serialize_txt(self):
         """Serialize data dictionary to plain text."""
-        with open(os.path.join(self.output_dir, self.create_filename(suffix='.txt')), 'w') as f:
+        # NOTE: see https://docs.python.org/3/library/csv.html#csv.DictWriter
+        with open(os.path.join(self.output_dir, self.create_filename(suffix='.txt')), 'w', newline='') as f:
             meta = self.data.get("meta", {})
             series_units = self.data.get("series_units", {})
             series = self.data.get("series", {})
@@ -194,6 +196,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("contact_name", self.measurement_item.contact.name)
         self.set_meta("measurement_name", self.measurement_item.name)
         self.set_meta("measurement_type", self.type)
+        self.set_meta("table_position", self.table_position)
         self.set_meta("start_timestamp", self.timestamp_start_iso)
         self.set_meta("operator", self.operator)
 

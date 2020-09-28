@@ -145,6 +145,7 @@ class MeasureProcess(BaseProcess):
         self.emit("message", "Process measurement...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
+        table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
         write_logfiles = self.get("write_logfiles")
@@ -152,6 +153,7 @@ class MeasureProcess(BaseProcess):
         measurement = measurement_factory(self.measurement_item.type, self)
         measurement.sample_name = sample_name
         measurement.sample_type = sample_type
+        measurement.table_position = table_position
         measurement.operator = operator
         measurement.output_dir = output_dir
         measurement.write_logfiles = write_logfiles
@@ -231,6 +233,7 @@ class SequenceProcess(BaseProcess):
         self.emit("message", "Process sequence...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
+        table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
         write_logfiles = self.get("write_logfiles")
@@ -251,6 +254,7 @@ class SequenceProcess(BaseProcess):
             measurement = measurement_factory(measurement_item.type, self)
             measurement.sample_name = sample_name
             measurement.sample_type = sample_type
+            measurement.table_position = table_position
             measurement.operator = operator
             measurement.output_dir = output_dir
             measurement.write_logfiles = write_logfiles

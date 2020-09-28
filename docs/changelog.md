@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## [0.24.1]
+### Added
+- Table coordinates to measurement meta data.
+### Fixed
+- Newline issue with CSV writer.
+### Removed
+- Laser sensor state from table control dialog.
+
 ## 0.24.0
 ### Added
 - Sequence manager dialog.
