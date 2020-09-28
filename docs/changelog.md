@@ -11,8 +11,9 @@ nav_order: 10
 ### Added
 - Table coordinates to measurement meta data.
 ### Fixed
-- Laser sensor state freezing control dialog.
 - Newline issue with CSV writer.
+### Removed
+- Laser sensor state from table control dialog.
 
 ## 0.24.0
 ### Added
