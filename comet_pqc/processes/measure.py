@@ -230,7 +230,8 @@ class MeasureProcess(BaseProcess):
                     with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
                         measurement.serialize_json(fp)
                 if self.get("serialize_txt"):
-                    with open(self.create_filename(measurement, suffix='.txt'), 'w') as fp:
+                    # See https://docs.python.org/3/library/csv.html#csv.DictWriter
+                    with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
                         measurement.serialize_txt(fp)
 
     def finalize(self):
@@ -342,7 +343,8 @@ class SequenceProcess(BaseProcess):
                         with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
                             measurement.serialize_json(fp)
                     if self.get("serialize_txt"):
-                        with open(self.create_filename(measurement, suffix='.txt'), 'w') as fp:
+                        # See https://docs.python.org/3/library/csv.html#csv.DictWriter
+                        with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
                             measurement.serialize_txt(fp)
 
             prev_measurement_item = measurement_item
