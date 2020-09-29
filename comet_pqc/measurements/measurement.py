@@ -53,10 +53,11 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
-    def __init__(self, process, sample_name, sample_type, operator, timestamp=None):
+    def __init__(self, process, sample_name, sample_type, table_position, operator, timestamp=None):
         self.process = process
         self.sample_name = sample_name
         self.sample_type = sample_type
+        self.table_position = table_position
         self.operator = operator
         self.quality = "Check"
         self.registered_parameters = {}
@@ -183,6 +184,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("contact_name", self.measurement_item.contact.name)
         self.set_meta("measurement_name", self.measurement_item.name)
         self.set_meta("measurement_type", self.type)
+        self.set_meta("table_position", self.table_position)
         self.set_meta("start_timestamp", self.timestamp_iso)
         self.set_meta("operator", self.operator)
 
