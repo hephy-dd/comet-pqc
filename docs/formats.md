@@ -55,6 +55,7 @@ a data series dictionary.
     "contact_name": "PQC Flute 1",
     "measurement_name": "Diode IV",
     "measurement_type": "iv_ramp",
+    "table_position": [0, 0, 0],
     "start_timestamp": "2020-09-17T10:32:14",
     "operator": "Monty",
     ...
@@ -111,6 +112,7 @@ sample_type: PQCFlutesLeft
 contact_name: PQC Flute 1
 measurement_name: Diode IV
 measurement_type: iv_ramp
+table_position: (0, 0, 0)
 start_timestamp: 2020-09-17T10:32:14
 operator: Monty
 ...

@@ -45,6 +45,15 @@ from .formatter import CSVFormatter
 
 SUMMARY_FILENAME = "summary.csv"
 
+TABLE_UNITS = {
+    1: comet.ureg('um'),
+    2: comet.ureg('mm'),
+    3: comet.ureg('cm'),
+    4: comet.ureg('m'),
+    5: comet.ureg('inch'),
+    6: comet.ureg('mil'),
+}
+
 def create_icon(size, color):
     """Return circular colored icon."""
     pixmap = QtGui.QPixmap(size, size)
@@ -637,17 +646,21 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         return self.sample_type_text.value.strip()
 
     def table_position(self):
-        """Return table position as tuple. If table not available return
-        (0, 0, 0).
+        """Return table position in millimeters as tuple. If table not available
+        return (0., 0., 0.).
         """
-        if self.use_table:
+        if self.use_table():
             try:
                 with self.resources.get("table") as table_resource:
                     table = Venus1(table_resource)
-                    return table.pos
+                    x, y, z = table.pos
+                    x *= TABLE_UNITS.get(table.x.unit)
+                    y *= TABLE_UNITS.get(table.y.unit)
+                    z *= TABLE_UNITS.get(table.z.unit)
+                return x.to('mm').m, y.to('mm').m, z.to('mm').m
             except:
-                pass
-        return (0, 0, 0)
+                logging.warning("Failed to read table position.")
+        return (0., 0., 0.)
 
     def use_environment(self):
         """Return True if environment box enabled."""
