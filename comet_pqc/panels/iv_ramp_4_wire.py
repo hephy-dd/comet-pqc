@@ -1,3 +1,6 @@
+import logging
+from collections import defaultdict
+
 import comet
 from comet import ui
 
@@ -23,7 +26,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
         self.plot.add_axis("y", align="right", text="Voltage [V]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="red")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
+        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
         self.current_start = ui.Number(decimals=3, suffix="uA")
@@ -65,32 +69,41 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
+        self.series_transform = {}
+        self.series_transform_default = lambda x, y: (x, y)
+
+        ampere = comet.ureg('A')
+        volt = comet.ureg('V')
+
+        self.series_transform['vsrc'] = lambda x, y: ((x * ampere).to('uA').m, (y * volt).to('V').m)
+        self.series_transform['xfit'] = self.series_transform.get('vsrc')
+
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
+            tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
-                current = x * comet.ureg('A')
-                voltage = y * comet.ureg('V')
-                self.plot.series.get(name).append(current.to('uA').m, voltage.m)
+                self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
 
     def append_reading(self, name, x, y):
-        current = x * comet.ureg('A')
-        voltage = y * comet.ureg('V')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
-                self.measurement.series[name].append((current.m, voltage.m))
-                self.plot.series.get(name).append(current.to('uA').m, voltage.m)
+                self.measurement.series[name].append((x, y))
+                tr = self.series_transform.get(name, self.series_transform_default)
+                self.plot.series.get(name).append(*tr(x, y))
 
     def update_readings(self):
+        super().update_readings()
         if self.measurement:
             if self.plot.zoomed:
                 self.plot.update("x")
             else:
+                self.plot.qt.chart().zoomOut() # HACK
                 self.plot.fit()
 
     def clear_readings(self):

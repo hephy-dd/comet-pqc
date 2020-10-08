@@ -40,6 +40,8 @@ Type: `iv_ramp`
 |`hvsrc_filter_enable`      |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`       |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`        |`str`    |`moving` |Type of applied HV Source filter.  Possible values are: `moving`, `repeat`. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_range` |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 
 ### Data columns
 
@@ -97,6 +99,8 @@ Type: `iv_ramp_elm`
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`elm_filter_enable`           |`bool`   |`false`  |Enable Electrometer filter. |
 |`elm_filter_count`            |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`             |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
@@ -222,7 +226,18 @@ Type: `iv_ramp_bias`
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
+|`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
+|`hvsrc_route_termination`     |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
+|`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
+|`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
+|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_filter_enable`          |`bool`   |`false`  | |
+|`vsrc_filter_count`           |`int`    |`10`     | |
+|`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
 
 ### Data columns
 
@@ -267,7 +282,18 @@ Type: `iv_ramp_bias_elm`
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
+|`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
+|`hvsrc_route_termination`     |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
+|`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
+|`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
+|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_filter_enable`          |`bool`   |`false`  | |
+|`vsrc_filter_count`           |`int`    |`10`     | |
+|`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
 |`elm_filter_enable`           |`bool`   |`false`  |Enable Electrometer filter. |
 |`elm_filter_count`            |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`             |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
@@ -328,6 +354,8 @@ Type: `cv_ramp`
 |`hvsrc_filter_enable`         |`bool`   |`false`  | |
 |`hvsrc_filter_count`          |`int`    |`10`     | |
 |`hvsrc_filter_type`           |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`lcr_soft_filter`             |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
 |`lcr_frequency`               |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
 |`lcr_amplitude`               |`volt`   |`250 mV` | |

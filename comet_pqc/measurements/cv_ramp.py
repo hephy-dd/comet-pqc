@@ -5,8 +5,9 @@ import os
 import re
 
 import comet
-from comet.driver.keysight import E4980A
+# from comet.driver.keysight import E4980A
 from comet.driver.keithley import K2410
+from ..driver import E4980A
 
 from ..utils import format_metric
 from ..formatter import PQCFormatter
@@ -17,6 +18,7 @@ from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
 from .mixins import HVSourceMixin
 from .mixins import LCRMixin
 from .mixins import EnvironmentMixin
@@ -28,12 +30,13 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
     type = "cv_ramp"
 
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('bias_voltage_start', unit='V', required=True)
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_hvsource()
         self.register_lcr()
         self.register_environment()
@@ -70,19 +73,53 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 6)
 
-        # Initialize HV Source
+        # Parameters
+        bias_voltage_start = self.get_parameter('bias_voltage_start')
+        bias_voltage_step = self.get_parameter('bias_voltage_step')
+        bias_voltage_stop = self.get_parameter('bias_voltage_stop')
+        waiting_time = self.get_parameter('waiting_time')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
 
-        # Bring down HV Source voltage if output enabeled
-        # Prevents a voltage jump for at device reset.
-        self.quick_ramp_zero(hvsrc)
-        self.hvsrc_set_output_state(hvsrc, False)
-        self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 2, 6)
+        # Extend meta data
+        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
+        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
+        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.hvsrc_update_meta()
+        self.lcr_update_meta()
+        self.environment_update_meta()
+
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("voltage_hvsrc", "V")
+        self.set_series_unit("current_hvsrc", "A")
+        self.set_series_unit("capacitance", "F")
+        self.set_series_unit("capacitance2", "1")
+        self.set_series_unit("resistance", "Ohm")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
+
+        # Series
+        self.register_series("timestamp")
+        self.register_series("voltage_hvsrc")
+        self.register_series("current_hvsrc")
+        self.register_series("capacitance")
+        self.register_series("capacitance2")
+        self.register_series("resistance")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
+
+        # Initialize HV Source
 
         self.hvsrc_reset(hvsrc)
         self.process.emit("progress", 3, 6)
 
         self.hvsrc_setup(hvsrc)
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
         self.process.emit("progress", 4, 6)
 
         self.hvsrc_set_output_state(hvsrc, True)
@@ -100,20 +137,13 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.process.emit("progress", 6, 6)
 
     def measure(self, hvsrc, lcr):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
+        # Parameters
         bias_voltage_start = self.get_parameter('bias_voltage_start')
         bias_voltage_step = self.get_parameter('bias_voltage_step')
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
         lcr_soft_filter = self.get_parameter('lcr_soft_filter')
-        lcr_frequency = self.get_parameter('lcr_frequency')
-        lcr_amplitude = self.get_parameter('lcr_amplitude')
 
         # Ramp to start voltage
 
@@ -139,37 +169,6 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         if not self.process.running:
             return
-
-        # Extend meta data
-        self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
-        self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
-        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
-        self.set_meta("waiting_time", f"{waiting_time:G} s")
-        self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
-        self.set_meta("ac_frequency", f"{lcr_frequency:G} Hz")
-        self.set_meta("ac_amplitude", f"{lcr_amplitude:G} V")
-
-        # Series units
-        self.set_series_unit("timestamp", "s")
-        self.set_series_unit("voltage_hvsrc", "V")
-        self.set_series_unit("current_hvsrc", "A")
-        self.set_series_unit("capacitance", "F")
-        self.set_series_unit("capacitance2", "1")
-        self.set_series_unit("resistance", "Ohm")
-        self.set_series_unit("temperature_box", "degC")
-        self.set_series_unit("temperature_chuck", "degC")
-        self.set_series_unit("humidity_box", "%")
-
-        # Series
-        self.register_series("timestamp")
-        self.register_series("voltage_hvsrc")
-        self.register_series("current_hvsrc")
-        self.register_series("capacitance")
-        self.register_series("capacitance2")
-        self.register_series("resistance")
-        self.register_series("temperature_box")
-        self.register_series("temperature_chuck")
-        self.register_series("humidity_box")
 
         hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 

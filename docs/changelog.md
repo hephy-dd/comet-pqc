@@ -7,6 +7,17 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.25.0
+
+### Added
+- Environment tab in dashboard.
+- CV ramp measurement using only LCR.
+- HV source range parameter.
+- Analyze measurement data using [analysis-pqc](https://github.com/hephy-dd/analysis-pqc/).
+
+### Fixed
+- Sequence double click issue while running.
+
 ## 0.24.3
 
 ### Added

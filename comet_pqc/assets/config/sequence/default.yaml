@@ -225,6 +225,7 @@ contacts:
     measurements:
       - name: GCD
         type: iv_ramp_bias_elm
+
         parameters:
             matrix_enable: true
             matrix_channels: [2D11, 2G09, 2A10, 1G02]

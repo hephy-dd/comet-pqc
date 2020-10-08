@@ -5,6 +5,8 @@ from comet import ui
 from comet.settings import SettingsMixin
 from qutie.qt import QtCore
 
+from analysis_pqc import STATUS_PASSED
+
 from .config import load_sequence
 
 class SequenceManager(ui.Dialog, SettingsMixin):
@@ -120,6 +122,7 @@ class SequenceTreeItem(ui.TreeItem):
 
     def reset(self):
         self.state = None
+        self.quality = None
         for child in self.children:
             child.reset()
 
@@ -160,6 +163,20 @@ class SequenceTreeItem(ui.TreeItem):
         else:
             self[1].color = "red"
         self[1].value = value
+
+    @property
+    def quality(self):
+        return self[2].value
+
+    @quality.setter
+    def quality(self, value):
+        # Oh dear...
+        value = value or ""
+        if value.lower() == STATUS_PASSED.lower():
+            self[2].color = "green"
+        else:
+            self[2].color = "red"
+        self[2].value = value.capitalize()
 
 class ContactTreeItem(SequenceTreeItem):
 

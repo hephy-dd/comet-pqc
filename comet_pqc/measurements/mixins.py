@@ -7,7 +7,6 @@ from ..utils import format_metric
 from ..utils import std_mean_filter
 
 __all__ = [
-    'ComplianceError',
     'HVSourceMixin',
     'VSourceMixin',
     'ElectrometerMixin',
@@ -18,12 +17,32 @@ __all__ = [
 class HVSourceMixin:
 
     def register_hvsource(self):
-        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        ##self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
         self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
         self.register_parameter('hvsrc_filter_enable', False, type=bool)
         self.register_parameter('hvsrc_filter_count', 10, type=int)
         self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('hvsrc_source_voltage_autorange_enable', True, type=bool)
+        self.register_parameter('hvsrc_source_voltage_range', 20, unit='V')
+
+    def hvsrc_update_meta(self):
+        """Update meta data parameters."""
+        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
+        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
+        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
+        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
+        hvsrc_source_voltage_autorange_enable = self.get_parameter('hvsrc_source_voltage_autorange_enable')
+        hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
+
+        self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
+        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
+        self.set_meta("hvsrc_filter_enable", hvsrc_filter_enable)
+        self.set_meta("hvsrc_filter_count", hvsrc_filter_count)
+        self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
+        self.set_meta("hvsrc_source_voltage_autorange_enable", hvsrc_source_voltage_autorange_enable)
+        self.set_meta("hvsrc_source_voltage_range", f"{hvsrc_source_voltage_range:G} V")
 
     def hvsrc_check_error(self, device):
         """Test for error."""
@@ -47,20 +66,25 @@ class HVSourceMixin:
         self.hvsrc_safe_write(hvsrc, ":SYST:BEEP:STAT OFF")
 
     def hvsrc_setup(self, hvsrc):
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
         hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
         hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
         hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
         hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
+        hvsrc_source_voltage_autorange_enable = self.get_parameter('hvsrc_source_voltage_autorange_enable')
+        hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
 
         self.hvsrc_set_route_termination(hvsrc, hvsrc_route_termination)
         self.hvsrc_set_sense_mode(hvsrc,hvsrc_sense_mode)
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
         self.hvsrc_set_auto_range(hvsrc, True)
         self.hvsrc_set_filter_type(hvsrc, hvsrc_filter_type)
         self.hvsrc_set_filter_count(hvsrc, hvsrc_filter_count)
         self.hvsrc_set_filter_enable(hvsrc, hvsrc_filter_enable)
+        if hvsrc_source_voltage_autorange_enable:
+            self.hvsrc_set_source_voltage_autorange_enable(hvsrc, hvsrc_source_voltage_autorange_enable)
+        else:
+            # This will overwrite autorange in Keithley 2400 series
+            self.hvsrc_set_source_voltage_range(hvsrc, hvsrc_source_voltage_range)
 
     def hvsrc_get_voltage_level(self, hvsrc):
         return float(hvsrc.resource.query(":SOUR:VOLT:LEV?"))
@@ -113,14 +137,35 @@ class HVSourceMixin:
         value = {True: "ON", False: "OFF"}[enabled]
         self.hvsrc_safe_write(hvsrc, f":OUTP:STAT {value:s}")
 
+    def hvsrc_set_source_voltage_autorange_enable(self, hvsrc, enabled):
+        logging.info("set HV Source source voltage autorange enable: %s", enabled)
+        value = {True: "ON", False: "OFF"}[enabled]
+        self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:RANG:AUTO {value:s}")
+
+    def hvsrc_set_source_voltage_range(self, hvsrc, voltage):
+        logging.info("set HV Source source voltage range: %s", format_metric(voltage, "V"))
+        self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:RANG {voltage:E}")
+
 class VSourceMixin:
 
     def register_vsource(self):
-        self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        ##self.register_parameter('vsrc_current_compliance', unit='A', required=True)
         self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
         self.register_parameter('vsrc_filter_enable', False, type=bool)
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+
+    def vsrc_update_meta(self):
+        """Update meta data parameters."""
+        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
+        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
+        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+
+        self.set_meta("vsrc_sense_mode", vsrc_sense_mode)
+        self.set_meta("vsrc_filter_enable", vsrc_filter_enable)
+        self.set_meta("vsrc_filter_count", vsrc_filter_count)
+        self.set_meta("vsrc_filter_type", vsrc_filter_type)
 
     def vsrc_reset(self, vsrc):
         vsrc.reset()
@@ -130,13 +175,11 @@ class VSourceMixin:
 
     def vsrc_setup(self, vsrc):
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
         vsrc_filter_type = self.get_parameter('vsrc_filter_type')
 
         self.vsrc_set_sense_mode(vsrc, vsrc_sense_mode)
-        self.vsrc_set_compliance(vsrc, vsrc_current_compliance)
         self.vsrc_set_filter_type(vsrc, vsrc_filter_type)
         self.vsrc_set_filter_count(vsrc, vsrc_filter_count)
         self.vsrc_set_filter_enable(vsrc, vsrc_filter_enable)
@@ -153,9 +196,13 @@ class VSourceMixin:
         value = {"remote": "REMOTE", "local": "LOCAL"}[sense_mode]
         vsrc.sense = value
 
-    def vsrc_set_compliance(self, vsrc, compliance):
-        logging.info("set V Source compliance: %s", format_metric(compliance, "A"))
+    def vsrc_set_current_compliance(self, vsrc, compliance):
+        logging.info("set V Source current compliance: %s", format_metric(compliance, "A"))
         vsrc.source.limiti = compliance
+
+    def vsrc_set_voltage_compliance(self, vsrc, compliance):
+        logging.info("set V Source voltage compliance: %s", format_metric(compliance, "V"))
+        vsrc.source.limitv = compliance
 
     def vsrc_compliance_tripped(self, vsrc):
         return vsrc.source.compliance
@@ -182,6 +229,9 @@ class ElectrometerMixin:
 
     def register_elm(self):
         self.register_parameter('elm_read_timeout', comet.ureg('60 s'), unit='s')
+
+    def elm_update_meta(self):
+        """Update meta data parameters."""
 
     def elm_check_error(self, elm):
         result = elm.resource.query(":SYST:ERR?")
@@ -229,6 +279,26 @@ class LCRMixin:
         self.register_parameter('lcr_open_correction_mode', 'single', values=('single', 'multi'))
         self.register_parameter('lcr_open_correction_channel', 0, type=int)
 
+    def lcr_update_meta(self):
+        """Update meta data parameters."""
+        lcr_amplitude = self.get_parameter('lcr_amplitude')
+        lcr_frequency = self.get_parameter('lcr_frequency')
+        lcr_integration_time = self.get_parameter('lcr_integration_time')
+        lcr_averaging_rate = self.get_parameter('lcr_averaging_rate')
+        lcr_auto_level_control = self.get_parameter('lcr_auto_level_control')
+        lcr_open_correction_mode = self.get_parameter('lcr_open_correction_mode')
+        lcr_open_correction_channel = self.get_parameter('lcr_open_correction_channel')
+        lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+
+        self.set_meta("lcr_amplitude", f"{lcr_amplitude:G} V")
+        self.set_meta("lcr_frequency", f"{lcr_frequency:G} Hz")
+        self.set_meta("lcr_integration_time", lcr_integration_time)
+        self.set_meta("lcr_averaging_rate", lcr_averaging_rate)
+        self.set_meta("lcr_auto_level_control", lcr_auto_level_control)
+        self.set_meta("lcr_open_correction_mode", lcr_open_correction_mode)
+        self.set_meta("lcr_open_correction_channel", lcr_open_correction_channel)
+        self.set_meta("lcr_soft_filter", lcr_soft_filter)
+
     def lcr_check_error(self, device):
         """Test for error."""
         code, message = device.resource.query(":SYST:ERR?").split(",", 1)
@@ -246,9 +316,11 @@ class LCRMixin:
         self.lcr_check_error(device)
 
     def lcr_reset(self, lcr):
-        self.lcr_safe_write(lcr, "*RST")
-        self.lcr_safe_write(lcr, "*CLS")
-        self.lcr_safe_write(lcr, ":SYST:BEEP:STAT OFF")
+        lcr.reset()
+        lcr.clear()
+        self.lcr_check_error(lcr)
+        lcr.system.beeper.state = False
+        self.lcr_check_error(lcr)
 
     def lcr_setup(self, lcr):
         lcr_amplitude = self.get_parameter('lcr_amplitude')
@@ -275,9 +347,8 @@ class LCRMixin:
     def lcr_acquire_reading(self, lcr):
         """Return primary and secondary LCR reading."""
         self.lcr_safe_write(lcr, "TRIG:IMM")
-        result = lcr.resource.query("FETC?")
-        logging.info("lcr reading: %s", result)
-        prim, sec = [float(value) for value in result.split(",")[:2]]
+        prim, sec = lcr.fetch()
+        logging.info("lcr reading: %s-%s", prim, sec)
         return prim, sec
 
     def lcr_acquire_filter_reading(self, lcr, maximum=64, threshold=0.005, size=2):
@@ -298,10 +369,32 @@ class LCRMixin:
         logging.warning("maximum sample count reached: %d", maximum)
         return prim, sec
 
+    def lcr_get_bias_voltage_level(self, lcr):
+        return lcr.bias.voltage.level
+
+    def lcr_set_bias_voltage_level(self, lcr, voltage):
+        logging.info("set LCR voltage level: %s", format_metric(voltage, "V"))
+        lcr.bias.voltage.level = voltage
+        self.lcr_check_error(lcr)
+
+    def lcr_get_bias_polarity_current_level(self, lcr):
+        return lcr.bias.polarity.current.level
+
+    def lcr_get_bias_state(self, lcr):
+        return lcr.bias.state
+
+    def lcr_set_bias_state(self, lcr, enabled):
+        logging.info("set LCR voltage output state: %s", enabled)
+        lcr.bias.state = enabled
+        self.lcr_check_error(lcr)
+
 class EnvironmentMixin:
 
     def register_environment(self):
         self.environment_clear()
+
+    def environment_update_meta(self):
+        """Update meta data parameters."""
 
     def environment_clear(self):
         self.environment_temperature_box = float('nan')

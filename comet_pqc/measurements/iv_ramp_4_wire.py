@@ -7,13 +7,18 @@ import re
 import comet
 from comet.driver.keithley import K2657A
 
+import analysis_pqc
+
 from ..utils import format_metric
 from ..estimate import Estimate
 from ..formatter import PQCFormatter
+
 from .matrix import MatrixMeasurement
 from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
+
+from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
 
 __all__ = ["IVRamp4WireMeasurement"]
@@ -24,7 +29,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
+class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
     """IV ramp 4wire with electrometer measurement.
 
     * set compliance
@@ -38,28 +43,22 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
 
     type = "iv_ramp_4_wire"
 
-    default_vsrc_sense_mode = "remote"
-    default_vsrc_filter_enable = False
-    default_vsrc_filter_count = 10
-    default_vsrc_filter_type = "repeat"
-
-    def __init__(self, process):
-        super().__init__(process)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_parameter('current_start', unit='A', required=True)
         self.register_parameter('current_stop', unit='A', required=True)
         self.register_parameter('current_step', unit='A', required=True)
         self.register_parameter('waiting_time', unit='s', required=True)
         self.register_parameter('vsrc_voltage_compliance', unit='V', required=True)
-        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('vsrc_filter_enable', False, type=bool)
-        self.register_parameter('vsrc_filter_count', 10, type=int)
-        self.register_parameter('vsrc_filter_type','repeat', values=('repeat', 'moving'))
+        self.register_vsource()
         self.register_environment()
 
     def initialize(self, vsrc):
         self.process.emit("progress", 0, 5)
 
+        # Parameters
         current_start = self.get_parameter('current_start')
+        current_stop = self.get_parameter('current_stop')
         current_step = self.get_parameter('current_step')
         waiting_time = self.get_parameter('waiting_time')
         vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
@@ -67,6 +66,31 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
         vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+
+        # Extend meta data
+        self.set_meta("current_start", f"{current_start:G} A")
+        self.set_meta("current_stop", f"{current_stop:G} A")
+        self.set_meta("current_step", f"{current_step:G} A")
+        self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
+        self.vsrc_update_meta()
+        self.environment_update_meta()
+
+        # Series units
+        self.set_series_unit("timestamp", "s")
+        self.set_series_unit("current", "A")
+        self.set_series_unit("voltage_vsrc", "V")
+        self.set_series_unit("temperature_box", "degC")
+        self.set_series_unit("temperature_chuck", "degC")
+        self.set_series_unit("humidity_box", "%")
+
+        # Series
+        self.register_series("timestamp")
+        self.register_series("current")
+        self.register_series("voltage_vsrc")
+        self.register_series("temperature_box")
+        self.register_series("temperature_chuck")
+        self.register_series("humidity_box")
 
         self.process.emit("progress", 1, 5)
 
@@ -78,65 +102,32 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
             vsrc_output=vsrc.source.output
         ))
 
-        # Beeper off
-        vsrc.reset()
-        vsrc.clear()
-        vsrc.beeper.enable = False
-        check_error(vsrc)
+        # Initialize V Source
 
-        self.process.emit("state", dict(
-            vsrc_voltage=vsrc.source.levelv,
-            vsrc_current=vsrc.source.leveli,
-            vsrc_output=vsrc.source.output
-        ))
+        self.process.emit("message", "Initialize...")
+        self.process.emit("progress", 2, 6)
 
-        # set sense mode
-        logging.info("set sense mode: '%s'", vsrc_sense_mode)
-        if vsrc_sense_mode == "remote":
-            vsrc.sense = 'REMOTE'
-        elif vsrc_sense_mode == "local":
-            vsrc.sense = 'LOCAL'
-        else:
-            raise ValueError(f"invalid sense mode: {vsrc_sense_mode}")
-        check_error(vsrc)
+        self.vsrc_reset(vsrc)
+        self.process.emit("progress", 3, 6)
+
+        self.vsrc_setup(vsrc)
 
         # Current source
         vsrc.source.func = 'DCAMPS'
         check_error(vsrc)
 
-        # Compliance
-        logging.info("set compliance: %E V", vsrc_voltage_compliance)
-        vsrc.source.limitv = vsrc_voltage_compliance
-        check_error(vsrc)
+        self.vsrc_set_voltage_compliance(vsrc, vsrc_voltage_compliance)
+
+        self.process.emit("progress", 4, 6)
 
         # Override display
         vsrc.resource.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
         check_error(vsrc)
 
-        # Filter
-        vsrc.measure.filter.count = vsrc_filter_count
-        check_error(vsrc)
-
-        if vsrc_filter_type == "repeat":
-            vsrc.measure.filter.type = 'REPEAT'
-        elif vsrc_filter_type == "moving":
-            vsrc.measure.filter.type = 'MOVING'
-        check_error(vsrc)
-
-        vsrc.measure.filter.enable = vsrc_filter_enable
-        check_error(vsrc)
-
-        self.process.emit("progress", 1, 5)
-
-        # Enable output
-        vsrc.source.leveli = 0
-        check_error(vsrc)
-        vsrc.source.output = 'ON'
-        check_error(vsrc)
+        self.vsrc_set_output_state(vsrc, True)
         time.sleep(.100)
-
         self.process.emit("state", dict(
-            vsrc_output=vsrc.source.output
+            vsrc_output=vsrc.source.output,
         ))
 
         self.process.emit("progress", 2, 5)
@@ -167,12 +158,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
         self.process.emit("progress", 3, 5)
 
     def measure(self, vsrc):
-        sample_name = self.sample_name
-        sample_type = self.sample_type
-        output_dir = self.output_dir
-        contact_name = self.measurement_item.contact.name
-        measurement_name = self.measurement_item.name
-
         current_start = self.get_parameter('current_start')
         current_step = self.get_parameter('current_step')
         current_stop = self.get_parameter('current_stop')
@@ -181,29 +166,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
 
         if not self.process.running:
             return
-
-        # Extend meta data
-        self.set_meta("current_start", f"{current_start:G} A")
-        self.set_meta("current_stop", f"{current_stop:G} A")
-        self.set_meta("current_step", f"{current_step:G} A")
-        self.set_meta("waiting_time", f"{waiting_time:G} s")
-        self.set_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
-
-        # Series units
-        self.set_series_unit("timestamp", "s")
-        self.set_series_unit("current", "A")
-        self.set_series_unit("voltage_vsrc", "V")
-        self.set_series_unit("temperature_box", "degC")
-        self.set_series_unit("temperature_chuck", "degC")
-        self.set_series_unit("humidity_box", "%")
-
-        # Series
-        self.register_series("timestamp")
-        self.register_series("current")
-        self.register_series("voltage_vsrc")
-        self.register_series("temperature_box")
-        self.register_series("temperature_chuck")
-        self.register_series("humidity_box")
 
         current = vsrc.source.leveli
 
@@ -267,7 +229,22 @@ class IVRamp4WireMeasurement(MatrixMeasurement, EnvironmentMixin):
             if not self.process.running:
                 break
 
-        self.process.emit("progress", 4, 5)
+    def analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
+        self.process.emit("progress", 1, 2)
+
+        status = None
+
+        i = self.get_series('current')
+        v = self.get_series('voltage_vsrc')
+        if len(i) > 1 and len(v) > 1:
+            logging.info("Calculate linear regression...")
+            r = analysis_pqc.analyse_van_der_pauw(i=i, v=v)
+            for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                self.process.emit("reading", "xfit", x, y)
+            self.process.emit("update")
+
+        self.process.emit("progress", 2, 2)
 
     def finalize(self, vsrc):
         self.process.emit("state", dict(

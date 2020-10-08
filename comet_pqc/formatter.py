@@ -120,6 +120,9 @@ class PQCFormatter(CSVFormatter):
             raise FormatterError("meta data must be written before header/rows")
         if format_spec is None:
             format_spec = ''
+            # Lower case boolean
+            if isinstance(value, bool):
+                value = format(value).lower()
         value = format(value, format_spec)
         self.__f.write(f"{key}: {value}")
         self.__f.write(os.linesep)
