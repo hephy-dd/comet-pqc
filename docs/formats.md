@@ -55,8 +55,10 @@ a data series dictionary.
     "contact_name": "PQC Flute 1",
     "measurement_name": "Diode IV",
     "measurement_type": "iv_ramp",
+    "table_position": [0, 0, 0],
     "start_timestamp": "2020-09-17T10:32:14",
     "operator": "Monty",
+    "pqc_version": "0.24.3",
     ...
   },
   "series_units": {
@@ -111,8 +113,10 @@ sample_type: PQCFlutesLeft
 contact_name: PQC Flute 1
 measurement_name: Diode IV
 measurement_type: iv_ramp
+table_position: (0, 0, 0)
 start_timestamp: 2020-09-17T10:32:14
 operator: Monty
+pqc_version: 0.24.3
 ...
 timestamp[s]	voltage[V]	current[A]
 3.315091E-02	0.000000E+00	3.741383E-04
