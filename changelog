@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.3] - 2020-10-07
+### Added
+- Software version to measurement meta data (#89).
+### Fixed
+- Missing package data in setup.py (#90)
+
+## [0.24.2] - 2020-09-29
+### Fixed
+- Table position meta data in millimeters (#86).
+
+## [0.24.1] - 2020-09-28
+### Added
+- Table position to measurement meta data (#86).
+### Fixed
+- Newline issue with CSV writer (#85).
+### Removed
+- Laser sensor state from table control dialog (#71).
+
 ## [0.24.0] - 2020-09-17
 ### Added
 - Sequence manager dialog (#75).
@@ -109,8 +127,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.25.0...HEAD
-[0.25.0]: https://github.com/hephy-dd/comet-pqc/compare/0.24.0...0.25.0
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.24.3...HEAD
+[0.24.3]: https://github.com/hephy-dd/comet-pqc/compare/0.24.2...0.24.3
+[0.24.2]: https://github.com/hephy-dd/comet-pqc/compare/0.24.1...0.24.2
+[0.24.1]: https://github.com/hephy-dd/comet-pqc/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/hephy-dd/comet-pqc/compare/0.23.4...0.24.0
 [0.23.4]: https://github.com/hephy-dd/comet-pqc/compare/0.23.3...0.23.4
 [0.23.3]: https://github.com/hephy-dd/comet-pqc/compare/0.23.2...0.23.3
