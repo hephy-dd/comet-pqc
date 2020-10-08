@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import datetime
 import random
@@ -45,9 +46,8 @@ class FrequencyScanMeasurement(MatrixMeasurement):
         self.process.emit("progress", 1, 1)
 
     def run(self):
-        with self.resources.get("hvsrc") as hvsrc_res:
-            with self.resources.get("lcr") as lcr_res:
-                super().run(
-                    hvsrc=K2410(hvsrc_res),
-                    lcr=E4980A(lcr_res)
-                )
+        with contextlib.ExitStack() as es:
+            super().run(
+                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
+                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
+            )

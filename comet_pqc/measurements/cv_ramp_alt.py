@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import random
 import datetime
@@ -258,7 +259,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin):
         self.process.emit("progress", 2, 2)
 
     def run(self):
-        with self.resources.get("lcr") as lcr_resource:
+        with contextlib.ExitStack() as es:
             super().run(
-                lcr=E4980A(lcr_resource)
+                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
             )

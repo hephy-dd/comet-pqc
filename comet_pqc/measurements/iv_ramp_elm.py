@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import logging
 import time
@@ -351,9 +352,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 5, 5)
 
     def run(self):
-        with self.resources.get("hvsrc") as hvsrc_res:
-            with self.resources.get("elm") as elm_res:
-                super().run(
-                    hvsrc=K2410(hvsrc_res),
-                    elm=K6517B(elm_res)
-                )
+        with contextlib.ExitStack() as es:
+            super().run(
+                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
+                elm=K6517B(es.enter_context(self.resources.get("elm")))
+            )

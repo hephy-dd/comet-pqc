@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import logging
 import math
@@ -263,6 +264,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
         self.process.emit("progress", 5, 5)
 
     def run(self):
-        with self.resources.get("hvsrc") as hvsrc_res:
-            hvsrc = K2410(hvsrc_res)
-            super().run(hvsrc=hvsrc)
+        with contextlib.ExitStack() as es:
+            super().run(
+                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc")))
+            )

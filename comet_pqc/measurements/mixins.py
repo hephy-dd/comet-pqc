@@ -24,7 +24,7 @@ class HVSourceMixin:
         self.register_parameter('hvsrc_filter_count', 10, type=int)
         self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
         self.register_parameter('hvsrc_source_voltage_autorange_enable', True, type=bool)
-        self.register_parameter('hvsrc_source_voltage_range', 20, unit='V')
+        self.register_parameter('hvsrc_source_voltage_range', comet.ureg('20 V'), unit='V')
 
     def hvsrc_update_meta(self):
         """Update meta data parameters."""
