@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import logging
 import time
@@ -278,7 +279,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
         self.process.emit("progress", 5, 5)
 
     def run(self):
-        with self.resources.get("vsrc") as vsrc_res:
+        with contextlib.ExitStack() as es:
             super().run(
-                vsrc=K2657A(vsrc_res)
+                vsrc=K2657A(es.enter_context(self.resources.get("vsrc")))
             )

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.1] - 2020-10-08
+### Fixed
+- Default HV source range value (#80).
+- Releasing multiple resources using ExitStack (#92).
+
 ## [0.25.0] - 2020-10-08
 ### Added
 - Environment tab in dashboard (#78).
@@ -136,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.25.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.25.1...HEAD
+[0.25.1]: https://github.com/hephy-dd/comet-pqc/compare/0.25.0...0.25.1
 [0.25.0]: https://github.com/hephy-dd/comet-pqc/compare/0.24.3...0.25.0
 [0.24.3]: https://github.com/hephy-dd/comet-pqc/compare/0.24.2...0.24.3
 [0.24.2]: https://github.com/hephy-dd/comet-pqc/compare/0.24.1...0.24.2

@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import datetime
 import time
@@ -279,9 +280,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("progress", 2, 2)
 
     def run(self):
-        with self.resources.get("vsrc") as vsrc_res:
-            with self.resources.get("lcr") as lcr_res:
-                super().run(
-                    vsrc=K2657A(vsrc_res),
-                    lcr=E4980A(lcr_res)
-                )
+        with contextlib.ExitStack() as es:
+            super().run(
+                vsrc=K2657A(es.enter_context(self.resources.get("vsrc"))),
+                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
+            )

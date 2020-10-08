@@ -9,6 +9,12 @@ nav_order: 10
 
 ## 0.25.0
 
+### Fixed
+- Default HV source range value.
+- Releasing multiple resources using ExitStack.
+
+## 0.25.0
+
 ### Added
 - Environment tab in dashboard.
 - CV ramp measurement using only LCR.
