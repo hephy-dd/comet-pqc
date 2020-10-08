@@ -13,7 +13,16 @@ setup(
         'pyyaml',
         'jsonschema'
     ],
-    package_data={},
+    package_data={
+        'comet_pqc': [
+            'assets/config/chuck/*.yaml',
+            'assets/config/sample/*.yaml',
+            'assets/config/sequence/*.yaml',
+            'assets/schema/chuck.yaml',
+            'assets/schema/sample.yaml',
+            'assets/schema/sequence.yaml',
+        ],
+    },
     entry_points={
         'console_scripts': [
             'comet-pqc = comet_pqc.__main__:main',

@@ -233,59 +233,16 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
         self.process.emit("message", "Analyze...")
         self.process.emit("progress", 1, 2)
 
-        quality = set()
-        xfit = []
+        status = None
 
-        if 'van_der_pauw' in self.analyze_functions:
-            i = self.get_series('current')
-            v = self.get_series('voltage_vsrc')
-            if len(i) > 1 and len(v) > 1:
-                r = analysis_pqc.analyse_van_der_pauw(i, v)
-                logging.info("Analyze van_der_pauw: %s", r.status)
-                if not xfit:
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        xfit.append((x, y))
-                quality.add(r.status)
-                analysis = self.data.setdefault("analysis", {})
-                analysis["van_der_pauw"] = r._asdict()
-
-        if 'cross' in self.analyze_functions:
-            i = self.get_series('current')
-            v = self.get_series('voltage_vsrc')
-            if len(i) > 1 and len(v) > 1:
-                r = analysis_pqc.analyse_cross(i, v)
-                logging.info("Analyze cross: %s", r.status)
-                if not xfit:
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        xfit.append((x, y))
-                quality.add(r.status)
-                analysis = self.data.setdefault("analysis", {})
-                analysis["cross"] = r._asdict()
-
-        if 'cbkr' in self.analyze_functions:
-            i = self.get_series('current')
-            v = self.get_series('voltage_vsrc')
-            if len(i) > 1 and len(v) > 1:
-                r = analysis_pqc.analyse_cbkr(i, v, r_sheet=-1, cut_param=0.01)
-                logging.info("Analyze CBKR: %s", r.status)
-                if not xfit:
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        xfit.append((x, y))
-                quality.add(r.status)
-                analysis = self.data.setdefault("analysis", {})
-                analysis["cross"] = r._asdict()
-
-        for x, y in xfit:
-            self.process.emit("reading", "xfit", x, y)
-        self.process.emit("update")
-
-        # TODO
-        if len(quality) > 1:
-            self.quality = "low"
-        if analysis_pqc.STATUS_PASSED not in quality:
-            self.quality = "bad"
-        else:
-            self.quality = analysis_pqc.STATUS_PASSED
+        i = self.get_series('current')
+        v = self.get_series('voltage_vsrc')
+        if len(i) > 1 and len(v) > 1:
+            logging.info("Calculate linear regression...")
+            r = analysis_pqc.analyse_van_der_pauw(i=i, v=v)
+            for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                self.process.emit("reading", "xfit", x, y)
+            self.process.emit("update")
 
         self.process.emit("progress", 2, 2)
 

@@ -80,7 +80,7 @@ class SequenceTree(ui.Tree):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.header = ["Measurement", "State", 'Quality']
+        self.header = ["Measurement", "State"]
 
     def lock(self):
         for contact in self:

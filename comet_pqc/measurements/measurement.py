@@ -9,6 +9,8 @@ import numpy as np
 import comet
 from comet.resource import ResourceMixin
 from comet.process import ProcessMixin
+
+from .. import __version__
 from ..formatter import PQCFormatter
 
 __all__ = ['Measurement']
@@ -89,10 +91,6 @@ class Measurement(ResourceMixin, ProcessMixin):
     def data(self):
         """Measurement data property."""
         return self.__data
-
-    @property
-    def analyze_functions(self):
-        return self.measurement_item.parameters.get('analyze_functions') or []
 
     def register_parameter(self, key, default=None, *, values=None, unit=None, type=None,
                            required=False):
@@ -187,6 +185,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("table_position", self.table_position)
         self.set_meta("start_timestamp", self.timestamp_iso)
         self.set_meta("operator", self.operator)
+        self.set_meta("pqc_version", __version__)
 
     def initialize(self, **kwargs):
         pass
