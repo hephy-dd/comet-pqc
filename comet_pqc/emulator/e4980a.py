@@ -8,6 +8,12 @@ class E4980AHandler(E4980AHandler):
     bias_voltage_level = 0.0
     bias_state = False
 
+    @message(r':?FETC[H]?\?')
+    @message(r':?FETC[H]:FORM[AT]?\?')
+    @message(r':?FETC[H]:IMP:FORM[AT]?\?')
+    def query_fetch(self):
+        return '{:E},{:E},{:+d}'.format(random.random(), random.random(), 0)
+
     @message(r':?BIAS:POL:CURR\?')
     @message(r':?BIAS:POL:CURR:LEV\?')
     def get_bias_polarity_current_level(self):

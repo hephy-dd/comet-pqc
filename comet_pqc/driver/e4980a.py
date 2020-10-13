@@ -125,12 +125,14 @@ class Fetch(Driver):
         @Action()
         @lock
         def corrected(self) -> Tuple[float]:
+            """Return tuple with two corrected values."""
             result = self.resource.query(':FETC:IMP:CORR?')
             return tuple(map(float, result.split(',')))
 
         @Action()
         @lock
         def formatted(self) -> Tuple[float]:
+            """Return tuple with three values."""
             result = self.resource.query(':FETC:IMP:FORM?')
             return tuple(map(float, result.split(',')))
 
@@ -160,6 +162,7 @@ class Fetch(Driver):
     @Action()
     @lock
     def __call__(self) -> Tuple[float]:
+        """Return tuple with three values."""
         result = self.resource.query(':FETC?')
         return tuple(map(float, result.split(',')))
 
