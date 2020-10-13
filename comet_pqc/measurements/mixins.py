@@ -347,7 +347,7 @@ class LCRMixin:
     def lcr_acquire_reading(self, lcr):
         """Return primary and secondary LCR reading."""
         self.lcr_safe_write(lcr, "TRIG:IMM")
-        prim, sec = lcr.fetch()
+        prim, sec = lcr.fetch()[:2]
         logging.info("lcr reading: %s-%s", prim, sec)
         return prim, sec
 

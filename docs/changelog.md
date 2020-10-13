@@ -7,7 +7,13 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
-## 0.25.0
+
+## 0.25.2
+
+### Fixed
+- LCR fetch reading issue.
+
+## 0.25.1
 
 ### Fixed
 - Default HV source range value.
