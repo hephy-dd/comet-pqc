@@ -17,6 +17,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: [3.6, 3.7, 3.8, 3.9]
+        exclude:
+          # excludes Python 3.9 on Windows (missing numpy wheels)
+          - os: windows-latest
+            python-version: 3.9
 
     steps:
     - uses: actions/checkout@v2
