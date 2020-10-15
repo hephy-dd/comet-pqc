@@ -32,6 +32,21 @@ def format_estimate(est):
     average = datetime.timedelta(seconds=round(est.average.total_seconds()))
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
+def annotate_step(name):
+    def annotate_step(method):
+        def annotate_step(self, *args, **kwargs):
+            logging.info(f"%s %s...", name, self.type)
+            try:
+                method(self, *args, **kwargs)
+            except Exception as e:
+                logging.error(e)
+                logging.error(f"%s %s... failed.", name, self.type)
+                raise
+            else:
+                logging.info(f"%s %s... done.", name, self.type)
+        return annotate_step
+    return annotate_step
+
 class ParameterType:
 
     def __init__(self, key, default, values, unit, type, required):
@@ -212,32 +227,32 @@ class Measurement(ResourceMixin, ProcessMixin):
         """Run measurement."""
         self.__run(**kwargs)
 
+    @annotate_step("Initialize")
     def __initialize(self, **kwargs):
-        logging.info(f"Initialize %s...", self.type)
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
         self.after_initialize(**kwargs)
-        logging.info(f"Initialize %s... done.", self.type)
 
+    @annotate_step("Measure")
     def __measure(self, **kwargs):
-        logging.info(f"Measure %s...", self.type)
         self.measure(**kwargs)
-        logging.info(f"Measure %s... done.", self.type)
 
+    @annotate_step("Analyze")
     def __analyze(self, **kwargs):
-        logging.info(f"Analyze %s...", self.type)
         self.analyze(**kwargs)
-        logging.info(f"Analyze %s... done.", self.type)
 
+    @annotate_step("Finalize")
     def __finalize(self, **kwargs):
-        logging.info(f"Finalize %s...", self.type)
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
-        self.after_finalize(**kwargs)
-        logging.info(f"Finalize %s... done.", self.type)
+        self.after_finalize(**kwargs) # is not executed on error
 
     def __run(self, **kwargs):
-        """Run measurement."""
+        """Run measurement.
+
+        If initialize, measure or analyze fails, finalize is executed before
+        raising any exception.
+        """
         try:
             self.__initialize(**kwargs)
             self.__measure(**kwargs)

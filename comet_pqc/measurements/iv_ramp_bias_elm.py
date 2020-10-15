@@ -329,7 +329,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
 
                 # read ELM
                 with benchmark_elm:
-                    elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    try:
+                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to read from ELM: {e}")
                 self.elm_check_error(elm)
                 logging.info("ELM reading: %E", elm_reading)
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
@@ -393,60 +396,62 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.process.emit("progress", 2, 2)
 
     def finalize(self, hvsrc, vsrc, elm):
-        self.process.emit("progress", 1, 2)
+        self.process.emit("progress", 0, 2)
         self.process.emit("message", "Ramp to zero...")
 
-        elm.resource.write(":SYST:ZCH ON")
-        elm.resource.query("*OPC?")
-
-        self.process.emit("state", dict(
-            elm_current=None,
-            vsrc_current=None,
-            hvsrc_current=None
-        ))
-
-        voltage_step = self.get_parameter('voltage_step')
-
-        voltage = hvsrc.source.voltage.level
-
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
-        for voltage in comet.Range(voltage, 0, 1.0):
-            logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            hvsrc.source.voltage.level = voltage
+        try:
+            elm.resource.write(":SYST:ZCH ON")
+            elm.resource.query("*OPC?")
+        finally:
+            self.process.emit("progress", 1, 2)
             self.process.emit("state", dict(
-                hvsrc_voltage=voltage,
+                elm_current=None,
+                vsrc_current=None,
+                hvsrc_current=None
             ))
-            time.sleep(QUICK_RAMP_DELAY)
 
-        bias_voltage = vsrc.source.levelv
+            voltage_step = self.get_parameter('voltage_step')
 
-        logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
-        for voltage in comet.Range(bias_voltage, 0, 1.0):
-            logging.info("set bias voltage: %E V", voltage)
-            self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
-            vsrc.source.levelv = voltage
+            voltage = hvsrc.source.voltage.level
+
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
+            for voltage in comet.Range(voltage, 0, 1.0):
+                logging.info("set voltage: %E V", voltage)
+                self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
+                hvsrc.source.voltage.level = voltage
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                ))
+                time.sleep(QUICK_RAMP_DELAY)
+
+            bias_voltage = vsrc.source.levelv
+
+            logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
+            for voltage in comet.Range(bias_voltage, 0, 1.0):
+                logging.info("set bias voltage: %E V", voltage)
+                self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
+                vsrc.source.levelv = voltage
+                self.process.emit("state", dict(
+                    vsrc_voltage=voltage,
+                ))
+                time.sleep(QUICK_RAMP_DELAY)
+
+            hvsrc.output = False
+            vsrc.source.output = 'OFF'
+
             self.process.emit("state", dict(
-                vsrc_voltage=voltage,
+                hvsrc_output=hvsrc.output,
+                hvsrc_voltage=None,
+                hvsrc_current=None,
+                vsrc_output=vsrc.source.output,
+                vsrc_voltage=None,
+                vsrc_current=None,
+                env_chuck_temperature=None,
+                env_box_temperature=None,
+                env_box_humidity=None
             ))
-            time.sleep(QUICK_RAMP_DELAY)
 
-        hvsrc.output = False
-        vsrc.source.output = 'OFF'
-
-        self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output,
-            hvsrc_voltage=None,
-            hvsrc_current=None,
-            vsrc_output=vsrc.source.output,
-            vsrc_voltage=None,
-            vsrc_current=None,
-            env_chuck_temperature=None,
-            env_box_temperature=None,
-            env_box_humidity=None
-        ))
-
-        self.process.emit("progress", 2, 2)
+            self.process.emit("progress", 2, 2)
 
     def run(self):
         with contextlib.ExitStack() as es:

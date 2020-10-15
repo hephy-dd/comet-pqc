@@ -263,7 +263,10 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
                 # read ELM
                 with benchmark_elm:
-                    elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    try:
+                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to read from ELM: {e}")
                 self.elm_check_error(elm)
                 logging.info("ELM reading: %E", elm_reading)
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
@@ -317,39 +320,44 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 4, 5)
 
     def finalize(self, hvsrc, elm):
-        elm.resource.write(":SYST:ZCH ON")
-        elm.resource.query("*OPC?")
+        self.process.emit("progress", 0, 2)
+        self.process.emit("message", "Ramp to zero...")
 
-        self.process.emit("state", dict(
-            hvsrc_current=None,
-            elm_current=None
-        ))
-
-        voltage_step = self.get_parameter('voltage_step')
-        voltage = hvsrc.source.voltage.level
-
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-        for voltage in comet.Range(voltage, 0, voltage_step):
-            logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            hvsrc.source.voltage.level = voltage
-            # check_error(hvsrc)
+        try:
+            elm.resource.write(":SYST:ZCH ON")
+            elm.resource.query("*OPC?")
+        finally:
+            self.process.emit("progress", 1, 2)
             self.process.emit("state", dict(
-                hvsrc_voltage=voltage,
+                hvsrc_current=None,
+                elm_current=None
             ))
-            time.sleep(QUICK_RAMP_DELAY)
 
-        hvsrc.output = False
-        check_error(hvsrc)
+            voltage_step = self.get_parameter('voltage_step')
+            voltage = hvsrc.source.voltage.level
 
-        self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output,
-            env_chuck_temperature=None,
-            env_box_temperature=None,
-            env_box_humidity=None
-        ))
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            for voltage in comet.Range(voltage, 0, voltage_step):
+                logging.info("set voltage: %E V", voltage)
+                self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
+                hvsrc.source.voltage.level = voltage
+                # check_error(hvsrc)
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                ))
+                time.sleep(QUICK_RAMP_DELAY)
 
-        self.process.emit("progress", 5, 5)
+            hvsrc.output = False
+            check_error(hvsrc)
+
+            self.process.emit("state", dict(
+                hvsrc_output=hvsrc.output,
+                env_chuck_temperature=None,
+                env_box_temperature=None,
+                env_box_humidity=None
+            ))
+
+            self.process.emit("progress", 2, 2)
 
     def run(self):
         with contextlib.ExitStack() as es:
