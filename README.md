@@ -29,7 +29,8 @@ comet-pqc
 
 In _Edit_ &rarr; _Preferences_ &rarr; _Resources_ update resource
 names to `TCPIP::localhost::1100x::SOCKET` to match the local emulation
-sockets. Start every emulator in a separate shell and termiante by using `Ctrl+C`.
+sockets and set read/write termination to `\r\n`. Run every emulator
+in a separate shell and termiante by using `Ctrl+C`.
 
 ```bash
 python -m comet.emulator.keithley.k707 -p 11001
