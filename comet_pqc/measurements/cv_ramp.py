@@ -204,10 +204,13 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 with benchmark_lcr:
-                    if lcr_soft_filter:
-                        lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
-                    else:
-                        lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
+                    try:
+                        if lcr_soft_filter:
+                            lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
+                        else:
+                            lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to read from LCR: {e}")
                     try:
                         lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
                     except ZeroDivisionError:

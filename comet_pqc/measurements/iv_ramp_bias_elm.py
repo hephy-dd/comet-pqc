@@ -185,8 +185,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         nplc = elm_integration_rate / 10.
         self.elm_safe_write(elm, f":SENS:CURR:NPLC {nplc:02f}")
 
-        self.elm_safe_write(elm, ":SYST:ZCH ON") # enable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
+        self.elm_set_zero_check(elm, True)
+        assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
 
         self.elm_safe_write(elm, ":SENS:FUNC 'CURR'") # note the quotes!
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
@@ -199,8 +199,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:LLIM {elm_current_autorange_minimum:E}")
         self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
 
-        self.elm_safe_write(elm, ":SYST:ZCH OFF") # disable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
+        self.elm_set_zero_check(elm, False)
+        assert self.elm_get_zero_check(elm) == False, "failed to disable zero check"
 
         # Output enable
 
@@ -400,8 +400,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.process.emit("message", "Ramp to zero...")
 
         try:
-            elm.resource.write(":SYST:ZCH ON")
-            elm.resource.query("*OPC?")
+            self.elm_set_zero_check(elm, True)
+            assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
         finally:
             self.process.emit("progress", 1, 2)
             self.process.emit("state", dict(

@@ -234,7 +234,10 @@ class ElectrometerMixin:
         """Update meta data parameters."""
 
     def elm_check_error(self, elm):
-        result = elm.resource.query(":SYST:ERR?")
+        try:
+            result = elm.resource.query(":SYST:ERR?")
+        except Exception as e:
+            raise RuntimeError(f"Failed to read error state from ELM: {e}")
         try:
             code, label = result.split(",", 1)
             code = int(code)
@@ -247,8 +250,14 @@ class ElectrometerMixin:
 
     def elm_safe_write(self, elm, message):
         """Write, wait for operation complete, test for errors."""
-        elm.resource.write(message)
-        elm.resource.query("*OPC?")
+        try:
+            elm.resource.write(message)
+        except Exception as e:
+            raise RuntimeError(f"Failed to write to ELM: '{message}', {e}")
+        try:
+            elm.resource.query("*OPC?")
+        except Exception as e:
+            raise RuntimeError(f"Failed to read operation complete from ELM for message: '{message}', {e}")
         self.elm_check_error(elm)
 
     def elm_read(self, elm, timeout=60.0, interval=0.25):
@@ -257,15 +266,35 @@ class ElectrometerMixin:
         elm.resource.write('*CLS')
         elm.resource.write('*OPC')
         # Initiate measurement
+        logging.info("Initiate ELM measurement...")
         elm.resource.write(":INIT")
         threshold = time.time() + timeout
         interval = min(timeout, interval)
+        logging.info("Poll ELM event status register...")
         while time.time() < threshold:
             # Read event status
             if int(elm.resource.query('*ESR?')) & 0x1:
-                return float(elm.resource.query(":FETCH?").split(',')[0])
+                logging.info("Fetch ELM reading...")
+                try:
+                    result = elm.resource.query(":FETCH?")
+                    return float(result.split(',')[0])
+                except Exception as e:
+                    raise RuntimeError(f"Failed to fetch ELM reading: {e}")
             time.sleep(interval)
-        raise RuntimeError(f"electrometer reading timeout, exceeded {timeout:G} s")
+        raise RuntimeError(f"Electrometer reading timeout, exceeded {timeout:G} s")
+
+    def elm_get_zero_check(self, elm):
+        try:
+            return bool(int(elm.resource.query(":SYST:ZCH?")))
+        except Exception as e:
+            raise RuntimeError(f"Failed to get zero check from ELM: {e}")
+
+    def elm_set_zero_check(self, elm, enabled):
+        value = {False: 'OFF', True: 'ON'}.get(enabled)
+        try:
+            self.elm_safe_write(elm, f":SYST:ZCH {value}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to set zero check to ELM: {e}")
 
 class LCRMixin:
 
