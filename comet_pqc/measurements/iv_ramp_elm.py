@@ -193,8 +193,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         nplc = elm_integration_rate / 10.
         self.elm_safe_write(elm, f":SENS:CURR:NPLC {nplc:02f}")
 
-        self.elm_safe_write(elm, ":SYST:ZCH ON") # enable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '1', "failed to enable zero check"
+        self.elm_set_zero_check(elm, True)
+        assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
 
         self.elm_safe_write(elm, ":SENS:FUNC 'CURR'") # note the quotes!
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
@@ -207,8 +207,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:LLIM {elm_current_autorange_minimum:E}")
         self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
 
-        self.elm_safe_write(elm, ":SYST:ZCH OFF") # disable zero check
-        assert elm.resource.query(":SYST:ZCH?") == '0', "failed to disable zero check"
+        self.elm_set_zero_check(elm, False)
+        assert self.elm_get_zero_check(elm) == False, "failed to disable zero check"
 
         self.process.emit("progress", 3, 5)
 
@@ -263,7 +263,10 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
                 # read ELM
                 with benchmark_elm:
-                    elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    try:
+                        elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to read from ELM: {e}")
                 self.elm_check_error(elm)
                 logging.info("ELM reading: %E", elm_reading)
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
@@ -317,39 +320,44 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 4, 5)
 
     def finalize(self, hvsrc, elm):
-        elm.resource.write(":SYST:ZCH ON")
-        elm.resource.query("*OPC?")
+        self.process.emit("progress", 0, 2)
+        self.process.emit("message", "Ramp to zero...")
 
-        self.process.emit("state", dict(
-            hvsrc_current=None,
-            elm_current=None
-        ))
-
-        voltage_step = self.get_parameter('voltage_step')
-        voltage = hvsrc.source.voltage.level
-
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-        for voltage in comet.Range(voltage, 0, voltage_step):
-            logging.info("set voltage: %E V", voltage)
-            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            hvsrc.source.voltage.level = voltage
-            # check_error(hvsrc)
+        try:
+            self.elm_set_zero_check(elm, True)
+            assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
+        finally:
+            self.process.emit("progress", 1, 2)
             self.process.emit("state", dict(
-                hvsrc_voltage=voltage,
+                hvsrc_current=None,
+                elm_current=None
             ))
-            time.sleep(QUICK_RAMP_DELAY)
 
-        hvsrc.output = False
-        check_error(hvsrc)
+            voltage_step = self.get_parameter('voltage_step')
+            voltage = hvsrc.source.voltage.level
 
-        self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output,
-            env_chuck_temperature=None,
-            env_box_temperature=None,
-            env_box_humidity=None
-        ))
+            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            for voltage in comet.Range(voltage, 0, voltage_step):
+                logging.info("set voltage: %E V", voltage)
+                self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
+                hvsrc.source.voltage.level = voltage
+                # check_error(hvsrc)
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                ))
+                time.sleep(QUICK_RAMP_DELAY)
 
-        self.process.emit("progress", 5, 5)
+            hvsrc.output = False
+            check_error(hvsrc)
+
+            self.process.emit("state", dict(
+                hvsrc_output=hvsrc.output,
+                env_chuck_temperature=None,
+                env_box_temperature=None,
+                env_box_humidity=None
+            ))
+
+            self.process.emit("progress", 2, 2)
 
     def run(self):
         with contextlib.ExitStack() as es:

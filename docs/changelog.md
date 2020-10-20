@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.25.3
+
+### Added
+- Laser sensor state in table control dialog.
+- Improved logging and exception forwarding.
+
+### Fixed
+- Persistent dialog size for HiDPI monitors.
 
 ## 0.25.2
 

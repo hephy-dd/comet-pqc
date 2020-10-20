@@ -21,7 +21,7 @@ This COMET application provides PQC sensor measurements.
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.25.2
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.25.3
 comet-pqc
 ```
 

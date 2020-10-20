@@ -178,7 +178,13 @@ class MeasureProcess(BaseProcess):
     def initialize(self):
         self.emit("message", "Initialize measurement...")
         self.stopped = False
-        self.safe_initialize()
+        try:
+            self.safe_initialize()
+        except Exception:
+            self.emit("message", "Initialize measurement... failed.")
+            raise
+        else:
+            self.emit("message", "Initialize measurement... done.")
 
     def process(self):
         self.emit("message", "Process measurement...")
@@ -216,7 +222,7 @@ class MeasureProcess(BaseProcess):
             except ComplianceError:
                 state = self.measurement_item.ComplianceState
                 raise
-            except Exception:
+            except Exception as e:
                 state = self.measurement_item.ErrorState
                 raise
             else:
@@ -239,16 +245,27 @@ class MeasureProcess(BaseProcess):
     def finalize(self):
         self.emit("message", "Finalize measurement...")
         self.measurement_item = None
-        self.safe_finalize()
-        self.stopped = False
+        try:
+            self.safe_finalize()
+        except Exception:
+            self.emit("message", "Finalize measurement... failed.")
+            raise
+        else:
+            self.emit("message", "Finalize measurement... done.")
+        finally:
+            self.stopped = False
 
     def run(self):
-        self.emit("message", "Starting measurement...")
         try:
-            self.initialize()
-            self.process()
-        finally:
-            self.finalize()
+            try:
+                self.initialize()
+                self.process()
+            finally:
+                self.finalize()
+        except Exception:
+            self.emit("message", "Measurement failed.")
+            raise
+        else:
             self.emit("message", "Measurement done.")
 
 class SequenceProcess(BaseProcess):
@@ -273,7 +290,13 @@ class SequenceProcess(BaseProcess):
     def initialize(self):
         self.emit("message", "Initialize sequence...")
         self.stopped = False
-        self.safe_initialize()
+        try:
+            self.safe_initialize()
+        except Exception:
+            self.emit("message", "Initialize sequence... failed.")
+            raise
+        else:
+            self.emit("message", "Initialize sequence... done.")
 
     def process(self):
         self.emit("message", "Process sequence...")
@@ -359,14 +382,25 @@ class SequenceProcess(BaseProcess):
     def finalize(self):
         self.emit("message", "Finalize sequence...")
         self.contact_item = None
-        self.stopped = False
-        self.safe_finalize()
+        try:
+            self.safe_finalize()
+        except Exception:
+            self.emit("message", "Finalize sequence... failed.")
+            raise
+        else:
+            self.emit("message", "Finalize sequence... done.")
+        finally:
+            self.stopped = False
 
     def run(self):
-        self.emit("message", "Starting sequence...")
         try:
-            self.initialize()
-            self.process()
-        finally:
-            self.finalize()
+            try:
+                self.initialize()
+                self.process()
+            finally:
+                self.finalize()
+        except Exception:
+            self.emit("message", "Sequence failed.")
+            raise
+        else:
             self.emit("message", "Sequence done.")
