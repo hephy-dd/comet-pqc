@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.25.3] - 2020-10-15
-### Changed
+### Added
+- Laser sensor state in table control dialog (#71).
 - Improved logging and exception forwarding (#96).
 ### Fixed
 - Persistent dialog size for HiDPI monitors (#97).

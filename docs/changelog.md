@@ -9,7 +9,8 @@ nav_order: 10
 
 ## 0.25.3
 
-### Changed
+### Added
+- Laser sensor state in table control dialog.
 - Improved logging and exception forwarding.
 
 ### Fixed
