@@ -13,7 +13,6 @@ nav_order: 10
 - Improved logging and exception forwarding.
 
 ### Fixed
-- LCR fetch reading issue.
 - Persistent dialog size for HiDPI monitors.
 
 ## 0.25.2
