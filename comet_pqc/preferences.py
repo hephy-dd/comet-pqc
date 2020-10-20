@@ -1,3 +1,4 @@
+import comet
 from comet import ui
 
 from comet.ui.preferences import PreferencesTab

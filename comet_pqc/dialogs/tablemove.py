@@ -9,7 +9,7 @@ comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
 
-class TableMoveDialog(ui.Dialog, comet.ProcessMixin):
+class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -123,10 +123,19 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin):
             item.y = y
             item.z = z
 
+    def load_settings(self):
+        dialog_size = self.settings.get('tablemove_dialog_size', (640, 480))
+        self.resize(*dialog_size)
+
+    def store_settings(self):
+        self.settings['tablemove_dialog_size'] = self.size
+
     def run(self):
         self.process.peek()
         self.process.finished = self.on_finished
+        self.load_settings()
         super().run()
+        self.store_settings()
         self.process.finished = None
 
 class TablePositionItem(ui.TreeItem):

@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ## [0.25.2] - 2020-10-13
+### Changed
+- Improved logging and exception forwarding (#96).
 ### Fixed
 - LCR fetch reading issue (#94).
+- Persistent dialog size for HiDPI monitors (#97).
 
 ## [0.25.1] - 2020-10-08
 ### Fixed

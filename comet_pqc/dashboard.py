@@ -736,7 +736,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def on_table_controls_start(self):
-        TableControlDialog().run()
+        dialog = TableControlDialog()
+        if self.use_environment():
+            with self.processes.get("environment") as environ:
+                pc_data = environ.pc_data()
+                dialog.control.on_update_laser_state(pc_data.relay_states.laser_sensor)
+        dialog.run()
         self.sync_table_controls()
 
     @handle_exception
