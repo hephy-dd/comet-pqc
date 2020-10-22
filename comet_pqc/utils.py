@@ -1,5 +1,7 @@
+import logging
 import os
 import re
+import traceback
 
 import numpy as np
 
@@ -119,7 +121,6 @@ def handle_exception(func):
             logging.error(tb)
             ui.show_exception(exc, tb)
     return catch_exception_wrapper
-
 
 def format_table_unit(value):
     """Formatted table unit to millimeters."""

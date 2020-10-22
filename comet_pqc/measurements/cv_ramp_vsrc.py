@@ -195,7 +195,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
                 # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                 dt = time.time() - t0
-                est.next()
+                est.advance()
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 

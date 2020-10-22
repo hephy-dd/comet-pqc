@@ -172,7 +172,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin):
                 time.sleep(waiting_time)
 
                 dt = time.time() - t0
-                est.next()
+                est.advance()
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 

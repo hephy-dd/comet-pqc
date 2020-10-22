@@ -3,7 +3,7 @@ from comet import ui
 
 from comet.ui.preferences import PreferencesTab
 
-__all__ = ['TabelTab', 'OptionsTab']
+__all__ = ['TableTab', 'OptionsTab']
 
 class TableTab(PreferencesTab):
     """Table limits tab for preferences dialog."""

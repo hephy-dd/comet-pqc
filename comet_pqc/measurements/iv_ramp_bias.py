@@ -229,7 +229,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
             dt = time.time() - t0
 
-            est.next()
+            est.advance()
             self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
             self.process.emit("progress", *est.progress)
 

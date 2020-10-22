@@ -189,7 +189,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
             # check_error(vsrc)
             dt = time.time() - t0
 
-            est.next()
+            est.advance()
             self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
             self.process.emit("progress", *est.progress)
 

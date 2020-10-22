@@ -215,7 +215,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
                 temperature_chuck=self.environment_temperature_chuck,
                 humidity_box=self.environment_humidity_box
             )
-            est.next()
+            est.advance()
             self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
             self.process.emit("progress", *est.progress)
 

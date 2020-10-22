@@ -3,7 +3,7 @@ import random
 from comet.emulator.emulator import message, run
 from comet.emulator.hephy.environmentbox import EnvironmentBoxHandler
 
-class EnvironmentBoxHandler(EnvironmentBoxHandler):
+class PQCEnvironmentBoxHandler(EnvironmentBoxHandler):
 
     test_led = False
 
@@ -31,4 +31,4 @@ class EnvironmentBoxHandler(EnvironmentBoxHandler):
         return cls.message_ok
 
 if __name__ == '__main__':
-    run(EnvironmentBoxHandler)
+    run(PQCEnvironmentBoxHandler)
