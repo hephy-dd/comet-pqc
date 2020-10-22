@@ -1,6 +1,9 @@
 import comet
 from comet import ui
 
+from ..components import PositionGroupBox
+from ..components import CalibrationGroupBox
+
 __all__ = ['TableCalibrateDialog']
 
 class TableCalibrateDialog(ui.Dialog, comet.ProcessMixin):
@@ -8,15 +11,8 @@ class TableCalibrateDialog(ui.Dialog, comet.ProcessMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = "Calibrate Table"
-        self.pos_x_label = ui.Label()
-        self.pos_y_label = ui.Label()
-        self.pos_z_label = ui.Label()
-        self.cal_x_label = ui.Label()
-        self.cal_y_label = ui.Label()
-        self.cal_z_label = ui.Label()
-        self.rm_x_label = ui.Label()
-        self.rm_y_label = ui.Label()
-        self.rm_z_label = ui.Label()
+        self.position_groupbox = PositionGroupBox()
+        self.calibration_groupbox = CalibrationGroupBox()
         self.start_button = ui.Button(
             text="Start",
             clicked=self.on_start
@@ -32,42 +28,8 @@ class TableCalibrateDialog(ui.Dialog, comet.ProcessMixin):
         )
         self.layout = ui.Column(
             ui.Row(
-                ui.GroupBox(
-                    width=160,
-                    title="Position",
-                    layout=ui.Row(
-                        ui.Column(
-                            ui.Label("X"),
-                            ui.Label("Y"),
-                            ui.Label("Z"),
-                        ),
-                        ui.Column(
-                            self.pos_x_label,
-                            self.pos_y_label,
-                            self.pos_z_label
-                        ),
-                    )
-                ),
-                ui.GroupBox(
-                    title="State",
-                    layout=ui.Row(
-                        ui.Column(
-                            ui.Label("X"),
-                            ui.Label("Y"),
-                            ui.Label("Z"),
-                        ),
-                        ui.Column(
-                            self.cal_x_label,
-                            self.cal_y_label,
-                            self.cal_z_label
-                        ),
-                        ui.Column(
-                            self.rm_x_label,
-                            self.rm_y_label,
-                            self.rm_z_label
-                        )
-                    )
-                )
+                self.position_groupbox,
+                self.calibration_groupbox
             ),
             ui.Row(
                 self.start_button,
@@ -82,27 +44,10 @@ class TableCalibrateDialog(ui.Dialog, comet.ProcessMixin):
         self.close_event = self.on_close
 
     def on_position(self, x, y, z):
-        self.pos_x_label.text = f"{x / 1000.:.3f} mm"
-        self.pos_y_label.text = f"{y / 1000.:.3f} mm"
-        self.pos_z_label.text = f"{z / 1000.:.3f} mm"
+        self.position_groupbox.value = x, y, z
 
     def on_caldone(self, x, y, z):
-        def getcal(value):
-            return value & 0x1
-        def getrm(value):
-            return (value >> 1) & 0x1
-        self.cal_x_label.text = "cal {}".format(getcal(x))
-        self.cal_x_label.stylesheet = "color: green" if getcal(x) else "color: red"
-        self.cal_y_label.text = "cal {}".format(getcal(y))
-        self.cal_y_label.stylesheet = "color: green" if getcal(y) else "color: red"
-        self.cal_z_label.text = "cal {}".format(getcal(z))
-        self.cal_z_label.stylesheet = "color: green" if getcal(z) else "color: red"
-        self.rm_x_label.text = "rm {}".format(getrm(x))
-        self.rm_x_label.stylesheet = "color: green" if getrm(x) else "color: red"
-        self.rm_y_label.text = "rm {}".format(getrm(y))
-        self.rm_y_label.stylesheet = "color: green" if getrm(y) else "color: red"
-        self.rm_z_label.text = "rm {}".format(getrm(z))
-        self.rm_z_label.stylesheet = "color: green" if getrm(z) else "color: red"
+        self.calibration_groupbox.value = x, y, z
 
     def on_start(self):
         if not ui.show_question(

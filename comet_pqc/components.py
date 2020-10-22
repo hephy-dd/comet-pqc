@@ -4,12 +4,16 @@ from comet import ui
 from comet.settings import SettingsMixin
 
 from .utils import make_path, create_icon
+from .utils import format_table_unit
 
 __all__ = [
     'ToggleButton',
     'EditComboBox',
     'DirectoryWidget',
-    'OperatorComboBox'
+    'OperatorComboBox',
+    'CalibrationGroupBox',
+    'PositionGroupBox',
+    'CalibrationGroupBox'
 ]
 
 class ToggleButton(ui.Button):
@@ -181,3 +185,96 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
             self.settings["operators"] = operators
         self.qt.editTextChanged.connect(on_operator_changed)
         self.qt.currentIndexChanged.connect(on_operator_changed)
+
+# Table components
+
+class PositionGroupBox(ui.GroupBox):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, title="Position", **kwargs)
+        self.pos_x_label = ui.Label()
+        self.pos_y_label = ui.Label()
+        self.pos_z_label = ui.Label()
+        self.layout = ui.Row(
+            ui.Column(
+                ui.Label("X"),
+                ui.Label("Y"),
+                ui.Label("Z"),
+            ),
+            ui.Column(
+                self.pos_x_label,
+                self.pos_y_label,
+                self.pos_z_label
+            ),
+        )
+        self.value = 0, 0, 0
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        x, y, z = value[:3]
+        self.__value = x, y, z
+        self.pos_x_label.text = format_table_unit(x)
+        self.pos_y_label.text = format_table_unit(y)
+        self.pos_z_label.text = format_table_unit(z)
+
+class CalibrationGroupBox(ui.GroupBox):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, title="Calibration", **kwargs)
+        self.cal_x_label = ui.Label()
+        self.cal_y_label = ui.Label()
+        self.cal_z_label = ui.Label()
+        self.rm_x_label = ui.Label()
+        self.rm_y_label = ui.Label()
+        self.rm_z_label = ui.Label()
+        self.layout = ui.Row(
+            ui.Column(
+                ui.Label("X"),
+                ui.Label("Y"),
+                ui.Label("Z"),
+            ),
+            ui.Column(
+                self.cal_x_label,
+                self.cal_y_label,
+                self.cal_z_label
+            ),
+            ui.Column(
+                self.rm_x_label,
+                self.rm_y_label,
+                self.rm_z_label
+            )
+        )
+        self.value = 0, 0, 0
+
+    @property
+    def valid(self):
+        return self.value == (3, 3, 3)
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        x, y, z = value[:3]
+        self.__value = x, y, z
+        def getcal(value):
+            return value & 0x1
+        def getrm(value):
+            return (value >> 1) & 0x1
+        self.cal_x_label.text = "cal {}".format(getcal(x))
+        self.cal_x_label.stylesheet = "color: green" if getcal(x) else "color: red"
+        self.cal_y_label.text = "cal {}".format(getcal(y))
+        self.cal_y_label.stylesheet = "color: green" if getcal(y) else "color: red"
+        self.cal_z_label.text = "cal {}".format(getcal(z))
+        self.cal_z_label.stylesheet = "color: green" if getcal(z) else "color: red"
+        self.rm_x_label.text = "rm {}".format(getrm(x))
+        self.rm_x_label.stylesheet = "color: green" if getrm(x) else "color: red"
+        self.rm_y_label.text = "rm {}".format(getrm(y))
+        self.rm_y_label.stylesheet = "color: green" if getrm(y) else "color: red"
+        self.rm_z_label.text = "rm {}".format(getrm(z))
+        self.rm_z_label.stylesheet = "color: green" if getrm(z) else "color: red"

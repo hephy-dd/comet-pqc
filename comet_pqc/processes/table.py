@@ -176,6 +176,10 @@ class MoveProcess(comet.Process, ResourceMixin):
             if pos != (x, y, z):
                 raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
+            # Workaround: ignore error 1004 issue
+            time.sleep(.250)
+            corvus.error
+
             self.emit("progress", 7, 7)
             self.emit("message", "Movement successful.")
 
