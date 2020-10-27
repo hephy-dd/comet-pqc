@@ -9,6 +9,7 @@ import comet
 from comet.driver.keithley import K2657A
 
 import analysis_pqc
+import numpy as np
 
 from ..utils import format_metric
 from ..estimate import Estimate
@@ -93,10 +94,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
         self.register_series("temperature_chuck")
         self.register_series("humidity_box")
 
-        self.process.emit("progress", 1, 5)
-
-        self.process.emit("progress", 2, 5)
-
         self.process.emit("state", dict(
             vsrc_voltage=vsrc.source.levelv,
             vsrc_current=vsrc.source.leveli,
@@ -105,11 +102,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
 
         # Initialize V Source
 
-        self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 2, 6)
+        self.process.emit("progress", 1, 5)
 
         self.vsrc_reset(vsrc)
-        self.process.emit("progress", 3, 6)
+        self.process.emit("progress", 2, 5)
 
         self.vsrc_setup(vsrc)
 
@@ -119,7 +115,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
 
         self.vsrc_set_voltage_compliance(vsrc, vsrc_voltage_compliance)
 
-        self.process.emit("progress", 4, 6)
+        self.process.emit("progress", 3, 5)
 
         # Override display
         vsrc.resource.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
@@ -131,7 +127,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
             vsrc_output=vsrc.source.output,
         ))
 
-        self.process.emit("progress", 2, 5)
+        self.process.emit("progress", 4, 5)
 
         if self.process.running:
 
@@ -156,7 +152,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
                 if not self.process.running:
                     break
 
-        self.process.emit("progress", 3, 5)
+        self.process.emit("progress", 5, 5)
 
     def measure(self, vsrc):
         current_start = self.get_parameter('current_start')
@@ -231,23 +227,31 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
                 break
 
     def analyze(self, **kwargs):
-        self.process.emit("message", "Analyze...")
         self.process.emit("progress", 1, 2)
 
         status = None
 
-        i = self.get_series('current')
-        v = self.get_series('voltage_vsrc')
+        i = np.array(self.get_series('current'))
+        v = np.array(self.get_series('voltage_vsrc'))
+
         if len(i) > 1 and len(v) > 1:
-            logging.info("Calculate linear regression...")
-            r = analysis_pqc.analyse_van_der_pauw(i=i, v=v)
-            for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                self.process.emit("reading", "xfit", x, y)
-            self.process.emit("update")
+
+            for f in self.analyze_functions():
+                r = f(v=v, i=i)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
 
         self.process.emit("progress", 2, 2)
 
     def finalize(self, vsrc):
+        self.process.emit("progress", 1, 2)
+
         self.process.emit("state", dict(
             vsrc_voltage=None
         ))
@@ -276,7 +280,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
             env_box_humidity=None
         ))
 
-        self.process.emit("progress", 5, 5)
+        self.process.emit("progress", 2, 2)
 
     def run(self):
         with contextlib.ExitStack() as es:

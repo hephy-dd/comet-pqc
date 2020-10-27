@@ -29,6 +29,7 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
+        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
@@ -73,26 +74,32 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
             stretch=(1, 1, 1)
         )
 
+        ampere = comet.ureg('A')
+        volt = comet.ureg('V')
+
+        self.series_transform['elm'] = lambda x, y: ((x * volt).to('V').m, (y * ampere).to('uA').m)
+        self.series_transform['hvsrc'] = self.series_transform.get('elm')
+        self.series_transform['xfit'] = self.series_transform.get('elm')
+
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
+            tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
-                voltage = x * comet.ureg('V')
-                current = y * comet.ureg('A')
-                self.plot.series.get(name).append(x, current.to('uA').m)
+                self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
 
     def append_reading(self, name, x, y):
-        voltage = x * comet.ureg('V')
-        current = y * comet.ureg('A')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(x, current.to('uA').m)
+                tr = self.series_transform.get(name, self.series_transform_default)
+                self.plot.series.get(name).append(*tr(x, y))
+                self.plot.series.get(name).qt.setVisible(True)
 
     def update_readings(self):
         if self.measurement:
@@ -103,6 +110,7 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
 
     def clear_readings(self):
         super().clear_readings()
+        self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()
         if self.measurement:

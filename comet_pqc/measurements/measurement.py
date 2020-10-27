@@ -4,11 +4,15 @@ import time
 import json
 import os
 
+from functools import partial
+
 import numpy as np
 
 import comet
 from comet.resource import ResourceMixin
 from comet.process import ProcessMixin
+
+import analysis_pqc
 
 from .. import __version__
 from ..formatter import PQCFormatter
@@ -67,6 +71,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     KEY_META = "meta"
     KEY_SERIES = "series"
     KEY_SERIES_UNITS = "series_units"
+    KEY_ANALYSIS = "analysis"
 
     FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
@@ -80,6 +85,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.registered_parameters = {}
         self.__timestamp = timestamp or time.time()
         self.__data = {}
+        self.register_parameter('analysis_functions', [], type=list)
 
     @property
     def timestamp(self):
@@ -149,7 +155,10 @@ class Measurement(ResourceMixin, ProcessMixin):
         series[key] = []
 
     def get_series(self, key):
-        return self.data.get(self.KEY_SERIES).get(key)
+        return self.data.get(self.KEY_SERIES).get(key, [])
+
+    def set_analysis(self, key, value):
+        self.data.get(self.KEY_ANALYSIS)[key] = value
 
     def append_series(self, **kwargs):
         series = self.data.get(self.KEY_SERIES)
@@ -157,6 +166,28 @@ class Measurement(ResourceMixin, ProcessMixin):
             raise KeyError("Inconsistent series keys")
         for key, value in kwargs.items():
             series.get(key).append(value)
+
+    def analyze_functions(self):
+        """Return analysis functions."""
+        functions = []
+        for analysis in self.get_parameter('analysis_functions'):
+            # String only argument to dictionary
+            if isinstance(analysis, str):
+                analysis = {'type': analysis}
+            if not isinstance(analysis, dict):
+                raise TypeError(f"Invalid analysis type: '{analysis}'")
+            def create_analyze_function(type, **kwargs):
+                f = analysis_pqc.__dict__.get(f'analyse_{type}')
+                if not callable(f):
+                    raise KeyError(f"No such analysis function: {type}")
+                def f_wrapper(*args, **kwargs):
+                    logging.info("Running analysis function '%s'...", type)
+                    r = f(*args, **kwargs)
+                    logging.info("Running analysis function '%s'... done.", type)
+                    return r
+                return partial(f_wrapper, **kwargs)
+            functions.append(create_analyze_function(**analysis))
+        return functions
 
     def serialize_json(self, fp):
         """Serialize data dictionary to JSON."""
@@ -189,9 +220,10 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     def before_initialize(self, **kwargs):
         self.data.clear()
-        self.data["meta"] = {}
-        self.data["series_units"] = {}
-        self.data["series"] = {}
+        self.data[self.KEY_META] = {}
+        self.data[self.KEY_SERIES_UNITS] = {}
+        self.data[self.KEY_SERIES] = {}
+        self.data[self.KEY_ANALYSIS] = {}
         self.set_meta("sample_name", self.sample_name)
         self.set_meta("sample_type", self.sample_type)
         self.set_meta("contact_name", self.measurement_item.contact.name)
@@ -229,23 +261,31 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     @annotate_step("Initialize")
     def __initialize(self, **kwargs):
+        self.process.emit("message", "Initialize...")
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
         self.after_initialize(**kwargs)
+        self.process.emit("message", "Initialize... done.")
 
     @annotate_step("Measure")
     def __measure(self, **kwargs):
+        self.process.emit("message", "Measure...")
         self.measure(**kwargs)
+        self.process.emit("message", "Measure... done.")
 
     @annotate_step("Analyze")
     def __analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
         self.analyze(**kwargs)
+        self.process.emit("message", "Analyze... done.")
 
     @annotate_step("Finalize")
     def __finalize(self, **kwargs):
+        self.process.emit("message", "Finalize...")
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
         self.after_finalize(**kwargs) # is not executed on error
+        self.process.emit("message", "Finalize... done.")
 
     def __run(self, **kwargs):
         """Run measurement.

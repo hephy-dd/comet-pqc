@@ -23,7 +23,6 @@ class FrequencyScanMeasurement(MatrixMeasurement):
     type = "frequency_scan"
 
     def initialize(self, hvsrc, lcr):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 2)
 
         self.process.emit("state", dict(

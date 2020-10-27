@@ -26,6 +26,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
+        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
@@ -85,34 +86,40 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
             stretch=(1, 1, 1)
         )
 
+        ampere = comet.ureg('A')
+        volt = comet.ureg('V')
+
+        self.series_transform['vsrc'] = lambda x, y: ((x * ampere).to('uA').m, (y * volt).to('V').m)
+        self.series_transform['xfit'] = self.series_transform.get('vsrc')
+
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
-                self.plot.series.get(name).clear()
+                if name in self.plot.series:
+                    self.plot.series.clear()
+                tr = self.series_transform.get(name, self.series_transform_default)
                 if points[0][0] > points[-1][0]:
                     self.plot.axes.get("x").qt.setReverse(True)
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
                 for x, y in points:
-                    voltage = x * comet.ureg('V')
-                    current = y * comet.ureg('A')
-                    self.plot.series.get(name).append(voltage.m, current.to('uA').m)
+                    self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
 
     def append_reading(self, name, x, y):
-        voltage = x * comet.ureg('V')
-        current = y * comet.ureg('A')
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
-                self.measurement.series[name].append((voltage.m, current.m))
+                self.measurement.series[name].append((x, y))
                 if self.voltage_start.value > self.voltage_stop.value:
                     self.plot.axes.get("x").qt.setReverse(True)
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
-                self.plot.series.get(name).append(voltage.m, current.to('uA').m)
+                tr = self.series_transform.get(name, self.series_transform_default)
+                self.plot.series.get(name).append(*tr(x, y))
+                self.plot.series.get(name).qt.setVisible(True)
 
     def update_readings(self):
         if self.measurement:
@@ -123,6 +130,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
 
     def clear_readings(self):
         super().clear_readings()
+        self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()
         if self.measurement:

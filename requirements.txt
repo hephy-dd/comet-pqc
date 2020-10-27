@@ -1,6 +1,6 @@
-comet @ git+https://github.com/hephy-dd/comet.git@0.11.2
-analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.1
+comet @ git+https://github.com/hephy-dd/comet.git@0.12.0
+analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.2
 QCharted>=1.1.2
-qutie>=1.5.2
+qutie>=1.6.0
 pyyaml
 jsonschema

@@ -5,7 +5,7 @@ import traceback
 
 import numpy as np
 
-from qutie.qt import QtCore, QtGui
+from qutie.qutie import QtCore, QtGui
 from comet import ui
 
 __all__ = [

@@ -91,6 +91,11 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
+        fahrad = comet.ureg('F')
+        volt = comet.ureg('V')
+
+        self.series_transform['lcr'] = lambda x, y: ((x * volt).to('V').m, (y * fahrad).to('pF').m)
+
     def mount(self, measurement):
         super().mount(measurement)
         for series in self.plot.series.values():
@@ -98,24 +103,24 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
         for series in self.plot2.series.values():
             series.clear()
         for name, points in measurement.series.items():
+            tr = self.series_transform.get(name, self.series_transform_default)
             if name == "lcr":
                 for x, y in points:
-                    capacitance = y * comet.ureg('F')
-                    self.plot.series.get(name).append(x, capacitance.to('pF').m)
+                    self.plot.series.get(name).append(*tr(x, y))
             elif name == "lcr2":
                 for x, y in points:
-                    self.plot2.series.get(name).append(x, y)
+                    self.plot2.series.get(name).append(*tr(x, y))
         self.plot.fit()
         self.plot2.fit()
 
     def append_reading(self, name, x, y):
         if self.measurement:
+            tr = self.series_transform.get(name, self.series_transform_default)
             if name == "lcr":
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                capacitance = y * comet.ureg('F')
-                self.plot.series.get(name).append(x, capacitance.to('pF').m)
+                self.plot.series.get(name).append(*tr(x, y))
                 if self.plot.zoomed:
                     self.plot.update("x")
                 else:
@@ -124,7 +129,7 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot2.series.get(name).append(x, y)
+                self.plot2.series.get(name).append(*tr(x, y))
                 if self.plot2.zoomed:
                     self.plot2.update("x")
                 else:

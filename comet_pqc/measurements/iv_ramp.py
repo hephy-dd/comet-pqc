@@ -6,6 +6,8 @@ import time
 import os
 import re
 
+import numpy as np
+
 import comet
 from comet.driver.keithley import K2410
 
@@ -49,7 +51,6 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
         self.register_environment()
 
     def initialize(self, hvsrc):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 4)
 
         # Parameters
@@ -229,6 +230,27 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
                 break
 
         self.process.emit("progress", 0, 0)
+
+    def analyze(self, **kwargs):
+        self.process.emit("progress", 1, 2)
+
+        status = None
+
+        i = np.array(self.get_series('current_hvsrc'))
+        v = np.array(self.get_series('voltage'))
+
+        if len(i) > 1 and len(v) > 1:
+
+            for f in self.analyze_functions():
+                r = f(v=v, i=i)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
 
     def finalize(self, hvsrc):
         voltage_step = self.get_parameter('voltage_step')

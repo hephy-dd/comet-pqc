@@ -3,7 +3,7 @@ import os
 
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qt import QtCore
+from qutie.qutie import QtCore
 
 from analysis_pqc import STATUS_PASSED
 
@@ -203,3 +203,4 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.default_parameters = copy.deepcopy(measurement.default_parameters)
         self.description = measurement.description
         self.series = {}
+        self.analysis = {}

@@ -3,7 +3,7 @@ import logging
 import comet
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qt import QtCore
+from qutie.qutie import QtCore
 
 from ..components import PositionGroupBox
 from ..components import CalibrationGroupBox

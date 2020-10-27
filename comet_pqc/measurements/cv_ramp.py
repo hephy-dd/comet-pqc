@@ -5,6 +5,8 @@ import time
 import os
 import re
 
+import numpy as np
+
 import comet
 # from comet.driver.keysight import E4980A
 from comet.driver.keithley import K2410
@@ -71,7 +73,6 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.process.emit("progress", 1, 1)
 
     def initialize(self, hvsrc, lcr):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 6)
 
         # Parameters
@@ -138,6 +139,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.process.emit("progress", 6, 6)
 
     def measure(self, hvsrc, lcr):
+        self.process.emit("progress", 1, 2)
         # Parameters
         bias_voltage_start = self.get_parameter('bias_voltage_start')
         bias_voltage_step = self.get_parameter('bias_voltage_step')
@@ -264,6 +266,27 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         logging.info(benchmark_lcr)
         logging.info(benchmark_hvsrc)
         logging.info(benchmark_environ)
+
+    def analyze(self, **kwargs):
+        self.process.emit("progress", 0, 1)
+
+        v = np.array(self.get_series('voltage_hvsrc'))
+        c = np.array(self.get_series('capacitance'))
+
+        if len(v) > 1 and len(c) > 1:
+
+            for f in self.analyze_functions():
+                r = f(v=v, c=c)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
+
+        self.process.emit("progress", 1, 1)
 
     def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 1, 2)

@@ -7,9 +7,9 @@ setup(
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'comet @ git+https://github.com/hephy-dd/comet.git@0.11.2',
-        'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.1',
-        'qutie>=1.5.2',
+        'comet @ git+https://github.com/hephy-dd/comet.git@0.12.0',
+        'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.2',
+        'qutie>=1.6.0',
         'pyyaml',
         'jsonschema'
     ],
@@ -18,6 +18,7 @@ setup(
             'assets/config/chuck/*.yaml',
             'assets/config/sample/*.yaml',
             'assets/config/sequence/*.yaml',
+            'assets/icons/*.svg',
             'assets/schema/chuck.yaml',
             'assets/schema/sample.yaml',
             'assets/schema/sequence.yaml',

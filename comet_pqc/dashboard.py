@@ -6,7 +6,7 @@ import webbrowser
 
 import yaml
 
-from qutie.qt import QtCore, QtGui
+from qutie.qutie import QtCore, QtGui
 from qutie import Timer
 
 import comet
@@ -68,7 +68,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             changed=self.on_load_sequence_tree
         )
         self.sequence_manager_button = ui.Button(
-            icon=make_path('assets', 'icons', 'search.svg'),
+            icon=make_path('assets', 'icons', 'gear.svg'),
             tool_tip="Open sequence manager",
             width=24,
             clicked=self.on_sequence_manager_clicked
@@ -580,6 +580,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             panel.mount(item)
             sequence.reading = panel.append_reading
             sequence.update = panel.update_readings
+            sequence.append_analysis = panel.append_analysis
             sequence.state = panel.state
         def hide_measurement(item):
             item.selectable = False
@@ -650,6 +651,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
+        measure.append_analysis = panel.append_analysis
         measure.state = panel.state
         measure.push_summary = self.on_push_summary
         # TODO

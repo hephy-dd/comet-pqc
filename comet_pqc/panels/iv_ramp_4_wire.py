@@ -69,9 +69,6 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
-        self.series_transform = {}
-        self.series_transform_default = lambda x, y: (x, y)
-
         ampere = comet.ureg('A')
         volt = comet.ureg('V')
 
@@ -80,12 +77,14 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     def mount(self, measurement):
         super().mount(measurement)
+        self.plot.series.get("xfit").qt.setVisible(False)
         for name, points in measurement.series.items():
             if name in self.plot.series:
                 self.plot.series.clear()
             tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
                 self.plot.series.get(name).append(*tr(x, y))
+            self.plot.series.get(name).qt.setVisible(True)
         self.update_readings()
 
     def append_reading(self, name, x, y):
@@ -96,6 +95,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 self.measurement.series[name].append((x, y))
                 tr = self.series_transform.get(name, self.series_transform_default)
                 self.plot.series.get(name).append(*tr(x, y))
+                self.plot.series.get(name).qt.setVisible(True)
 
     def update_readings(self):
         super().update_readings()
@@ -108,6 +108,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     def clear_readings(self):
         super().clear_readings()
+        self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()
         if self.measurement:
