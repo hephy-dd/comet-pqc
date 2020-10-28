@@ -17,14 +17,24 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         self.resize(640, 480)
         self.sequence_tree = ui.Tree(
             header=("Name", "Filename"),
-            indentation=0
+            indentation=0,
+            selected=self.on_sequence_tree_selected
+        )
+        self.add_button = ui.Button(
+            text="&Add",
+            clicked=self.on_add_sequence
+        )
+        self.remove_button = ui.Button(
+            text="&Remove",
+            enabled=False,
+            clicked=self.on_remove_sequence
         )
         self.layout = ui.Column(
             ui.Row(
                 self.sequence_tree,
                 ui.Column(
-                    ui.Button("Add", clicked=self.on_add_sequence),
-                    ui.Button("Remove", clicked=self.on_remove_sequence),
+                    self.add_button,
+                    self.remove_button,
                     ui.Spacer()
                 ),
                 stretch=(1, 0)
@@ -36,6 +46,9 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             stretch=(1, 0)
         )
 
+    def on_sequence_tree_selected(self, item):
+        self.remove_button.enabled = len(self.sequence_tree)
+
     def on_add_sequence(self):
         filename = ui.filename_open()
         if filename:
@@ -45,12 +58,19 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 ui.show_exception(exc)
             else:
                 if filename not in self.sequence_filenames:
-                    self.sequence_tree.append([sequence.name, filename])
+                    item = self.sequence_tree.append([sequence.name, filename])
+                    item.qt.setToolTip(1, filename)
+                    self.sequence_tree.current = item
 
     def on_remove_sequence(self):
         item = self.sequence_tree.current
         if item:
-            self.sequence_tree.remove(item)
+            if ui.show_question(
+                title="Remove Sequence",
+                text=f"Do yo want to remove sequence '{item[0].value}'?"
+            ):
+                self.sequence_tree.remove(item)
+                self.remove_button.enabled = len(self.sequence_tree)
 
     @property
     def sequence_filenames(self):
@@ -68,7 +88,8 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 except Exception as exc:
                     ui.show_exception(exc)
                 else:
-                    self.sequence_tree.append([sequence.name, filename])
+                    item = self.sequence_tree.append([sequence.name, filename])
+                    item.qt.setToolTip(1, filename)
 
     def store_settings(self):
         sequences = []
