@@ -8,7 +8,6 @@ from .utils import format_table_unit
 
 __all__ = [
     'ToggleButton',
-    'EditComboBox',
     'DirectoryWidget',
     'OperatorComboBox',
     'CalibrationGroupBox',
@@ -28,37 +27,11 @@ class ToggleButton(ui.Button):
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
 
-class EditComboBox(ui.ComboBox):
-
-    focus_in = None
-    focus_out = None
-
-    def __init__(self, *args, editable=True, focus_in=None, focus_out=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.editable = editable
-
-        self.focus_in = focus_in
-        focusInEvent = self.qt.focusInEvent
-        def focus_in_event(event):
-            focusInEvent(event)
-            if callable(self.focus_in):
-                self.focus_in()
-        self.qt.focusInEvent = focus_in_event
-
-        self.focus_out = focus_out
-        focusOutEvent = self.qt.focusOutEvent
-        def focus_out_event(event):
-            focusOutEvent(event)
-            if callable(self.focus_out):
-                self.focus_out()
-        self.qt.focusOutEvent = focus_out_event
-
-
 class DirectoryWidget(ui.Row):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.location_combo_box = EditComboBox(
+        self.location_combo_box = ui.ComboBox(
             editable=True,
             focus_out=self.update_locations,
             changed=self.on_location_changed,

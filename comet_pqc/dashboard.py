@@ -57,11 +57,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         super().__init__()
 
         self.sample_name_text = ui.Text(
-            value=self.settings.get("sample_name", "Unnamed"),
             editing_finished=self.on_sample_name_changed
         )
         self.sample_type_text = ui.Text(
-            value=self.settings.get("sample_type", ""),
             editing_finished=self.on_sample_type_changed
         )
         self.sequence_combobox = ui.ComboBox(
@@ -204,7 +202,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox = ui.GroupBox(
             title="Environment Box",
             checkable=True,
-            checked=self.settings.get("use_environ", False),
             toggled=self.on_environment_groupbox_toggled,
             layout=ui.Column(
                 ui.Row(
@@ -253,7 +250,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_groupbox = ui.GroupBox(
             title="Table",
             checkable=True,
-            checked=self.settings.get("use_table", False),
             toggled=self.on_table_groupbox_toggled,
             layout=ui.Row(
                 self.table_joystick_button,
@@ -341,10 +337,22 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def load_settings(self):
+        sample_name = self.settings.get("sample_name", "Unnamed")
+        self.sample_name_text.value = sample_name
+        sample_type = self.settings.get("sample_type", "")
+        self.sample_type_text.value = sample_type
+        use_environ = self.settings.get("use_environ", False)
+        self.environment_groupbox.checked = use_environ
+        use_table =  self.settings.get("use_table", False)
+        self.table_groupbox.checked = use_table
         self.output_widget.load_settings()
 
     @handle_exception
     def store_settings(self):
+        self.settings["sample_name"] = self.sample_name()
+        self.settings["sample_type"] = self.sample_type()
+        self.settings["use_environ"] = self.use_environment()
+        self.settings["use_table"] = self.use_table()
         self.output_widget.store_settings()
 
     @handle_exception
@@ -430,6 +438,15 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return output_dir
+
+    def write_logfiles(self):
+        return bool(self.settings.get("write_logfiles", True))
+
+    def export_json(self):
+        return bool(self.settings.get("export_json", True))
+
+    def export_txt(self):
+        return bool(self.settings.get("export_txt", True))
 
     # Callbacks
 
@@ -561,11 +578,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("table_position", self.table_position())
         sequence.set("operator", self.operator())
         sequence.set("output_dir", self.output_dir())
-        sequence.set("write_logfiles", self.settings.get("write_logfiles", True))
+        sequence.set("write_logfiles", self.write_logfiles())
         sequence.set("use_environ", self.use_environment())
         sequence.set("use_table", self.use_table())
-        sequence.set("serialize_json", self.settings.get("export_json", False))
-        sequence.set("serialize_txt", self.settings.get("export_txt", True))
+        sequence.set("serialize_json", self.export_json())
+        sequence.set("serialize_txt", self.export_txt())
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
         def show_measurement(item):
@@ -643,11 +660,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
-        measure.set("write_logfiles", self.settings.get("write_logfiles", True))
+        measure.set("write_logfiles", self.write_logfiles())
         measure.set("use_environ", self.use_environment())
         measure.set("use_table", self.use_table())
-        measure.set("serialize_json", self.settings.get("export_json", False))
-        measure.set("serialize_txt", self.settings.get("export_txt", True))
+        measure.set("serialize_json", self.export_json())
+        measure.set("serialize_txt", self.export_txt())
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
@@ -802,12 +819,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.table_joystick_button.checked = joystick_state
 
     def on_environment_groupbox_toggled(self, state):
-        self.settings["use_environ"] = state
         if state:
             self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
-        self.settings["use_table"] = state
         if self.use_table():
             self.sync_table_controls()
 

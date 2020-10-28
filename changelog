@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2020-10-28
+### Added
+- Analysis functions parameter (#82).
+- Configurable Z limits for table control (#101).
+- Persistent history of working directories (#99).
+
 ## [0.25.3] - 2020-10-15
 ### Added
 - Laser sensor state in table control dialog (#71).

@@ -7,6 +7,13 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.26.0
+
+### Added
+- Analysis functions parameter.
+- Configurable Z limits for table control.
+- Persistent history of working directories.
+
 ## 0.25.3
 
 ### Added
