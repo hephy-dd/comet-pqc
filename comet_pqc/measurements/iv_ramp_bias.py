@@ -23,6 +23,7 @@ from .measurement import QUICK_RAMP_DELAY
 from .mixins import HVSourceMixin
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampBiasMeasurement"]
 
@@ -32,7 +33,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin):
+class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias"
@@ -50,6 +51,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.register_hvsource()
         self.register_vsource()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc, vsrc):
         self.process.emit("progress", 1, 5)
@@ -293,7 +295,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         if len(i) > 1 and len(v) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()

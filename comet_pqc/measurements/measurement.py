@@ -4,15 +4,11 @@ import time
 import json
 import os
 
-from functools import partial
-
 import numpy as np
 
 import comet
 from comet.resource import ResourceMixin
 from comet.process import ProcessMixin
-
-import analysis_pqc
 
 from .. import __version__
 from ..formatter import PQCFormatter
@@ -85,7 +81,6 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.registered_parameters = {}
         self.__timestamp = timestamp or time.time()
         self.__data = {}
-        self.register_parameter('analysis_functions', [], type=list)
 
     @property
     def timestamp(self):
@@ -166,28 +161,6 @@ class Measurement(ResourceMixin, ProcessMixin):
             raise KeyError("Inconsistent series keys")
         for key, value in kwargs.items():
             series.get(key).append(value)
-
-    def analyze_functions(self):
-        """Return analysis functions."""
-        functions = []
-        for analysis in self.get_parameter('analysis_functions'):
-            # String only argument to dictionary
-            if isinstance(analysis, str):
-                analysis = {'type': analysis}
-            if not isinstance(analysis, dict):
-                raise TypeError(f"Invalid analysis type: '{analysis}'")
-            def create_analyze_function(type, **kwargs):
-                f = analysis_pqc.__dict__.get(f'analyse_{type}')
-                if not callable(f):
-                    raise KeyError(f"No such analysis function: {type}")
-                def f_wrapper(*args, **kwargs):
-                    logging.info("Running analysis function '%s'...", type)
-                    r = f(*args, **kwargs)
-                    logging.info("Running analysis function '%s'... done.", type)
-                    return r
-                return partial(f_wrapper, **kwargs)
-            functions.append(create_analyze_function(**analysis))
-        return functions
 
     def serialize_json(self, fp):
         """Serialize data dictionary to JSON."""

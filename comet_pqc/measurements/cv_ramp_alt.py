@@ -21,10 +21,11 @@ from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import LCRMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["CVRampAltMeasurement"]
 
-class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin):
+class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """Alternate CV ramp measurement."""
 
     type = "cv_ramp_alt"
@@ -37,6 +38,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin):
         self.register_parameter('waiting_time', unit='s', required=True)
         self.register_lcr()
         self.register_environment()
+        self.register_analysis()
 
     def quick_ramp_zero(self, lcr):
         """Ramp to zero voltage without measuring current."""
@@ -247,7 +249,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin):
 
         if len(v) > 1 and len(c) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, c=c)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()

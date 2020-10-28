@@ -26,6 +26,7 @@ from .mixins import HVSourceMixin
 from .mixins import VSourceMixin
 from .mixins import ElectrometerMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampBiasElmMeasurement"]
 
@@ -35,7 +36,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias_elm"
@@ -63,6 +64,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.register_vsource()
         self.register_elm()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc, vsrc, elm):
         self.process.emit("progress", 1, 5)
@@ -407,7 +409,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
 
         if len(i) > 1 and len(v) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()

@@ -23,10 +23,11 @@ from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import HVSourceMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampMeasurement"]
 
-class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
+class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp measurement.
 
     * set compliance
@@ -49,6 +50,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_hvsource()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc):
         self.process.emit("progress", 1, 4)
@@ -241,7 +243,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
 
         if len(i) > 1 and len(v) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()

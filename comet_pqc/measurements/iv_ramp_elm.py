@@ -24,6 +24,7 @@ from .measurement import QUICK_RAMP_DELAY
 from .mixins import HVSourceMixin
 from .mixins import ElectrometerMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampElmMeasurement"]
 
@@ -33,7 +34,7 @@ def check_error(hvsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp with electrometer measurement.
 
     * set compliance
@@ -66,6 +67,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.register_hvsource()
         self.register_elm()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc, elm):
         self.process.emit("progress", 0, 5)
@@ -331,7 +333,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
         if len(i) > 1 and len(v) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()

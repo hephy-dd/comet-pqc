@@ -22,6 +22,7 @@ from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRamp4WireMeasurement"]
 
@@ -31,7 +32,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
+class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp 4wire with electrometer measurement.
 
     * set compliance
@@ -54,6 +55,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
         self.register_parameter('vsrc_voltage_compliance', unit='V', required=True)
         self.register_vsource()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, vsrc):
         self.process.emit("progress", 0, 5)
@@ -236,7 +238,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin):
 
         if len(i) > 1 and len(v) > 1:
 
-            for f in self.analyze_functions():
+            for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
                 key, values = type(r).__name__, r._asdict()
