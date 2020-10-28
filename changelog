@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2020-10-28
+### Added
+- Analysis functions parameter (#82).
+- Configurable Z limits for table control (#101).
+- Persistent history of working directories (#99).
+
 ## [0.25.3] - 2020-10-15
 ### Added
 - Laser sensor state in table control dialog (#71).
@@ -152,7 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route termination `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.25.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.26.0...HEAD
+[0.26.0]: https://github.com/hephy-dd/comet-pqc/compare/0.25.3...0.26.0
 [0.25.3]: https://github.com/hephy-dd/comet-pqc/compare/0.25.2...0.25.3
 [0.25.2]: https://github.com/hephy-dd/comet-pqc/compare/0.25.1...0.25.2
 [0.25.1]: https://github.com/hephy-dd/comet-pqc/compare/0.25.0...0.25.1

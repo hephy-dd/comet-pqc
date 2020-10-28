@@ -10,7 +10,7 @@ class Estimate:
     >>> e = Estimate(42)
     >>> for i in range(42):
     ...     operation()
-    ...     e.next()
+    ...     e.advance()
     ...     print(e.elapsed)
     ...     print(e.remaining)
     ...     print(e.progress)
@@ -26,7 +26,7 @@ class Estimate:
         self._start = datetime.datetime.now()
         self._prev = datetime.datetime.now()
 
-    def next(self):
+    def advance(self):
         now = datetime.datetime.now()
         self._deltas.append(now - self._prev)
         self._prev = now

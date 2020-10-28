@@ -1,9 +1,12 @@
+import logging
 import os
 import re
+import traceback
 
 import numpy as np
 
-from qutie.qt import QtCore, QtGui
+from qutie.qutie import QtCore, QtGui
+from comet import ui
 
 __all__ = [
     'PACKAGE_PATH',
@@ -11,6 +14,9 @@ __all__ = [
     'format_metric',
     'std_mean_filter',
     'stitch_pixmaps',
+    'create_icon',
+    'handle_exception',
+    'format_table_unit'
 ]
 
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -92,3 +98,30 @@ def stitch_pixmaps(pixmaps, vertical=True):
             offset += pixmap.height()
     painter.end()
     return canvas
+
+def create_icon(size, color):
+    """Return circular colored icon."""
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtGui.QColor("transparent"))
+    painter = QtGui.QPainter(pixmap)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    painter.setPen(QtGui.QColor(color))
+    painter.setBrush(QtGui.QColor(color))
+    painter.drawEllipse(1, 1, size-2, size-2)
+    del painter
+    return ui.Icon(qt=pixmap)
+
+def handle_exception(func):
+    def catch_exception_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            tb = traceback.format_exc()
+            logging.error(exc)
+            logging.error(tb)
+            ui.show_exception(exc, tb)
+    return catch_exception_wrapper
+
+def format_table_unit(value):
+    """Formatted table unit to millimeters."""
+    return f"{value / 1000.:.3f} mm"

@@ -3,7 +3,7 @@ import random
 from comet.emulator.emulator import message, run
 from comet.emulator.keysight.e4980a import E4980AHandler
 
-class E4980AHandler(E4980AHandler):
+class PQCE4980AHandler(E4980AHandler):
 
     bias_voltage_level = 0.0
     bias_state = False
@@ -41,4 +41,4 @@ class E4980AHandler(E4980AHandler):
         type(self).bias_state = {'0': False, '1': True, 'OFF': False, 'ON': True}[value]
 
 if __name__ == '__main__':
-    run(E4980AHandler)
+    run(PQCE4980AHandler)

@@ -26,7 +26,7 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Cap.")
+        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
         self.data_tabs.insert(0, ui.Tab(title="CV Curve", layout=self.plot))
 
@@ -74,3 +74,9 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
             ui.Spacer(),
             stretch=(1, 1, 1)
         )
+
+        fahrad = comet.ureg('F')
+        volt = comet.ureg('V')
+
+        self.series_transform['lcr'] = lambda x, y: ((x * volt).to('V').m, (y * fahrad).to('pF').m)
+        self.series_transform['xfit'] = self.series_transform.get('lcr')

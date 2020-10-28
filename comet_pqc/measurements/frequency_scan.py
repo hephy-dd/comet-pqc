@@ -13,17 +13,17 @@ from comet.driver.keysight import E4980A
 from ..formatter import PQCFormatter
 
 from .matrix import MatrixMeasurement
+from .mixins import AnalysisMixin
 from .measurement import format_estimate
 
 __all__ = ["FrequencyScanMeasurement"]
 
-class FrequencyScanMeasurement(MatrixMeasurement):
+class FrequencyScanMeasurement(MatrixMeasurement, AnalysisMixin):
     """Frequency scan."""
 
     type = "frequency_scan"
 
     def initialize(self, hvsrc, lcr):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 0, 2)
 
         self.process.emit("state", dict(

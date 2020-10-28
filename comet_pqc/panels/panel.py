@@ -51,6 +51,14 @@ class Panel(ui.Widget):
         self.data_tabs = ui.Tabs()
         self.data_panel.append(self.data_tabs)
 
+        # Add analysis tab
+        self.analysis_tree = ui.Tree(header=["Parameter", "Value"])
+        self.data_tabs.insert(0, ui.Tab(title="Analysis", layout=self.analysis_tree))
+
+        # Plots
+        self.series_transform = {}
+        self.series_transform_default = lambda x, y: (x, y)
+
     def bind(self, key, element, default=None, unit=None):
         """Bind measurement parameter to UI element for syncronization on mount
         and store.
@@ -89,6 +97,7 @@ class Panel(ui.Widget):
                 setattr(element, "value", value)
             else:
                 setattr(element, "value", value)
+        self.load_analysis()
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
 
@@ -97,6 +106,7 @@ class Panel(ui.Widget):
         self.title_label.text = ""
         self.description_label.text = ""
         self.measurement = None
+        self.analysis_tree.clear()
 
     def store(self):
         """Store UI element values to measurement parameters."""
@@ -156,7 +166,22 @@ class Panel(ui.Widget):
         pass
 
     def clear_readings(self):
-        pass
+        if self.measurement:
+            self.measurement.analysis.clear()
+
+    def append_analysis(self, key, values):
+        if self.measurement:
+            self.measurement.analysis[key] = values
+            item = self.analysis_tree.append([key])
+            for k, v in values.items():
+                item.append([k, format(v)])
+            self.analysis_tree.fit()
+
+    def load_analysis(self):
+        self.analysis_tree.clear()
+        if self.measurement:
+            for key, values in self.measurement.analysis.items():
+                self.append_analysis(key, values)
 
     def lock(self):
         for tab in self.control_tabs:

@@ -42,6 +42,7 @@ Type: `iv_ramp`
 |`hvsrc_filter_type`        |`str`    |`moving` |Type of applied HV Source filter.  Possible values are: `moving`, `repeat`. |
 |`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
 |`hvsrc_source_voltage_range` |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
+|`analysis_functions`       |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
 
@@ -75,6 +76,7 @@ Type: `iv_ramp`
       hvsrc_filter_enable: true
       hvsrc_filter_count: 10
       hvsrc_filter_type: moving
+      analysis_functions: [iv]
 ```
 
 ## IV Ramp with Electrometer
@@ -111,6 +113,7 @@ Type: `iv_ramp_elm`
 |`elm_zero_correction`         |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 |`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
 
@@ -150,6 +153,7 @@ Type: `iv_ramp_elm`
       elm_filter_type: repeat
       elm_zero_correction: false
       elm_integration_rate: 50
+      analysis_functions: [iv]
 ```
 
 ## IV Ramp 4-Wire
@@ -174,6 +178,7 @@ Type: `iv_ramp_4_wire`
 |`vsrc_filter_enable`      |`bool`   |`false`  |Enable V Source filter. |
 |`vsrc_filter_count`       |`int`    |`10`     |V Source filter count (`1` to `100`). |
 |`vsrc_filter_type`        |`str`    |`repeat` |Type of applied V Source filter. Possible values are: `moving`, `repeat`. |
+|`analysis_functions`      |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `van_der_pauw`, `cross`, `linewidth`, `cbkr`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
 
@@ -206,6 +211,7 @@ Type: `iv_ramp_4_wire`
       vsrc_filter_enable: false
       vsrc_filter_count: 10
       vsrc_filter_type: repeat
+      analysis_functions: [iv, van_der_pauw]
 ```
 
 ## IV Ramp with Bias
@@ -218,11 +224,11 @@ Type: `iv_ramp_bias`
 |------------------------------|---------|---------|-------------|
 |`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
-|`voltage_source`              |`str`    |`vsrc`  |Possible values are: `hvsrc`, `vsrc`. |
+|`voltage_source`              |`str`    |`vsrc`   |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
 |`voltage_stop`                |`volt`   |`-100 V` | |
 |`voltage_step`                |`volt`   |`10 V`   | |
-|`bias_voltage_source`         |`str`    |`hvsrc`   |Possible values are: `hvsrc`, `vsrc`. |
+|`bias_voltage_source`         |`str`    |`hvsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
@@ -231,13 +237,14 @@ Type: `iv_ramp_bias`
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
-|`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
+|`hvsrc_source_voltage_autorange_enable` | `bool`  |`true`  |Enable source voltage auto range. |
 |`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
-|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
-|`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`vsrc_filter_type`            |`str`    |`repeat` |Possible values are: `moving`, `repeat`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
 
@@ -262,6 +269,7 @@ Type: `iv_ramp_bias`
   parameters:
       matrix_enable: false
       matrix_channels: []
+      analysis_functions: [iv]
 ```
 
 ## IV Ramp with Bias and Electrometer
@@ -274,11 +282,11 @@ Type: `iv_ramp_bias_elm`
 |------------------------------|---------|---------|-------------|
 |`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
-|`voltage_source`              |`str`    |`vsrc`  |Possible values are: `hvsrc`, `vsrc`. |
+|`voltage_source`              |`str`    |`vsrc`   |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
 |`voltage_stop`                |`volt`   |`-100 V` | |
 |`voltage_step`                |`volt`   |`10 V`   | |
-|`bias_voltage_source`         |`str`    |`hvsrc`   |Possible values are: `hvsrc`, `vsrc`. |
+|`bias_voltage_source`         |`str`    |`hvsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
@@ -290,7 +298,7 @@ Type: `iv_ramp_bias_elm`
 |`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
 |`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
-|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
 |`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
@@ -304,6 +312,7 @@ Type: `iv_ramp_bias_elm`
 |`elm_zero_correction`         |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 |`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
 
@@ -330,6 +339,7 @@ Type: `iv_ramp_bias_elm`
   parameters:
       matrix_enable: false
       matrix_channels: []
+      analysis_functions: [iv]
 ```
 
 ## CV Ramp (HV Source)
@@ -364,6 +374,7 @@ Type: `cv_ramp`
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
 |`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `cv`, `mos`, `capacitor`. |
 
 ### Data columns
 
@@ -408,6 +419,7 @@ Type: `cv_ramp`
       lcr_auto_level_control: true
       lcr_open_correction_mode: multi
       lcr_open_correction_channel: 8
+      analysis_functions: [cv]
 ```
 
 ## CV Ramp (V Source)
@@ -427,18 +439,19 @@ Type: `cv_ramp_vsrc`
 |`bias_voltage_stop`           |`volt`   |required | |
 |`waiting_time`                |`second` |`1 s`    | |
 |`vsrc_current_compliance`     |`ampere` |`1 uA`   | |
-|`vsrc_sense_mode`             |`str`    |`local`  | Possible values are: `local`, `remote`.
+|`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
-|`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
-|`lcr_soft_filter`             |`bool`   |`true`   | Apply software STD/mean<0.005 filter. |
-|`lcr_frequency`               |`herz`   |`1 kHz`  | Possible range from `1 Hz` to `25 kHz`. |
+|`vsrc_filter_type`            |`str`    |`repeat` |Possible values are: `moving`, `repeat`. |
+|`lcr_soft_filter`             |`bool`   |`true`   |Apply software STD/mean<0.005 filter. |
+|`lcr_frequency`               |`herz`   |`1 kHz`  |Possible range from `1 Hz` to `25 kHz`. |
 |`lcr_amplitude`               |`volt`   |`250 mV` | |
-|`lcr_integration_time`        |`str`    |`medium` | Possible values are: `short`, `medium`, `long`. |
-|`lcr_averaging_rate`          |`int`    |`1`      | Possible range from `1` to `10`. |
+|`lcr_integration_time`        |`str`    |`medium` |Possible values are: `short`, `medium`, `long`. |
+|`lcr_averaging_rate`          |`int`    |`1`      |Possible range from `1` to `10`. |
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
-|`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
-|`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
+|`lcr_open_correction_mode`    |`str`    |`single` |Possible values are: `single`, `multi`. |
+|`lcr_open_correction_channel` |`int`    |`0`      |Possible range from `0` to `127`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `cv`, `mos`, `capacitor`. |
 
 ### Data columns
 
@@ -482,25 +495,46 @@ Type: `cv_ramp_vsrc`
       lcr_auto_level_control: true
       lcr_open_correction_mode: multi
       lcr_open_correction_channel: 8
+      analysis_functions: [cv]
 ```
 
 ## CV Ramp (LCR only)
-
-**Note:** available in future releases.
 
 Type: `cv_ramp_alt`
 
 ### Parameters
 
-| Parameter                 | Type    | Default | Description |
-|---------------------------|---------|---------|-------------|
-|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
-|`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+| Parameter                    | Type    | Default | Description |
+|------------------------------|---------|---------|-------------|
+|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
+|`bias_voltage_start`          |`volt`   |required | |
+|`bias_voltage_step`           |`volt`   |required | |
+|`bias_voltage_stop`           |`volt`   |required | |
+|`waiting_time`                |`second` |`1 s`    | |
+|`lcr_soft_filter`             |`bool`   |`true`   |Apply software STD/mean<0.005 filter. |
+|`lcr_frequency`               |`herz`   |`1 kHz`  |Possible range from `1 Hz` to `25 kHz`. |
+|`lcr_amplitude`               |`volt`   |`250 mV` | |
+|`lcr_integration_time`        |`str`    |`medium` |Possible values are: `short`, `medium`, `long`. |
+|`lcr_averaging_rate`          |`int`    |`1`      |Possible range from `1` to `10`. |
+|`lcr_auto_level_control`      |`bool`   |`true`   | |
+|`lcr_open_correction_mode`    |`str`    |`single` |Possible values are: `single`, `multi`. |
+|`lcr_open_correction_channel` |`int`    |`0`      |Possible range from `0` to `127`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `cv`, `mos`, `capacitor`. |
 
 ### Data columns
 
 | Column                    | Type    | Description |
 |---------------------------|---------|-------------|
+|`timestamp`                |`second` |Time offset in seconds. |
+|`voltage_lcr`              |`volt`   |Voltage assigned to V source. |
+|`current_lcr`              |`ampere` |Current reading of V source. |
+|`capacitance`              |`farad`  |First value of Cp reading of LCR. |
+|`capacitance2`             |`float`  |Second value of Cp reading of LCR. |
+|`resistance`               |`ohm`    |Resistance reading of LCR. |
+|`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
+|`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
+|`humidity_box`             |`percent`|Relative box humidity in percent. |
 
 ### Example configuration
 
@@ -511,8 +545,21 @@ Type: `cv_ramp_alt`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: false
-      matrix_channels: []
+      matrix_enable: true
+      matrix_channels: [1A01, 1B02, 2H11, 2G12]
+      bias_voltage_start: -5 V
+      bias_voltage_stop: 10 V
+      bias_voltage_step: 0.1 V
+      waiting_time: 100 ms
+      lcr_soft_filter: true
+      lcr_frequency: 10 kHz
+      lcr_amplitude: 250 mV
+      lcr_integration_time: medium
+      lcr_averaging_rate: 1
+      lcr_auto_level_control: true
+      lcr_open_correction_mode: multi
+      lcr_open_correction_channel: 8
+      analysis_functions: [cv]
 ```
 
 ## Frequency Scan

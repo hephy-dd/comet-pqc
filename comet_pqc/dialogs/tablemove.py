@@ -4,10 +4,56 @@ import comet
 from comet import ui
 from comet.settings import SettingsMixin
 
+from ..components import PositionGroupBox
+from ..components import CalibrationGroupBox
+from ..utils import format_table_unit
+
 # Fix
 comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
+
+class PositionDialog(ui.Dialog):
+
+    scale = 1000.
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name_text = ui.Text(value="Unnamed")
+        self.x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept)
+        self.layout = ui.Column(
+            ui.Label("Name"),
+            self.name_text,
+            ui.Label("X"),
+            self.x_number,
+            ui.Label("Y"),
+            self.y_number,
+            ui.Label("Z"),
+            self.z_number,
+            self.button_box
+        )
+
+    @property
+    def name(self):
+        return self.name_text.value
+
+    @name.setter
+    def name(self, value):
+        self.name_text.value = value
+
+    @property
+    def position(self):
+        return self.x_number.value * self.scale, self.y_number.value * self.scale, self.z_number.value * self.scale
+
+    @position.setter
+    def position(self, value):
+        x, y, z = value[:3]
+        self.x_number.value = x / self.scale
+        self.y_number.value = y / self.scale
+        self.z_number.value = z / self.scale
 
 class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
 
@@ -42,6 +88,8 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
         self.content.load_positions()
         self.content.assign_position = self.on_assign_position
         self.content.move_selected = self.on_move_selected
+        self.content.positions_tree.double_clicked = self.on_position_double_clicked
+
         self.close_event = self.on_close
         self.minimum_size = 800, 480
 
@@ -71,8 +119,12 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
     def on_caldone(self, x, y, z):
         self.content.caldone = x, y, z
 
-    def on_start(self):
-        item = self.content.positions_tree.current
+    def on_position_double_clicked(self, index, item):
+        self.on_start(item)
+
+    def on_start(self, item=None):
+        if item is None:
+            item = self.content.positions_tree.current
         if item:
             if ui.show_question(f"Do you want to move table to position '{item[0].value}'?"):
                 self.start_button.enabled = False
@@ -83,10 +135,11 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
                 self.process.set('x', item.x)
                 self.process.set('y', item.y)
                 self.process.set('z', item.z)
-                self.process.set('z_limit', int(self.content.z_limit * 1e3)) # to micron
+                self.process.set('z_limit', int(self.content.z_limit_movement))
                 self.process.start()
 
     def on_stop(self):
+        self.stop_button.enabled = False
         self.process.stop()
 
     def on_finished(self):
@@ -95,7 +148,7 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
             z_limit = self.process.get("z_limit")
             ui.show_warning(
                 title="Safe Z Position",
-                text=f"Limited Z movement to {z_limit/1e3:.3f} mm to protect probe card."
+                text=f"Limited Z movement to {format_table_unit(z_limit)} to protect probe card."
             )
         if self.process.get("success", False):
             ui.show_info(title="Success", text=f"Moved table successfully to {name}.")
@@ -181,19 +234,8 @@ class TablePositionItem(ui.TreeItem):
 
 class TableMove(ui.Column, comet.SettingsMixin):
 
-    maximum_z_limit = 23.800
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pos_x_label = ui.Label()
-        self.pos_y_label = ui.Label()
-        self.pos_z_label = ui.Label()
-        self.cal_x_label = ui.Label()
-        self.cal_y_label = ui.Label()
-        self.cal_z_label = ui.Label()
-        self.rm_x_label = ui.Label()
-        self.rm_y_label = ui.Label()
-        self.rm_z_label = ui.Label()
         self.positions_tree = ui.Tree()
         self.positions_tree.header = "Name", "X", "Y", "Z"
         self.positions_tree.indentation = 0
@@ -211,7 +253,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
             clicked=self.on_add_position
         )
         self.edit_button = ui.Button(
-            text="&Edit Name",
+            text="&Edit",
             enabled=False,
             clicked=self.on_edit_position
         )
@@ -220,7 +262,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
             enabled=False,
             clicked=self.on_remove_position
         )
-        self.z_limit_label = ui.Label()
+        self.z_limit_movement_label = ui.Label("Z Limit: n/a")
         self.positions_layout = ui.Column(
             ui.Row(
                 self.positions_tree,
@@ -232,15 +274,10 @@ class TableMove(ui.Column, comet.SettingsMixin):
                     self.remove_button
                 ),
                 stretch=(1, 0)
-            ),
-            ui.Row(
-                self.z_limit_label,
-                ui.Button("...", width=32, clicked=self.edit_z_limit),
-                ui.Spacer(),
-                stretch=(0, 0, 1)
-            ),
-            stretch=(1, 0)
+            )
         )
+        self.position_groupbox = PositionGroupBox()
+        self.calibration_groupbox = CalibrationGroupBox()
         self.append(ui.Column(
             ui.Row(
                 ui.GroupBox(
@@ -248,67 +285,23 @@ class TableMove(ui.Column, comet.SettingsMixin):
                     layout=self.positions_layout
                 ),
                 ui.Column(
+                    self.position_groupbox,
+                    self.calibration_groupbox,
                     ui.GroupBox(
-                        width=160,
-                        title="Position",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("X"),
-                                ui.Label("Y"),
-                                ui.Label("Z"),
-                            ),
-                            ui.Column(
-                                self.pos_x_label,
-                                self.pos_y_label,
-                                self.pos_z_label
-                            ),
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="State",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("X"),
-                                ui.Label("Y"),
-                                ui.Label("Z"),
-                            ),
-                            ui.Column(
-                                self.cal_x_label,
-                                self.cal_y_label,
-                                self.cal_z_label
-                            ),
-                            ui.Column(
-                                self.rm_x_label,
-                                self.rm_y_label,
-                                self.rm_z_label
-                            )
+                        title="Limits",
+                        layout=ui.Column(
+                            self.z_limit_movement_label,
                         )
                     ),
                     ui.Spacer(),
-                    stretch=(0, 0, 1)
+                    stretch=(0, 0, 0, 1)
                 ),
                 stretch=(1, 0)
             ),
             stretch=(10, 1)
         ))
         self.position = 0, 0, 0
-        self.z_limit = 20.000
-
-    def set_z_limit(self, limit):
-        self.z_limit = min(self.maximum_z_limit, limit)
-        self.z_limit_label.text = f"Z Soft Limit: {self.z_limit:.3f} mm"
-
-    def edit_z_limit(self):
-        value = ui.get_number(
-            title="Z Soft Limit",
-            label="Z Soft Limit",
-            value=self.z_limit,
-            minimum=0,
-            maximum=self.maximum_z_limit,
-            decimals=3
-        )
-        if value is not None:
-            self.set_z_limit(value)
+        self.z_limit_movement = self.settings.get('z_limit_movement', 0.0)
 
     def load_positions(self):
         self.positions_tree.clear()
@@ -320,7 +313,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
                 z=position.get('z')
             ))
         self.positions_tree.fit()
-        self.set_z_limit(self.settings.get('table_z_limit', self.maximum_z_limit))
+        self.z_limit_movement = self.settings.get('z_limit_movement', 0.0)
 
     def store_positions(self):
         positions = []
@@ -332,54 +325,32 @@ class TableMove(ui.Column, comet.SettingsMixin):
                 z=position.z
             ))
         self.settings['table_positions'] = positions
-        self.settings['table_z_limit'] = self.z_limit
 
     @property
-    def z_limit(self):
+    def z_limit_movement(self):
         return self.__z_limit
 
-    @z_limit.setter
-    def z_limit(self, value):
-        self.__z_limit = min(self.maximum_z_limit, value)
-        self.z_limit_label.text = f"Z Soft Limit: {self.__z_limit:.3f} mm"
+    @z_limit_movement.setter
+    def z_limit_movement(self, value):
+        self.__z_limit = value
+        self.z_limit_movement_label.text = f"Z Limit: {format_table_unit(self.__z_limit)}"
 
     @property
     def position(self):
-        return self.__position
+        return self.position_groupbox.value
 
     @position.setter
     def position(self, value):
-        self.__position = value[0], value[1], value[2]
-        # TODO
-        self.pos_x_label.text = f"{value[0] / 1000.:.3f} mm"
-        self.pos_y_label.text = f"{value[1] / 1000.:.3f} mm"
-        self.pos_z_label.text = f"{value[2] / 1000.:.3f} mm"
+        self.position_groupbox.value = value[:3]
 
     @property
     def caldone(self):
-        return self.__caldone
+        return self.calibration_groupbox.value
 
     @caldone.setter
     def caldone(self, value):
-        def getcal(value):
-            return value & 0x1
-        def getrm(value):
-            return (value >> 1) & 0x1
-        self.__caldone = value[0], value[1], value[2]
-        self.cal_x_label.text = "cal {}".format(getcal(value[0]))
-        self.cal_x_label.stylesheet = "color: green" if getcal(value[0]) else "color: red"
-        self.cal_y_label.text = "cal {}".format(getcal(value[1]))
-        self.cal_y_label.stylesheet = "color: green" if getcal(value[1]) else "color: red"
-        self.cal_z_label.text = "cal {}".format(getcal(value[2]))
-        self.cal_z_label.stylesheet = "color: green" if getcal(value[2]) else "color: red"
-        self.rm_x_label.text = "rm {}".format(getrm(value[0]))
-        self.rm_x_label.stylesheet = "color: green" if getrm(value[0]) else "color: red"
-        self.rm_y_label.text = "rm {}".format(getrm(value[1]))
-        self.rm_y_label.stylesheet = "color: green" if getrm(value[1]) else "color: red"
-        self.rm_z_label.text = "rm {}".format(getrm(value[2]))
-        self.rm_z_label.stylesheet = "color: green" if getrm(value[2]) else "color: red"
-        state = value == (3, 3, 3)
-        self.positions_layout.enabled = state
+        self.calibration_groupbox.value = value[:3]
+        self.positions_layout.enabled = self.calibration_groupbox.valid
 
     def on_position_selected(self, item):
         self.assign_button.enabled = True
@@ -394,17 +365,23 @@ class TableMove(ui.Column, comet.SettingsMixin):
                 self.emit('assign_position')
 
     def on_add_position(self):
-        name = ui.get_text(title="Add Position", label="Name", text="")
-        if name:
-            self.positions_tree.append(TablePositionItem(name, 0, 0, 0))
+        dialog = PositionDialog()
+        if dialog.run():
+            self.positions_tree.append(TablePositionItem(
+                dialog.name,
+                *dialog.position
+            ))
             self.positions_tree.fit()
 
     def on_edit_position(self):
         item = self.positions_tree.current
         if item:
-            text = ui.get_text(title="Edit Position Name", label="Name", text=item[0].value)
-            if text:
-                item[0].value = text
+            dialog = PositionDialog()
+            dialog.name = item.name
+            dialog.position = item.x, item.y, item.z
+            if dialog.run():
+                item.name = dialog.name
+                item.position = dialog.position
                 self.positions_tree.fit()
 
     def on_remove_position(self):

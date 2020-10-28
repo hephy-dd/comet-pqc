@@ -41,6 +41,10 @@ a data series dictionary.
   "series": {
     <series>: [<values...>],
     ...
+  },
+  "analysis": {
+    <key>: <value>,
+    ...
   }
 }
 ```
@@ -85,7 +89,8 @@ a data series dictionary.
       0.0008708322,
       ...
     ]
-  }
+  },
+  "analysis": {}
 }
 ```
 
@@ -94,6 +99,8 @@ a data series dictionary.
 The used plain text format consists of a header containing meta data in key and
 value pairs, a data table header and a data table. Table header and body uses
 `\t` separators.
+
+**Note:** analysis results are not written to plain text format.
 
 ## Synopsis
 

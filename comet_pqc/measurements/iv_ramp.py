@@ -6,6 +6,8 @@ import time
 import os
 import re
 
+import numpy as np
+
 import comet
 from comet.driver.keithley import K2410
 
@@ -21,10 +23,11 @@ from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import HVSourceMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampMeasurement"]
 
-class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
+class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp measurement.
 
     * set compliance
@@ -47,9 +50,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_hvsource()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 4)
 
         # Parameters
@@ -215,7 +218,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
                 temperature_chuck=self.environment_temperature_chuck,
                 humidity_box=self.environment_humidity_box
             )
-            est.next()
+            est.advance()
             self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
             self.process.emit("progress", *est.progress)
 
@@ -229,6 +232,27 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin):
                 break
 
         self.process.emit("progress", 0, 0)
+
+    def analyze(self, **kwargs):
+        self.process.emit("progress", 1, 2)
+
+        status = None
+
+        i = np.array(self.get_series('current_hvsrc'))
+        v = np.array(self.get_series('voltage'))
+
+        if len(i) > 1 and len(v) > 1:
+
+            for f in self.analysis_functions():
+                r = f(v=v, i=i)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
 
     def finalize(self, hvsrc):
         voltage_step = self.get_parameter('voltage_step')

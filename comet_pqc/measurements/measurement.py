@@ -67,6 +67,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     KEY_META = "meta"
     KEY_SERIES = "series"
     KEY_SERIES_UNITS = "series_units"
+    KEY_ANALYSIS = "analysis"
 
     FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
@@ -149,7 +150,10 @@ class Measurement(ResourceMixin, ProcessMixin):
         series[key] = []
 
     def get_series(self, key):
-        return self.data.get(self.KEY_SERIES).get(key)
+        return self.data.get(self.KEY_SERIES).get(key, [])
+
+    def set_analysis(self, key, value):
+        self.data.get(self.KEY_ANALYSIS)[key] = value
 
     def append_series(self, **kwargs):
         series = self.data.get(self.KEY_SERIES)
@@ -189,9 +193,10 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     def before_initialize(self, **kwargs):
         self.data.clear()
-        self.data["meta"] = {}
-        self.data["series_units"] = {}
-        self.data["series"] = {}
+        self.data[self.KEY_META] = {}
+        self.data[self.KEY_SERIES_UNITS] = {}
+        self.data[self.KEY_SERIES] = {}
+        self.data[self.KEY_ANALYSIS] = {}
         self.set_meta("sample_name", self.sample_name)
         self.set_meta("sample_type", self.sample_type)
         self.set_meta("contact_name", self.measurement_item.contact.name)
@@ -229,23 +234,31 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     @annotate_step("Initialize")
     def __initialize(self, **kwargs):
+        self.process.emit("message", "Initialize...")
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
         self.after_initialize(**kwargs)
+        self.process.emit("message", "Initialize... done.")
 
     @annotate_step("Measure")
     def __measure(self, **kwargs):
+        self.process.emit("message", "Measure...")
         self.measure(**kwargs)
+        self.process.emit("message", "Measure... done.")
 
     @annotate_step("Analyze")
     def __analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
         self.analyze(**kwargs)
+        self.process.emit("message", "Analyze... done.")
 
     @annotate_step("Finalize")
     def __finalize(self, **kwargs):
+        self.process.emit("message", "Finalize...")
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
         self.after_finalize(**kwargs) # is not executed on error
+        self.process.emit("message", "Finalize... done.")
 
     def __run(self, **kwargs):
         """Run measurement.

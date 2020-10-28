@@ -3,7 +3,57 @@ from comet import ui
 
 from comet.ui.preferences import PreferencesTab
 
-__all__ = ['OptionsTab']
+__all__ = ['TableTab', 'OptionsTab']
+
+class TableTab(PreferencesTab):
+    """Table limits tab for preferences dialog."""
+
+    def __init__(self):
+        super().__init__(title="Table")
+        self.z_limit_movement_number = ui.Number(
+            minimum=0,
+            maximum=128.0,
+            decimals=3,
+            suffix="mm",
+            changed=self.on_z_limit_movement_changed
+        )
+        self.z_limit_overdrive_number = ui.Number(
+            minimum=0,
+            maximum=128.0,
+            decimals=3,
+            suffix="mm",
+            changed=self.on_z_limit_overdrive_changed
+        )
+        self.layout = ui.Column(
+            ui.GroupBox(
+                title="Table Z-Limits",
+                layout=ui.Column(
+                    ui.Label("X/Y Movement"),
+                    self.z_limit_movement_number,
+                    ui.Label("Overdrive"),
+                    self.z_limit_overdrive_number
+                )
+            ),
+            ui.Spacer()
+        )
+
+    def on_z_limit_movement_changed(self, value):
+        pass
+
+    def on_z_limit_overdrive_changed(self, value):
+        pass
+
+    def load(self):
+        z_limit_movement = self.settings.get('z_limit_movement', 0.0) / 1000. # from micron
+        self.z_limit_movement_number.value = z_limit_movement
+        z_limit_overdrive = self.settings.get('z_limit_overdrive', 0.0) / 1000. # from micron
+        self.z_limit_overdrive_number.value = z_limit_overdrive
+
+    def store(self):
+        z_limit_movement = self.z_limit_movement_number.value * 1000. # to micron
+        self.settings['z_limit_movement'] = z_limit_movement
+        z_limit_overdrive = self.z_limit_overdrive_number.value * 1000. # to micron
+        self.settings['z_limit_overdrive'] = z_limit_overdrive
 
 class OptionsTab(PreferencesTab):
     """Options tab for preferences dialog."""

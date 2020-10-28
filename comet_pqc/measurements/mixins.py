@@ -1,7 +1,10 @@
 import logging
 import time
 
+from functools import partial
+
 import comet
+import analysis_pqc
 
 from ..utils import format_metric
 from ..utils import std_mean_filter
@@ -11,10 +14,13 @@ __all__ = [
     'VSourceMixin',
     'ElectrometerMixin',
     'LCRMixin',
-    'EnvironmentMixin'
+    'EnvironmentMixin',
+    'AnalysisMixin'
 ]
 
-class HVSourceMixin:
+class Mixin: pass
+
+class HVSourceMixin(Mixin):
 
     def register_hvsource(self):
         ##self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
@@ -146,7 +152,7 @@ class HVSourceMixin:
         logging.info("set HV Source source voltage range: %s", format_metric(voltage, "V"))
         self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:RANG {voltage:E}")
 
-class VSourceMixin:
+class VSourceMixin(Mixin):
 
     def register_vsource(self):
         ##self.register_parameter('vsrc_current_compliance', unit='A', required=True)
@@ -225,7 +231,7 @@ class VSourceMixin:
         value = {True: "ON", False: "OFF"}[enabled]
         vsrc.source.output = value
 
-class ElectrometerMixin:
+class ElectrometerMixin(Mixin):
 
     def register_elm(self):
         self.register_parameter('elm_read_timeout', comet.ureg('60 s'), unit='s')
@@ -296,7 +302,7 @@ class ElectrometerMixin:
         except Exception as e:
             raise RuntimeError(f"Failed to set zero check to ELM: {e}")
 
-class LCRMixin:
+class LCRMixin(Mixin):
 
     def register_lcr(self):
         self.register_parameter('lcr_soft_filter', True, type=bool)
@@ -417,7 +423,7 @@ class LCRMixin:
         lcr.bias.state = enabled
         self.lcr_check_error(lcr)
 
-class EnvironmentMixin:
+class EnvironmentMixin(Mixin):
 
     def register_environment(self):
         self.environment_clear()
@@ -441,3 +447,30 @@ class EnvironmentMixin:
             logging.info("temperature chuck: %s degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logging.info("humidity box: %s degC", self.environment_humidity_box)
+
+class AnalysisMixin(Mixin):
+
+    def register_analysis(self):
+        self.register_parameter('analysis_functions', [], type=list)
+
+    def analysis_functions(self):
+        """Return analysis functions."""
+        functions = []
+        for analysis in self.get_parameter('analysis_functions'):
+            # String only argument to dictionary
+            if isinstance(analysis, str):
+                analysis = {'type': analysis}
+            if not isinstance(analysis, dict):
+                raise TypeError(f"Invalid analysis type: '{analysis}'")
+            def create_analyze_function(type, **kwargs):
+                f = analysis_pqc.__dict__.get(f'analyse_{type}')
+                if not callable(f):
+                    raise KeyError(f"No such analysis function: {type}")
+                def f_wrapper(*args, **kwargs):
+                    logging.info("Running analysis function '%s'...", type)
+                    r = f(*args, **kwargs)
+                    logging.info("Running analysis function '%s'... done.", type)
+                    return r
+                return partial(f_wrapper, **kwargs)
+            functions.append(create_analyze_function(**analysis))
+        return functions

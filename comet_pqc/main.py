@@ -18,6 +18,7 @@ from .processes import MeasureProcess
 from .processes import SequenceProcess
 
 from .dashboard import Dashboard
+from .preferences import TableTab
 from .preferences import OptionsTab
 
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
@@ -173,6 +174,9 @@ def main():
     app.window.help_menu.insert(1, app.window.github_action)
 
     # Extend preferences
+    table_tab = TableTab()
+    app.window.preferences_dialog.tab_widget.append(table_tab)
+    app.window.preferences_dialog.table_tab = table_tab
     options_tab = OptionsTab()
     app.window.preferences_dialog.tab_widget.append(options_tab)
     app.window.preferences_dialog.options_tab = options_tab
@@ -185,6 +189,7 @@ def main():
     app.window.progress_bar.width = 600
 
     # Load configurations
+    dashboard.load_settings()
     dashboard.load_sequences()
     dashboard.on_reset_sequence_state()
 
@@ -200,6 +205,8 @@ def main():
     app.window.preferences_dialog.resize(*dialog_size)
 
     result = app.run()
+
+    dashboard.store_settings()
 
     # Store window size
     app.settings['window_size'] = app.width, app.height

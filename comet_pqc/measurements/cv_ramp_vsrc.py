@@ -5,6 +5,8 @@ import time
 import os
 import re
 
+import numpy as np
+
 import comet
 # from comet.driver.keysight import E4980A
 from comet.driver.keithley import K2657A
@@ -23,10 +25,11 @@ from .measurement import QUICK_RAMP_DELAY
 from .mixins import VSourceMixin
 from .mixins import LCRMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["CVRampHVMeasurement"]
 
-class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, EnvironmentMixin):
+class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """CV ramp measurement."""
 
     type = "cv_ramp_vsrc"
@@ -41,6 +44,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.register_vsource()
         self.register_lcr()
         self.register_environment()
+        self.register_analysis()
 
     def quick_ramp_zero(self, vsrc):
         """Ramp to zero voltage without measuring current."""
@@ -69,7 +73,6 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("progress", 1, 1)
 
     def initialize(self, vsrc, lcr):
-        self.process.emit("message", "Initialize...")
         self.process.emit("progress", 1, 6)
 
         # Parameters
@@ -137,6 +140,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("progress", 6, 6)
 
     def measure(self, vsrc, lcr):
+        self.process.emit("progress", 1, 2)
         # Parameters
         bias_voltage_start = self.get_parameter('bias_voltage_start')
         bias_voltage_step = self.get_parameter('bias_voltage_step')
@@ -195,7 +199,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
                 # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                 dt = time.time() - t0
-                est.next()
+                est.advance()
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
@@ -261,6 +265,27 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         logging.info(benchmark_lcr)
         logging.info(benchmark_vsrc)
         logging.info(benchmark_environ)
+
+    def analyze(self, **kwargs):
+        self.process.emit("progress", 0, 1)
+
+        v = np.array(self.get_series('voltage_vsrc'))
+        c = np.array(self.get_series('capacitance'))
+
+        if len(v) > 1 and len(c) > 1:
+
+            for f in self.analysis_functions():
+                r = f(v=v, c=c)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
+
+        self.process.emit("progress", 1, 1)
 
     def finalize(self, vsrc, lcr):
         self.process.emit("progress", 1, 2)

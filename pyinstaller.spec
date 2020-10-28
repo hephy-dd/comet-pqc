@@ -86,8 +86,9 @@ a = Analysis(['entry_point.pyw'],
         (os.path.join('comet_pqc', 'assets', 'schema', '*.yaml'), os.path.join('comet_pqc', 'assets', 'schema'))
     ],
     hiddenimports=[
-        'pyvisa-sim',
+        'pyvisa',
         'pyvisa-py',
+        'pyvisa-sim',
         'PyQt5.sip'
     ],
     hookspath=[],

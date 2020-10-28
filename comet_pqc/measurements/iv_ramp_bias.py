@@ -4,6 +4,8 @@ import logging
 import time
 import os
 
+import numpy as np
+
 import comet
 
 from comet.driver.keithley import K2410
@@ -21,6 +23,7 @@ from .measurement import QUICK_RAMP_DELAY
 from .mixins import HVSourceMixin
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
+from .mixins import AnalysisMixin
 
 __all__ = ["IVRampBiasMeasurement"]
 
@@ -30,7 +33,7 @@ def check_error(vsrc):
         logging.error(error)
         raise RuntimeError(f"{error[0]}: {error[1]}")
 
-class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin):
+class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias"
@@ -48,10 +51,10 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.register_hvsource()
         self.register_vsource()
         self.register_environment()
+        self.register_analysis()
 
     def initialize(self, hvsrc, vsrc):
         self.process.emit("progress", 1, 5)
-        self.process.emit("message", "Ramp to start...")
 
         # Parameters
         voltage_start = self.get_parameter('voltage_start')
@@ -135,6 +138,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
             vsrc_output=vsrc.source.output
         ))
 
+        self.process.emit("message", "Ramp to start...")
+
         # Ramp HV Spource to bias voltage
         voltage = vsrc.source.levelv
 
@@ -184,7 +189,6 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
     def measure(self, hvsrc, vsrc):
         self.process.emit("progress", 1, 2)
-        self.process.emit("message", "Ramp to...")
 
         # Parameters
         voltage_start = self.get_parameter('voltage_start')
@@ -229,7 +233,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
             dt = time.time() - t0
 
-            est.next()
+            est.advance()
             self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
             self.process.emit("progress", *est.progress)
 
@@ -280,6 +284,27 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
                 break
 
         self.process.emit("progress", 2, 2)
+
+    def analyze(self, **kwargs):
+        self.process.emit("progress", 1, 2)
+
+        status = None
+
+        i = np.array(self.get_series('current_vsrc'))
+        v = np.array(self.get_series('voltage'))
+
+        if len(i) > 1 and len(v) > 1:
+
+            for f in self.analysis_functions():
+                r = f(v=v, i=i)
+                logging.info(r)
+                key, values = type(r).__name__, r._asdict()
+                self.set_analysis(key, values)
+                self.process.emit("append_analysis", key, values)
+                if 'x_fit' in r._asdict():
+                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                        self.process.emit("reading", "xfit", x, y)
+                    self.process.emit("update")
 
     def finalize(self, hvsrc, vsrc):
         self.process.emit("progress", 1, 2)

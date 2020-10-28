@@ -2,12 +2,11 @@ import copy
 import datetime
 import logging
 import os
-import traceback
 import webbrowser
 
 import yaml
 
-from qutie.qt import QtCore, QtGui
+from qutie.qutie import QtCore, QtGui
 from qutie import Timer
 
 import comet
@@ -25,6 +24,10 @@ from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
 from .sequence import SequenceManager
 
+from .components import ToggleButton
+from .components import OperatorComboBox
+from .components import WorkingDirectoryWidget
+
 from .dialogs import TableControlDialog
 from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
@@ -35,6 +38,7 @@ from .tabs import StatusTab
 from .tabs import SummaryTab
 from .logwindow import LogWidget
 from .formatter import CSVFormatter
+from .utils import make_path, handle_exception
 
 SUMMARY_FILENAME = "summary.csv"
 
@@ -47,61 +51,24 @@ TABLE_UNITS = {
     6: comet.ureg('mil'),
 }
 
-def create_icon(size, color):
-    """Return circular colored icon."""
-    pixmap = QtGui.QPixmap(size, size)
-    pixmap.fill(QtGui.QColor("transparent"))
-    painter = QtGui.QPainter(pixmap)
-    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-    painter.setPen(QtGui.QColor(color))
-    painter.setBrush(QtGui.QColor(color))
-    painter.drawEllipse(1, 1, size-2, size-2)
-    del painter
-    return ui.Icon(qt=pixmap)
-
-def handle_exception(func):
-    def catch_exception_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exc:
-            tb = traceback.format_exc()
-            logging.error(exc)
-            logging.error(tb)
-            ui.show_exception(exc, tb)
-    return catch_exception_wrapper
-
-class ToggleButton(ui.Button):
-    """Colored checkable button."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.icons = {False: create_icon(12, "grey"), True: create_icon(12, "green")}
-        self.on_toggle_color(self.checked)
-        self.qt.toggled.connect(self.on_toggle_color)
-
-    def on_toggle_color(self, state):
-        self.icon = self.icons[state]
-
 class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def __init__(self):
         super().__init__()
 
         self.sample_name_text = ui.Text(
-            value=self.settings.get("sample_name", "Unnamed"),
             editing_finished=self.on_sample_name_changed
         )
         self.sample_type_text = ui.Text(
-            value=self.settings.get("sample_type", ""),
             editing_finished=self.on_sample_type_changed
         )
         self.sequence_combobox = ui.ComboBox(
             changed=self.on_load_sequence_tree
         )
         self.sequence_manager_button = ui.Button(
-            text="...",
-            tool_tip="Manage sequences",
-            width=32,
+            icon=make_path('assets', 'icons', 'gear.svg'),
+            tool_tip="Open sequence manager",
+            width=24,
             clicked=self.on_sequence_manager_clicked
         )
 
@@ -235,7 +202,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox = ui.GroupBox(
             title="Environment Box",
             checkable=True,
-            checked=self.settings.get("use_environ", False),
             toggled=self.on_environment_groupbox_toggled,
             layout=ui.Column(
                 ui.Row(
@@ -284,7 +250,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.table_groupbox = ui.GroupBox(
             title="Table",
             checkable=True,
-            checked=self.settings.get("use_table", False),
             toggled=self.on_table_groupbox_toggled,
             layout=ui.Row(
                 self.table_joystick_button,
@@ -295,49 +260,24 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             )
         )
 
-        # Output controls
-
-        self.output_text = ui.Text(
-            value=self.settings.get("output_path", os.path.join(os.path.expanduser("~"), "PQC")),
-            changed=self.on_output_changed
-        )
-
-        self.output_groupbox = ui.GroupBox(
-            title="Working Directory",
-            layout=ui.Row(
-                self.output_text,
-                ui.Button(
-                    text="...",
-                    width=32,
-                    clicked=self.on_select_output
-                )
-            )
-        )
-
         # Operator
 
-        self.operator_combobox = ui.ComboBox()
-        self.operator_combobox.editable = True
-        self.operator_combobox.duplicates_enabled = False
-        # Set current operator
-        try: index = int(self.settings.get("current_operator", 0))
-        except: index = 0
-        index = max(0, min(index, len(self.operator_combobox)))
-        self.operator_combobox.items = self.settings.get("operators") or []
-        self.operator_combobox.current = self.operator_combobox[index]
-        def on_operator_changed(_):
-            self.settings["current_operator"] = max(0, self.operator_combobox.qt.currentIndex())
-            operators = []
-            for index in range(self.operator_combobox.qt.count()):
-                operators.append(self.operator_combobox.qt.itemText(index))
-            self.settings["operators"] = operators
-        self.operator_combobox.qt.editTextChanged.connect(on_operator_changed)
-        self.operator_combobox.qt.currentIndexChanged.connect(on_operator_changed)
-
+        self.operator_combobox = OperatorComboBox()
         self.operator_groupbox = ui.GroupBox(
             title="Operator",
             layout=ui.Row(
                 self.operator_combobox
+            )
+        )
+
+        # Working directory
+
+        self.output_widget = WorkingDirectoryWidget()
+
+        self.output_groupbox = ui.GroupBox(
+            title="Working Directory",
+            layout=ui.Row(
+                self.output_widget
             )
         )
 
@@ -394,6 +334,26 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Install timer to update environment controls
         self.environment_timer = Timer(timeout=self.sync_environment_controls)
         self.environment_timer.start(1.0)
+
+    @handle_exception
+    def load_settings(self):
+        sample_name = self.settings.get("sample_name", "Unnamed")
+        self.sample_name_text.value = sample_name
+        sample_type = self.settings.get("sample_type", "")
+        self.sample_type_text.value = sample_type
+        use_environ = self.settings.get("use_environ", False)
+        self.environment_groupbox.checked = use_environ
+        use_table =  self.settings.get("use_table", False)
+        self.table_groupbox.checked = use_table
+        self.output_widget.load_settings()
+
+    @handle_exception
+    def store_settings(self):
+        self.settings["sample_name"] = self.sample_name()
+        self.settings["sample_type"] = self.sample_type()
+        self.settings["use_environ"] = self.use_environment()
+        self.settings["use_table"] = self.use_table()
+        self.output_widget.store_settings()
 
     @handle_exception
     def load_sequences(self):
@@ -466,7 +426,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def output_dir(self):
         """Return output path."""
-        base = os.path.realpath(self.output_text.value.strip())
+        base = os.path.realpath(self.output_widget.current_location)
         sample_name = self.sample_name()
         return os.path.join(base, sample_name)
 
@@ -478,6 +438,15 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return output_dir
+
+    def write_logfiles(self):
+        return bool(self.settings.get("write_logfiles", True))
+
+    def export_json(self):
+        return bool(self.settings.get("export_json", True))
+
+    def export_txt(self):
+        return bool(self.settings.get("export_txt", True))
 
     # Callbacks
 
@@ -609,11 +578,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("table_position", self.table_position())
         sequence.set("operator", self.operator())
         sequence.set("output_dir", self.output_dir())
-        sequence.set("write_logfiles", self.settings.get("write_logfiles", True))
+        sequence.set("write_logfiles", self.write_logfiles())
         sequence.set("use_environ", self.use_environment())
         sequence.set("use_table", self.use_table())
-        sequence.set("serialize_json", self.settings.get("export_json", False))
-        sequence.set("serialize_txt", self.settings.get("export_txt", True))
+        sequence.set("serialize_json", self.export_json())
+        sequence.set("serialize_txt", self.export_txt())
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
         def show_measurement(item):
@@ -628,6 +597,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             panel.mount(item)
             sequence.reading = panel.append_reading
             sequence.update = panel.update_readings
+            sequence.append_analysis = panel.append_analysis
             sequence.state = panel.state
         def hide_measurement(item):
             item.selectable = False
@@ -690,14 +660,15 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
-        measure.set("write_logfiles", self.settings.get("write_logfiles", True))
+        measure.set("write_logfiles", self.write_logfiles())
         measure.set("use_environ", self.use_environment())
         measure.set("use_table", self.use_table())
-        measure.set("serialize_json", self.settings.get("export_json", False))
-        measure.set("serialize_txt", self.settings.get("export_txt", True))
+        measure.set("serialize_json", self.export_json())
+        measure.set("serialize_txt", self.export_txt())
         measure.measurement_item = measurement
         measure.reading = panel.append_reading
         measure.update = panel.update_readings
+        measure.append_analysis = panel.append_analysis
         measure.state = panel.state
         measure.push_summary = self.on_push_summary
         # TODO
@@ -848,31 +819,18 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.table_joystick_button.checked = joystick_state
 
     def on_environment_groupbox_toggled(self, state):
-        self.settings["use_environ"] = state
         if state:
             self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
-        self.settings["use_table"] = state
         if self.use_table():
             self.sync_table_controls()
 
-    def on_output_changed(self, value):
-        self.settings["output_path"] = value
-
-    def on_select_output(self):
-        value = ui.directory_open(
-            title="Select working directory",
-            path=self.output_text.value
-        )
-        if value:
-            self.output_text.value = value
-
     @handle_exception
     def on_push_summary(self, *args):
-        """Push rsult to summary and write to sumamry file (experimantal)."""
+        """Push result to summary and write to summary file (experimantal)."""
         item = self.summary_tab.append_result(*args)
-        output_path = self.settings.get("output_path")
+        output_path = self.output_widget.current_location
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)
