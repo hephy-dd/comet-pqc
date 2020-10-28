@@ -150,7 +150,6 @@ class TableControl(ui.Column, SettingsMixin):
         self.z_limit_overdrive_label = ui.Label("n/a")
         # Layout
         self.controls_layout = ui.Column(
-            ui.Spacer(),
             ui.Row(
                 ui.Spacer(),
                 ui.Row(
@@ -188,7 +187,7 @@ class TableControl(ui.Column, SettingsMixin):
                 stretch=(1, 0, 0, 0, 0, 0, 1)
             ),
             ui.Spacer(),
-            stretch=(1, 0, 1)
+            stretch=(0, 1)
         )
         self.position_groupbox = PositionGroupBox()
         self.calibration_groupbox = CalibrationGroupBox()
@@ -223,7 +222,7 @@ class TableControl(ui.Column, SettingsMixin):
                         title="Control",
                         layout=self.controls_layout
                     ),
-                    ui.Label("All controls relative to Probe-Card camera image.", enabled=False)
+                    ui.Label("All controls relative to Probe-Card camera image.", enabled=False),
                 ),
                 ui.Column(
                     self.position_groupbox,
