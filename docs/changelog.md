@@ -10,7 +10,7 @@ nav_order: 10
 ## 0.25.4
 
 ### Added
-- Backport of configurable Z limits for table control.
+- Backport of configurable table positions.
 
 ## 0.25.3
 

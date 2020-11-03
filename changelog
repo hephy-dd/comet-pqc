@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.25.4] - 2020-11-03
 ### Added
-- Backport of configurable Z limits for table control (#101).
+- Backport of configurable table positions (##103).
 
 ## [0.25.3] - 2020-10-15
 ### Added
