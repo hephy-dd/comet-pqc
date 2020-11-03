@@ -9,6 +9,48 @@ comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
 
+class PositionDialog(ui.Dialog):
+
+    scale = 1000.
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name_text = ui.Text(value="Unnamed")
+        self.x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
+        self.layout = ui.Column(
+            ui.Label("Name"),
+            self.name_text,
+            ui.Label("X"),
+            self.x_number,
+            ui.Label("Y"),
+            self.y_number,
+            ui.Label("Z"),
+            self.z_number,
+            self.button_box
+        )
+
+    @property
+    def name(self):
+        return self.name_text.value
+
+    @name.setter
+    def name(self, value):
+        self.name_text.value = value
+
+    @property
+    def position(self):
+        return self.x_number.value * self.scale, self.y_number.value * self.scale, self.z_number.value * self.scale
+
+    @position.setter
+    def position(self, value):
+        x, y, z = value[:3]
+        self.x_number.value = x / self.scale
+        self.y_number.value = y / self.scale
+        self.z_number.value = z / self.scale
+
 class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
 
     def __init__(self, *args, **kwargs):
@@ -42,6 +84,7 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
         self.content.load_positions()
         self.content.assign_position = self.on_assign_position
         self.content.move_selected = self.on_move_selected
+        self.content.started = self.on_start
         self.close_event = self.on_close
         self.minimum_size = 800, 480
 
@@ -183,8 +226,9 @@ class TableMove(ui.Column, comet.SettingsMixin):
 
     maximum_z_limit = 23.800
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, started=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.started = started
         self.pos_x_label = ui.Label()
         self.pos_y_label = ui.Label()
         self.pos_z_label = ui.Label()
@@ -199,6 +243,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
         self.positions_tree.indentation = 0
         self.positions_tree.minimum_width = 400
         self.positions_tree.selected = self.on_position_selected
+        self.positions_tree.double_clicked = self.on_position_double_clicked
         self.positions_tree.fit()
         # Layout
         self.assign_button = ui.Button(
@@ -211,7 +256,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
             clicked=self.on_add_position
         )
         self.edit_button = ui.Button(
-            text="&Edit Name",
+            text="&Edit",
             enabled=False,
             clicked=self.on_edit_position
         )
@@ -387,6 +432,9 @@ class TableMove(ui.Column, comet.SettingsMixin):
         self.remove_button.enabled = True
         self.emit('move_selected')
 
+    def on_position_double_clicked(self, index, item):
+        self.emit('started')
+
     def on_assign_position(self):
         item = self.positions_tree.current
         if item:
@@ -394,17 +442,23 @@ class TableMove(ui.Column, comet.SettingsMixin):
                 self.emit('assign_position')
 
     def on_add_position(self):
-        name = ui.get_text(title="Add Position", label="Name", text="")
-        if name:
-            self.positions_tree.append(TablePositionItem(name, 0, 0, 0))
+        dialog = PositionDialog()
+        if dialog.run():
+            self.positions_tree.append(TablePositionItem(
+                dialog.name,
+                *dialog.position
+            ))
             self.positions_tree.fit()
 
     def on_edit_position(self):
         item = self.positions_tree.current
         if item:
-            text = ui.get_text(title="Edit Position Name", label="Name", text=item[0].value)
-            if text:
-                item[0].value = text
+            dialog = PositionDialog()
+            dialog.name = item.name
+            dialog.position = item.x, item.y, item.z
+            if dialog.run():
+                item.name = dialog.name
+                item.x, item.y, item.z = dialog.position
                 self.positions_tree.fit()
 
     def on_remove_position(self):

@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.25.4
+
+### Added
+- Backport of configurable Z limits for table control.
+
 ## 0.25.3
 
 ### Added
