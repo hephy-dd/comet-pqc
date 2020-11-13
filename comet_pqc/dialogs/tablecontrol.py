@@ -8,6 +8,7 @@ from qutie.qutie import QtCore
 from ..components import PositionGroupBox
 from ..components import CalibrationGroupBox
 from ..utils import format_table_unit
+from ..utils import from_table_unit
 
 __all__ = ['TableControlDialog']
 
@@ -47,13 +48,19 @@ class TableControlDialog(ui.Dialog, comet.ProcessMixin, SettingsMixin):
             self.control.caldone = x, y, z
         self.process.position = on_position
         self.process.caldone = on_caldone
-        self.process.set('z_limit_movement', self.control.z_limit_movement)
-        self.process.set('z_limit_overdrive', self.control.z_limit_overdrive)
         self.control.move = on_move
+
+    def load_settings(self):
+        self.control.load_settings()
+
+    def store_settings(self):
+        self.control.store_settings()
 
     def run(self):
         self.process.start()
+        self.load_settings()
         super().run()
+        self.store_settings()
         self.process.stop()
         self.process.join()
 
@@ -81,16 +88,9 @@ class SquareLabel(ui.Label):
 
 class TableControl(ui.Column, SettingsMixin):
 
-    step_widths = (
-        (1.0, "fine", "green"),
-        (10.0, "wide", "orange"),
-        (100.0, "large", "red"),
-        (1000.0, "ridiculous", "darkred"),
-        (10000.0, "ludicrous", "darkmagenta")
-    )
-
     def __init__(self, *args, move=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.step_items = []
         # Event
         self.move = move
         # Control buttons
@@ -134,20 +134,7 @@ class TableControl(ui.Column, SettingsMixin):
         )
         # Create movement radio buttons
         self.step_buttons = ui.Column()
-        for width, name, color in self.step_widths:
-            button = ui.RadioButton(
-                text=format_width(width),
-                tool_tip=f"Move in {name} steps.",
-                stylesheet=f"QRadioButton{{color:{color};}}",
-                toggled=self.on_colorcode
-            )
-            button.step_width = width
-            button.step_name = name
-            button.step_color = color
-            self.step_buttons.append(button)
         self.laser_state_label = ui.Label("n/a")
-        self.z_limit_movement_label = ui.Label("n/a")
-        self.z_limit_overdrive_label = ui.Label("n/a")
         # Layout
         self.controls_layout = ui.Column(
             ui.Row(
@@ -191,19 +178,6 @@ class TableControl(ui.Column, SettingsMixin):
         )
         self.position_groupbox = PositionGroupBox()
         self.calibration_groupbox = CalibrationGroupBox()
-        self.limits_groupbox = ui.GroupBox(
-            title="Z Limits",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Movement"),
-                    ui.Label("Overdrive")
-                ),
-                ui.Column(
-                    self.z_limit_movement_label,
-                    self.z_limit_overdrive_label
-                )
-            )
-        )
         self.safety_groupbox = ui.GroupBox(
             title="Safety",
             layout=ui.Row(
@@ -227,7 +201,6 @@ class TableControl(ui.Column, SettingsMixin):
                 ui.Column(
                     self.position_groupbox,
                     self.calibration_groupbox,
-                    self.limits_groupbox,
                     self.safety_groupbox
                 ),
                 ui.Spacer(),
@@ -244,28 +217,29 @@ class TableControl(ui.Column, SettingsMixin):
         self.position = 0, 0, 0
         self.caldone = 0, 0, 0
         self.on_update_laser_state(None)
-        self.update_limits()
+        self.update_controls()
 
-    @property
-    def z_limit_movement(self):
-        return self.settings.get('z_limit_movement') or 0.0
+    def load_settings(self):
+        while self.step_buttons:
+            button = self.step_buttons[0]
+            self.step_buttons.remove(button)
+            button.hide()
+            button.qt.deleteLater()
+        table_step_sizes = self.settings.get('table_step_sizes') or []
+        for item in table_step_sizes:
+            step_size = (item.get('step_size'))
+            z_limit = (item.get('z_limit'))
+            button = ui.RadioButton(
+                text="{} (Z-Limit {} mm)".format(format_width(step_size), from_table_unit(z_limit)),
+            )
+            button.step_size = step_size
+            button.z_limit = z_limit
+            self.step_buttons.append(button)
+        if self.step_buttons:
+            self.step_buttons[0].checked = True
 
-    @property
-    def z_limit_overdrive(self):
-        return self.settings.get('z_limit_overdrive') or 0.0
-
-    def update_limits(self):
-        x, y, z = self.position
-        # Movement
-        z_limit_movement = self.z_limit_movement
-        color_movement = "green" if z < z_limit_movement else "red"
-        self.z_limit_movement_label.text = f"{format_table_unit(z_limit_movement)}"
-        self.z_limit_movement_label.stylesheet = f"QLabel:enabled{{color:{color_movement}}}"
-        # Overdrive
-        z_limit_overdrive = self.z_limit_overdrive
-        color_overdrive = ("green" if z < z_limit_movement else "orange") if z < z_limit_overdrive else "red"
-        self.z_limit_overdrive_label.text = f"{format_table_unit(z_limit_overdrive)}"
-        self.z_limit_overdrive_label.stylesheet = f"QLabel:enabled{{color:{color_overdrive}}}"
+    def store_settings(self):
+        pass
 
     def lock_controls(self):
         self.front_button.enabled = False
@@ -276,30 +250,27 @@ class TableControl(ui.Column, SettingsMixin):
         self.down_button.enabled = False
 
     def update_controls(self):
+        self.lock_controls()
+        self.down_button.enabled = True
         x, y, z = self.position
-        movement_enabled = z < self.z_limit_movement
-        self.front_button.enabled = movement_enabled and y > 0.0
-        self.back_button.enabled = movement_enabled
-        self.left_button.enabled = movement_enabled and x > 0.0
-        self.right_button.enabled = movement_enabled
-        z_enabled = True if z <= self.z_limit_movement else self.step_width < 1000.
-        z_enabled = z_enabled and (z + self.step_width) <= self.z_limit_overdrive
-        self.up_button.enabled = z_enabled
-        self.down_button.enabled = z >= 0.0
-
-    @property
-    def step_width(self):
         for button in self.step_buttons:
             if button.checked:
-                return abs(button.step_width)
+                step_size = button.step_size
+                z_limit = button.z_limit
+                if z < z_limit:
+                    self.front_button.enabled = True
+                    self.back_button.enabled = True
+                    self.left_button.enabled = True
+                    self.right_button.enabled = True
+                if z + step_size <= z_limit:
+                    self.up_button.enabled = True
+
+    @property
+    def step_size(self):
+        for button in self.step_buttons:
+            if button.checked:
+                return abs(button.step_size)
         return 0
-
-    @property
-    def step_color(self):
-        for button in self.step_buttons:
-            if button.checked:
-                return button.step_color
-        return "black"
 
     @property
     def position(self):
@@ -309,7 +280,6 @@ class TableControl(ui.Column, SettingsMixin):
     def position(self, value):
         self.position_groupbox.value = value[:3]
         self.update_controls()
-        self.update_limits()
 
     @property
     def caldone(self):
@@ -322,32 +292,27 @@ class TableControl(ui.Column, SettingsMixin):
 
     def on_back(self):
         self.lock_controls()
-        self.emit("move", 0, self.step_width, 0)
+        self.emit("move", 0, self.step_size, 0)
 
     def on_front(self):
         self.lock_controls()
-        self.emit("move", 0, -self.step_width, 0)
+        self.emit("move", 0, -self.step_size, 0)
 
     def on_left(self):
         self.lock_controls()
-        self.emit("move", -self.step_width, 0, 0)
+        self.emit("move", -self.step_size, 0, 0)
 
     def on_right(self):
         self.lock_controls()
-        self.emit("move", self.step_width, 0, 0)
+        self.emit("move", self.step_size, 0, 0)
 
     def on_up(self):
         self.lock_controls()
-        self.emit("move", 0, 0, self.step_width)
+        self.emit("move", 0, 0, self.step_size)
 
     def on_down(self):
         self.lock_controls()
-        self.emit("move", 0, 0, -self.step_width)
-
-    def on_colorcode(self, state):
-        for button in self.control_buttons:
-            button.enabled = False
-            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color};font-size:22px;}}"
+        self.emit("move", 0, 0, -self.step_size)
 
     def on_update_laser_state(self, enabled):
         laser_state = {False: "OFF", True: "ON"}.get(enabled, "n/a")

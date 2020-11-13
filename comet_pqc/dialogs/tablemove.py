@@ -9,17 +9,13 @@ from comet.settings import SettingsMixin
 from ..components import PositionGroupBox
 from ..components import CalibrationGroupBox
 from ..utils import format_table_unit
+from ..utils import from_table_unit
+from ..utils import to_table_unit
 
 # Fix
 comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
-
-def from_table_unit(value):
-    return (value * comet.ureg("um")).to("mm").m
-
-def to_table_unit(value):
-    return (value * comet.ureg("mm")).to("um").m
 
 class PositionDialog(ui.Dialog):
 
