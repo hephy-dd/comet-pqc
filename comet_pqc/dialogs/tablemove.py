@@ -1,5 +1,7 @@
 import logging
 
+from qutie.qutie import QtWidgets
+
 import comet
 from comet import ui
 from comet.settings import SettingsMixin
@@ -13,9 +15,13 @@ comet.SettingsMixin = SettingsMixin
 
 __all__ = ['TableMoveDialog']
 
-class PositionDialog(ui.Dialog):
+def from_table_unit(value):
+    return (value * comet.ureg("um")).to("mm").m
 
-    scale = 1000.
+def to_table_unit(value):
+    return (value * comet.ureg("mm")).to("um").m
+
+class PositionDialog(ui.Dialog):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,16 +29,19 @@ class PositionDialog(ui.Dialog):
         self.x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
         self.y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
         self.z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept)
+        self.comment_text = ui.Text()
+        self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
         self.layout = ui.Column(
-            ui.Label("Name"),
+            ui.Label("Name", tool_tip="Position name"),
             self.name_text,
-            ui.Label("X"),
+            ui.Label("X", tool_tip="Position X coordinate"),
             self.x_number,
-            ui.Label("Y"),
+            ui.Label("Y", tool_tip="Position Y coordinate"),
             self.y_number,
-            ui.Label("Z"),
+            ui.Label("Z", tool_tip="Position Z coordinate"),
             self.z_number,
+            ui.Label("Comment", tool_tip="Optional position comment"),
+            self.comment_text,
             self.button_box
         )
 
@@ -46,14 +55,25 @@ class PositionDialog(ui.Dialog):
 
     @property
     def position(self):
-        return self.x_number.value * self.scale, self.y_number.value * self.scale, self.z_number.value * self.scale
+        x = self.x_number.value
+        y = self.y_number.value
+        z = self.z_number.value
+        return x, y, z
 
     @position.setter
     def position(self, value):
         x, y, z = value[:3]
-        self.x_number.value = x / self.scale
-        self.y_number.value = y / self.scale
-        self.z_number.value = z / self.scale
+        self.x_number.value = x
+        self.y_number.value = y
+        self.z_number.value = z
+
+    @property
+    def comment(self):
+        return self.comment_text.value
+
+    @comment.setter
+    def comment(self, value):
+        self.comment_text.value = value
 
 class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
 
@@ -63,11 +83,13 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
         self.content = TableMove()
         self.start_button = ui.Button(
             text="Start",
+            tool_tip="Move to selected position",
             enabled=False,
             clicked=self.on_start
         )
         self.stop_button = ui.Button(
             text="Stop",
+            tool_tip="Stop running move operation",
             enabled=False,
             clicked=self.on_stop
         )
@@ -131,10 +153,11 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
                 self.stop_button.enabled = True
                 self.close_button.enabled = False
                 self.content.enabled = False
+                mm = comet.ureg("mm")
                 self.process.set('name', item.name)
-                self.process.set('x', item.x)
-                self.process.set('y', item.y)
-                self.process.set('z', item.z)
+                self.process.set('x', to_table_unit(item.x))
+                self.process.set('y', to_table_unit(item.y))
+                self.process.set('z', to_table_unit(item.z))
                 self.process.set('z_limit', int(self.content.z_limit_movement))
                 self.process.start()
 
@@ -172,9 +195,9 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
         item = self.content.positions_tree.current
         if item:
             x, y, z = self.content.position
-            item.x = x
-            item.y = y
-            item.z = z
+            item.x = from_table_unit(x)
+            item.y = from_table_unit(y)
+            item.z = from_table_unit(z)
 
     def load_settings(self):
         dialog_size = self.settings.get('tablemove_dialog_size', (640, 480))
@@ -191,14 +214,24 @@ class TableMoveDialog(ui.Dialog, comet.ProcessMixin, comet.SettingsMixin):
         self.store_settings()
         self.process.finished = None
 
+class ItemDelegate(QtWidgets.QItemDelegate):
+    """Item delegate for custom floating point number display."""
+
+    decimals = 3
+
+    def drawDisplay(self, painter, option, rect, text):
+        text = format(float(text), f".{self.decimals}f")
+        super().drawDisplay(painter, option, rect, text)
+
 class TablePositionItem(ui.TreeItem):
 
-    def __init__(self, name, x, y, z):
+    def __init__(self, name, x, y, z, comment=None):
         super().__init__()
         self.name = name
         self.x = x
         self.y = y
         self.z = z
+        self.comment = comment or ""
 
     @property
     def name(self):
@@ -232,33 +265,50 @@ class TablePositionItem(ui.TreeItem):
     def z(self, value):
         self[3].value = float(value)
 
+    @property
+    def comment(self):
+        return self[4].value
+
+    @comment.setter
+    def comment(self, value):
+        self[4].value = value
+
 class TableMove(ui.Column, comet.SettingsMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.positions_tree = ui.Tree()
-        self.positions_tree.header = "Name", "X", "Y", "Z"
+        self.positions_tree.header = "Name", "X", "Y", "Z", "Comment"
         self.positions_tree.indentation = 0
         self.positions_tree.minimum_width = 400
         self.positions_tree.selected = self.on_position_selected
-        self.positions_tree.fit()
+        self.positions_tree.qt.setColumnWidth(1, 64)
+        self.positions_tree.qt.setColumnWidth(2, 64)
+        self.positions_tree.qt.setColumnWidth(3, 64)
+        self.positions_tree.qt.setItemDelegateForColumn(1, ItemDelegate(self.positions_tree.qt))
+        self.positions_tree.qt.setItemDelegateForColumn(2, ItemDelegate(self.positions_tree.qt))
+        self.positions_tree.qt.setItemDelegateForColumn(3, ItemDelegate(self.positions_tree.qt))
         # Layout
         self.assign_button = ui.Button(
             text="Assign Position",
+            tool_tip="Assign current table position to selected position item",
             enabled=False,
             clicked=self.on_assign_position
         )
         self.add_button = ui.Button(
             text="&Add",
+            tool_tip="Add new position item",
             clicked=self.on_add_position
         )
         self.edit_button = ui.Button(
             text="&Edit",
+            tool_tip="Edit selected position item",
             enabled=False,
             clicked=self.on_edit_position
         )
         self.remove_button = ui.Button(
             text="&Remove",
+            tool_tip="Remove selected position item",
             enabled=False,
             clicked=self.on_remove_position
         )
@@ -281,7 +331,7 @@ class TableMove(ui.Column, comet.SettingsMixin):
         self.append(ui.Column(
             ui.Row(
                 ui.GroupBox(
-                    title="Table positions",
+                    title="Table positions (mm)",
                     layout=self.positions_layout
                 ),
                 ui.Column(
@@ -301,28 +351,31 @@ class TableMove(ui.Column, comet.SettingsMixin):
             stretch=(10, 1)
         ))
         self.position = 0, 0, 0
-        self.z_limit_movement = self.settings.get('z_limit_movement', 0.0)
+        self.z_limit_movement = 0.0
 
     def load_positions(self):
         self.positions_tree.clear()
         for position in self.settings.get('table_positions', []):
             self.positions_tree.append(TablePositionItem(
                 name=position.get('name'),
-                x=position.get('x'),
-                y=position.get('y'),
-                z=position.get('z')
+                x=from_table_unit(position.get('x')),
+                y=from_table_unit(position.get('y')),
+                z=from_table_unit(position.get('z')),
+                comment=position.get('comment') or "",
             ))
-        self.positions_tree.fit()
-        self.z_limit_movement = self.settings.get('z_limit_movement', 0.0)
+        self.positions_tree.fit(0)
+        self.z_limit_movement = self.settings.get('z_limit_movement') or 0.0
 
     def store_positions(self):
         positions = []
+        mm = comet.ureg("mm")
         for position in self.positions_tree:
             positions.append(dict(
                 name=position.name,
-                x=position.x,
-                y=position.y,
-                z=position.z
+                x=to_table_unit(position.x),
+                y=to_table_unit(position.y),
+                z=to_table_unit(position.z),
+                comment=position.comment
             ))
         self.settings['table_positions'] = positions
 
@@ -367,11 +420,11 @@ class TableMove(ui.Column, comet.SettingsMixin):
     def on_add_position(self):
         dialog = PositionDialog()
         if dialog.run():
-            self.positions_tree.append(TablePositionItem(
-                dialog.name,
-                *dialog.position
-            ))
-            self.positions_tree.fit()
+            name = dialog.name
+            x, y, z = dialog.position
+            comment = dialog.comment
+            self.positions_tree.append(TablePositionItem(name, x, y, z, comment))
+            self.positions_tree.fit(0)
 
     def on_edit_position(self):
         item = self.positions_tree.current
@@ -379,10 +432,12 @@ class TableMove(ui.Column, comet.SettingsMixin):
             dialog = PositionDialog()
             dialog.name = item.name
             dialog.position = item.x, item.y, item.z
+            dialog.comment = item.comment
             if dialog.run():
                 item.name = dialog.name
-                item.position = dialog.position
-                self.positions_tree.fit()
+                item.x, item.y, item.z = dialog.position
+                item.comment = dialog.comment
+                self.positions_tree.fit(0)
 
     def on_remove_position(self):
         item = self.positions_tree.current
@@ -393,4 +448,4 @@ class TableMove(ui.Column, comet.SettingsMixin):
                     self.assign_button.enabled = False
                     self.edit_button.enabled = False
                     self.remove_button.enabled = False
-                self.positions_tree.fit()
+                self.positions_tree.fit(0)
