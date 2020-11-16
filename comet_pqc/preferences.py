@@ -78,9 +78,11 @@ class TableTab(PreferencesTab):
     def __init__(self):
         super().__init__(title="Table")
         self.steps_tree = ui.Tree(
-            header=("Size", "Z-Limit")
+            header=("Size", "Z-Limit"),
+            root_is_decorated=False
         )
         self.steps_tree.selected = self.on_position_selected
+        self.steps_tree.double_clicked = self.on_steps_tree_double_clicked
         self.steps_tree.qt.setItemDelegateForColumn(0, ItemDelegate(self.steps_tree.qt))
         self.steps_tree.qt.setItemDelegateForColumn(1, ItemDelegate(self.steps_tree.qt))
         self.add_step_button = ui.Button(
@@ -133,6 +135,9 @@ class TableTab(PreferencesTab):
         enabled = item is not None
         self.edit_step_button.enabled = enabled
         self.remove_step_button.enabled = enabled
+
+    def on_steps_tree_double_clicked(self, index, item):
+        self.on_add_step_clicked()
 
     def on_add_step_clicked(self):
         dialog = TableStepDialog()
