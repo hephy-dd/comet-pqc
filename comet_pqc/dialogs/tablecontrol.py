@@ -90,7 +90,6 @@ class TableControl(ui.Column, SettingsMixin):
 
     def __init__(self, *args, move=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.step_items = []
         # Event
         self.move = move
         # Control buttons
@@ -231,6 +230,7 @@ class TableControl(ui.Column, SettingsMixin):
             z_limit = (item.get('z_limit'))
             button = ui.RadioButton(
                 text="{} (Z-Limit {} mm)".format(format_width(step_size), from_table_unit(z_limit)),
+                clicked=self.on_step_button_checked
             )
             button.step_size = step_size
             button.z_limit = z_limit
@@ -240,6 +240,9 @@ class TableControl(ui.Column, SettingsMixin):
 
     def store_settings(self):
         pass
+
+    def on_step_button_checked(self):
+        self.update_controls()
 
     def lock_controls(self):
         self.front_button.enabled = False
