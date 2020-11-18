@@ -137,7 +137,7 @@ class TableTab(PreferencesTab):
         self.remove_step_button.enabled = enabled
 
     def on_steps_tree_double_clicked(self, index, item):
-        self.on_add_step_clicked()
+        self.on_edit_step_clicked()
 
     def on_add_step_clicked(self):
         dialog = TableStepDialog()
