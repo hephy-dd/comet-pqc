@@ -166,6 +166,7 @@ class Panel(ui.Widget):
         pass
 
     def clear_readings(self):
+        self.analysis_tree.clear()
         if self.measurement:
             self.measurement.analysis.clear()
 

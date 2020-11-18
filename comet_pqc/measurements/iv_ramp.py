@@ -201,6 +201,12 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             logging.info("HV Source reading: %E A", reading_current)
             self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
+            self.process.emit("update")
+            self.process.emit("state", dict(
+                hvsrc_voltage=voltage,
+                hvsrc_current=reading_current
+            ))
+
             self.environment_update()
 
             self.process.emit("state", dict(

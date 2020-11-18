@@ -7,6 +7,7 @@ import numpy as np
 
 from qutie.qutie import QtCore, QtGui
 from comet import ui
+from comet import ureg
 
 __all__ = [
     'PACKAGE_PATH',
@@ -16,7 +17,9 @@ __all__ = [
     'stitch_pixmaps',
     'create_icon',
     'handle_exception',
-    'format_table_unit'
+    'format_table_unit',
+    'from_table_unit',
+    'to_table_unit'
 ]
 
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -125,3 +128,11 @@ def handle_exception(func):
 def format_table_unit(value):
     """Formatted table unit to millimeters."""
     return f"{value / 1000.:.3f} mm"
+
+def from_table_unit(value):
+    """Convert table unit (micron) to millimeters."""
+    return (value * ureg("um")).to("mm").m
+
+def to_table_unit(value):
+    """Convert millimeters to table unit (micron)."""
+    return (value * ureg("mm")).to("um").m
