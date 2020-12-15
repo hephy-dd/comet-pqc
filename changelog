@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.5] - 2020-12-15
+### Changed
+- Round table position to microns (#105).
+
 ## [0.25.4] - 2020-11-03
 ### Added
-- Backport of configurable table positions (##103).
+- Backport of configurable table positions (#103).
 
 ## [0.25.3] - 2020-10-15
 ### Added

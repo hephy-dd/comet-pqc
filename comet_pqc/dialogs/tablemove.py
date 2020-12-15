@@ -204,7 +204,7 @@ class TablePositionItem(ui.TreeItem):
 
     @x.setter
     def x(self, value):
-        self[1].value = float(value)
+        self[1].value = float(round(value))
 
     @property
     def y(self):
@@ -212,7 +212,7 @@ class TablePositionItem(ui.TreeItem):
 
     @y.setter
     def y(self, value):
-        self[2].value = float(value)
+        self[2].value = float(round(value))
 
     @property
     def z(self):
@@ -220,7 +220,7 @@ class TablePositionItem(ui.TreeItem):
 
     @z.setter
     def z(self, value):
-        self[3].value = float(value)
+        self[3].value = float(round(value))
 
 class TableMove(ui.Column, comet.SettingsMixin):
 

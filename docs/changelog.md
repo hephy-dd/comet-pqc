@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.25.5
+
+### Changed
+- Round table position to microns.
+
 ## 0.25.4
 
 ### Added
