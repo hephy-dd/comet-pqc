@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.26.0] - 2020-10-28
 ### Added
 - Analysis functions parameter (#82).
-- Configurable Z limits for table control (#101).
+- Configurable steps for table control (#101).
 - Persistent history of working directories (#99).
+
+## [0.25.5] - 2020-12-15
+### Changed
+- Round table position to microns (#105).
+
+## [0.25.4] - 2020-11-03
+### Added
+- Backport of configurable table positions (#103).
 
 ## [0.25.3] - 2020-10-15
 ### Added

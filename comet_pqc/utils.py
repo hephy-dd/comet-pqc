@@ -131,8 +131,8 @@ def format_table_unit(value):
 
 def from_table_unit(value):
     """Convert table unit (micron) to millimeters."""
-    return (value * ureg("um")).to("mm").m
+    return round((value * ureg("um")).to("mm").m, 3)
 
 def to_table_unit(value):
     """Convert millimeters to table unit (micron)."""
-    return (value * ureg("mm")).to("um").m
+    return round((value * ureg("mm")).to("um").m, 0)

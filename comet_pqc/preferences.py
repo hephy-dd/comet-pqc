@@ -14,13 +14,16 @@ class TableStepDialog(ui.Dialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.step_size_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self.z_limit_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self.z_limit_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm", visible=False)
+        self.step_color_text = ui.Text()
         self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
         self.layout = ui.Column(
             ui.Label("Size", tool_tip="Step size in millimeters"),
             self.step_size_number,
-            ui.Label("Z-Limit", tool_tip="Z-Limit in millimeters"),
+            ui.Label("Z-Limit", tool_tip="Z-Limit in millimeters", visible=False),
             self.z_limit_number,
+            ui.Label("Color", tool_tip="Color code for step"),
+            self.step_color_text,
             self.button_box
         )
 
@@ -40,6 +43,14 @@ class TableStepDialog(ui.Dialog):
     def z_limit(self, value):
         self.z_limit_number.value = value
 
+    @property
+    def step_color(self):
+        return self.step_color_text.value
+
+    @step_color.setter
+    def step_color(self, value):
+        self.step_color_text.value = value or ''
+
 class ItemDelegate(QtWidgets.QItemDelegate):
     """Item delegate for custom floating point number display."""
 
@@ -51,10 +62,11 @@ class ItemDelegate(QtWidgets.QItemDelegate):
 
 class TableStepItem(ui.TreeItem):
 
-    def __init__(self, step_size, z_limit):
+    def __init__(self, step_size, z_limit, step_color=None):
         super().__init__()
         self.step_size = step_size
         self.z_limit = z_limit
+        self.step_color = step_color
 
     @property
     def step_size(self):
@@ -72,15 +84,25 @@ class TableStepItem(ui.TreeItem):
     def z_limit(self, value):
         self[1].value = float(value)
 
+    @property
+    def step_color(self):
+        return self[2].value
+
+    @step_color.setter
+    def step_color(self, value):
+        self[2].value = value
+
 class TableTab(PreferencesTab):
     """Table limits tab for preferences dialog."""
 
     def __init__(self):
         super().__init__(title="Table")
         self.steps_tree = ui.Tree(
-            header=("Size", "Z-Limit"),
+            header=("Size", "Z-Limit", "Color"),
             root_is_decorated=False
         )
+        # Hide Z-Limit column
+        self.steps_tree.qt.setColumnHidden(1, True)
         self.steps_tree.selected = self.on_position_selected
         self.steps_tree.double_clicked = self.on_steps_tree_double_clicked
         self.steps_tree.qt.setItemDelegateForColumn(0, ItemDelegate(self.steps_tree.qt))
@@ -144,7 +166,8 @@ class TableTab(PreferencesTab):
         if dialog.run():
             step_size = dialog.step_size
             z_limit = dialog.z_limit
-            self.steps_tree.append(TableStepItem(step_size, z_limit))
+            step_color = dialog.step_color
+            self.steps_tree.append(TableStepItem(step_size, z_limit, step_color))
             self.steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
     def on_edit_step_clicked(self):
@@ -153,9 +176,11 @@ class TableTab(PreferencesTab):
             dialog = TableStepDialog()
             dialog.step_size = item.step_size
             dialog.z_limit = item.z_limit
+            dialog.step_color = item.step_color
             if dialog.run():
                 item.step_size = dialog.step_size
                 item.z_limit = dialog.z_limit
+                item.step_color = dialog.step_color
                 self.steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
     def on_remove_step_clicked(self):
@@ -177,7 +202,8 @@ class TableTab(PreferencesTab):
         for item in table_step_sizes:
             self.steps_tree.append(TableStepItem(
                 step_size=from_table_unit(item.get('step_size')),
-                z_limit=from_table_unit(item.get('z_limit'))
+                z_limit=from_table_unit(item.get('z_limit')),
+                step_color=format(item.get('step_color'))
             ))
         self.steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
         z_limit_movement = from_table_unit(self.settings.get('z_limit_movement', 0.0))
@@ -188,7 +214,8 @@ class TableTab(PreferencesTab):
         for item in self.steps_tree:
             table_step_sizes.append(dict(
                 step_size=to_table_unit(item.step_size),
-                z_limit=to_table_unit(item.z_limit)
+                z_limit=to_table_unit(item.z_limit),
+                step_color=format(item.step_color)
             ))
         self.settings['table_step_sizes'] = table_step_sizes
         z_limit_movement = to_table_unit(self.z_limit_movement_number.value)

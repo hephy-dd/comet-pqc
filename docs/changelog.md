@@ -11,8 +11,18 @@ nav_order: 10
 
 ### Added
 - Analysis functions parameter.
-- Configurable Z limits for table control.
+- Configurable steps for table control.
 - Persistent history of working directories.
+
+## 0.25.5
+
+### Changed
+- Round table position to microns.
+
+## 0.25.4
+
+### Added
+- Backport of configurable table positions.
 
 ## 0.25.3
 
