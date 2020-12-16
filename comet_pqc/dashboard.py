@@ -297,8 +297,13 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Output controls
 
+        default_output_path = os.path.join(os.path.expanduser("~"), "PQC")
+        output_path = self.settings.get("output_path", default_output_path)
+        # Compatiblity with >= 0.26.x
+        if not isinstance(output_path, str):
+            output_path = list(output_path)[0]
         self.output_text = ui.Text(
-            value=self.settings.get("output_path", os.path.join(os.path.expanduser("~"), "PQC")),
+            value=output_path,
             changed=self.on_output_changed
         )
 
