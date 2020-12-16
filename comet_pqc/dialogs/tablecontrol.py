@@ -3,22 +3,13 @@ import logging
 import comet
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qutie import QtCore
+from qutie.qt import QtCore
 
-from ..components import PositionGroupBox
-from ..components import CalibrationGroupBox
-from ..utils import format_table_unit
-from ..utils import from_table_unit
+from ..utils import format_metric
 
 __all__ = ['TableControlDialog']
 
-def format_width(width):
-    """Retrun foramtted step width."""
-    if width >= 1000.0:
-        return f'{width / 1000.} mm'
-    return f'{width} μm'
-
-class TableControlDialog(ui.Dialog, comet.ProcessMixin, SettingsMixin):
+class TableControlDialog(ui.Dialog, comet.ProcessMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,17 +41,9 @@ class TableControlDialog(ui.Dialog, comet.ProcessMixin, SettingsMixin):
         self.process.caldone = on_caldone
         self.control.move = on_move
 
-    def load_settings(self):
-        self.control.load_settings()
-
-    def store_settings(self):
-        self.control.store_settings()
-
     def run(self):
         self.process.start()
-        self.load_settings()
         super().run()
-        self.store_settings()
         self.process.stop()
         self.process.join()
 
@@ -87,6 +70,8 @@ class SquareLabel(ui.Label):
         self.qt.setAlignment(QtCore.Qt.AlignCenter)
 
 class TableControl(ui.Column, SettingsMixin):
+
+    maximum_z_step_size = 100.0 # microns
 
     def __init__(self, *args, move=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -132,10 +117,33 @@ class TableControl(ui.Column, SettingsMixin):
             self.down_button
         )
         # Create movement radio buttons
-        self.step_buttons = ui.Column()
+        self.movement_buttons = ui.Column()
+        for item in self.load_table_step_sizes():
+            step_size = item.get('step_size')
+            step_color = item.get('step_color')
+            step_size_label = format_metric((step_size * comet.ureg('um')).to('m').m, 'm', decimals=1)
+            button = ui.RadioButton(
+                text=step_size_label,
+                tool_tip=f"Move in {step_size_label} steps.",
+                stylesheet=f"QRadioButton:enabled{{color:{step_color};}}",
+                toggled=self.on_step_toggled
+            )
+            button.movement_width = step_size
+            button.movement_color = step_color
+            self.movement_buttons.append(button)
+        self.pos_x_label = ui.Label()
+        self.pos_y_label = ui.Label()
+        self.pos_z_label = ui.Label()
+        self.cal_x_label = ui.Label()
+        self.cal_y_label = ui.Label()
+        self.cal_z_label = ui.Label()
+        self.rm_x_label = ui.Label()
+        self.rm_y_label = ui.Label()
+        self.rm_z_label = ui.Label()
         self.laser_state_label = ui.Label("n/a")
         # Layout
         self.controls_layout = ui.Column(
+            ui.Spacer(),
             ui.Row(
                 ui.Spacer(),
                 ui.Row(
@@ -165,7 +173,7 @@ class TableControl(ui.Column, SettingsMixin):
                 ui.Column(
                     ui.GroupBox(
                         title="Movement",
-                        layout=self.step_buttons
+                        layout=self.movement_buttons
                     ),
                     ui.Spacer(horizontal=False)
                 ),
@@ -173,20 +181,7 @@ class TableControl(ui.Column, SettingsMixin):
                 stretch=(1, 0, 0, 0, 0, 0, 1)
             ),
             ui.Spacer(),
-            stretch=(0, 1)
-        )
-        self.position_groupbox = PositionGroupBox()
-        self.calibration_groupbox = CalibrationGroupBox()
-        self.safety_groupbox = ui.GroupBox(
-            title="Safety",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Laser Sensor"),
-                ),
-                ui.Column(
-                    self.laser_state_label,
-                )
-            )
+            stretch=(1, 0, 1)
         )
         self.append(ui.Column(
             ui.Row(
@@ -195,12 +190,50 @@ class TableControl(ui.Column, SettingsMixin):
                         title="Control",
                         layout=self.controls_layout
                     ),
-                    ui.Label("All controls relative to Probe-Card camera image.", enabled=False),
+                    ui.Label("All controls relative to Probe-Card camera image.", enabled=False)
                 ),
                 ui.Column(
-                    self.position_groupbox,
-                    self.calibration_groupbox,
-                    self.safety_groupbox
+                    ui.GroupBox(
+                        width=160,
+                        title="Position",
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
+                            ),
+                            ui.Column(
+                                self.pos_x_label,
+                                self.pos_y_label,
+                                self.pos_z_label
+                            ),
+                        )
+                    ),
+                    ui.GroupBox(
+                        title="State",
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z"),
+                            ),
+                            ui.Column(
+                                self.cal_x_label,
+                                self.cal_y_label,
+                                self.cal_z_label
+                            ),
+                            ui.Column(
+                                self.rm_x_label,
+                                self.rm_y_label,
+                                self.rm_z_label
+                            )
+                        )
+                    ),
+                    ui.Row(
+                        ui.Label("Laser Sensor"),
+                        self.laser_state_label,
+                        stretch=(0, 1)
+                    )
                 ),
                 ui.Spacer(),
                 stretch=(0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
@@ -209,116 +242,98 @@ class TableControl(ui.Column, SettingsMixin):
             stretch=(0, 1)
         ))
         # Init buttons
-        if self.step_buttons:
-            self.step_buttons[0].checked = True
-        # Initialize
-        self.lock_controls()
+        if self.movement_buttons:
+            self.movement_buttons[0].checked = True
         self.position = 0, 0, 0
-        self.caldone = 0, 0, 0
         self.on_update_laser_state(None)
-        self.update_controls()
-
-    def load_settings(self):
-        while self.step_buttons:
-            button = self.step_buttons[0]
-            self.step_buttons.remove(button)
-            button.hide()
-            button.qt.deleteLater()
-        table_step_sizes = self.settings.get('table_step_sizes') or []
-        for item in table_step_sizes:
-            step_size = (item.get('step_size'))
-            z_limit = (item.get('z_limit'))
-            button = ui.RadioButton(
-                text="{} (Z-Limit {} mm)".format(format_width(step_size), from_table_unit(z_limit)),
-                clicked=self.on_step_button_checked
-            )
-            button.step_size = step_size
-            button.z_limit = z_limit
-            self.step_buttons.append(button)
-        if self.step_buttons:
-            self.step_buttons[0].checked = True
-
-    def store_settings(self):
-        pass
-
-    def on_step_button_checked(self):
-        self.update_controls()
-
-    def lock_controls(self):
-        self.front_button.enabled = False
-        self.back_button.enabled = False
-        self.left_button.enabled = False
-        self.right_button.enabled = False
-        self.up_button.enabled = False
-        self.down_button.enabled = False
-
-    def update_controls(self):
-        self.lock_controls()
-        self.down_button.enabled = True
-        x, y, z = self.position
-        for button in self.step_buttons:
-            if button.checked:
-                step_size = button.step_size
-                z_limit = button.z_limit
-                if z < z_limit:
-                    self.front_button.enabled = True
-                    self.back_button.enabled = True
-                    self.left_button.enabled = True
-                    self.right_button.enabled = True
-                if z + step_size <= z_limit:
-                    self.up_button.enabled = True
 
     @property
-    def step_size(self):
-        for button in self.step_buttons:
+    def step_width(self):
+        for button in self.movement_buttons:
             if button.checked:
-                return abs(button.step_size)
+                return abs(button.movement_width)
         return 0
 
     @property
+    def step_color(self):
+        for button in self.movement_buttons:
+            if button.checked:
+                return button.movement_color
+        return "black"
+
+    @property
     def position(self):
-        return self.position_groupbox.value
+        return self.__position
 
     @position.setter
     def position(self, value):
-        self.position_groupbox.value = value[:3]
-        self.update_controls()
+        self.__position = value[0], value[1], value[2]
+        # TODO
+        self.pos_x_label.text = f"{value[0] / 1000.:.3f} mm"
+        self.pos_y_label.text = f"{value[1] / 1000.:.3f} mm"
+        self.pos_z_label.text = f"{value[2] / 1000.:.3f} mm"
 
     @property
     def caldone(self):
-        return self.calibration_groupbox.value
+        return self.__caldone
 
     @caldone.setter
     def caldone(self, value):
-        self.calibration_groupbox.value = value[:3]
-        self.controls_layout.enabled = self.calibration_groupbox.valid
+        def getcal(value):
+            return value & 0x1
+        def getrm(value):
+            return (value >> 1) & 0x1
+        self.__caldone = value[0], value[1], value[2]
+        self.cal_x_label.text = "cal {}".format(getcal(value[0]))
+        self.cal_x_label.stylesheet = "color: green" if getcal(value[0]) else "color: red"
+        self.cal_y_label.text = "cal {}".format(getcal(value[1]))
+        self.cal_y_label.stylesheet = "color: green" if getcal(value[1]) else "color: red"
+        self.cal_z_label.text = "cal {}".format(getcal(value[2]))
+        self.cal_z_label.stylesheet = "color: green" if getcal(value[2]) else "color: red"
+        self.rm_x_label.text = "rm {}".format(getrm(value[0]))
+        self.rm_x_label.stylesheet = "color: green" if getrm(value[0]) else "color: red"
+        self.rm_y_label.text = "rm {}".format(getrm(value[1]))
+        self.rm_y_label.stylesheet = "color: green" if getrm(value[1]) else "color: red"
+        self.rm_z_label.text = "rm {}".format(getrm(value[2]))
+        self.rm_z_label.stylesheet = "color: green" if getrm(value[2]) else "color: red"
+        state = value == (3, 3, 3)
+        self.controls_layout.enabled = state
+
+    def load_table_step_sizes(self):
+        default_steps = [
+            {"step_size": 1.0, "step_color": "green"},
+            {"step_size": 10.0, "step_color": "orange"},
+            {"step_size": 100.0, "step_color": "red"},
+        ]
+        return self.settings.get("table_step_sizes") or default_steps
 
     def on_back(self):
-        self.lock_controls()
-        self.emit("move", 0, self.step_size, 0)
+        self.emit("move", 0, self.step_width, 0)
 
     def on_front(self):
-        self.lock_controls()
-        self.emit("move", 0, -self.step_size, 0)
+        self.emit("move", 0, -self.step_width, 0)
 
     def on_left(self):
-        self.lock_controls()
-        self.emit("move", -self.step_size, 0, 0)
+        self.emit("move", -self.step_width, 0, 0)
 
     def on_right(self):
-        self.lock_controls()
-        self.emit("move", self.step_size, 0, 0)
+        self.emit("move", self.step_width, 0, 0)
 
     def on_up(self):
-        self.lock_controls()
-        self.emit("move", 0, 0, self.step_size)
+        self.emit("move", 0, 0, self.step_width)
 
     def on_down(self):
-        self.lock_controls()
-        self.emit("move", 0, 0, -self.step_size)
+        self.emit("move", 0, 0, -self.step_width)
+
+    def on_step_toggled(self, state):
+        # Disable move up button for large step sizes
+        self.up_button.enabled = self.step_width <= self.maximum_z_step_size
+        print(self.step_width, self.maximum_z_step_size)
+        for button in self.control_buttons:
+            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'};font-size:22px;}}"
 
     def on_update_laser_state(self, enabled):
         laser_state = {False: "OFF", True: "ON"}.get(enabled, "n/a")
-        laser_style = {False: "QLabel{color:red}", True: "QLabel{color:green}"}.get(enabled, "")
+        laser_style = {False: "QLabel{color:red;font-weight:bold}", True: "QLabel{color:green;font-weight:bold}"}.get(enabled, "")
         self.laser_state_label.text = laser_state
         self.laser_state_label.stylesheet = laser_style
