@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.27.0
+
+### Fixed
+- Table error 1004 issue.
+
 ## 0.26.0
 
 ### Added
