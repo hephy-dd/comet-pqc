@@ -143,17 +143,9 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.editable = True
         self.duplicates_enabled = False
-        self.mute = False
-        def on_operator_changed(_):
-            if not self.mute:
-                self.store_settings()
-        self.qt.editTextChanged.connect(on_operator_changed)
-        self.qt.currentIndexChanged.connect(on_operator_changed)
 
     def load_settings(self):
-        self.mute = True
         self.items = self.settings.get("operators") or []
         # Set current operator
         try:
@@ -162,7 +154,6 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
             index = 0
         index = max(0, min(index, len(self)))
         self.current = self[index]
-        self.mute = False
 
     def store_settings(self):
         self.settings["current_operator"] = max(0, self.qt.currentIndex())
@@ -170,6 +161,53 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         for index in range(len(self)):
             operators.append(self.qt.itemText(index))
         self.settings["operators"] = operators
+
+class OperatorWidget(ui.Row, SettingsMixin):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.operator_combo_box = OperatorComboBox()
+        self.add_button = ui.Button(
+            icon=make_path('assets', 'icons', 'add.svg'),
+            tool_tip="Add new operator.",
+            width=24,
+            clicked=self.on_add_clicked
+        )
+        self.remove_button = ui.Button(
+            icon=make_path('assets', 'icons', 'delete.svg'),
+            tool_tip="Remove current operator from list.",
+            width=24,
+            clicked=self.on_remove_clicked
+        )
+        self.append(self.operator_combo_box)
+        self.append(self.add_button)
+        self.append(self.remove_button)
+
+    def on_add_clicked(self):
+        operator = ui.get_text(
+            text="",
+            title="Add operator",
+            label="Enter name of operator to add."
+        )
+        if operator:
+            if operator not in self.operator_combo_box:
+                self.operator_combo_box.append(operator)
+            self.operator_combo_box.current = operator
+
+    def on_remove_clicked(self):
+        index = self.operator_combo_box.qt.currentIndex()
+        if index >= 0:
+            if ui.show_question(
+                title="Remove operator",
+                text=f"Do you want to remove operator '{self.operator_combo_box.qt.currentText()}' from the list?"
+            ):
+                self.operator_combo_box.qt.removeItem(index)
+
+    def load_settings(self):
+        self.operator_combo_box.load_settings()
+
+    def store_settings(self):
+        self.operator_combo_box.store_settings()
 
 # Table components
 

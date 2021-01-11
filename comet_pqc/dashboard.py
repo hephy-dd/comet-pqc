@@ -25,7 +25,7 @@ from .sequence import MeasurementTreeItem
 from .sequence import SequenceManager
 
 from .components import ToggleButton
-from .components import OperatorComboBox
+from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .dialogs import TableControlDialog
@@ -263,13 +263,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Operator
 
-        self.operator_combobox = OperatorComboBox()
-        self.operator_combobox.load_settings()
+        self.operator_widget = OperatorWidget()
+        self.operator_widget.load_settings()
         self.operator_groupbox = ui.GroupBox(
             title="Operator",
-            layout=ui.Row(
-                self.operator_combobox
-            )
+            layout=self.operator_widget
         )
 
         # Working directory
@@ -278,9 +276,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         self.output_groupbox = ui.GroupBox(
             title="Working Directory",
-            layout=ui.Row(
-                self.output_widget
-            )
+            layout=self.output_widget
         )
 
         # Controls
@@ -347,12 +343,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.checked = use_environ
         use_table =  self.settings.get("use_table", False)
         self.table_groupbox.checked = use_table
+        self.operator_widget.load_settings()
         self.output_widget.load_settings()
-        self.output_widget.load_settings()
-        self.output_widget.load_settings()
-        self.output_widget.load_settings()
-        self.output_widget.load_settings()
-        self.output_widget.load_settings()
+
 
     @handle_exception
     def store_settings(self):
@@ -360,6 +353,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.settings["sample_type"] = self.sample_type()
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
+        self.operator_widget.store_settings()
         self.output_widget.store_settings()
 
     @handle_exception
@@ -429,7 +423,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def operator(self):
         """Return current operator."""
-        return self.operator_combobox.qt.currentText().strip()
+        return self.operator_widget.operator_combo_box.qt.currentText().strip()
 
     def output_dir(self):
         """Return output path."""
@@ -568,15 +562,14 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             contact_item = current_item
             def verify_start():
                 dialog = StartSequenceDialog(contact_item)
+                self.operator_widget.store_settings()
+                self.output_widget.store_settings()
                 dialog.load_settings()
                 if not dialog.run():
                     return False
                 dialog.store_settings()
-                print('AAAA')
-                self.operator_combobox.load_settings()
-                print('BBBB')
+                self.operator_widget.load_settings()
                 self.output_widget.load_settings()
-                print('CCCC')
                 return True
             if verify_start():
                 self.on_sequence_start(contact_item)

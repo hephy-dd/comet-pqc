@@ -1,6 +1,6 @@
 from comet import ui
 
-from ..components import OperatorComboBox
+from ..components import OperatorWidget
 from ..components import WorkingDirectoryWidget
 
 __all__ = ['StartSequenceDialog']
@@ -10,7 +10,7 @@ class StartSequenceDialog(ui.Dialog):
     def __init__(self, contact_item):
         super().__init__()
         self.title = "Start Sequence"
-        self.operator_combobox = OperatorComboBox()
+        self.operator_combobox = OperatorWidget()
         self.output_combobox = WorkingDirectoryWidget()
         self.button_box = ui.DialogButtonBox(
             buttons=("yes", "no"),
