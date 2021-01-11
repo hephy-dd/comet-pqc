@@ -31,6 +31,7 @@ from .components import WorkingDirectoryWidget
 from .dialogs import TableControlDialog
 from .dialogs import TableMoveDialog
 from .dialogs import TableCalibrateDialog
+from .dialogs import StartSequenceDialog
 
 from .tabs import EnvironmentTab
 from .tabs import MeasurementTab
@@ -263,6 +264,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Operator
 
         self.operator_combobox = OperatorComboBox()
+        self.operator_combobox.load_settings()
         self.operator_groupbox = ui.GroupBox(
             title="Operator",
             layout=ui.Row(
@@ -345,6 +347,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.environment_groupbox.checked = use_environ
         use_table =  self.settings.get("use_table", False)
         self.table_groupbox.checked = use_table
+        self.output_widget.load_settings()
+        self.output_widget.load_settings()
+        self.output_widget.load_settings()
+        self.output_widget.load_settings()
+        self.output_widget.load_settings()
         self.output_widget.load_settings()
 
     @handle_exception
@@ -559,11 +566,20 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.on_measure_run()
         elif isinstance(current_item, ContactTreeItem):
             contact_item = current_item
-            if not ui.show_question(
-                title="Start sequence",
-                text=f"Are you sure to start sequence '{contact_item.name}'?"
-            ): return
-            self.on_sequence_start(contact_item)
+            def verify_start():
+                dialog = StartSequenceDialog(contact_item)
+                dialog.load_settings()
+                if not dialog.run():
+                    return False
+                dialog.store_settings()
+                print('AAAA')
+                self.operator_combobox.load_settings()
+                print('BBBB')
+                self.output_widget.load_settings()
+                print('CCCC')
+                return True
+            if verify_start():
+                self.on_sequence_start(contact_item)
 
     def on_sequence_start(self, contact_item):
         self.switch_off_lights()

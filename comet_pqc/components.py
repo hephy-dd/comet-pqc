@@ -67,8 +67,11 @@ class DirectoryWidget(ui.Row):
         return locations
 
     def clear_locations(self):
+        changed = self.location_combo_box.changed
+        self.location_combo_box.changed = None
         self.location_combo_box.clear()
         self.update_locations()
+        self.location_combo_box.changed = changed
 
     def append_location(self, value):
         self.location_combo_box.append(value)
@@ -142,6 +145,15 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         super().__init__(*args, **kwargs)
         self.editable = True
         self.duplicates_enabled = False
+        self.mute = False
+        def on_operator_changed(_):
+            if not self.mute:
+                self.store_settings()
+        self.qt.editTextChanged.connect(on_operator_changed)
+        self.qt.currentIndexChanged.connect(on_operator_changed)
+
+    def load_settings(self):
+        self.mute = True
         self.items = self.settings.get("operators") or []
         # Set current operator
         try:
@@ -150,14 +162,14 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
             index = 0
         index = max(0, min(index, len(self)))
         self.current = self[index]
-        def on_operator_changed(_):
-            self.settings["current_operator"] = max(0, self.qt.currentIndex())
-            operators = []
-            for index in range(len(self)):
-                operators.append(self.qt.itemText(index))
-            self.settings["operators"] = operators
-        self.qt.editTextChanged.connect(on_operator_changed)
-        self.qt.currentIndexChanged.connect(on_operator_changed)
+        self.mute = False
+
+    def store_settings(self):
+        self.settings["current_operator"] = max(0, self.qt.currentIndex())
+        operators = []
+        for index in range(len(self)):
+            operators.append(self.qt.itemText(index))
+        self.settings["operators"] = operators
 
 # Table components
 

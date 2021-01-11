@@ -9,6 +9,9 @@ nav_order: 10
 
 ## 0.27.0
 
+### Added
+- Start sequence dialog.
+
 ### Fixed
 - Table error 1004 issue.
 
