@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2021-01-05
+### Added
+- Start sequence dialog (#74)
+### Fixed
+- Table error 1004 issue (#53)
+
 ## [0.26.0] - 2020-10-28
 ### Added
 - Analysis functions parameter (#82).

@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.27.0
+
+### Added
+- Start sequence dialog.
+
+### Fixed
+- Table error 1004 issue.
+
 ## 0.26.0
 
 ### Added
