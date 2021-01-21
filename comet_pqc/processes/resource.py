@@ -8,7 +8,12 @@ from comet.driver import Driver as DefaultDriver
 from comet.process import Process
 from comet.resource import ResourceMixin
 
-__all__ = ['ResourceProcess']
+__all__ = ['ResourceProcess', 'async_request']
+
+def async_request(method):
+    def async_request(self, *args, **kwargs):
+        self.async_request(lambda context: method(self, context, *args, **kwargs))
+    return async_request
 
 class ResourceRequest:
 
@@ -66,6 +71,13 @@ class ResourceProcess(Process, ResourceMixin):
     @enabled.setter
     def enabled(self, value):
         self.__enabled = value
+
+    def async_request(self, callback):
+        with self.__lock:
+            if not self.enabled:
+                raise RuntimeError("service not enabled")
+            r = ResourceRequest(callback)
+            self.__queue.put(r)
 
     def request(self, callback):
         with self.__lock:

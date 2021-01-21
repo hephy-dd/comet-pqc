@@ -114,7 +114,8 @@ def main():
 
     app.processes.add("environment", EnvironmentProcess(
         name="environ",
-        failed=on_show_error
+        failed=on_show_error,
+        pc_data_updated=dashboard.on_pc_data_updated
     ))
     app.processes.add("status", StatusProcess(
         finished=dashboard.on_status_finished,

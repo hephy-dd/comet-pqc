@@ -54,6 +54,8 @@ TABLE_UNITS = {
 
 class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
+    environment_poll_interval = 1.0
+
     def __init__(self):
         super().__init__()
 
@@ -331,7 +333,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
         # Install timer to update environment controls
         self.environment_timer = Timer(timeout=self.sync_environment_controls)
-        self.environment_timer.start(1.0)
+        self.environment_timer.start(self.environment_poll_interval)
 
     @handle_exception
     def load_settings(self):
@@ -793,26 +795,23 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def sync_environment_controls(self):
         """Syncronize environment controls."""
         if self.use_environment():
-            try:
-                with self.processes.get("environment") as environment:
-                    pc_data = environment.pc_data()
-            except:
-                self.environment_groupbox.checked = False
-                self.environment_tab.enabled = False
-                raise
-            else:
-                self.box_laser_button.checked = pc_data.relay_states.laser_sensor
-                self.box_light_button.checked = pc_data.relay_states.box_light
-                self.microscope_light_button.checked = pc_data.relay_states.microscope_light
-                self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
-                self.microscope_control_button.checked = pc_data.relay_states.microscope_control
-                self.probecard_light_button.checked = pc_data.relay_states.probecard_light
-                self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
-                self.pid_control_button.checked = pc_data.pid_status
-                self.environment_tab.enabled = True
-                self.environment_tab.update_data(pc_data)
+            with self.processes.get("environment") as environment:
+                environment.request_pc_data()
+
         else:
             self.environment_tab.enabled = False
+
+    def on_pc_data_updated(self, pc_data):
+        self.box_laser_button.checked = pc_data.relay_states.laser_sensor
+        self.box_light_button.checked = pc_data.relay_states.box_light
+        self.microscope_light_button.checked = pc_data.relay_states.microscope_light
+        self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
+        self.microscope_control_button.checked = pc_data.relay_states.microscope_control
+        self.probecard_light_button.checked = pc_data.relay_states.probecard_light
+        self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
+        self.pid_control_button.checked = pc_data.pid_status
+        self.environment_tab.enabled = True
+        self.environment_tab.update_data(pc_data)
 
     @handle_exception
     def sync_table_controls(self):
