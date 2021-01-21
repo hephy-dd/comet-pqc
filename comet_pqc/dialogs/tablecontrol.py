@@ -229,7 +229,8 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.positions_tree = ui.Tree(
             header=("Name", "X", "Y", "Z", "Comment"),
             root_is_decorated=False,
-            selected=self.on_positons_selected
+            selected=self.on_position_selected,
+            double_clicked=self.on_position_double_clicked
         )
         self.pick_button = ui.Button(
             text="&Pick",
@@ -256,6 +257,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         )
         self.move_button= ui.Button(
             text="&Move",
+            tool_tip="Move to selected position",
             clicked=self.on_move,
             enabled=False
         )
@@ -280,7 +282,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
                 z=from_table_unit(position.get('z')),
                 comment=position.get('comment') or "",
             ))
-        self.positions_tree.fit(0)
+        self.positions_tree.fit()
         self.z_limit_movement = self.settings.get('z_limit_movement') or 0.0
 
     def store_settings(self):
@@ -311,12 +313,15 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.remove_button.enabled = True
         self.move_button.enabled = True
 
-    def on_positons_selected(self, item):
+    def on_position_selected(self, item):
         enabled = item is not None
         self.pick_button.enabled = True
         self.edit_button.enabled = True
         self.remove_button.enabled = True
         self.move_button.enabled = True
+
+    def on_position_double_clicked(self, *args):
+        self.on_move()
 
     def on_pick_position(self):
         item = self.positions_tree.current
@@ -726,7 +731,7 @@ class PositionLabel(ui.Label):
         if value is None:
             self.text = "n/a"
         else:
-            self.text = format_table_unit(value)
+            self.text = format_table_unit(to_table_unit(value))
 
 class CalibrationLabel(ui.Label):
 
