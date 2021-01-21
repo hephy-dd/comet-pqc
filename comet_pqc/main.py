@@ -11,9 +11,7 @@ from . import __version__
 
 from .processes import EnvironmentProcess
 from .processes import StatusProcess
-from .processes import ControlProcess
-from .processes import MoveProcess
-from .processes import CalibrateProcess
+from .processes import AlternateTableProcess
 from .processes import MeasureProcess
 from .processes import SequenceProcess
 
@@ -123,20 +121,8 @@ def main():
         message=on_message,
         progress=on_progress
     ))
-    app.processes.add("control", ControlProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
-    ))
-    app.processes.add("move", MoveProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
-    ))
-    app.processes.add("calibrate", CalibrateProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
+    app.processes.add("table", AlternateTableProcess(
+        failed=on_show_error
     ))
     app.processes.add("measure", MeasureProcess(
         finished=dashboard.on_measure_finished,
@@ -196,10 +182,14 @@ def main():
 
     # Start services
     app.processes.get("environment").start()
+    app.processes.get("table").start()
 
     # Sync environment controls
     if dashboard.environment_groupbox.checked:
         dashboard.sync_environment_controls()
+
+    if dashboard.table_groupbox.checked:
+        dashboard.sync_table_controls()
 
     # HACK: resize preferences dialog for HiDPI
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))

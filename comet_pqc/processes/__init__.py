@@ -1,4 +1,4 @@
 from .environment import EnvironmentProcess
 from .status import StatusProcess
-from .table import ControlProcess, MoveProcess, CalibrateProcess
+from .table import AlternateTableProcess
 from .measure import MeasureProcess, SequenceProcess

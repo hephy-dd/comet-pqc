@@ -29,8 +29,6 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .dialogs import TableControlDialog
-from .dialogs import TableMoveDialog
-from .dialogs import TableCalibrateDialog
 from .dialogs import StartSequenceDialog
 
 from .tabs import EnvironmentTab
@@ -238,18 +236,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_table_controls_start
         )
 
-        self.table_move_button = ui.Button(
-            text="Move to...",
-            tool_tip="Move table to predefined positions.",
-            clicked=self.on_table_move_start
-        )
-
-        self.table_calibrate_button = ui.Button(
-            text="Calibrate...",
-            tool_tip="Calibrate table.",
-            clicked=self.on_table_calibrate_start
-        )
-
         self.table_groupbox = ui.GroupBox(
             title="Table",
             checkable=True,
@@ -257,9 +243,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             layout=ui.Row(
                 self.table_joystick_button,
                 ui.Spacer(vertical=False),
-                self.table_control_button,
-                self.table_move_button,
-                self.table_calibrate_button
+                self.table_control_button
             )
         )
 
@@ -497,7 +481,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def lock_controls(self):
         """Lock dashboard controls."""
         self.sample_groupbox.enabled = False
-        self.table_calibrate_button.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.sequence_tree.double_clicked = None
@@ -513,7 +496,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def unlock_controls(self):
         """Unlock dashboard controls."""
         self.sample_groupbox.enabled = True
-        self.table_calibrate_button.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.sequence_tree.double_clicked = self.on_tree_double_clicked
@@ -718,22 +700,15 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def on_table_controls_start(self):
-        dialog = TableControlDialog()
+        table = self.processes.get("table")
+        dialog = TableControlDialog(table)
+        dialog.load_settings()
         if self.use_environment():
             with self.processes.get("environment") as environ:
                 pc_data = environ.pc_data()
-                dialog.control.on_update_laser_state(pc_data.relay_states.laser_sensor)
+                dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
         dialog.run()
-        self.sync_table_controls()
-
-    @handle_exception
-    def on_table_move_start(self):
-        TableMoveDialog().run()
-        self.sync_table_controls()
-
-    @handle_exception
-    def on_table_calibrate_start(self):
-        TableCalibrateDialog().run()
+        dialog.store_settings()
         self.sync_table_controls()
 
     @handle_exception
@@ -816,15 +791,15 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     @handle_exception
     def sync_table_controls(self):
         """Syncronize table controls."""
-        try:
-            with self.resources.get("table") as table_resource:
-                table = Venus1(table_resource)
-                joystick_state = table.joystick
-        except:
-            self.table_groupbox.checked = False
-            raise
-        else:
-            self.table_joystick_button.checked = joystick_state
+        # try:
+        #     with self.resources.get("table") as table_resource:
+        #         table = Venus1(table_resource)
+        #         joystick_state = table.joystick
+        # except:
+        #     self.table_groupbox.checked = False
+        #     raise
+        # else:
+        #     self.table_joystick_button.checked = joystick_state
 
     def on_environment_groupbox_toggled(self, state):
         if state:

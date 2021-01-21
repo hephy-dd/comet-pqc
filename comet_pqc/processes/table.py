@@ -1,10 +1,13 @@
 import logging
 import time
 import threading
+import traceback
 
 import comet
 from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
+
+from comet_pqc.utils import format_table_unit, from_table_unit, to_table_unit
 
 UNIT_MICROMETER = 1
 UNIT_MILLIMETER = 2
@@ -82,103 +85,114 @@ class TableProcess(comet.Process, ResourceMixin):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.position = None
-        self.caldone = None
-
-    def peek(self):
-        if not self.alive:
-            with self.resources.get('table') as resource:
-                table = Venus1(resource)
-                self.initialize(table)
-                self.emit('position', *table.pos)
-                self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
-                self.finalize(table)
 
     def run(self):
-        with self.resources.get('table') as resource:
-            table = Venus1(resource)
-            self.initialize(table)
-            self.control(table)
-            self.finalize(table)
+        while self.running:
+            logging.info("start serving table...")
+            try:
+                with self.resources.get('table') as resource:
+                    table = Venus1(resource)
+                    table.mode = 0
+                    table.joystick = False
+                    table.x.unit = UNIT_MICROMETER
+                    table.y.unit = UNIT_MICROMETER
+                    table.z.unit = UNIT_MICROMETER
+                    time.sleep(.250)
+                    self.event_loop(table)
+            except Exception as exc:
+                tb = traceback.format_exc()
+                logging.error("%s: %s", type(self).__name__, tb)
+                logging.error("%s: %s", type(self).__name__, exc)
+        logging.info("stopped serving table.")
 
-    def initialize(self, table):
-        table.mode = 0
-        table.joystick = False
-        table.x.unit = UNIT_MICROMETER
-        table.y.unit = UNIT_MICROMETER
-        table.z.unit = UNIT_MICROMETER
-        time.sleep(.250)
-
-    def control(self, table):
+    def event_loop(self, table):
         """Overwrite with custom table control sequence."""
 
-    def finalize(self, table):
-        pass
 
-class ControlProcess(TableProcess):
-    """Control process for Corvus table."""
+"""Table control process."""
+
+import comet
+import time
+import threading
+import random
+import logging
+
+def async_request(method):
+    def async_request(self, *args, **kwargs):
+        self._async_request(lambda context: method(self, context, *args, **kwargs))
+    return async_request
+
+class AlternateTableProcess(TableProcess):
+    """Table control process."""
 
     update_interval = 1.0
+    throttle_interval = .025
 
-    def __init__(self, message=None, progress=None, **kwargs):
+    maximum_z = 23.800
+
+    def __init__(self, message_changed=None, progress_changed=None,
+                 position_changed=None, caldone_changed=None,
+                 relative_move_finished=None, absolute_move_finished=None,
+                 **kwargs):
         super().__init__(**kwargs)
-        self.queue = []
-        self.lock = threading.RLock()
-        self.z_warning = None
-        self.message = message
-        self.progress = progress
+        self.__lock = threading.RLock()
+        self.__queue = []
+        self.message_changed = message_changed
+        self.progress_changed = progress_changed
+        self.position_changed = position_changed
+        self.caldone_changed = caldone_changed
+        self.relative_move_finished = relative_move_finished
+        self.absolute_move_finished = absolute_move_finished
 
-    def push(self, *args):
-        with self.lock:
-            self.queue.append(args)
+    def wait(self):
+        with self.__lock:
+            return True
 
-    def control(self, table):
+    def _async_request(self, request):
+        self.__queue.append(request)
+
+    @async_request
+    def position(self, table):
+        x, y, z = [from_table_unit(v) for v in table.pos]
+        self.emit('position_changed', x, y, z)
+
+    @async_request
+    def caldone(self, table):
+        x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+        self.emit('caldone_changed', x, y, z)
+
+    @async_request
+    def relative_move(self, table, x, y, z):
         error_handler = TableErrorHandler(table)
+
+        # error_handler.handle_machine_error()
+        # error_handler.handle_error()
+        # error_handler.handle_calibration_error()
+
+        self.emit("message_changed", f"moving table relative to x={x:.3f}, y={y:.3f}, z={z:.3f} mm")
+        table.rmove(
+            to_table_unit(x),
+            to_table_unit(y),
+            to_table_unit(z)
+        )
 
         error_handler.handle_machine_error()
         error_handler.handle_error()
         error_handler.handle_calibration_error()
 
-        t = time.time()
-        while self.running:
-            with self.lock:
-                if self.queue:
-                    assert table.x.unit == UNIT_MICROMETER
-                    assert table.y.unit == UNIT_MICROMETER
-                    assert table.z.unit == UNIT_MICROMETER
-                    args = self.queue.pop(0)
-                    error_handler.handle_machine_error()
-                    error_handler.handle_error()
-                    table.rmove(*args)
-                    error_handler.handle_machine_error()
-                    error_handler.handle_error()
-                    self.emit('position', *table.pos)
-                    continue
-            if (time.time() - t) > self.update_interval:
-                t = time.time()
-                error_handler.handle_machine_error()
-                error_handler.handle_error()
-                self.emit('position', *table.pos)
-                self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
-            time.sleep(.025)
+        x, y, z = table.pos
+        self.emit('position_changed', from_table_unit(x), from_table_unit(y), from_table_unit(z))
+        self.emit('relative_move_finished')
+        self.emit("message_changed", "Ready")
 
-class MoveProcess(TableProcess):
-    """Move process for Corvus table."""
-
-    MAXIMUM_Z = 23800
-
-    def __init__(self, message, progress, **kwargs):
-        super().__init__(**kwargs)
-        self.message = message
-        self.progress = progress
-
-    def control(self, table):
-        self.set("success", False)
+    @async_request
+    def absolute_move(self, table, x, y, z):
         self.set("z_warning", False)
-        self.emit("message", "Moving...")
-        x = self.get('x', 0)
-        y = self.get('y', 0)
-        z = min(self.get('z', 0), self.get('z_limit', self.MAXIMUM_Z))
+        self.emit("message_changed", "Moving...")
+        z_origin = z
+        x = to_table_unit(x)
+        y = to_table_unit(y)
+        target_z = min(to_table_unit(z), to_table_unit(self.get('z_limit', self.maximum_z)))
 
         retries = RETRIES
         delay = 1.0
@@ -191,29 +205,30 @@ class MoveProcess(TableProcess):
 
         def handle_abort():
             if not self.running:
-                self.emit("progress", 0, 0)
-                self.emit("message", "Moving aborted.")
+                self.emit("progress_changed", 0, 0)
+                self.emit("message_changed", "Moving aborted.")
                 raise comet.StopRequest()
 
-        def update_status():
-            self.emit("message", "Table x={} um, y={} um, z={} um".format(*table.pos))
-            self.emit('position', *table.pos)
+        def update_status(x, y, z):
+            x, y, z = [from_table_unit(v) for v in (x, y, z)]
+            self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
+            self.emit('position_changed', x, y, z)
 
         def update_caldone():
-            self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
+            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
 
         handle_abort()
         update_caldone()
 
-        self.emit("progress", 1, 4)
-        self.emit("message", "Retreating Z axis...")
+        self.emit("progress_changed", 1, 4)
+        self.emit("message_changed", "Retreating Z axis...")
 
         # Moving into limit switch generates error 1004
         table.rmove(0, 0, -AXIS_OFFSET)
         for i in range(retries):
             handle_abort()
-            update_status()
             pos = table.pos
+            update_status(*pos)
             if pos[2] == 0:
                 break
             time.sleep(delay)
@@ -228,55 +243,52 @@ class MoveProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 2, 4)
-        self.emit("message", "Move X Y axes...")
+        self.emit("progress_changed", 2, 4)
+        self.emit("message_changed", "Move X Y axes...")
         table.move(x, y, 0)
         for i in range(retries):
             handle_abort()
-            update_status()
             pos = table.pos
+            update_status(*pos)
             if pos[:2] == (x, y):
                 break
             time.sleep(delay)
         if pos[:2] != (x, y):
             raise RuntimeError(f"failed to absolute move, current pos: {pos}")
 
-        self.emit("progress", 3, 4)
-        self.emit("message", "Move up Z axis...")
-        table.rmove(0, 0, z)
+        self.emit("progress_changed", 3, 4)
+        self.emit("message_changed", "Move up Z axis...")
+        table.rmove(0, 0, target_z)
         for i in range(retries):
             handle_abort()
-            update_status()
             pos = table.pos
-            if pos[2] >= z:
+            update_status(*pos)
+            if pos[2] >= target_z:
                 break
             time.sleep(delay)
-        if pos != (x, y, z):
+        if pos != (x, y, target_z):
             raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
         handle_abort()
         update_caldone()
+        update_status(*table.pos)
 
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 7, 7)
-        self.emit("message", "Movement successful.")
+        self.emit("progress_changed", 7, 7)
+        self.emit("message_changed", "Movement successful.")
 
-        self.set("z_warning", self.get('z') > z)
-        self.set("success", True)
+        self.set("z_warning", z_origin > z)
 
-class CalibrateProcess(TableProcess):
-    """Calibration process for Corvus table."""
+        x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+        self.emit('caldone_changed', x, y, z)
 
-    def __init__(self, message, progress, **kwargs):
-        super().__init__(**kwargs)
-        self.message = message
-        self.progress = progress
+        self.emit('absolute_move_finished')
 
-    def control(self, table):
-        self.set("success", False)
-        self.emit("message", "Calibrating...")
+    @async_request
+    def calibarte_table(self, table):
+        self.emit("message_changed", "Calibrating...")
         retries = RETRIES
         delay = 1.0
         axes = table.x, table.y, table.z
@@ -285,13 +297,14 @@ class CalibrateProcess(TableProcess):
 
         def handle_abort():
             if not self.running:
-                self.emit("progress", 0, 0)
-                self.emit("message", "Calibration aborted.")
+                self.emit("progress_changed", 0, 0)
+                self.emit("message_changed", "Calibration aborted.")
                 raise comet.StopRequest()
 
-        def update_status():
-            self.emit("message", "Table x={} um, y={} um, z={} um".format(*table.pos))
-            self.emit('position', *table.pos)
+        def update_status(x, y, z):
+            x, y, z = [from_table_unit(v) for v in (x, y, z)]
+            self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
+            self.emit('position_changed', x, y, z)
 
         def update_caldone():
             self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
@@ -304,7 +317,9 @@ class CalibrateProcess(TableProcess):
                 handle_abort()
                 update_status()
                 # Axis reached origin?
-                if table.pos[index] == 0.0:
+                pos = table.pos
+                update_status(*pos)
+                if pos[index] == 0.0:
                     logging.info("ncal %s... done.", AXIS_NAMES.get(index))
                     break
                 time.sleep(delay)
@@ -318,9 +333,10 @@ class CalibrateProcess(TableProcess):
             time.sleep(delay)
             for i in range(retries + 1):
                 handle_abort()
-                update_status()
+                pos = table.pos
+                update_status(*pos)
                 # Axis stopped moving?
-                if table.pos[index] == pos[index]:
+                if pos[index] == pos[index]:
                     logging.info("nrm %s... done.", AXIS_NAMES.get(index))
                     break
                 time.sleep(delay)
@@ -333,8 +349,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 0, 7)
-        self.emit("message", "Retreating Z axis...")
+        self.emit("progress_changed", 0, 7)
+        self.emit("message_changed", "Retreating Z axis...")
         if table.z.enabled:
             if not ncal(table.z):
                 raise RuntimeError("failed retreating Z axis")
@@ -346,8 +362,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 1, 7)
-        self.emit("message", "Calibrating Y axis...")
+        self.emit("progress_changed", 1, 7)
+        self.emit("message_changed", "Calibrating Y axis...")
         if table.y.enabled:
             if not ncal(table.y):
                 raise RuntimeError("failed to calibrate Y axis")
@@ -359,8 +375,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 2, 7)
-        self.emit("message", "Calibrating X axis...")
+        self.emit("progress_changed", 2, 7)
+        self.emit("message_changed", "Calibrating X axis...")
         if table.x.enabled:
             if not ncal(table.x):
                 raise RuntimeError("failed to calibrate Z axis")
@@ -372,8 +388,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 3, 7)
-        self.emit("message", "Range measure X axis...")
+        self.emit("progress_changed", 3, 7)
+        self.emit("message_changed", "Range measure X axis...")
         if table.x.enabled:
             if not nrm(table.x):
                 raise RuntimeError("failed to ragne measure X axis")
@@ -385,8 +401,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 4, 7)
-        self.emit("message", "Range measure Y axis...")
+        self.emit("progress_changed", 4, 7)
+        self.emit("message_changed", "Range measure Y axis...")
         if table.y.enabled:
             if not nrm(table.y):
                 raise RuntimeError("failed to range measure Y axis")
@@ -402,8 +418,8 @@ class CalibrateProcess(TableProcess):
         table.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
         for i in range(retries):
             handle_abort()
-            update_status()
             pos = table.pos
+            update_status(*pos)
             if pos[:2] == (0, 0):
                 break
             time.sleep(delay)
@@ -418,8 +434,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 5, 7)
-        self.emit("message", "Calibrating Z axis minimum...")
+        self.emit("progress_changed", 5, 7)
+        self.emit("message_changed", "Calibrating Z axis minimum...")
         if table.z.enabled:
             if not ncal(table.z):
                 raise RuntimeError("failed to calibrate Z axis")
@@ -431,8 +447,8 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 6, 7)
-        self.emit("message", "Range measure Z axis maximum...")
+        self.emit("progress_changed", 6, 7)
+        self.emit("message_changed", "Range measure Z axis maximum...")
         if table.z.enabled:
             if not nrm(table.z):
                 raise RuntimeError("failed to range measure Z axis")
@@ -448,8 +464,8 @@ class CalibrateProcess(TableProcess):
         table.rmove(0, 0, -AXIS_OFFSET)
         for i in range(retries):
             handle_abort()
-            update_status()
             pos = table.pos
+            update_status(*pos)
             if pos == (0, 0, 0):
                 break
             time.sleep(delay)
@@ -464,7 +480,23 @@ class CalibrateProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        self.emit("progress", 7, 7)
-        self.emit("message", "Calibration successful.")
+        self.emit("progress_changed", 7, 7)
+        self.emit("message_changed", "Calibration successful.")
 
-        self.set("success", True)
+    def event_loop(self, table):
+        t = time.time()
+        while self.running:
+            with self.__lock:
+                if self.__queue:
+                    request = self.__queue.pop(0)
+                    try:
+                        request(table)
+                    except Exception as exc:
+                        self.emit('message_changed', exc)
+                        raise
+                else:
+                    if time.time() > t + self.update_interval:
+                        self.position()
+                        self.caldone()
+                        t = time.time()
+            time.sleep(self.throttle_interval)
