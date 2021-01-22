@@ -1,3 +1,4 @@
+from .contact import *
 from .iv_ramp import *
 from .iv_ramp_elm import *
 from .iv_ramp_bias import *

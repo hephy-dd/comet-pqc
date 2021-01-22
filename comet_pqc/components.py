@@ -6,8 +6,14 @@ from comet.settings import SettingsMixin
 from .utils import make_path, create_icon
 from .utils import format_table_unit
 
+from comet_pqc.utils import format_table_unit
+from comet_pqc.utils import from_table_unit, to_table_unit
+
+from qutie.qutie import Qt
+
 __all__ = [
     'ToggleButton',
+    'PositionLabel',
     'DirectoryWidget',
     'OperatorComboBox',
     'CalibrationGroupBox',
@@ -26,6 +32,25 @@ class ToggleButton(ui.Button):
 
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
+
+class PositionLabel(ui.Label):
+
+    def __init__(self, value=None):
+        super().__init__()
+        self.value = value
+        self.qt.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        self.__value = value
+        if value is None:
+            self.text = format(float('nan'))
+        else:
+            self.text = format_table_unit(to_table_unit(value))
 
 class DirectoryWidget(ui.Row):
 

@@ -1,19 +1,4 @@
-"""Table control widgets and dialogs.
-
-* TableControlDialog
-
-* TableJoystickWidget
-* TablePositionsWidget
-* TableContactsWidget
-* TableOptionsWidget
-
-* PositionLabel
-* CalibrationLabel
-* SwitchLabel
-
-* KeypadButton
-* KeypadSpacer
-"""
+"""Table control widgets and dialogs."""
 
 import comet
 import comet.ui as ui
@@ -22,6 +7,8 @@ from comet.settings import SettingsMixin
 from comet_pqc.utils import format_table_unit
 from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
+
+from ..components import PositionLabel
 
 from qutie.qutie import Qt
 
@@ -845,25 +832,6 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.process.relative_move_finished = None
             self.process.absolute_move_finished = None
             self.process = None
-
-class PositionLabel(ui.Label):
-
-    def __init__(self, value=None):
-        super().__init__()
-        self.value = value
-        self.qt.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        self.__value = value
-        if value is None:
-            self.text = format(float('nan'))
-        else:
-            self.text = format_table_unit(to_table_unit(value))
 
 class CalibrationLabel(ui.Label):
 

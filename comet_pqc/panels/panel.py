@@ -8,9 +8,48 @@ from comet import ui
 from ..utils import format_metric
 from ..utils import stitch_pixmaps
 
-__all__ = ['Panel']
+__all__ = ['PanelStub', 'Panel']
 
-class Panel(ui.Widget):
+class PanelStub(ui.Widget):
+
+    type = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title_label = ui.Label(
+            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
+        )
+        self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
+        self.description_label = ui.Label()
+        self.layout = ui.Column(
+            self.title_label,
+            self.description_label,
+            ui.Spacer()
+        )
+
+    def store(self):
+        pass
+
+    def restore(self):
+        pass
+
+    def clear_readings(self):
+        pass
+
+    def lock(self):
+        pass
+
+    def unlock(self):
+        pass
+
+    def mount(self, context):
+        self.unmount()
+
+    def unmount(self):
+        self.title_label.text = ""
+        self.description_label.text = ""
+
+class Panel(PanelStub):
     """Base class for measurement panels."""
 
     type = "measurement"
@@ -19,11 +58,6 @@ class Panel(ui.Widget):
         super().__init__(*args, **kwargs)
         self._bindings = {}
         self.state_handlers = []
-        self.title_label = ui.Label(
-            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
-        )
-        self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
-        self.description_label = ui.Label()
         self.data_panel = ui.Column()
         self.general_tab = ui.Tab(
                 title="General",
@@ -39,14 +73,9 @@ class Panel(ui.Widget):
             ),
             stretch=(3, 1)
         )
-        self.layout = ui.Column(
-            self.title_label,
-            self.description_label,
-            self.data_panel,
-            self.control_panel,
-            ui.Spacer(),
-            stretch=(0, 0, 0, 0, 1)
-        )
+        self.layout.insert(2, self.data_panel)
+        self.layout.insert(3, self.control_panel)
+        self.layout.stretch= 0, 0, 0, 0, 1
         self.measurement = None
         self.data_tabs = ui.Tabs()
         self.data_panel.append(self.data_tabs)
@@ -71,7 +100,7 @@ class Panel(ui.Widget):
 
     def mount(self, measurement):
         """Mount measurement to panel."""
-        self.unmount()
+        super().mount(measurement)
         self.title_label.text = f"{self.title} &rarr; {measurement.name}"
         self.description_label.text = measurement.description
         self.measurement = measurement
@@ -103,8 +132,7 @@ class Panel(ui.Widget):
 
     def unmount(self):
         """Unmount measurement from panel."""
-        self.title_label.text = ""
-        self.description_label.text = ""
+        super().unmount()
         self.measurement = None
         self.analysis_tree.clear()
 

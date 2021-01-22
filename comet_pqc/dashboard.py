@@ -534,9 +534,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.hide()
         self.measurement_tab.measure_controls.visible = False
         if isinstance(item, ContactTreeItem):
-            pass
+            panel = self.panels.get("contact")
+            panel.visible = True
+            panel.mount(item)
         if isinstance(item, MeasurementTreeItem):
-            self.panels.unmount()
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
