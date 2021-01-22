@@ -86,10 +86,6 @@ def main():
     ))
     app.resources.load_settings()
 
-    # Dashboard
-
-    dashboard = Dashboard()
-
     # Callbacks
 
     def on_show_error(exc, tb):
@@ -110,13 +106,11 @@ def main():
 
     # Register processes
 
-    app.processes.add("environment", EnvironmentProcess(
+    app.processes.add("environ", EnvironmentProcess(
         name="environ",
-        failed=on_show_error,
-        pc_data_updated=dashboard.on_pc_data_updated
+        failed=on_show_error
     ))
     app.processes.add("status", StatusProcess(
-        finished=dashboard.on_status_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress
@@ -125,23 +119,19 @@ def main():
         failed=on_show_error
     ))
     app.processes.add("measure", MeasureProcess(
-        finished=dashboard.on_measure_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        measurement_state=dashboard.on_measurement_state,
-        save_to_image=dashboard.on_save_to_image,
-        reading=None
     ))
     app.processes.add("sequence", SequenceProcess(
-        finished=dashboard.on_sequence_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        measurement_state=dashboard.on_measurement_state,
-        save_to_image=dashboard.on_save_to_image,
-        reading=None
     ))
+
+    # Dashboard
+
+    dashboard = Dashboard()
 
     # Layout
 
@@ -181,7 +171,7 @@ def main():
     dashboard.on_reset_sequence_state()
 
     # Start services
-    app.processes.get("environment").start()
+    app.processes.get("environ").start()
     app.processes.get("table").start()
 
     # Sync environment controls

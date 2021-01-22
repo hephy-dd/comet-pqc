@@ -8,7 +8,7 @@ from comet.driver.keithley import K707B
 class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     """Reload instruments status."""
 
-    def __init__(self, message, progress, **kwargs):
+    def __init__(self, message=None, progress=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
@@ -84,7 +84,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.set("env_model", "")
         self.set("env_pc_data", None)
         try:
-            with self.processes.get("environment") as environment:
+            with self.processes.get("environ") as environment:
                 model = environment.identification()
                 self.set("env_model", model)
                 pc_data = environment.pc_data()

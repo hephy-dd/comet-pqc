@@ -131,18 +131,28 @@ class AlternateTableProcess(TableProcess):
     maximum_z = 23.800
 
     def __init__(self, message_changed=None, progress_changed=None,
-                 position_changed=None, caldone_changed=None,
+                 position_changed=None, caldone_changed=None, joystick_changed=None,
                  relative_move_finished=None, absolute_move_finished=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.__lock = threading.RLock()
         self.__queue = []
+        self.__cached_position = float('nan'), float('nan'), float('nan')
+        self.__cached_caldone = float('nan'), float('nan'), float('nan')
+        self.enabled = False
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         self.position_changed = position_changed
         self.caldone_changed = caldone_changed
+        self.joystick_changed = joystick_changed
         self.relative_move_finished = relative_move_finished
         self.absolute_move_finished = absolute_move_finished
+
+    def get_cached_position(self):
+        return self.__cached_position
+
+    def get_cached_caldone(self):
+        return self.__cached_caldone
 
     def wait(self):
         with self.__lock:
@@ -151,15 +161,44 @@ class AlternateTableProcess(TableProcess):
     def _async_request(self, request):
         self.__queue.append(request)
 
+    def _get_position(self, table):
+        self.__cached_position = float('nan'), float('nan'), float('nan')
+        x, y, z = [from_table_unit(v) for v in table.pos]
+        self.__cached_position = x, y, z
+        return x, y, z
+
+    def _get_caldone(self, table):
+        self.__cached_caldone = float('nan'), float('nan'), float('nan')
+        x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+        self.__cached_caldone = x, y, z
+        return x, y, z
+
+    @async_request
+    def status(self, table):
+        x, y, z = self._get_position(table)
+        self.emit('position_changed', x, y, z)
+        x, y, z = self._get_caldone(table)
+        self.emit('caldone_changed', x, y, z)
+        self.emit('joystick_changed', table.joystick)
+
     @async_request
     def position(self, table):
-        x, y, z = [from_table_unit(v) for v in table.pos]
+        x, y, z = self._get_position(table)
         self.emit('position_changed', x, y, z)
 
     @async_request
     def caldone(self, table):
-        x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+        x, y, z = self._get_caldone(table)
         self.emit('caldone_changed', x, y, z)
+
+    @async_request
+    def joystick(self, table):
+        self.emit('joystick_changed', table.joystick)
+
+    @async_request
+    def enable_joystick(self, table, state):
+        table.joystick = state
+        self.emit('joystick_changed', table.joystick)
 
     @async_request
     def relative_move(self, table, x, y, z):
@@ -180,8 +219,9 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_error()
         error_handler.handle_calibration_error()
 
-        x, y, z = table.pos
-        self.emit('position_changed', from_table_unit(x), from_table_unit(y), from_table_unit(z))
+        x, y, z = self._get_position(table)
+        self.emit('position_changed', x, y, z)
+
         self.emit('relative_move_finished')
         self.emit("message_changed", "Ready")
 
@@ -211,6 +251,7 @@ class AlternateTableProcess(TableProcess):
 
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
+            self.__cached_position = x, y, z
             self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
             self.emit('position_changed', x, y, z)
 
@@ -303,6 +344,7 @@ class AlternateTableProcess(TableProcess):
 
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
+            self.__cached_position = x, y, z
             self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
             self.emit('position_changed', x, y, z)
 
@@ -487,16 +529,20 @@ class AlternateTableProcess(TableProcess):
         t = time.time()
         while self.running:
             with self.__lock:
-                if self.__queue:
-                    request = self.__queue.pop(0)
-                    try:
-                        request(table)
-                    except Exception as exc:
-                        self.emit('message_changed', exc)
-                        raise
+                if self.enabled:
+                    if self.__queue:
+                        request = self.__queue.pop(0)
+                        try:
+                            request(table)
+                        except Exception as exc:
+                            self.emit('message_changed', exc)
+                            raise
+                    else:
+                        if time.time() > t + self.update_interval:
+                            self.position()
+                            self.caldone()
+                            self.joystick()
+                            t = time.time()
                 else:
-                    if time.time() > t + self.update_interval:
-                        self.position()
-                        self.caldone()
-                        t = time.time()
+                    self.__queue.clear()
             time.sleep(self.throttle_interval)

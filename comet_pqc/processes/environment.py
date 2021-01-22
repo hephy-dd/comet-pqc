@@ -8,7 +8,7 @@ class EnvironmentProcess(ResourceProcess):
 
     Driver = EnvironmentBox
 
-    def __init__(self, *args, pc_data_updated, **kwargs):
+    def __init__(self, *args, pc_data_updated=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.pc_data_updated = pc_data_updated
 

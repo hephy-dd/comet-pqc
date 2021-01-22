@@ -230,6 +230,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             clicked=self.on_table_joystick_clicked
         )
 
+        self.table_position_label = ui.Label()
+
         self.table_control_button = ui.Button(
             text="Control...",
             tool_tip="Virtual table joystick controls.",
@@ -242,6 +244,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             toggled=self.on_table_groupbox_toggled,
             layout=ui.Row(
                 self.table_joystick_button,
+                ui.Spacer(vertical=False),
+                self.table_position_label,
                 ui.Spacer(vertical=False),
                 self.table_control_button
             )
@@ -312,6 +316,28 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.append(self.control_widget)
         self.append(self.tab_widget)
         self.stretch = 4, 9
+
+        # Setup process callbacks
+
+        self.environ_process = self.processes.get("environ")
+        self.environ_process.pc_data_updated = self.on_pc_data_updated
+
+        self.status_process = self.processes.get("status")
+        self.status_process.finished = self.on_status_finished
+
+        self.table_process = self.processes.get("table")
+        self.table_process.joystick_changed = self.on_table_joystick_changed
+        self.table_process.position_changed = self.on_table_position_changed
+
+        self.measure_process = self.processes.get("measure")
+        self.measure_process.finished = self.on_measure_finished
+        self.measure_process.measurement_state = self.on_measurement_state
+        self.measure_process.save_to_image = self.on_save_to_image
+
+        self.sequence_process = self.processes.get("sequence")
+        self.sequence_process.finished = self.on_sequence_finished
+        self.sequence_process.measurement_state = self.on_measurement_state
+        self.sequence_process.save_to_image = self.on_save_to_image
 
         # Experimental
 
@@ -387,16 +413,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         return (0., 0., 0.).
         """
         if self.use_table():
-            try:
-                with self.resources.get("table") as table_resource:
-                    table = Venus1(table_resource)
-                    x, y, z = table.pos
-                    x *= TABLE_UNITS.get(table.x.unit)
-                    y *= TABLE_UNITS.get(table.y.unit)
-                    z *= TABLE_UNITS.get(table.z.unit)
-                return x.to('mm').m, y.to('mm').m, z.to('mm').m
-            except:
-                logging.warning("Failed to read table position.")
+            return self.table_process.get_cached_position()
         return (0., 0., 0.)
 
     def use_environment(self):
@@ -691,78 +708,85 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Table calibration
 
-    @handle_exception
     def on_table_joystick_clicked(self):
         state = self.table_joystick_button.checked
-        with self.resources.get("table") as table_resource:
-            table = Venus1(table_resource)
-            table.joystick = state
+        self.table_process.enable_joystick(state)
+
+    def on_table_joystick_changed(self, state):
+        self.table_joystick_button.checked = state
+
+    def on_table_position_changed(self, x, y, z):
+        self.table_position_label.text = f"X={x:.3f}, Y={y:.3f}, Z={z:.3f} mm"
 
     @handle_exception
     def on_table_controls_start(self):
-        table = self.processes.get("table")
-        dialog = TableControlDialog(table)
+        dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
+        dialog.load_contacts(self.sequence_tree)
         if self.use_environment():
-            with self.processes.get("environment") as environ:
+            with self.environ_process as environ:
                 pc_data = environ.pc_data()
                 dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
         dialog.run()
         dialog.store_settings()
+        dialog.update_contacts(self.sequence_tree)
+        # Restore events
+        self.table_process.joystick_changed = self.on_table_joystick_changed
+        self.table_process.position_changed = self.on_table_position_changed
         self.sync_table_controls()
 
     @handle_exception
     def on_box_laser_clicked(self):
         state = self.box_laser_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_laser_sensor(state)
 
     @handle_exception
     def on_box_light_clicked(self):
         state = self.box_light_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_box_light(state)
 
     @handle_exception
     def on_microscope_light_clicked(self):
         state = self.microscope_light_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_microscope_light(state)
 
     @handle_exception
     def on_microscope_camera_clicked(self):
         state = self.microscope_camera_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_microscope_camera(state)
 
     @handle_exception
     def on_microscope_control_clicked(self):
         state = self.microscope_control_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_microscope_control(state)
 
     @handle_exception
     def on_probecard_light_clicked(self):
         state = self.probecard_light_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_probecard_light(state)
 
     @handle_exception
     def on_probecard_camera_clicked(self):
         state = self.probecard_camera_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_probecard_camera(state)
 
     @handle_exception
     def on_pid_control_clicked(self):
         state = self.pid_control_button.checked
-        with self.processes.get("environment") as environment:
+        with self.environ_process as environment:
             environment.set_pid_control(state)
 
     @handle_exception
     def switch_off_lights(self):
         if self.use_environment():
-            with self.processes.get("environment") as environment:
+            with self.environ_process as environment:
                 if environment.has_lights():
                     environment.dim_lights()
 
@@ -770,7 +794,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def sync_environment_controls(self):
         """Syncronize environment controls."""
         if self.use_environment():
-            with self.processes.get("environment") as environment:
+            with self.environ_process as environment:
                 environment.request_pc_data()
 
         else:
@@ -791,23 +815,18 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     @handle_exception
     def sync_table_controls(self):
         """Syncronize table controls."""
-        # try:
-        #     with self.resources.get("table") as table_resource:
-        #         table = Venus1(table_resource)
-        #         joystick_state = table.joystick
-        # except:
-        #     self.table_groupbox.checked = False
-        #     raise
-        # else:
-        #     self.table_joystick_button.checked = joystick_state
+        enabled = self.use_table()
+        self.table_process.enabled = enabled
+        self.on_table_position_changed(float('nan'), float('nan'), float('nan'))
+        if enabled:
+            self.table_process.status()
 
     def on_environment_groupbox_toggled(self, state):
         if state:
             self.sync_environment_controls()
 
     def on_table_groupbox_toggled(self, state):
-        if self.use_table():
-            self.sync_table_controls()
+        self.sync_table_controls()
 
     @handle_exception
     def on_push_summary(self, *args):

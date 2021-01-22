@@ -208,6 +208,7 @@ class ContactTreeItem(SequenceTreeItem):
         self.enabled = contact.enabled
         self.contact_id = contact.contact_id
         self.description = contact.description
+        self.position = float('nan'), float('nan'), float('nan')
         for measurement in contact.measurements:
             self.append(MeasurementTreeItem(self, measurement))
 

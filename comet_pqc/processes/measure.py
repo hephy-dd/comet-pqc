@@ -107,7 +107,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
     def safe_initialize(self):
         try:
             if self.get("use_environ"):
-                with self.processes.get("environment") as environment:
+                with self.processes.get("environ") as environment:
                     environment.set_test_led(True)
         except Exception:
             logging.warning("unable to connect with environment box (test LED ON)")
@@ -124,7 +124,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             logging.warning("unable to connect with VSource")
         try:
             if self.get("use_environ"):
-                with self.processes.get("environment") as environment:
+                with self.processes.get("environ") as environment:
                     self.discharge_decoupling(environment)
         except Exception:
             logging.warning("unable to connect with environment box (discharge decoupling)")
@@ -151,7 +151,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             raise RuntimeError("Failed to connect with Matrix")
         try:
             if self.get("use_environ"):
-                with self.processes.get("environment") as environment:
+                with self.processes.get("environ") as environment:
                     environment.set_test_led(False)
         except Exception:
             logging.warning("unable to connect with environment box (test LED OFF)")
@@ -161,7 +161,7 @@ class MeasureProcess(BaseProcess):
 
     measurement_item = None
 
-    def __init__(self, message, progress, measurement_state, reading, save_to_image, **kwargs):
+    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
@@ -274,7 +274,7 @@ class SequenceProcess(BaseProcess):
     # sequence_tree = []
     contact_item = None
 
-    def __init__(self, message, progress, measurement_state, reading, save_to_image, **kwargs):
+    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress

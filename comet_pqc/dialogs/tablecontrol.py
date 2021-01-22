@@ -19,11 +19,21 @@ import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
 
-from comet_pqc.utils import format_table_unit, from_table_unit, to_table_unit
+from comet_pqc.utils import format_table_unit
+from comet_pqc.utils import from_table_unit, to_table_unit
+from comet_pqc.utils import format_metric
 
 from qutie.qutie import Qt
 
 import logging
+
+class LinearTransform:
+
+    def calculate(self, a, b, steps):
+        diff_x = abs(a[0] - b[0]) / steps
+        diff_y = abs(a[1] - b[1]) / steps
+        diff_z = abs(a[2] - b[2]) / steps
+        return [(a[0] + diff_x * i, a[1] + diff_y * i, a[2] + diff_z * i) for i in range(steps + 1)]
 
 class TableContactItem(ui.TreeItem):
 
@@ -65,7 +75,6 @@ class TableContactsWidget(ui.Row):
             selected=self.on_contacts_selected
         )
         self.contacts_tree.fit()
-        self.append_contact("Dummy", None, None, None)
         self.pick_button = ui.Button(
             text="&Pick",
             tool_tip="Assign current table position to selected position item",
@@ -116,7 +125,27 @@ class TableContactsWidget(ui.Row):
             self.contacts_tree.fit()
 
     def on_calculate(self):
-        pass
+        tr = LinearTransform()
+        count = len(self.contacts_tree)
+        if count:
+            first = self.contacts_tree[0].position
+            last = list(self.contacts_tree)[-1].position
+            for i, position in enumerate(tr.calculate(first, last, count - 1)):
+                x, y, z = position
+                self.contacts_tree[i].position = x, y, z
+
+    def load_contacts(self, contacts):
+        self.contacts_tree.clear()
+        for contact in contacts:
+            x, y, z = contact.position
+            self.append_contact(contact.name, x, y, z)
+        self.contacts_tree.fit()
+
+    def update_contacts(self, contacts):
+        for i, contact in enumerate(contacts):
+            x, y, z = self.contacts_tree[i].position
+            contact.position = x, y, z
+            logging.info("updated contact position: %s %s", contact.name, contact.position)
 
     def lock(self):
         self.pick_button.enabled = False
@@ -376,6 +405,15 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     process = None
 
+    default_steps = [
+        {"step_size": 1.0, "step_color": "green"}, # microns!
+        {"step_size": 10.0, "step_color": "orange"},
+        {"step_size": 100.0, "step_color": "red"},
+    ]
+
+    maximum_z_step_size = 0.025 # mm
+    z_limit = 0.0
+
     def __init__(self, process):
         super().__init__()
         self.mount(process)
@@ -405,22 +443,46 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             text="-Z",
             clicked=self.on_sub_z
         )
+        self.control_buttons = (
+            self.add_x_button,
+            self.sub_x_button,
+            self.add_y_button,
+            self.sub_y_button,
+            self.add_z_button,
+            self.sub_z_button
+        )
+        # Create movement radio buttons
+        self.step_width_buttons = ui.Column()
+        for item in self.load_table_step_sizes():
+            step_size = item.get('step_size') * comet.ureg('um')
+            step_color = item.get('step_color')
+            step_size_label = format_metric(step_size.to('m').m, 'm', decimals=1)
+            button = ui.RadioButton(
+                text=step_size_label,
+                tool_tip=f"Move in {step_size_label} steps.",
+                stylesheet=f"QRadioButton:enabled{{color:{step_color};}}",
+                checked=len(self.step_width_buttons) == 0,
+                toggled=self.on_step_toggled
+            )
+            button.movement_width = step_size.to('mm').m
+            button.movement_color = step_color
+            self.step_width_buttons.append(button)
         self.control_layout = ui.Column(
             ui.Row(
                 ui.Row(
                     ui.Column(
                         KeypadSpacer(),
-                        self.add_x_button,
+                        self.sub_y_button,
                         KeypadSpacer()
                     ),
                     ui.Column(
-                        self.add_y_button,
+                        self.sub_x_button,
                         KeypadSpacer(),
-                        self.sub_y_button,
+                        self.add_x_button,
                     ),
                     ui.Column(
                         KeypadSpacer(),
-                        self.sub_x_button,
+                        self.add_y_button,
                         KeypadSpacer(),
                     ),
                     KeypadSpacer(),
@@ -452,6 +514,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.rm_x_label = CalibrationLabel("rm")
         self.rm_y_label = CalibrationLabel("rm")
         self.rm_z_label = CalibrationLabel("rm")
+        self.z_limit_label = PositionLabel()
         self.laser_label = SwitchLabel()
         self.update_interval_number = ui.Number(
             value = self.settings.get("table_control_update_interval") or 1.0,
@@ -475,11 +538,20 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.layout = ui.Column(
             ui.Row(
                 ui.Column(
-                    ui.GroupBox(
-                        title="Control",
-                        layout=ui.Column(
-                            self.control_layout
-                        )
+                    ui.Row(
+                        ui.GroupBox(
+                            title="Control",
+                            layout=ui.Column(
+                                ui.Spacer(horizontal=False),
+                                self.control_layout,
+                                ui.Spacer(horizontal=False)
+                            )
+                        ),
+                        ui.GroupBox(
+                            title="Step Width",
+                            layout=self.step_width_buttons
+                        ),
+                        stretch=(0, 1)
                     ),
                     ui.Tabs(
                         ui.Tab(
@@ -528,6 +600,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         title="Calibration",
                         layout=ui.Row(
                             ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z")
+                            ),
+                            ui.Column(
                                 self.cal_x_label,
                                 self.cal_y_label,
                                 self.cal_z_label
@@ -538,6 +615,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                                 self.rm_z_label
                             ),
                             stretch=(1, 1)
+                        )
+                    ),
+                    ui.GroupBox(
+                        title="Limits",
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("Z")
+                            ),
+                            ui.Column(
+                                self.z_limit_label
+                            )
                         )
                     ),
                     ui.GroupBox(
@@ -564,16 +652,37 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.close_event = self.on_close_event
         self.reset_position()
         self.reset_caldone()
+        self.update_limits()
         self.reset_safety()
+        self.update_control_buttons()
+
+    @property
+    def step_width(self):
+        for button in self.step_width_buttons:
+            if button.checked:
+                return abs(button.movement_width)
+        return 0
+
+    @property
+    def step_color(self):
+        for button in self.step_width_buttons:
+            if button.checked:
+                return button.movement_color
+        return "black"
+
+    def load_table_step_sizes(self):
+        return self.settings.get("table_step_sizes") or self.default_steps
 
     def reset_position(self):
-        self.update_position(None, None, None)
+        self.update_position(float('nan'), float('nan'), float('nan'))
 
     def update_position(self, x, y ,z):
         self.current_position = x, y, z
         self.pos_x_label.value = x
         self.pos_y_label.value = y
         self.pos_z_label.value = z
+        self.update_limits()
+        self.update_control_buttons()
 
     def reset_caldone(self):
         self.cal_x_label.value = None
@@ -596,35 +705,57 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.rm_y_label.value = getrm(y)
         self.rm_z_label.value = getrm(z)
 
+    def update_limits(self):
+        x, y, z = self.current_position
+        self.z_limit_label.stylesheet = ""
+        if z != float('nan'):
+            if z >= self.z_limit:
+                self.z_limit_label.stylesheet = "QLabel:enabled{color:red;}"
+
     def reset_safety(self):
         self.laser_label.value = None
 
     def update_safety(self, laser_sensor):
         self.laser_label.value = laser_sensor
 
+    def update_control_buttons(self):
+        x, y, z = self.current_position
+        # Disable move up button for large step sizes
+        self.add_z_button.enabled = False
+        if z != float('nan'):
+            self.add_z_button.enabled = ((z + self.step_width) <= self.z_limit) or (self.step_width <= self.maximum_z_step_size)
+        logging.info("set table step width to %.3f mm", self.step_width)
+        for button in self.control_buttons:
+            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'}}}"
+
     def on_add_x(self):
         self.lock()
-        self.process.relative_move(+1, 0, 0)
+        self.process.relative_move(+self.step_width, 0, 0)
 
     def on_sub_x(self):
         self.lock()
-        self.process.relative_move(-1, 0, 0)
+        self.process.relative_move(-self.step_width, 0, 0)
 
     def on_add_y(self):
         self.lock()
-        self.process.relative_move(0, +1, 0)
+        self.process.relative_move(0, +self.step_width, 0)
 
     def on_sub_y(self):
         self.lock()
-        self.process.relative_move(0, -1, 0)
+        self.process.relative_move(0, -self.step_width, 0)
 
     def on_add_z(self):
         self.lock()
-        self.process.relative_move(0, 0, +1)
+        self.process.relative_move(0, 0, +self.step_width)
 
     def on_sub_z(self):
         self.lock()
-        self.process.relative_move(0, 0, -1)
+        self.process.relative_move(0, 0, -self.step_width)
+
+    def on_step_toggled(self, state):
+
+        logging.info("set table step width to %.3f mm", self.step_width)
+        self.update_control_buttons()
 
     def on_move_finished(self):
         self.progress_bar.visible = False
@@ -657,22 +788,26 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.wait()
         return True
 
+    def load_contacts(self, contacts):
+        self.contacts_widget.load_contacts(contacts)
+
+    def update_contacts(self, contacts):
+        self.contacts_widget.update_contacts(contacts)
+
     def load_settings(self):
         width, height = self.settings.get('tablecontrol_dialog_size', (640, 480))
         self.resize(width, height)
         self.positions_widget.load_settings()
+        self.z_limit = from_table_unit(self.settings.get('z_limit_movement', 0.0))
+        self.z_limit_label.value = self.z_limit
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
         self.positions_widget.store_settings()
 
     def lock(self):
-        self.add_x_button.enabled = False
-        self.sub_x_button.enabled = False
-        self.add_y_button.enabled = False
-        self.sub_y_button.enabled = False
-        self.add_z_button.enabled = False
-        self.sub_z_button.enabled = False
+        for button in self.control_buttons:
+            button.enabled = False
         self.positions_widget.lock()
         self.contacts_widget.lock()
         self.close_button.enabled = False
@@ -682,12 +817,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.progress_bar.value = 0
 
     def unlock(self):
-        self.add_x_button.enabled = True
-        self.sub_x_button.enabled = True
-        self.add_y_button.enabled = True
-        self.sub_y_button.enabled = True
-        self.add_z_button.enabled = True
-        self.sub_z_button.enabled = True
+        for button in self.control_buttons:
+            button.enabled = True
         self.positions_widget.unlock()
         self.contacts_widget.unlock()
         self.close_button.enabled = True
@@ -720,6 +851,7 @@ class PositionLabel(ui.Label):
     def __init__(self, value=None):
         super().__init__()
         self.value = value
+        self.qt.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
     @property
     def value(self):
@@ -729,7 +861,7 @@ class PositionLabel(ui.Label):
     def value(self, value):
         self.__value = value
         if value is None:
-            self.text = "n/a"
+            self.text = format(float('nan'))
         else:
             self.text = format_table_unit(to_table_unit(value))
 
@@ -748,7 +880,7 @@ class CalibrationLabel(ui.Label):
     def value(self, value):
         self.__value = value
         if value is None:
-            self.text = f"{self.prefix} n/a"
+            self.text = format(float('nan'))
             self.qt.setStyleSheet("")
         else:
             self.text = f"{self.prefix} {self.__value}"
@@ -768,7 +900,7 @@ class SwitchLabel(ui.Label):
     def value(self, value):
         self.__value = value
         if value is None:
-            self.text = "n/a"
+            self.text = float('nan')
             self.qt.setStyleSheet("")
         else:
             self.text = "ON" if value else "OFF"
