@@ -1,3 +1,5 @@
+"""Table control process."""
+
 import logging
 import time
 import threading
@@ -20,6 +22,11 @@ AXIS_NAMES = {
 }
 
 RETRIES = 180
+
+def async_request(method):
+    def async_request(self, *args, **kwargs):
+        self._async_request(lambda context: method(self, context, *args, **kwargs))
+    return async_request
 
 class TableError(Exception): pass
 
@@ -91,36 +98,31 @@ class TableProcess(comet.Process, ResourceMixin):
             logging.info("start serving table...")
             try:
                 with self.resources.get('table') as resource:
-                    table = Venus1(resource)
-                    table.mode = 0
-                    table.joystick = False
-                    table.x.unit = UNIT_MICROMETER
-                    table.y.unit = UNIT_MICROMETER
-                    table.z.unit = UNIT_MICROMETER
-                    time.sleep(.250)
-                    self.event_loop(table)
+                    context = Venus1(resource)
+                    try:
+                        self.initialize(context)
+                        self.event_loop(context)
+                    finally:
+                        self.finalize(context)
             except Exception as exc:
                 tb = traceback.format_exc()
                 logging.error("%s: %s", type(self).__name__, tb)
                 logging.error("%s: %s", type(self).__name__, exc)
         logging.info("stopped serving table.")
 
-    def event_loop(self, table):
+    def initialize(self, context):
+        context.mode = 0
+        context.joystick = False
+        context.x.unit = UNIT_MICROMETER
+        context.y.unit = UNIT_MICROMETER
+        context.z.unit = UNIT_MICROMETER
+        time.sleep(.250) # temper
+
+    def finalize(self, context):
+        pass
+
+    def event_loop(self, context):
         """Overwrite with custom table control sequence."""
-
-
-"""Table control process."""
-
-import comet
-import time
-import threading
-import random
-import logging
-
-def async_request(method):
-    def async_request(self, *args, **kwargs):
-        self._async_request(lambda context: method(self, context, *args, **kwargs))
-    return async_request
 
 class AlternateTableProcess(TableProcess):
     """Table control process."""
@@ -133,7 +135,7 @@ class AlternateTableProcess(TableProcess):
     def __init__(self, message_changed=None, progress_changed=None,
                  position_changed=None, caldone_changed=None, joystick_changed=None,
                  relative_move_finished=None, absolute_move_finished=None,
-                 **kwargs):
+                 calibration_finished=None, **kwargs):
         super().__init__(**kwargs)
         self.__lock = threading.RLock()
         self.__queue = []
@@ -147,6 +149,7 @@ class AlternateTableProcess(TableProcess):
         self.joystick_changed = joystick_changed
         self.relative_move_finished = relative_move_finished
         self.absolute_move_finished = absolute_move_finished
+        self.calibration_finished = calibration_finished
 
     def get_cached_position(self):
         return self.__cached_position
@@ -226,7 +229,7 @@ class AlternateTableProcess(TableProcess):
         self.emit("message_changed", "Ready")
 
     @async_request
-    def absolute_move(self, table, x, y, z):
+    def safe_absolute_move(self, table, x, y, z):
         self.set("z_warning", False)
         self.emit("message_changed", "Moving...")
         z_origin = z
@@ -349,7 +352,7 @@ class AlternateTableProcess(TableProcess):
             self.emit('position_changed', x, y, z)
 
         def update_caldone():
-            self.emit('caldone', table.x.caldone, table.y.caldone, table.z.caldone)
+            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
 
         def ncal(axis):
             index = axes.index(axis)
@@ -357,7 +360,6 @@ class AlternateTableProcess(TableProcess):
             axis.ncal()
             for i in range(retries + 1):
                 handle_abort()
-                update_status()
                 # Axis reached origin?
                 pos = table.pos
                 update_status(*pos)
@@ -516,7 +518,8 @@ class AlternateTableProcess(TableProcess):
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
 
-        update_status()
+        pos = table.pos
+        update_status(*pos)
         update_caldone()
 
         error_handler.handle_machine_error()
@@ -524,6 +527,8 @@ class AlternateTableProcess(TableProcess):
 
         self.emit("progress_changed", 7, 7)
         self.emit("message_changed", "Calibration successful.")
+
+        self.emit("calibration_finished")
 
     def event_loop(self, table):
         t = time.time()
@@ -536,6 +541,9 @@ class AlternateTableProcess(TableProcess):
                             request(table)
                         except Exception as exc:
                             self.emit('message_changed', exc)
+                            self.emit('progress_changed', 0, 0)
+                            tb = traceback.format_exc()
+                            self.emit('failed', exc, tb)
                             raise
                     else:
                         if time.time() > t + self.update_interval:

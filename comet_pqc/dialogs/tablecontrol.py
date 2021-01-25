@@ -1,5 +1,7 @@
 """Table control widgets and dialogs."""
 
+import math
+
 import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
@@ -15,12 +17,13 @@ from qutie.qutie import Qt
 import logging
 
 class LinearTransform:
+    """Linear transformation of n coordinates between two points."""
 
-    def calculate(self, a, b, steps):
-        diff_x = abs(a[0] - b[0]) / steps
-        diff_y = abs(a[1] - b[1]) / steps
-        diff_z = abs(a[2] - b[2]) / steps
-        return [(a[0] + diff_x * i, a[1] + diff_y * i, a[2] + diff_z * i) for i in range(steps + 1)]
+    def calculate(self, a, b, n):
+        diff_x = abs(a[0] - b[0]) / n
+        diff_y = abs(a[1] - b[1]) / n
+        diff_z = abs(a[2] - b[2]) / n
+        return [(a[0] + diff_x * i, a[1] + diff_y * i, a[2] + diff_z * i) for i in range(n + 1)]
 
 class TableContactItem(ui.TreeItem):
 
@@ -503,6 +506,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.rm_z_label = CalibrationLabel("rm")
         self.z_limit_label = PositionLabel()
         self.laser_label = SwitchLabel()
+        self.calibrate_button = ui.Button(
+            text="Calibrate",
+            clicked=self.on_calibrate
+        )
         self.update_interval_number = ui.Number(
             value = self.settings.get("table_control_update_interval") or 1.0,
             minimum=.5,
@@ -548,6 +555,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Contacts",
                             layout=self.contacts_widget
+                        ),
+                        ui.Tab(
+                            title="Calibrate",
+                            layout=ui.Column(
+                                self.calibrate_button
+                            )
                         ),
                         ui.Tab(
                             title="Options",
@@ -695,7 +708,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def update_limits(self):
         x, y, z = self.current_position
         self.z_limit_label.stylesheet = ""
-        if z != float('nan'):
+        if not math.isnan(z):
             if z >= self.z_limit:
                 self.z_limit_label.stylesheet = "QLabel:enabled{color:red;}"
 
@@ -709,7 +722,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         x, y, z = self.current_position
         # Disable move up button for large step sizes
         self.add_z_button.enabled = False
-        if z != float('nan'):
+        if not math.isnan(z):
             self.add_z_button.enabled = ((z + self.step_width) <= self.z_limit) or (self.step_width <= self.maximum_z_step_size)
         logging.info("set table step width to %.3f mm", self.step_width)
         for button in self.control_buttons:
@@ -748,6 +761,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.progress_bar.visible = False
         self.unlock()
 
+    def on_calibration_finished(self):
+        self.progress_bar.visible = False
+        self.unlock()
+
     def on_message_changed(self, message):
         self.message_label.text = message
         logging.info(message)
@@ -766,7 +783,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def on_absolute_move(self, x, y, z):
         self.lock()
-        self.process.absolute_move(x, y, z)
+        self.process.safe_absolute_move(x, y, z)
+
+    def on_calibrate(self):
+        self.lock()
+        self.process.calibarte_table()
 
     def on_close(self):
         self.close()
@@ -793,8 +814,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.positions_widget.store_settings()
 
     def lock(self):
-        for button in self.control_buttons:
-            button.enabled = False
+        self.control_layout.enabled = False
         self.positions_widget.lock()
         self.contacts_widget.lock()
         self.close_button.enabled = False
@@ -804,8 +824,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.progress_bar.value = 0
 
     def unlock(self):
-        for button in self.control_buttons:
-            button.enabled = True
+        self.control_layout.enabled = True
         self.positions_widget.unlock()
         self.contacts_widget.unlock()
         self.close_button.enabled = True
@@ -821,6 +840,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.caldone_changed = self.update_caldone
         self.process.relative_move_finished = self.on_move_finished
         self.process.absolute_move_finished = self.on_move_finished
+        self.process.calibration_finished = self.on_calibration_finished
 
     def unmount(self):
         """Unmount table process."""

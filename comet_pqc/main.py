@@ -131,7 +131,10 @@ def main():
 
     # Dashboard
 
-    dashboard = Dashboard()
+    dashboard = Dashboard(
+        message_changed=on_message,
+        progress_changed=on_progress
+    )
 
     # Layout
 

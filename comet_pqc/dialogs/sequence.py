@@ -10,6 +10,11 @@ class StartSequenceDialog(ui.Dialog):
     def __init__(self, contact_item):
         super().__init__()
         self.title = "Start Sequence"
+        self.move_to_checkbox = ui.CheckBox(
+            text="Move table and contact with Probe Card",
+            checked=False,
+            enabled=False # TODO
+        )
         self.operator_combobox = OperatorWidget()
         self.output_combobox = WorkingDirectoryWidget()
         self.button_box = ui.DialogButtonBox(
@@ -23,6 +28,13 @@ class StartSequenceDialog(ui.Dialog):
             ui.Label(
                 text=f"<b>Are you sure to start sequence '{contact_item.name}'?</b>"
             ),
+            ui.GroupBox(
+                title="Table",
+                layout=ui.Row(
+                    self.move_to_checkbox,
+                    ui.Spacer()
+                )
+            ),
             ui.Row(
                 ui.GroupBox(
                     title="Operator",
@@ -34,7 +46,7 @@ class StartSequenceDialog(ui.Dialog):
                 )
             ),
             self.button_box,
-            stretch=(1, 0)
+            stretch=(1, 0, 0, 0)
         )
 
     def load_settings(self):

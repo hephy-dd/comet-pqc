@@ -54,8 +54,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     environment_poll_interval = 1.0
 
-    def __init__(self):
+    def __init__(self, message_changed=None, progress_changed=None):
         super().__init__()
+        self.message_changed = message_changed
+        self.progress_changed = progress_changed
 
         self.sample_name_text = ui.Text(
             editing_finished=self.on_sample_name_changed
@@ -536,6 +538,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.visible = True
+            panel.table_move_to = self.on_table_move_to
+            panel.table_contact = self.on_table_contact
             panel.mount(item)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
@@ -547,6 +551,35 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_tree_double_clicked(self, item, index):
         self.on_start()
+
+    # Contcat table controls
+
+    @handle_exception
+    def on_table_move_to(self, contact):
+        self.lock_controls()
+        x, y, z = contact.position
+        z = min(z, self.settings.get('z_limit_movement', 0))
+        self.table_process.message_changed = lambda message: self.emit('message_changed', message)
+        self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+        self.table_process.absolute_move_finished = self.on_table_finished
+        self.table_process.safe_absolute_move(x, y, z)
+
+    @handle_exception
+    def on_table_contact(self, contact):
+        self.lock_controls()
+        x, y, z = contact.position
+        self.table_process.message_changed = lambda message: self.emit('message_changed', message)
+        self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+        self.table_process.absolute_move_finished = self.on_table_finished
+        self.table_process.safe_absolute_move(x, y, z)
+
+    def on_table_finished(self):
+        self.table_process.absolute_move_finished = None
+        current_item = self.sequence_tree.current
+        if isinstance(current_item, ContactTreeItem):
+            panel = self.panels.get("contact")
+            panel.mount(current_item)
+        self.unlock_controls()
 
     @handle_exception
     def on_start(self):
@@ -731,6 +764,11 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         dialog.run()
         dialog.store_settings()
         dialog.update_contacts(self.sequence_tree)
+        # Prevent glitch
+        current_item = self.sequence_tree.current
+        if isinstance(current_item, ContactTreeItem):
+            panel = self.panels.get("contact")
+            panel.mount(current_item)
         # Restore events
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed

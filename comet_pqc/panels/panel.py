@@ -8,24 +8,15 @@ from comet import ui
 from ..utils import format_metric
 from ..utils import stitch_pixmaps
 
-__all__ = ['PanelStub', 'Panel']
+__all__ = ['PanelStub', 'BasicPanel', 'Panel']
 
 class PanelStub(ui.Widget):
 
     type = None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title_label = ui.Label(
-            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
-        )
-        self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
-        self.description_label = ui.Label()
-        self.layout = ui.Column(
-            self.title_label,
-            self.description_label,
-            ui.Spacer()
-        )
+    @property
+    def context(self):
+        return self.__context
 
     def store(self):
         pass
@@ -44,12 +35,32 @@ class PanelStub(ui.Widget):
 
     def mount(self, context):
         self.unmount()
+        self.__context = context
+
+    def unmount(self):
+        self.__context = None
+
+class BasicPanel(PanelStub):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title_label = ui.Label(
+            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
+        )
+        self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
+        self.description_label = ui.Label()
+        self.layout = ui.Column(
+            self.title_label,
+            self.description_label,
+            ui.Spacer()
+        )
 
     def unmount(self):
         self.title_label.text = ""
         self.description_label.text = ""
+        super().unmount()
 
-class Panel(PanelStub):
+class Panel(BasicPanel):
     """Base class for measurement panels."""
 
     type = "measurement"
