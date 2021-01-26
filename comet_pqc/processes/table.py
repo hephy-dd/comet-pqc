@@ -142,6 +142,8 @@ class AlternateTableProcess(TableProcess):
         self.__cached_position = float('nan'), float('nan'), float('nan')
         self.__cached_caldone = float('nan'), float('nan'), float('nan')
         self.enabled = False
+        self.stop_safe_absolute_move = False
+        self.stop_calibration = False
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         self.position_changed = position_changed
@@ -230,6 +232,7 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def safe_absolute_move(self, table, x, y, z):
+        self.stop_safe_absolute_move = False
         self.set("z_warning", False)
         self.emit("message_changed", "Moving...")
         z_origin = z
@@ -247,7 +250,7 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_calibration_error()
 
         def handle_abort():
-            if not self.running:
+            if self.stop_safe_absolute_move:
                 self.emit("progress_changed", 0, 0)
                 self.emit("message_changed", "Moving aborted.")
                 raise comet.StopRequest()
@@ -271,12 +274,12 @@ class AlternateTableProcess(TableProcess):
         table.rmove(0, 0, -AXIS_OFFSET)
         for i in range(retries):
             handle_abort()
-            pos = table.pos
-            update_status(*pos)
-            if pos[2] == 0:
+            current_pos = table.pos
+            update_status(*current_pos)
+            if current_pos[2] == 0:
                 break
             time.sleep(delay)
-        if pos[2] != 0:
+        if table.pos[2] != 0:
             raise RuntimeError(f"failed to relative move, current pos: {pos}")
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
@@ -292,12 +295,12 @@ class AlternateTableProcess(TableProcess):
         table.move(x, y, 0)
         for i in range(retries):
             handle_abort()
-            pos = table.pos
-            update_status(*pos)
-            if pos[:2] == (x, y):
+            current_pos = table.pos
+            update_status(*current_pos)
+            if current_pos[:2] == (x, y):
                 break
             time.sleep(delay)
-        if pos[:2] != (x, y):
+        if table.pos[:2] != (x, y):
             raise RuntimeError(f"failed to absolute move, current pos: {pos}")
 
         self.emit("progress_changed", 3, 4)
@@ -305,12 +308,12 @@ class AlternateTableProcess(TableProcess):
         table.rmove(0, 0, target_z)
         for i in range(retries):
             handle_abort()
-            pos = table.pos
-            update_status(*pos)
-            if pos[2] >= target_z:
+            current_pos = table.pos
+            update_status(*current_pos)
+            if current_pos[2] >= target_z:
                 break
             time.sleep(delay)
-        if pos != (x, y, target_z):
+        if table.pos != (x, y, target_z):
             raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
         handle_abort()
@@ -331,7 +334,8 @@ class AlternateTableProcess(TableProcess):
         self.emit('absolute_move_finished')
 
     @async_request
-    def calibarte_table(self, table):
+    def calibrate_table(self, table):
+        self.stop_calibration = False
         self.emit("message_changed", "Calibrating...")
         retries = RETRIES
         delay = 1.0
@@ -340,7 +344,7 @@ class AlternateTableProcess(TableProcess):
         error_handler = TableErrorHandler(table)
 
         def handle_abort():
-            if not self.running:
+            if self.stop_calibration:
                 self.emit("progress_changed", 0, 0)
                 self.emit("message_changed", "Calibration aborted.")
                 raise comet.StopRequest()
@@ -361,9 +365,9 @@ class AlternateTableProcess(TableProcess):
             for i in range(retries + 1):
                 handle_abort()
                 # Axis reached origin?
-                pos = table.pos
-                update_status(*pos)
-                if pos[index] == 0.0:
+                current_pos = table.pos
+                update_status(*current_pos)
+                if current_pos[index] == 0.0:
                     logging.info("ncal %s... done.", AXIS_NAMES.get(index))
                     break
                 time.sleep(delay)
@@ -373,18 +377,18 @@ class AlternateTableProcess(TableProcess):
             index = axes.index(axis)
             logging.info("nrm %s...", AXIS_NAMES.get(index))
             axis.nrm()
-            pos = table.pos
+            reference_pos = table.pos
+            update_status(*reference_pos)
             time.sleep(delay)
             for i in range(retries + 1):
                 handle_abort()
-                pos = table.pos
-                update_status(*pos)
+                current_pos = table.pos
+                update_status(*current_pos)
                 # Axis stopped moving?
-                if pos[index] == pos[index]:
+                if reference_pos[index] == current_pos[index]:
                     logging.info("nrm %s... done.", AXIS_NAMES.get(index))
                     break
                 time.sleep(delay)
-                pos = table.pos
             return i < retries
 
         handle_abort()
@@ -462,13 +466,15 @@ class AlternateTableProcess(TableProcess):
         table.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
         for i in range(retries):
             handle_abort()
-            pos = table.pos
-            update_status(*pos)
-            if pos[:2] == (0, 0):
+            current_pos = table.pos
+            update_status(*current_pos)
+            if current_pos[:2] == (0, 0):
                 break
             time.sleep(delay)
-        if pos[:2] != (0, 0):
-            raise RuntimeError(f"failed to relative move, current pos: {pos}")
+        # Verify table position
+        current_pos = table.pos
+        if current_pos[:2] != (0, 0):
+            raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
 
@@ -508,18 +514,19 @@ class AlternateTableProcess(TableProcess):
         table.rmove(0, 0, -AXIS_OFFSET)
         for i in range(retries):
             handle_abort()
-            pos = table.pos
-            update_status(*pos)
+            current_pos = table.pos
+            update_status(*current_pos)
             if pos == (0, 0, 0):
                 break
             time.sleep(delay)
-        if pos != (0, 0, 0):
-            raise RuntimeError(f"failed to calibrate axes, current pos: {pos}")
+        # Verify table position
+        current_pos = table.pos
+        if current_pos != (0, 0, 0):
+            raise RuntimeError(f"failed to calibrate axes, current pos: {current_pos}")
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
 
-        pos = table.pos
-        update_status(*pos)
+        update_status(*current_pos)
         update_caldone()
 
         error_handler.handle_machine_error()

@@ -20,10 +20,10 @@ class LinearTransform:
     """Linear transformation of n coordinates between two points."""
 
     def calculate(self, a, b, n):
-        diff_x = abs(a[0] - b[0]) / n
-        diff_y = abs(a[1] - b[1]) / n
-        diff_z = abs(a[2] - b[2]) / n
-        return [(a[0] + diff_x * i, a[1] + diff_y * i, a[2] + diff_z * i) for i in range(n + 1)]
+        diff_x = (a[0] - b[0]) / n
+        diff_y = (a[1] - b[1]) / n
+        diff_z = (a[2] - b[2]) / n
+        return [(a[0] - diff_x * i, a[1] - diff_y * i, a[2] - diff_z * i) for i in range(n + 1)]
 
 class TableContactItem(ui.TreeItem):
 
@@ -787,7 +787,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def on_calibrate(self):
         self.lock()
-        self.process.calibarte_table()
+        self.process.calibrate_table()
 
     def on_close(self):
         self.close()
