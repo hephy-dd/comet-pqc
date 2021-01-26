@@ -23,11 +23,6 @@ AXIS_NAMES = {
 
 RETRIES = 180
 
-def async_request(method):
-    def async_request(self, *args, **kwargs):
-        self._async_request(lambda context: method(self, context, *args, **kwargs))
-    return async_request
-
 class TableError(Exception): pass
 
 class TableMachineError(Exception): pass
@@ -87,6 +82,38 @@ class TableErrorHandler:
         if caldone != self.VALID_CALDONE:
             raise TableCalibrationError("Table requires calibration.")
 
+def async_request(method):
+    def async_request(self, *args, **kwargs):
+        def wrapper(context):
+            return method(self, context, *args, **kwargs)
+        r = ResourceRequest(wrapper)
+        self.append_request(r)
+        return r
+    return async_request
+
+class ResourceRequest:
+
+    def __init__(self, callback):
+        self.__callback = callback
+        self.__ready = threading.Event()
+        self.__result = None
+        self.__error = None
+
+    def __call__(self, context):
+        try:
+            self.__result = self.__callback(context)
+        except Exception as exc:
+            self.__error = exc
+            raise
+        finally:
+            self.__ready.set()
+
+    def get(self, timeout=None):
+        self.__ready.wait(timeout)
+        if self.__error is not None:
+            raise self.__error
+        return self.__result
+
 class TableProcess(comet.Process, ResourceMixin):
     """Table process base class."""
 
@@ -135,15 +162,14 @@ class AlternateTableProcess(TableProcess):
     def __init__(self, message_changed=None, progress_changed=None,
                  position_changed=None, caldone_changed=None, joystick_changed=None,
                  relative_move_finished=None, absolute_move_finished=None,
-                 calibration_finished=None, **kwargs):
+                 calibration_finished=None, stopped=None, **kwargs):
         super().__init__(**kwargs)
         self.__lock = threading.RLock()
         self.__queue = []
         self.__cached_position = float('nan'), float('nan'), float('nan')
         self.__cached_caldone = float('nan'), float('nan'), float('nan')
+        self.__stop_event = threading.Event()
         self.enabled = False
-        self.stop_safe_absolute_move = False
-        self.stop_calibration = False
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         self.position_changed = position_changed
@@ -152,6 +178,18 @@ class AlternateTableProcess(TableProcess):
         self.relative_move_finished = relative_move_finished
         self.absolute_move_finished = absolute_move_finished
         self.calibration_finished = calibration_finished
+        self.stopped = stopped
+
+    @async_request
+    def get_identification(self, table):
+        return table.identification
+
+    @async_request
+    def get_caldone(self, table):
+        return table.x.caldone, table.y.caldone, table.z.caldone
+
+    def stop_current_action(self):
+        self.__stop_event.set()
 
     def get_cached_position(self):
         return self.__cached_position
@@ -163,7 +201,7 @@ class AlternateTableProcess(TableProcess):
         with self.__lock:
             return True
 
-    def _async_request(self, request):
+    def append_request(self, request):
         self.__queue.append(request)
 
     def _get_position(self, table):
@@ -232,13 +270,14 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def safe_absolute_move(self, table, x, y, z):
-        self.stop_safe_absolute_move = False
-        self.set("z_warning", False)
+        self.__stop_event.clear()
+        z_warning = None
         self.emit("message_changed", "Moving...")
         z_origin = z
         x = to_table_unit(x)
         y = to_table_unit(y)
-        target_z = min(to_table_unit(z), to_table_unit(self.get('z_limit', self.maximum_z)))
+        z_limit_movement = from_table_unit(self.settings.get('z_limit_movement', 0.0))
+        target_z = min(to_table_unit(z), to_table_unit(z_limit_movement))
 
         retries = RETRIES
         delay = 1.0
@@ -250,7 +289,7 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_calibration_error()
 
         def handle_abort():
-            if self.stop_safe_absolute_move:
+            if self.__stop_event.is_set():
                 self.emit("progress_changed", 0, 0)
                 self.emit("message_changed", "Moving aborted.")
                 raise comet.StopRequest()
@@ -258,7 +297,6 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
             self.emit('position_changed', x, y, z)
 
         def update_caldone():
@@ -326,16 +364,18 @@ class AlternateTableProcess(TableProcess):
         self.emit("progress_changed", 7, 7)
         self.emit("message_changed", "Movement successful.")
 
-        self.set("z_warning", z_origin > z)
+        # Create warning on Z limit
+        if z_origin > from_table_unit(target_z):
+            z_warning = from_table_unit(target_z)
 
         x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
         self.emit('caldone_changed', x, y, z)
 
-        self.emit('absolute_move_finished')
+        self.emit('absolute_move_finished', z_warning)
 
     @async_request
     def calibrate_table(self, table):
-        self.stop_calibration = False
+        self.__stop_event.clear()
         self.emit("message_changed", "Calibrating...")
         retries = RETRIES
         delay = 1.0
@@ -344,7 +384,7 @@ class AlternateTableProcess(TableProcess):
         error_handler = TableErrorHandler(table)
 
         def handle_abort():
-            if self.stop_calibration:
+            if self.__stop_event.is_set() :
                 self.emit("progress_changed", 0, 0)
                 self.emit("message_changed", "Calibration aborted.")
                 raise comet.StopRequest()
@@ -352,7 +392,6 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit("message_changed", "Table x={}, y={}, z={} mm".format(x, y, z))
             self.emit('position_changed', x, y, z)
 
         def update_caldone():
@@ -537,7 +576,7 @@ class AlternateTableProcess(TableProcess):
 
         self.emit("calibration_finished")
 
-    def event_loop(self, table):
+    def event_loop(self, context):
         t = time.time()
         while self.running:
             with self.__lock:
@@ -545,12 +584,15 @@ class AlternateTableProcess(TableProcess):
                     if self.__queue:
                         request = self.__queue.pop(0)
                         try:
-                            request(table)
+                            request(context)
+                        except comet.StopRequest:
+                            self.emit('message_changed', "Stopped.")
+                            self.emit('stopped')
                         except Exception as exc:
                             self.emit('message_changed', exc)
-                            self.emit('progress_changed', 0, 0)
                             tb = traceback.format_exc()
                             self.emit('failed', exc, tb)
+                            self.emit('stopped')
                             raise
                     else:
                         if time.time() > t + self.update_interval:

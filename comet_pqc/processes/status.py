@@ -66,17 +66,15 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.set("table_model", "")
         self.set("table_state", "")
         try:
-            with self.resources.get("table") as table_res:
-                table = Venus1(table_res)
-                table.mode = 0
-                model = table.identification
-                self.set("table_model", model)
-                caldone = (table.x.caldone, table.y.caldone, table.z.caldone)
-                if caldone == (3, 3, 3):
-                    state = f"CALIBRATED"
-                else:
-                    state = f"NOT CALIBRATED"
-                self.set("table_state", state)
+            table_process = self.processes.get("table")
+            model = table_process.get_identification().get(timeout=5.0)
+            caldone = table_process.get_caldone().get(timeout=5.0)
+            self.set("table_model", model)
+            if caldone == (3, 3, 3):
+                state = f"CALIBRATED"
+            else:
+                state = f"NOT CALIBRATED"
+            self.set("table_state", state)
         except (ResourceError, OSError):
             pass
 

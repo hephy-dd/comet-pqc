@@ -76,6 +76,10 @@ class TableContactsWidget(ui.Row):
             clicked=self.on_reset,
             enabled=False
         )
+        self.reset_all_button = ui.Button(
+            text="Reset &All",
+            clicked=self.on_reset_all
+        )
         self.calculate_button= ui.Button(
             text="&Calculate",
             clicked=self.on_calculate
@@ -84,6 +88,7 @@ class TableContactsWidget(ui.Row):
         self.append(ui.Column(
             self.pick_button,
             self.reset_button,
+            self.reset_all_button,
             ui.Spacer(),
             self.calculate_button
         ))
@@ -109,9 +114,12 @@ class TableContactsWidget(ui.Row):
     def on_reset(self):
         item = self.contacts_tree.current
         if item is not None:
-            item[1].value = None
-            item[2].value = None
-            item[3].value = None
+            item.position = float('nan'), float('nan'), float('nan')
+            self.contacts_tree.fit()
+
+    def on_reset_all(self):
+        for item in self.contacts_tree:
+            item.position = float('nan'), float('nan'), float('nan')
             self.contacts_tree.fit()
 
     def on_calculate(self):
@@ -140,11 +148,13 @@ class TableContactsWidget(ui.Row):
     def lock(self):
         self.pick_button.enabled = False
         self.reset_button.enabled = False
+        self.reset_all_button.enabled = False
         self.calculate_button.enabled = False
 
     def unlock(self):
         self.pick_button.enabled = True
         self.reset_button.enabled = True
+        self.reset_all_button.enabled = True
         self.calculate_button.enabled = True
 
 class TablePositionItem(ui.TreeItem):
@@ -324,6 +334,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.edit_button.enabled = False
         self.remove_button.enabled = False
         self.move_button.enabled = False
+        self.positions_tree.double_clicked = None
 
     def unlock(self):
         self.pick_button.enabled = True
@@ -331,6 +342,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.edit_button.enabled = True
         self.remove_button.enabled = True
         self.move_button.enabled = True
+        self.positions_tree.double_clicked = self.on_position_double_clicked
 
     def on_position_selected(self, item):
         enabled = item is not None
@@ -523,6 +535,13 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             visible=False
         )
         self.message_label = ui.Label()
+        self.stop_button = ui.Button(
+            text="&Stop",
+            visible=False,
+            default=False,
+            auto_default=False,
+            clicked=self.on_stop
+        )
         self.close_button = ui.Button(
             text="&Close",
             default=False,
@@ -645,6 +664,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                 self.progress_bar,
                 self.message_label,
                 ui.Spacer(),
+                self.stop_button,
                 self.close_button
             ),
             stretch=(1, 0)
@@ -757,12 +777,21 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         logging.info("set table step width to %.3f mm", self.step_width)
         self.update_control_buttons()
 
-    def on_move_finished(self):
+    def on_move_finished(self, z_warning=False):
         self.progress_bar.visible = False
+        self.stop_button.visible = False
+        self.stop_button.enabled = False
         self.unlock()
+        if z_warning is not None:
+            ui.show_warning(
+                title="Safe Z Position",
+                text=f"Limited Z movement to {z_warning:.3f} mm to protect probe card."
+            )
 
     def on_calibration_finished(self):
         self.progress_bar.visible = False
+        self.stop_button.visible = False
+        self.stop_button.enabled = False
         self.unlock()
 
     def on_message_changed(self, message):
@@ -783,11 +812,19 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def on_absolute_move(self, x, y, z):
         self.lock()
+        self.stop_button.visible = True
+        self.stop_button.enabled = True
         self.process.safe_absolute_move(x, y, z)
 
     def on_calibrate(self):
         self.lock()
+        self.stop_button.visible = True
+        self.stop_button.enabled = True
         self.process.calibrate_table()
+
+    def on_stop(self):
+        self.stop_button.enabled = False
+        self.process.stop_current_action()
 
     def on_close(self):
         self.close()
@@ -841,6 +878,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.relative_move_finished = self.on_move_finished
         self.process.absolute_move_finished = self.on_move_finished
         self.process.calibration_finished = self.on_calibration_finished
+        self.process.stopped = self.on_calibration_finished
 
     def unmount(self):
         """Unmount table process."""
@@ -851,6 +889,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.process.caldone_changed = None
             self.process.relative_move_finished = None
             self.process.absolute_move_finished = None
+            self.process.stopped = None
             self.process = None
 
 class CalibrationLabel(ui.Label):
