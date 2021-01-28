@@ -1,24 +1,19 @@
 import contextlib
 import logging
-import datetime
 import time
-import os
-import re
 
 import numpy as np
 
 import comet
 # from comet.driver.keysight import E4980A
-from comet.driver.keithley import K2410
+from ..driver import K2410
 from ..driver import E4980A
 
 from ..utils import format_metric
-from ..formatter import PQCFormatter
 from ..estimate import Estimate
 from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
-from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -123,7 +118,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         self.hvsrc_setup(hvsrc)
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
+        self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
         self.process.emit("progress", 4, 6)
 
         self.hvsrc_set_output_state(hvsrc, True)
@@ -154,20 +149,17 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step)
+        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step)
         for voltage in comet.Range(hvsrc_voltage_level, bias_voltage_start, bias_voltage_step):
-            logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             time.sleep(QUICK_RAMP_DELAY)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
-            # Compliance?
-            compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
-            if compliance_tripped:
-                logging.error("HV Source in compliance")
-                raise ComplianceError("compliance tripped!")
+
+            # Compliance tripped?
+            self.hvsrc_check_compliance(hvsrc)
 
             if not self.process.running:
                 break
@@ -183,16 +175,14 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         t0 = time.time()
 
-        self.hvsrc_safe_write(hvsrc, "*CLS")
-        # HV Source reading format: CURR
-        self.hvsrc_safe_write(hvsrc, ":FORM:ELEM CURR")
+        self.hvsrc_clear(hvsrc)
 
         benchmark_step = Benchmark("Single_Step")
         benchmark_lcr = Benchmark("Read_LCR")
         benchmark_hvsrc = Benchmark("Read_HV_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
+        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
@@ -200,7 +190,6 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                 # Delay
                 time.sleep(waiting_time)
 
-                # hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
                 dt = time.time() - t0
                 est.advance()
                 self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
@@ -213,8 +202,8 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                             lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
                         else:
                             lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
-                    except Exception as e:
-                        raise RuntimeError(f"Failed to read from LCR: {e}")
+                    except Exception as exc:
+                        raise RuntimeError(f"Failed to read from LCR: {exc}") from exc
                     try:
                         lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
                     except ZeroDivisionError:
@@ -222,8 +211,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
                 # read HV Source
                 with benchmark_hvsrc:
-                    hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-                logging.info("HV Source reading: %E", hvsrc_reading)
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
 
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
@@ -255,11 +243,8 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                     humidity_box=self.environment_humidity_box
                 )
 
-                # Compliance?
-                compliance_tripped = self.hvsrc_compliance_tripped(hvsrc)
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ComplianceError("compliance tripped!")
+                # Compliance tripped?
+                self.hvsrc_check_compliance(hvsrc)
 
                 if not self.process.running:
                     break

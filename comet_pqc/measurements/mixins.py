@@ -6,6 +6,9 @@ from functools import partial
 import comet
 import analysis_pqc
 
+from .measurement import ComplianceError
+from .measurement import InstrumentError
+
 from ..utils import format_metric
 from ..utils import std_mean_filter
 
@@ -18,7 +21,8 @@ __all__ = [
     'AnalysisMixin'
 ]
 
-class Mixin: pass
+class Mixin:
+    """Base class for measurement mixins."""
 
 class HVSourceMixin(Mixin):
 
@@ -50,26 +54,28 @@ class HVSourceMixin(Mixin):
         self.set_meta("hvsrc_source_voltage_autorange_enable", hvsrc_source_voltage_autorange_enable)
         self.set_meta("hvsrc_source_voltage_range", f"{hvsrc_source_voltage_range:G} V")
 
-    def hvsrc_check_error(self, device):
+    def hvsrc_check_error(self, hvsrc):
         """Test for error."""
-        code, message = device.resource.query(":SYST:ERR?").split(",", 1)
+        code, message = hvsrc.system.error
         code = int(code)
         if code != 0:
             message = message.strip("\"")
             logging.error(f"HV Source error {code}: {message}")
             raise RuntimeError(f"HV Source error {code}: {message}")
 
-    def hvsrc_safe_write(self, device, message):
-        """Write, wait for operation complete, test for error."""
-        logging.info(f"safe write: {device.__class__.__name__}: {message}")
-        device.resource.write(message)
-        device.resource.query("*OPC?")
-        self.hvsrc_check_error(device)
+    def hvsrc_check_compliance(self, hvsrc):
+        """Test for compliance tripped."""
+        if self.hvsrc_compliance_tripped(hvsrc):
+            logging.error("HV Source in compliance!")
+            raise ComplianceError("HV Source in compliance!")
 
     def hvsrc_reset(self, hvsrc):
-        self.hvsrc_safe_write(hvsrc, "*RST")
-        self.hvsrc_safe_write(hvsrc, "*CLS")
-        self.hvsrc_safe_write(hvsrc, ":SYST:BEEP:STAT OFF")
+        hvsrc.reset()
+        hvsrc.clear()
+        hvsrc.system.beeper.status = False
+
+    def hvsrc_clear(self, hvsrc):
+        hvsrc.clear()
 
     def hvsrc_setup(self, hvsrc):
         hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
@@ -81,7 +87,7 @@ class HVSourceMixin(Mixin):
         hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
 
         self.hvsrc_set_route_termination(hvsrc, hvsrc_route_termination)
-        self.hvsrc_set_sense_mode(hvsrc,hvsrc_sense_mode)
+        self.hvsrc_set_sense_mode(hvsrc, hvsrc_sense_mode)
         self.hvsrc_set_auto_range(hvsrc, True)
         self.hvsrc_set_filter_type(hvsrc, hvsrc_filter_type)
         self.hvsrc_set_filter_count(hvsrc, hvsrc_filter_count)
@@ -93,64 +99,85 @@ class HVSourceMixin(Mixin):
             self.hvsrc_set_source_voltage_range(hvsrc, hvsrc_source_voltage_range)
 
     def hvsrc_get_voltage_level(self, hvsrc):
-        return float(hvsrc.resource.query(":SOUR:VOLT:LEV?"))
+        return hvsrc.source.voltage.level
 
     def hvsrc_set_voltage_level(self, hvsrc, voltage):
-        logging.info("set HV Source voltage level: %s", format_metric(voltage, "V"))
-        self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:LEV {voltage:E}")
+        logging.info("HV Source set voltage level: %s", format_metric(voltage, "V"))
+        hvsrc.source.voltage.level = voltage
+        self.hvsrc_check_error(hvsrc)
 
-    def hvsrc_set_route_termination(self, hvsrc, route_termination):
-        logging.info("set HV Source route termination: '%s'", route_termination)
-        value = {"front": "FRON", "rear": "REAR"}[route_termination]
-        self.hvsrc_safe_write(hvsrc, f":ROUT:TERM {value:s}")
+    def hvsrc_set_route_termination(self, hvsrc, route_terminals):
+        logging.info("HV Source set route terminals: '%s'", route_terminals)
+        value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
+        hvsrc.route.terminals = value
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_sense_mode(self, hvsrc, sense_mode):
-        logging.info("set HV Source sense mode: '%s'", sense_mode)
+        logging.info("HV Source set sense mode: '%s'", sense_mode)
         value = {"remote": "ON", "local": "OFF"}[sense_mode]
-        self.hvsrc_safe_write(hvsrc, f":SYST:RSEN {value:s}")
+        hvsrc.system.rsense = value
+        self.hvsrc_check_error(hvsrc)
 
-    def hvsrc_set_compliance(self, hvsrc, compliance):
-        logging.info("set HV Source compliance: %s", format_metric(compliance, "A"))
-        self.hvsrc_safe_write(hvsrc, f":SENS:CURR:PROT:LEV {compliance:E}")
+    def hvsrc_set_current_compliance(self, hvsrc, compliance):
+        logging.info("HV Source set compliance: %s", format_metric(compliance, "A"))
+        hvsrc.sense.current.protection.level = compliance
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_compliance_tripped(self, hvsrc):
-        return bool(int(hvsrc.resource.query(":SENS:CURR:PROT:TRIP?")))
+        return hvsrc.sense.current.protection.tripped or hvsrc.sense.voltage.protection.tripped
 
     def hvsrc_set_auto_range(self, hvsrc, enabled):
-        logging.info("set HV Source auto range (current): %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        self.hvsrc_safe_write(hvsrc, f"SENS:CURR:RANG:AUTO {value:s}")
+        logging.info("HV Source set auto range (current): %s", enabled)
+        hvsrc.sense.current.range.auto = enabled
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_enable(self, hvsrc, enabled):
-        logging.info("set HV Source filter enable: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        self.hvsrc_safe_write(hvsrc, f":SENS:AVER:STATE {value:s}")
+        logging.info("HV Source set filter enable: %s", enabled)
+        hvsrc.sense.average.state = enabled
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_count(self, hvsrc, count):
-        logging.info("set HV Source filter count: %s", count)
-        self.hvsrc_safe_write(hvsrc, f":SENS:AVER:COUN {count:d}")
+        logging.info("HV Source set filter count: %s", count)
+        hvsrc.sense.average.count = count
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_type(self, hvsrc, type):
-        logging.info("set HV Source filter type: %s", type)
-        value = {"repeat": "REP", "moving": "MOV"}[type]
-        self.hvsrc_safe_write(hvsrc, f":SENS:AVER:TCON {value:s}")
+        logging.info("HV Source set filter type: %s", type)
+        value = {"repeat": "REPEAT", "moving": "MOVING"}[type]
+        hvsrc.sense.average.tcontrol = value
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_get_output_state(self, hvsrc):
-        return bool(int(hvsrc.resource.query(":OUTP:STAT?")))
+        return hvsrc.output
 
     def hvsrc_set_output_state(self, hvsrc, enabled):
-        logging.info("set HV Source output state: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        self.hvsrc_safe_write(hvsrc, f":OUTP:STAT {value:s}")
+        logging.info("HV Source set output state: %s", enabled)
+        hvsrc.output = enabled
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_source_voltage_autorange_enable(self, hvsrc, enabled):
-        logging.info("set HV Source source voltage autorange enable: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:RANG:AUTO {value:s}")
+        logging.info("HV Source set source voltage autorange enable: %s", enabled)
+        hvsrc.source.voltage.range.auto = enabled
+        self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_source_voltage_range(self, hvsrc, voltage):
-        logging.info("set HV Source source voltage range: %s", format_metric(voltage, "V"))
-        self.hvsrc_safe_write(hvsrc, f":SOUR:VOLT:RANG {voltage:E}")
+        logging.info("HV Source set source voltage range: %s", format_metric(voltage, "V"))
+        hvsrc.source.voltage.range.level = voltage
+        self.hvsrc_check_error(hvsrc)
+
+    def hvsrc_read_voltage(self, hvsrc):
+        # Set read format to voltage only
+        hvsrc.format.elements = ['VOLTAGE']
+        voltage = hvsrc.read()[0]
+        logging.info("HV Source voltage reading: %s", format_metric(voltage, "V"))
+        return voltage
+
+    def hvsrc_read_current(self, hvsrc):
+        # Set read format to current only
+        hvsrc.format.elements = ['CURRENT']
+        current = hvsrc.read()[0]
+        logging.info("HV Source current reading: %s", format_metric(current, "A"))
+        return current
 
 class VSourceMixin(Mixin):
 
@@ -173,11 +200,34 @@ class VSourceMixin(Mixin):
         self.set_meta("vsrc_filter_count", vsrc_filter_count)
         self.set_meta("vsrc_filter_type", vsrc_filter_type)
 
+    def vsrc_check_error(self, vsrc):
+        """Test for error."""
+        if vsrc.errorqueue.count:
+            code, message = vsrc.errorqueue.next()
+            logging.error(f"V Source error {code}: {message}")
+            raise InstrumentError(f"V Source error {code}: {message}")
+
+    def vsrc_check_compliance(self, vsrc):
+        """Test for compliance tripped."""
+        if self.vsrc_compliance_tripped(vsrc):
+            logging.error("V Source in compliance!")
+            raise ComplianceError("V Source in compliance!")
+
     def vsrc_reset(self, vsrc):
         vsrc.reset()
         vsrc.clear()
         vsrc.beeper.enable = False
+
+    def vsrc_clear(self, vsrc):
+        vsrc.clear()
+
+    def vsrc_set_function_voltage(self, vsrc):
         vsrc.source.func = 'DCVOLTS'
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_set_function_current(self, vsrc):
+        vsrc.source.func = 'DCAMPS'
+        self.vsrc_check_error(vsrc)
 
     def vsrc_setup(self, vsrc):
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
@@ -194,42 +244,78 @@ class VSourceMixin(Mixin):
         return vsrc.source.levelv
 
     def vsrc_set_voltage_level(self, vsrc, voltage):
-        logging.info("set V Source voltage level: %s", format_metric(voltage, "V"))
+        logging.info("V Source set voltage level: %s", format_metric(voltage, "V"))
         vsrc.source.levelv = voltage
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_get_current_level(self, vsrc):
+        return vsrc.source.leveli
+
+    def vsrc_set_current_level(self, vsrc, current):
+        logging.info("V Source set current level: %s", format_metric(current, "A"))
+        vsrc.source.leveli = current
+        self.vsrc_check_error(vsrc)
 
     def vsrc_set_sense_mode(self, vsrc, sense_mode):
-        logging.info("set V Source sense mode: '%s'", sense_mode)
+        logging.info("V Source set sense mode: '%s'", sense_mode)
         value = {"remote": "REMOTE", "local": "LOCAL"}[sense_mode]
         vsrc.sense = value
+        self.vsrc_check_error(vsrc)
 
     def vsrc_set_current_compliance(self, vsrc, compliance):
-        logging.info("set V Source current compliance: %s", format_metric(compliance, "A"))
+        logging.info("V Source set current compliance: %s", format_metric(compliance, "A"))
         vsrc.source.limiti = compliance
+        self.vsrc_check_error(vsrc)
 
     def vsrc_set_voltage_compliance(self, vsrc, compliance):
-        logging.info("set V Source voltage compliance: %s", format_metric(compliance, "V"))
+        logging.info("V Source set voltage compliance: %s", format_metric(compliance, "V"))
         vsrc.source.limitv = compliance
+        self.vsrc_check_error(vsrc)
 
     def vsrc_compliance_tripped(self, vsrc):
         return vsrc.source.compliance
 
     def vsrc_set_filter_enable(self, vsrc, enabled):
-        logging.info("set V Source filter enable: %s", enabled)
+        logging.info("V Source set filter enable: %s", enabled)
         vsrc.measure.filter.enable = enabled
+        self.vsrc_check_error(vsrc)
 
     def vsrc_set_filter_count(self, vsrc, count):
-        logging.info("set V Source filter count: %s", count)
+        logging.info("V Source set filter count: %s", count)
         vsrc.measure.filter.count = count
+        self.vsrc_check_error(vsrc)
 
     def vsrc_set_filter_type(self, vsrc, type):
-        logging.info("set V Source filter type: %s", type)
+        logging.info("V Source set filter type: %s", type)
         value = {"repeat": "REPEAT", "moving": "MOVING"}[type]
         vsrc.measure.filter.type = value
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_get_output_state(self, vsrc):
+        value = vsrc.source.output
+        return {"ON": True, "OFF": False}[value]
 
     def vsrc_set_output_state(self, vsrc, enabled):
-        logging.info("set V Source output state: %s", enabled)
+        logging.info("V Source set output state: %s", enabled)
         value = {True: "ON", False: "OFF"}[enabled]
         vsrc.source.output = value
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_set_display(self, vsrc, value):
+        logging.info("V Source set display: %s", value)
+        value = {'voltage': 'DCVOLTS', 'current': 'DCAMPS'}[value]
+        vsrc.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_read_current(self, vsrc):
+        current = vsrc.measure.i()
+        logging.info("V Source current reading: %s", format_metric(current, "A"))
+        return current
+
+    def vsrc_read_voltage(self, vsrc):
+        voltage = vsrc.measure.v()
+        logging.info("V Source voltage reading: %s", format_metric(voltage, "A"))
+        return voltage
 
 class ElectrometerMixin(Mixin):
 
@@ -242,13 +328,13 @@ class ElectrometerMixin(Mixin):
     def elm_check_error(self, elm):
         try:
             result = elm.resource.query(":SYST:ERR?")
-        except Exception as e:
-            raise RuntimeError(f"Failed to read error state from ELM: {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to read error state from ELM: {exc}") from exc
         try:
             code, label = result.split(",", 1)
             code = int(code)
         except ValueError as exc:
-            raise RuntimeError(f"failed to read electrometer error state, device returned '{result}'")
+            raise RuntimeError(f"failed to read electrometer error state, device returned '{result}'") from exc
         if code != 0:
             label = label.strip("\"")
             logging.error(f"Error {code}: {label}")
@@ -258,12 +344,12 @@ class ElectrometerMixin(Mixin):
         """Write, wait for operation complete, test for errors."""
         try:
             elm.resource.write(message)
-        except Exception as e:
-            raise RuntimeError(f"Failed to write to ELM: '{message}', {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to write to ELM: '{message}', {exc}") from exc
         try:
             elm.resource.query("*OPC?")
-        except Exception as e:
-            raise RuntimeError(f"Failed to read operation complete from ELM for message: '{message}', {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to read operation complete from ELM for message: '{message}', {exc}") from exc
         self.elm_check_error(elm)
 
     def elm_read(self, elm, timeout=60.0, interval=0.25):
@@ -284,23 +370,23 @@ class ElectrometerMixin(Mixin):
                 try:
                     result = elm.resource.query(":FETCH?")
                     return float(result.split(',')[0])
-                except Exception as e:
-                    raise RuntimeError(f"Failed to fetch ELM reading: {e}")
+                except Exception as exc:
+                    raise RuntimeError(f"Failed to fetch ELM reading: {exc}") from exc
             time.sleep(interval)
         raise RuntimeError(f"Electrometer reading timeout, exceeded {timeout:G} s")
 
     def elm_get_zero_check(self, elm):
         try:
             return bool(int(elm.resource.query(":SYST:ZCH?")))
-        except Exception as e:
-            raise RuntimeError(f"Failed to get zero check from ELM: {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to get zero check from ELM: {exc}") from exc
 
     def elm_set_zero_check(self, elm, enabled):
         value = {False: 'OFF', True: 'ON'}.get(enabled)
         try:
             self.elm_safe_write(elm, f":SYST:ZCH {value}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to set zero check to ELM: {e}")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to set zero check to ELM: {exc}") from exc
 
 class LCRMixin(Mixin):
 
@@ -408,7 +494,7 @@ class LCRMixin(Mixin):
         return lcr.bias.voltage.level
 
     def lcr_set_bias_voltage_level(self, lcr, voltage):
-        logging.info("set LCR voltage level: %s", format_metric(voltage, "V"))
+        logging.info("LCR Meter set voltage level: %s", format_metric(voltage, "V"))
         lcr.bias.voltage.level = voltage
         self.lcr_check_error(lcr)
 
@@ -419,7 +505,7 @@ class LCRMixin(Mixin):
         return lcr.bias.state
 
     def lcr_set_bias_state(self, lcr, enabled):
-        logging.info("set LCR voltage output state: %s", enabled)
+        logging.info("LCR Meter set voltage output state: %s", enabled)
         lcr.bias.state = enabled
         self.lcr_check_error(lcr)
 
@@ -442,11 +528,11 @@ class EnvironmentMixin(Mixin):
             with self.processes.get("environ") as environment:
                 pc_data = environment.pc_data()
             self.environment_temperature_box = pc_data.box_temperature
-            logging.info("temperature box: %s degC", self.environment_temperature_box)
+            logging.info("Box temperature: %.2f degC", self.environment_temperature_box)
             self.environment_temperature_chuck = pc_data.chuck_temperature
-            logging.info("temperature chuck: %s degC", self.environment_temperature_chuck)
+            logging.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
-            logging.info("humidity box: %s degC", self.environment_humidity_box)
+            logging.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
 
 class AnalysisMixin(Mixin):
 

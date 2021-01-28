@@ -13,6 +13,7 @@ __all__ = [
     'PACKAGE_PATH',
     'make_path',
     'format_metric',
+    'format_output',
     'std_mean_filter',
     'stitch_pixmaps',
     'create_icon',
@@ -64,6 +65,14 @@ def format_metric(value, unit, decimals=3):
         if abs(value) >= scale:
             return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
     return f"{value:.{decimals}f} {unit}"
+
+def format_output(value, default=None):
+    """Pretty format for instrument output states.
+
+    >>> format_output(False)
+    'OFF'
+    """
+    return {False: "OFF", True: "ON"}.get(value) or default
 
 def std_mean_filter(values, threshold):
     """Return True if standard deviation (sample) / mean < threshold.

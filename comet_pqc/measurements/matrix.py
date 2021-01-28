@@ -21,7 +21,7 @@ class MatrixMeasurement(Measurement):
         matrix_enable = self.get_parameter('matrix_enable')
         if matrix_enable:
             matrix_channels = self.get_parameter('matrix_channels')
-            logging.info("close matrix channels: %s", matrix_channels)
+            logging.info("Matrix close channels: %s", matrix_channels)
             try:
                 with self.resources.get("matrix") as matrix_res:
                     matrix = K707B(matrix_res)
@@ -33,9 +33,9 @@ class MatrixMeasurement(Measurement):
                         matrix.channel.close(matrix_channels)
                         closed_channels = matrix.channel.getclose()
                         if sorted(closed_channels) != sorted(matrix_channels):
-                            raise RuntimeError("mismatch in closed channels")
-            except Exception as e:
-                raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {e.args}")
+                            raise RuntimeError("Matrix mismatch in closed channels")
+            except Exception as exc:
+                raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {exc.args}") from exc
 
     def after_finalize(self, **kwargs):
         """Reset marix switch to a save state."""
@@ -45,6 +45,6 @@ class MatrixMeasurement(Measurement):
                 with self.resources.get("matrix") as matrix_res:
                     matrix = K707B(matrix_res)
                     matrix.channel.open() # open all
-            except Exception as e:
-                raise RuntimeError(f"Failed to open matrix channels, {e.args}")
+            except Exception as exc:
+                raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc
         super().after_finalize(**kwargs)

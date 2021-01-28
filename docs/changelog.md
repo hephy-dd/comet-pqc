@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.27.1
+
+### Changed
+- Refactored V Source/HV Source communication.
+
 ## 0.27.0
 
 ### Added
