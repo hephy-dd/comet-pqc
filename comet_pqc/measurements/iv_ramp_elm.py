@@ -1,23 +1,18 @@
 import contextlib
-import datetime
 import logging
 import time
-import os
-import re
 
 import numpy as np
 
 import comet
 from comet.driver.keithley import K6517B
-from comet.driver.keithley import K2410
+from ..driver import K2410
 
 from ..utils import format_metric
 from ..estimate import Estimate
-from ..formatter import PQCFormatter
 from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
-from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -27,12 +22,6 @@ from .mixins import EnvironmentMixin
 from .mixins import AnalysisMixin
 
 __all__ = ["IVRampElmMeasurement"]
-
-def check_error(hvsrc):
-    error = hvsrc.system.error
-    if error[0]:
-        logging.error(error)
-        raise RuntimeError(f"{error[0]}: {error[1]}")
 
 class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp with electrometer measurement.
@@ -129,12 +118,12 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
         self.hvsrc_reset(hvsrc)
         self.hvsrc_setup(hvsrc)
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
+        self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
 
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc.source.voltage.level,
+            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
             hvsrc_current=None,
-            hvsrc_output=hvsrc.output,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc),
             elm_current=None
         ))
 
@@ -142,39 +131,33 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
         # If output disabled
         voltage = 0
-        hvsrc.source.voltage.level = voltage
-        check_error(hvsrc)
-        hvsrc.output = True
-        check_error(hvsrc)
+        self.hvsrc_set_voltage_level(hvsrc, voltage)
+        self.hvsrc_set_output_state(hvsrc, True)
         time.sleep(.100)
 
         self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
         self.process.emit("progress", 2, 5)
 
         if self.process.running:
 
-            voltage = hvsrc.source.voltage.level
+            voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
+            logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
-                logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                hvsrc.source.voltage.level = voltage
-                # check_error(hvsrc)
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage,
                 ))
 
                 time.sleep(QUICK_RAMP_DELAY)
 
-                # Compliance?
-                compliance_tripped = hvsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ComplianceError("compliance tripped")
+                # Compliance tripped?
+                self.hvsrc_check_compliance(hvsrc)
+
                 if not self.process.running:
                     break
 
@@ -227,11 +210,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         if not self.process.running:
             return
 
-        voltage = hvsrc.source.voltage.level
-
-        # HV Source reading format: CURR
-        hvsrc.resource.write(":FORM:ELEM CURR")
-        hvsrc.resource.query("*OPC?")
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         # Electrometer reading format: READ
         elm.resource.write(":FORM:ELEM READ")
@@ -249,13 +228,11 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         benchmark_hvsrc = Benchmark("Read_HV_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
-                logging.info("set voltage: %E V", voltage)
-                hvsrc.clear()
-                hvsrc.source.voltage.level = voltage
-                # check_error(hvsrc)
+                self.hvsrc_clear(hvsrc)
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
 
                 time.sleep(waiting_time)
 
@@ -269,16 +246,15 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 with benchmark_elm:
                     try:
                         elm_reading = self.elm_read(elm, timeout=elm_read_timeout)
-                    except Exception as e:
-                        raise RuntimeError(f"Failed to read from ELM: {e}")
+                    except Exception as exc:
+                        raise RuntimeError(f"Failed to read from ELM: {exc}") from exc
                 self.elm_check_error(elm)
-                logging.info("ELM reading: %E", elm_reading)
+                logging.info("ELM reading: %s", format_metric(elm_reading, "A"))
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
                 # read HV Source
                 with benchmark_hvsrc:
-                    hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-                logging.info("HV Source reading: %E", hvsrc_reading)
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
                 self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
 
                 self.process.emit("update")
@@ -307,12 +283,9 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                     humidity_box=self.environment_humidity_box
                 )
 
-                # Compliance?
-                compliance_tripped = hvsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ComplianceError("compliance tripped")
-                # check_error(hvsrc)
+                # Compliance tripped?
+                self.hvsrc_check_compliance(hvsrc)
+
                 if not self.process.running:
                     break
 
@@ -359,24 +332,21 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
             ))
 
             voltage_step = self.get_parameter('voltage_step')
-            voltage = hvsrc.source.voltage.level
+            voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
-                logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-                hvsrc.source.voltage.level = voltage
-                # check_error(hvsrc)
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage,
                 ))
                 time.sleep(QUICK_RAMP_DELAY)
 
-            hvsrc.output = False
-            check_error(hvsrc)
+            self.hvsrc_set_output_state(hvsrc, False)
 
             self.process.emit("state", dict(
-                hvsrc_output=hvsrc.output,
+                hvsrc_output=self.hvsrc_get_output_state(hvsrc),
                 env_chuck_temperature=None,
                 env_box_temperature=None,
                 env_box_humidity=None

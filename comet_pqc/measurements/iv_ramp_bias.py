@@ -1,22 +1,18 @@
 import contextlib
-import datetime
 import logging
 import time
-import os
 
 import numpy as np
 
 import comet
 
-from comet.driver.keithley import K2410
+from ..driver import K2410
 from comet.driver.keithley import K2657A
 
 from ..utils import format_metric
 from ..estimate import Estimate
-from ..formatter import PQCFormatter
 
 from .matrix import MatrixMeasurement
-from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -26,12 +22,6 @@ from .mixins import EnvironmentMixin
 from .mixins import AnalysisMixin
 
 __all__ = ["IVRampBiasMeasurement"]
-
-def check_error(vsrc):
-    if vsrc.errorqueue.count:
-        error = vsrc.errorqueue.next()
-        logging.error(error)
-        raise RuntimeError(f"{error[0]}: {error[1]}")
 
 class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
@@ -100,12 +90,12 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         self.hvsrc_reset(hvsrc)
         self.hvsrc_setup(hvsrc)
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
+        self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
 
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc.source.voltage.level,
+            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
             hvsrc_current=None,
-            hvsrc_output=hvsrc.output
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
         if not self.process.running:
@@ -116,9 +106,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.vsrc_reset(vsrc)
         self.vsrc_setup(vsrc)
 
-        # Current source
-        vsrc.source.func = 'DCVOLTS'
-        check_error(vsrc)
+        # Voltage source
+        self.vsrc_set_function_voltage(vsrc)
 
         self.vsrc_set_current_compliance(vsrc, vsrc_current_compliance)
 
@@ -127,60 +116,51 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         # Output enable
 
-        hvsrc.output = True
+        self.hvsrc_set_output_state(hvsrc, True)
         time.sleep(.100)
         self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
-        vsrc.source.output = 'ON'
+        self.vsrc_set_output_state(vsrc, True)
         time.sleep(.100)
         self.process.emit("state", dict(
-            vsrc_output=vsrc.source.output
+            vsrc_output=self.vsrc_get_output_state(vsrc)
         ))
 
         self.process.emit("message", "Ramp to start...")
 
         # Ramp HV Spource to bias voltage
-        voltage = vsrc.source.levelv
+        voltage = self.vsrc_get_voltage_level(vsrc)
 
-        logging.info("ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, 1.0)
+        logging.info("V Source ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, 1.0)
         for voltage in comet.Range(voltage, bias_voltage, 1.0):
-            logging.info("set bias voltage: %E V", voltage)
             self.process.emit("message", "Ramp to bias... {}".format(format_metric(voltage, "V")))
-            vsrc.source.levelv = voltage
+            self.vsrc_set_voltage_level(vsrc, voltage)
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-            # Compliance?
-            compliance_tripped = vsrc.source.compliance
-            if compliance_tripped:
-                logging.error("V Source in compliance")
-                raise ComplianceError("V Source compliance tripped")
+            # Compliance tripped?
+            self.vsrc_check_compliance(vsrc)
 
             if not self.process.running:
                 break
 
         # Ramp HV Source to start voltage
-        voltage = hvsrc.source.voltage.level
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, 1.0)
+        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, 1.0)
         for voltage in comet.Range(voltage, voltage_start, 1.0):
-            logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
-            hvsrc.source.voltage.level = voltage
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
-            # check_error(hvsrc)
             time.sleep(QUICK_RAMP_DELAY)
 
-            # Compliance?
-            compliance_tripped = hvsrc.sense.current.protection.tripped
-            if compliance_tripped:
-                logging.error("HV Source in compliance")
-                raise ComplianceError("HV Source compliance tripped")
+            # Compliance tripped?
+            self.hvsrc_check_compliance(hvsrc)
 
             if not self.process.running:
                 break
@@ -201,11 +181,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         if not self.process.running:
             return
 
-        # HV Source reading format: CURR
-        hvsrc.resource.write(":FORM:ELEM CURR")
-        hvsrc.resource.query("*OPC?")
-
-        voltage = hvsrc.source.voltage.level
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         ramp = comet.Range(voltage, voltage_stop, voltage_step)
         est = Estimate(ramp.count)
@@ -213,18 +189,16 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         t0 = time.time()
 
-        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
-            logging.info("set voltage: %E V", voltage)
-            hvsrc.source.voltage.level = voltage
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
             # Move bias TODO
             if bias_mode == "offset":
                 bias_voltage += abs(ramp.step) if ramp.begin <= ramp.end else -abs(ramp.step)
-                logging.info("set bias voltage: %E V", bias_voltage)
-                vsrc.source.levelv = bias_voltage
+                self.vsrc_set_voltage_level(vsrc, bias_voltage)
                 self.process.emit("state", dict(
                     vsrc_voltage=bias_voltage,
                 ))
@@ -238,13 +212,11 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
             self.process.emit("progress", *est.progress)
 
             # read V Source
-            vsrc_reading = vsrc.measure.i()
-            logging.info("V Source reading: %E A", vsrc_reading)
+            vsrc_reading = self.vsrc_read_current(vsrc)
             self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
 
             # read HV Source
-            hvsrc_reading = float(hvsrc.resource.query(":READ?").split(',')[0])
-            logging.info("HV Source bias reading: %E A", hvsrc_reading)
+            hvsrc_reading = self.hvsrc_read_current(hvsrc)
 
             self.process.emit("update")
             self.process.emit("state", dict(
@@ -271,15 +243,10 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
                 humidity_box=self.environment_humidity_box
             )
 
-            # Compliance?
-            compliance_tripped = hvsrc.sense.current.protection.tripped
-            if compliance_tripped:
-                logging.error("HV Source in compliance")
-                raise ComplianceError("HV Source compliance tripped")
-            compliance_tripped = vsrc.source.compliance
-            if compliance_tripped:
-                logging.error("V Source in compliance")
-                raise ComplianceError("V Source compliance tripped")
+            # Compliance tripped?
+            self.hvsrc_check_compliance(hvsrc)
+            self.vsrc_check_compliance(vsrc)
+
             if not self.process.running:
                 break
 
@@ -312,38 +279,36 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         voltage_step = self.get_parameter('voltage_step')
 
-        voltage = hvsrc.source.voltage.level
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
+        logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, 1.0)
         for voltage in comet.Range(voltage, 0, 1.0):
-            logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            hvsrc.source.voltage.level = voltage
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-        bias_voltage = vsrc.source.levelv
+        bias_voltage = self.vsrc_get_voltage_level(vsrc)
 
-        logging.info("ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
+        logging.info("V Source ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 1.0)
         for voltage in comet.Range(bias_voltage, 0, 1.0):
-            logging.info("set bias voltage: %E V", voltage)
             self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
-            vsrc.source.levelv = voltage
+            self.vsrc_set_voltage_level(vsrc, voltage)
             self.process.emit("state", dict(
                 vsrc_voltage=voltage,
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-        hvsrc.output = False
-        vsrc.source.output = 'OFF'
+        self.hvsrc_set_output_state(hvsrc, False)
+        self.vsrc_set_output_state(vsrc, False)
 
         self.process.emit("state", dict(
-            hvsrc_output=hvsrc.output,
+            hvsrc_output=self.hvsrc_get_output_state(hvsrc),
             hvsrc_voltage=None,
             hvsrc_current=None,
-            vsrc_output=vsrc.source.output,
+            vsrc_output=self.vsrc_get_output_state(vsrc),
             vsrc_voltage=None,
             vsrc_current=None,
             env_chuck_temperature=None,
