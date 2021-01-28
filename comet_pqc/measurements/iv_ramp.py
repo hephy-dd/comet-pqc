@@ -1,23 +1,16 @@
 import contextlib
-import datetime
 import logging
-import math
 import time
-import os
-import re
 
 import numpy as np
 
 import comet
-from comet.driver.keithley import K2410
+from ..driver import K2410
 
-from ..proxy import create_proxy
 from ..utils import format_metric
-from ..formatter import PQCFormatter
 from ..estimate import Estimate
 
 from .matrix import MatrixMeasurement
-from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -87,10 +80,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_series("temperature_chuck")
         self.register_series("humidity_box")
 
-        hvsrc_proxy = create_proxy(hvsrc)
-
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc_proxy.source_voltage_level,
+            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
             hvsrc_current=None,
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
@@ -99,28 +90,25 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.hvsrc_setup(hvsrc)
 
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        self.hvsrc_set_compliance(hvsrc, hvsrc_current_compliance)
+        self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
 
         self.process.emit("progress", 2, 4)
 
         # If output enabled
         if self.hvsrc_get_output_state(hvsrc):
-            voltage = hvsrc_proxy.source_voltage_level
+            voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+            logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
             for voltage in comet.Range(voltage, 0, voltage_step):
-                logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", f"{voltage:.3f} V")
-                hvsrc_proxy.source_voltage_level = voltage
-                # hvsrc_proxy.assert_success()
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
                 time.sleep(QUICK_RAMP_DELAY)
                 if not self.process.running:
                     break
         # If output disabled
         else:
             voltage = 0
-            hvsrc_proxy.source_voltage_level = voltage
-            hvsrc_proxy.assert_success()
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.hvsrc_set_output_state(hvsrc, True)
             time.sleep(.100)
 
@@ -133,27 +121,17 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         if self.process.running:
 
-            voltage = hvsrc_proxy.source_voltage_level
+            voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            # Get configured READ/FETCh elements
-            elements = list(map(str.strip, hvsrc.resource.query(":FORM:ELEM?").split(",")))
-            hvsrc_proxy.assert_success()
-
-            logging.info("ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
+            logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
             for voltage in comet.Range(voltage, voltage_start, voltage_step):
-                logging.info("set voltage: %E V", voltage)
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
-                hvsrc_proxy.source_voltage_level = voltage
-                # hvsrc_proxy.assert_success()
-                # Returns <elements> comma separated
-                #values = list(map(float, hvsrc.resource.query(":READ?").split(",")))
-                #data = zip(elements, values)
+                self.hvsrc_set_voltage_level(hvsrc, voltage)
                 time.sleep(QUICK_RAMP_DELAY)
-                # Compliance?
-                compliance_tripped = hvsrc.sense.current.protection.tripped
-                if compliance_tripped:
-                    logging.error("HV Source in compliance")
-                    raise ComplianceError("compliance tripped")
+
+                # Compliance tripped?
+                self.hvsrc_check_compliance(hvsrc)
+
                 if not self.process.running:
                     break
 
@@ -171,16 +149,10 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
 
-        hvsrc_proxy = create_proxy(hvsrc)
-
         if not self.process.running:
             return
 
-        voltage = hvsrc_proxy.source_voltage_level
-
-        # HV Source reading format: CURR
-        hvsrc.resource.write(":FORM:ELEM CURR")
-        hvsrc.resource.query("*OPC?")
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         t0 = time.time()
 
@@ -188,17 +160,14 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         est = Estimate(ramp.count)
         self.process.emit("progress", *est.progress)
 
-        logging.info("ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
-            logging.info("set voltage: %E V", voltage)
-            hvsrc_proxy.source_voltage_level = voltage
-            # hvsrc_proxy.assert_success()
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
 
             time.sleep(waiting_time)
 
             td = time.time() - t0
-            reading_current = float(hvsrc.resource.query(":READ?").split(',')[0])
-            logging.info("HV Source reading: %E A", reading_current)
+            reading_current = self.hvsrc_read_current(hvsrc)
             self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
             self.process.emit("update")
@@ -228,12 +197,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
             self.process.emit("progress", *est.progress)
 
-            # Compliance?
-            compliance_tripped = hvsrc.sense.current.protection.tripped
-            if compliance_tripped:
-                logging.error("HV Source in compliance")
-                raise ComplianceError("compliance tripped")
-            # hvsrc_proxy.assert_success()
+            # Compliance tripped?
+            self.hvsrc_check_compliance(hvsrc)
+
             if not self.process.running:
                 break
 
@@ -263,9 +229,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
     def finalize(self, hvsrc):
         voltage_step = self.get_parameter('voltage_step')
 
-        hvsrc_proxy = create_proxy(hvsrc)
-
-        voltage = hvsrc_proxy.source_voltage_level
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         self.process.emit("state", dict(
             hvsrc_voltage=voltage,
@@ -273,21 +237,19 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
-        logging.info("ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
+        logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
         for voltage in comet.Range(voltage, 0, voltage_step):
-            logging.info("set voltage: %E V", voltage)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
-            hvsrc_proxy.source_voltage_level = voltage
+            self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage
             ))
             time.sleep(QUICK_RAMP_DELAY)
-            # hvsrc_proxy.assert_success()
 
         self.hvsrc_set_output_state(hvsrc, False)
 
         self.process.emit("state", dict(
-            hvsrc_voltage=hvsrc_proxy.source_voltage_level,
+            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 

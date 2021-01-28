@@ -1,22 +1,16 @@
 import contextlib
-import datetime
 import logging
 import time
-import os
-import re
 
 import comet
 from comet.driver.keithley import K2657A
 
-import analysis_pqc
 import numpy as np
 
 from ..utils import format_metric
 from ..estimate import Estimate
-from ..formatter import PQCFormatter
 
 from .matrix import MatrixMeasurement
-from .measurement import ComplianceError
 from .measurement import format_estimate
 from .measurement import QUICK_RAMP_DELAY
 
@@ -25,12 +19,6 @@ from .mixins import EnvironmentMixin
 from .mixins import AnalysisMixin
 
 __all__ = ["IVRamp4WireMeasurement"]
-
-def check_error(vsrc):
-    if vsrc.errorqueue.count:
-        error = vsrc.errorqueue.next()
-        logging.error(error)
-        raise RuntimeError(f"{error[0]}: {error[1]}")
 
 class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp 4wire with electrometer measurement.
@@ -97,9 +85,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.register_series("humidity_box")
 
         self.process.emit("state", dict(
-            vsrc_voltage=vsrc.source.levelv,
-            vsrc_current=vsrc.source.leveli,
-            vsrc_output=vsrc.source.output
+            vsrc_voltage=self.vsrc_get_voltage_level(vsrc),
+            vsrc_current=self.vsrc_get_current_level(vsrc),
+            vsrc_output=self.vsrc_get_output_state(vsrc)
         ))
 
         # Initialize V Source
@@ -112,45 +100,40 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.vsrc_setup(vsrc)
 
         # Current source
-        vsrc.source.func = 'DCAMPS'
-        check_error(vsrc)
+        self.vsrc_set_function_current(vsrc)
 
         self.vsrc_set_voltage_compliance(vsrc, vsrc_voltage_compliance)
 
         self.process.emit("progress", 3, 5)
 
         # Override display
-        vsrc.resource.write("display.smua.measure.func = display.MEASURE_DCVOLTS")
-        check_error(vsrc)
+        self.vsrc_set_display(vsrc, 'voltage')
 
         self.vsrc_set_output_state(vsrc, True)
         time.sleep(.100)
         self.process.emit("state", dict(
-            vsrc_output=vsrc.source.output,
+            vsrc_output=self.vsrc_get_output_state(vsrc),
         ))
 
         self.process.emit("progress", 4, 5)
 
         if self.process.running:
 
-            current = vsrc.source.leveli
+            current = self.vsrc_get_current_level(vsrc)
 
-            logging.info("ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
+            logging.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
             for current in comet.Range(current, current_start, current_step):
-                logging.info("set current: %E A", current)
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
-                vsrc.source.leveli = current
-                # check_error(vsrc)
+                self.vsrc_set_current_level(vsrc, current)
                 time.sleep(QUICK_RAMP_DELAY)
 
                 self.process.emit("state", dict(
                     vsrc_current=current,
                 ))
-                # Compliance?
-                compliance_tripped = vsrc.source.compliance
-                if compliance_tripped:
-                    logging.error("V Source in compliance")
-                    raise ComplianceError("compliance tripped")
+
+                # Compliance tripped?
+                self.vsrc_check_compliance(vsrc)
+
                 if not self.process.running:
                     break
 
@@ -166,7 +149,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         if not self.process.running:
             return
 
-        current = vsrc.source.leveli
+        current = self.vsrc_get_current_level(vsrc)
 
         ramp = comet.Range(current, current_stop, current_step)
         est = Estimate(ramp.count)
@@ -174,17 +157,15 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         t0 = time.time()
 
-        logging.info("ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
+        logging.info("V Source ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
         for current in ramp:
-            logging.info("set current: %E A", current)
-            vsrc.clear()
-            vsrc.source.leveli = current
+            self.vsrc_clear(vsrc)
+            self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", dict(
                 vsrc_current=current,
             ))
 
             time.sleep(waiting_time)
-            # check_error(vsrc)
             dt = time.time() - t0
 
             est.advance()
@@ -192,8 +173,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             self.process.emit("progress", *est.progress)
 
             # read V Source
-            vsrc_reading = vsrc.measure.v()
-            logging.info("V Source reading: %E V", vsrc_reading)
+            vsrc_reading = self.vsrc_read_voltage(vsrc)
             self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
 
             self.process.emit("update")
@@ -219,12 +199,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
                 humidity_box=self.environment_humidity_box
             )
 
-            # Compliance?
-            compliance_tripped = vsrc.source.compliance
-            if compliance_tripped:
-                logging.error("V Source in compliance")
-                raise ComplianceError("compliance tripped")
-            # check_error(vsrc)
+            # Compliance tripped?
+            self.vsrc_check_compliance(vsrc)
+
             if not self.process.running:
                 break
 
@@ -259,24 +236,22 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         ))
 
         current_step = self.get_parameter('current_step')
-        current = vsrc.source.leveli
+        current = self.vsrc_get_current_level(vsrc)
 
-        logging.info("ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
+        logging.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
         for current in comet.Range(current, 0, current_step):
-            logging.info("set current: %E A", current)
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
-            vsrc.source.leveli = current
-            # check_error(vsrc)
+            self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", dict(
                 vsrc_current=current,
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-        vsrc.source.output = 'OFF'
-        check_error(vsrc)
+        self.vsrc_set_output_state(vsrc, False)
+        self.vsrc_check_error(vsrc)
 
         self.process.emit("state", dict(
-            vsrc_output=vsrc.source.output,
+            vsrc_output=self.vsrc_get_output_state(vsrc),
             env_chuck_temperature=None,
             env_box_temperature=None,
             env_box_humidity=None

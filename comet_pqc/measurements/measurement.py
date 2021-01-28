@@ -2,7 +2,6 @@ import datetime
 import logging
 import time
 import json
-import os
 
 import numpy as np
 
@@ -23,7 +22,11 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
-class ComplianceError(ValueError): pass
+class ComplianceError(ValueError):
+    """Compliance tripped error."""
+
+class InstrumentError(RuntimeError):
+    """Generic instrument error."""
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""
@@ -38,8 +41,8 @@ def annotate_step(name):
             logging.info(f"%s %s...", name, self.type)
             try:
                 method(self, *args, **kwargs)
-            except Exception as e:
-                logging.error(e)
+            except Exception as exc:
+                logging.error(exc)
                 logging.error(f"%s %s... failed.", name, self.type)
                 raise
             else:

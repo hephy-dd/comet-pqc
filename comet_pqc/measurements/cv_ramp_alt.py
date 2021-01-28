@@ -1,9 +1,6 @@
 import contextlib
 import logging
-import random
-import datetime
 import time
-import os
 
 import numpy as np
 
@@ -136,7 +133,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
 
         lcr_voltage_level = self.lcr_get_bias_voltage_level(lcr)
 
-        logging.info("ramp to start voltage: from %E V to %E V with step %E V", lcr_voltage_level, bias_voltage_start, bias_voltage_step)
+        logging.info("LCR Meter ramp to start voltage: from %E V to %E V with step %E V", lcr_voltage_level, bias_voltage_start, bias_voltage_step)
         for voltage in comet.Range(lcr_voltage_level, bias_voltage_start, bias_voltage_step):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.process.emit("progress", 0, 1)
@@ -145,7 +142,6 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
             self.process.emit("state", dict(
                 lcr_voltage=voltage,
             ))
-            # Compliance?
 
             if not self.process.running:
                 break
@@ -169,7 +165,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
         benchmark_lcr_source = Benchmark("Read_LCR_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("ramp to end voltage: from %E V to %E V with step %E V", lcr_voltage_level, ramp.end, ramp.step)
+        logging.info("LCR Meter ramp to end voltage: from %E V to %E V with step %E V", lcr_voltage_level, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
                 self.lcr_set_bias_voltage_level(lcr, voltage)
@@ -189,8 +185,8 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                             lcr_prim, lcr_sec = self.lcr_acquire_filter_reading(lcr)
                         else:
                             lcr_prim, lcr_sec = self.lcr_acquire_reading(lcr)
-                    except Exception as e:
-                        raise RuntimeError(f"Failed to read from LCR: {e}")
+                    except Exception as exc:
+                        raise RuntimeError(f"Failed to read from LCR: {exc}") from exc
                     try:
                         lcr_prim2 = 1.0 / (lcr_prim * lcr_prim)
                     except ZeroDivisionError:
@@ -199,7 +195,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                 # read V Source
                 with benchmark_lcr_source:
                     lcr_reading = self.lcr_get_bias_polarity_current_level(lcr)
-                logging.info("LCR reading: %E A", lcr_reading)
+                logging.info("LCR reading: %s", format_metric(lcr_reading, "A"))
 
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
@@ -230,8 +226,6 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                     temperature_chuck=self.environment_temperature_chuck,
                     humidity_box=self.environment_humidity_box
                 )
-
-                # Compliance?
 
                 if not self.process.running:
                     break

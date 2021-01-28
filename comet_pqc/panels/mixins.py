@@ -1,6 +1,7 @@
 from comet import ui
 
 from ..utils import format_metric
+from ..utils import format_output
 
 __all__ = [
     'HVSourceMixin',
@@ -9,6 +10,8 @@ __all__ = [
     'LCRMixin',
     'EnvironmentMixin'
 ]
+
+NO_VALUE = "---"
 
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
@@ -46,13 +49,13 @@ class HVSourceMixin:
         self.bind("hvsrc_source_voltage_autorange_enable", self.hvsrc_source_voltage_autorange_enable, True)
         self.bind("hvsrc_source_voltage_range", self.hvsrc_source_voltage_range, 20, unit="V")
 
-        self.status_hvsrc_voltage = ui.Text(value="---", readonly=True)
-        self.status_hvsrc_current = ui.Text(value="---", readonly=True)
-        self.status_hvsrc_output = ui.Text(value="---", readonly=True)
+        self.status_hvsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_hvsrc_current = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_hvsrc_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, "---")
-        self.bind("status_hvsrc_current", self.status_hvsrc_current, "---")
-        self.bind("status_hvsrc_output", self.status_hvsrc_output, "---")
+        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, NO_VALUE)
+        self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
+        self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
 
         self.status_panel.append(ui.GroupBox(
             title="HV Source Status",
@@ -119,8 +122,8 @@ class HVSourceMixin:
                 value = state.get('hvsrc_current')
                 self.status_hvsrc_current.value = format_metric(value, "A")
             if 'hvsrc_output' in state:
-                labels = {False: "OFF", True: "ON", None: "---"}
-                self.status_hvsrc_output.value = labels[state.get('hvsrc_output')]
+                value = state.get('hvsrc_output')
+                self.status_hvsrc_output.value = format_output(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -149,13 +152,13 @@ class VSourceMixin:
         self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
         self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
 
-        self.status_vsrc_voltage = ui.Text(value="---", readonly=True)
-        self.status_vsrc_current = ui.Text(value="---", readonly=True)
-        self.status_vsrc_output = ui.Text(value="---", readonly=True)
+        self.status_vsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_vsrc_current = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_vsrc_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, "---")
-        self.bind("status_vsrc_current", self.status_vsrc_current, "---")
-        self.bind("status_vsrc_output", self.status_vsrc_output, "---")
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, NO_VALUE)
+        self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
+        self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
 
         self.status_panel.append(ui.GroupBox(
             title="V Source Status",
@@ -212,7 +215,8 @@ class VSourceMixin:
                 value = state.get('vsrc_current')
                 self.status_vsrc_current.value = format_metric(value, "A")
             if 'vsrc_output' in state:
-                self.status_vsrc_output.value = state.get('vsrc_output') or '---'
+                value = state.get('vsrc_output')
+                self.status_vsrc_output.value = format_output(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -258,9 +262,9 @@ class ElectrometerMixin:
         self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
         self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
 
-        self.status_elm_current = ui.Text(value="---", readonly=True)
+        self.status_elm_current = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_elm_current", self.status_elm_current, "---")
+        self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
 
         self.status_panel.append(ui.GroupBox(
             title="Electrometer Status",
@@ -353,13 +357,13 @@ class LCRMixin:
         self.bind("lcr_open_correction_mode", self.lcr_open_correction_mode, "single")
         self.bind("lcr_open_correction_channel", self.lcr_open_correction_channel, 0)
 
-        self.status_lcr_voltage = ui.Text(value="---", readonly=True)
-        self.status_lcr_current = ui.Text(value="---", readonly=True)
-        self.status_lcr_output = ui.Text(value="---", readonly=True)
+        self.status_lcr_voltage = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_lcr_current = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_lcr_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_lcr_voltage", self.status_lcr_voltage, "---")
-        self.bind("status_lcr_current", self.status_lcr_current, "---")
-        self.bind("status_lcr_output", self.status_lcr_output, "---")
+        self.bind("status_lcr_voltage", self.status_lcr_voltage, NO_VALUE)
+        self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
+        self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
 
         self.status_panel.append(ui.GroupBox(
             title="LCR Status",
@@ -417,8 +421,8 @@ class LCRMixin:
                 value = state.get('lcr_current')
                 self.status_lcr_current.value = format_metric(value, "A")
             if 'lcr_output' in state:
-                labels = {False: "OFF", True: "ON", None: "---"}
-                self.status_lcr_output.value = labels[state.get('lcr_output')]
+                value = state.get('lcr_output')
+                self.status_lcr_output.value = format_output(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -426,13 +430,13 @@ class EnvironmentMixin:
     """Mixin class providing default controls and status for Environment box."""
 
     def register_environment(self):
-        self.status_env_chuck_temperature = ui.Text(value="---", readonly=True)
-        self.status_env_box_temperature = ui.Text(value="---", readonly=True)
-        self.status_env_box_humidity = ui.Text(value="---", readonly=True)
+        self.status_env_chuck_temperature = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_env_box_temperature = ui.Text(value=NO_VALUE, readonly=True)
+        self.status_env_box_humidity = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, "---")
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, "---")
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, "---")
+        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, NO_VALUE)
+        self.bind("status_env_box_temperature", self.status_env_box_temperature, NO_VALUE)
+        self.bind("status_env_box_humidity", self.status_env_box_humidity, NO_VALUE)
 
         self.status_panel.append(ui.GroupBox(
             title="Environment Status",
