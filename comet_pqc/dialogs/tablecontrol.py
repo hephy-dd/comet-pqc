@@ -143,6 +143,7 @@ class TableContactsWidget(ui.Row):
         for i, contact in enumerate(contacts):
             x, y, z = self.contacts_tree[i].position
             contact.position = x, y, z
+            contact.pos = contact.has_position
             logging.info("updated contact position: %s %s", contact.name, contact.position)
 
     def lock(self):
@@ -741,9 +742,13 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def update_control_buttons(self):
         x, y, z = self.current_position
         # Disable move up button for large step sizes
-        self.add_z_button.enabled = False
+        z_enabled = False
         if not math.isnan(z):
-            self.add_z_button.enabled = ((z + self.step_width) <= self.z_limit) or (self.step_width <= self.maximum_z_step_size)
+            if (z + self.step_width) <= self.z_limit:
+                z_enabled = True
+            else:
+                z_enabled = self.step_width <= self.maximum_z_step_size
+        self.add_z_button.enabled = z_enabled
         logging.info("set table step width to %.3f mm", self.step_width)
         for button in self.control_buttons:
             button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'}}}"
@@ -777,7 +782,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         logging.info("set table step width to %.3f mm", self.step_width)
         self.update_control_buttons()
 
-    def on_move_finished(self, z_warning=False):
+    def on_move_finished(self, z_warning=None):
         self.progress_bar.visible = False
         self.stop_button.visible = False
         self.stop_button.enabled = False

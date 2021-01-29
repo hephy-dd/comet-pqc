@@ -1,4 +1,5 @@
 import copy
+import math
 import os
 
 from comet import ui
@@ -101,7 +102,9 @@ class SequenceTree(ui.Tree):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.header = ["Measurement", "State"]
+        self.header = ["Measurement", "Pos", "State"]
+        self.qt.header().setMinimumSectionSize(32)
+        self.qt.header().resizeSection(1, 32)
 
     def lock(self):
         for contact in self:
@@ -169,35 +172,43 @@ class SequenceTreeItem(ui.TreeItem):
         self[0].checked = enabled
 
     @property
-    def state(self):
+    def pos(self):
         return self[1].value
+
+    @enabled.setter
+    def pos(self, enabled):
+        self[1].value = {False: '', True: 'OK'}.get(enabled)
+
+    @property
+    def state(self):
+        return self[2].value
 
     @state.setter
     def state(self, value):
         self[0].bold = (value in (self.ActiveState, self.ProcessingState))
         self[0].color = None
         if value == self.SuccessState:
-            self[1].color = "green"
+            self[2].color = "green"
         elif value in (self.ActiveState, self.ProcessingState):
             self[0].color = "blue"
-            self[1].color = "blue"
+            self[2].color = "blue"
         else:
-            self[1].color = "red"
-        self[1].value = value
+            self[2].color = "red"
+        self[2].value = value
 
     @property
     def quality(self):
-        return self[2].value
+        return self[3].value
 
     @quality.setter
     def quality(self, value):
         # Oh dear...
         value = value or ""
         if value.lower() == STATUS_PASSED.lower():
-            self[2].color = "green"
+            self[3].color = "green"
         else:
-            self[2].color = "red"
-        self[2].value = value.capitalize()
+            self[3].color = "red"
+        self[3].value = value.capitalize()
 
 class ContactTreeItem(SequenceTreeItem):
 
@@ -208,9 +219,17 @@ class ContactTreeItem(SequenceTreeItem):
         self.enabled = contact.enabled
         self.contact_id = contact.contact_id
         self.description = contact.description
-        self.position = float('nan'), float('nan'), float('nan')
+        self.reset_position()
         for measurement in contact.measurements:
             self.append(MeasurementTreeItem(self, measurement))
+
+    @property
+    def has_position(self):
+        return any((not math.isnan(value) for value in self.position))
+
+    def reset_position(self):
+        self.pos = False
+        self.position = float('nan'), float('nan'), float('nan')
 
 class MeasurementTreeItem(SequenceTreeItem):
 

@@ -298,11 +298,24 @@ class SequenceProcess(BaseProcess):
         else:
             self.emit("message", "Initialize sequence... done.")
 
+    def safe_move_table(self, position):
+        table_process = self.processes.get("table")
+        if table_process.running and table_process.enabled:
+            self.emit("message", "Moving table...")
+            def absolute_move_finished(z_warning=None):
+                table_process.absolute_move_finished = None
+                self.set("table_position", table_process.get_cached_position())
+                self.set("movement_finished", True)
+                self.emit("message", "Moving table... done.")
+            table_process.absolute_move_finished = absolute_move_finished
+            table_process.safe_absolute_move(*position)
+            while not self.get("movement_finished"):
+                time.sleep(.25)
+
     def process(self):
         self.emit("message", "Process sequence...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
-        table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
         write_logfiles = self.get("write_logfiles")
@@ -310,6 +323,10 @@ class SequenceProcess(BaseProcess):
         self.emit("measurement_state", contact_item, contact_item.ProcessingState)
         logging.info(" => %s", contact_item.name)
         prev_measurement_item = None
+        self.set("movement_finished", False)
+        if self.get("move_to_contact") and contact_item.has_position:
+            self.safe_move_table(contact_item.position)
+        table_position = self.get("table_position")
         for measurement_item in contact_item.children:
             if not self.running:
                 break
@@ -378,6 +395,9 @@ class SequenceProcess(BaseProcess):
         self.emit("measurement_state", contact_item)
         if prev_measurement_item:
             self.emit('hide_measurement', prev_measurement_item)
+
+        if self.get("move_to_after_position"):
+            self.safe_move_table(self.get("move_to_after_position"))
 
     def finalize(self):
         self.emit("message", "Finalize sequence...")

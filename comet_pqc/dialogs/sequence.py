@@ -1,19 +1,31 @@
 from comet import ui
+from comet.settings import SettingsMixin
 
+from ..components import PositionsComboBox
 from ..components import OperatorWidget
 from ..components import WorkingDirectoryWidget
 
+from ..utils import from_table_unit
+
 __all__ = ['StartSequenceDialog']
 
-class StartSequenceDialog(ui.Dialog):
+class StartSequenceDialog(ui.Dialog, SettingsMixin):
 
-    def __init__(self, contact_item):
+    def __init__(self, contact_item, table_enabled=False):
         super().__init__()
         self.title = "Start Sequence"
-        self.move_to_checkbox = ui.CheckBox(
+        self.contact_checkbox = ui.CheckBox(
             text="Move table and contact with Probe Card",
+            checked=contact_item.has_position,
+            enabled=contact_item.has_position
+        )
+        self.position_checkbox = ui.CheckBox(
+            text="Move table after measurements",
             checked=False,
-            enabled=False # TODO
+            changed=self.on_position_checkbox_toggled
+        )
+        self.positions_combobox = PositionsComboBox(
+            enabled=False
         )
         self.operator_combobox = OperatorWidget()
         self.output_combobox = WorkingDirectoryWidget()
@@ -30,8 +42,13 @@ class StartSequenceDialog(ui.Dialog):
             ),
             ui.GroupBox(
                 title="Table",
-                layout=ui.Row(
-                    self.move_to_checkbox,
+                enabled=table_enabled,
+                layout=ui.Column(
+                    self.contact_checkbox,
+                    ui.Row(
+                        self.position_checkbox,
+                        self.positions_combobox
+                    ),
                     ui.Spacer()
                 )
             ),
@@ -50,9 +67,28 @@ class StartSequenceDialog(ui.Dialog):
         )
 
     def load_settings(self):
+        self.position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
+        self.positions_combobox.load_settings()
         self.operator_combobox.load_settings()
         self.output_combobox.load_settings()
 
     def store_settings(self):
+        self.settings['move_on_success'] = self.position_checkbox.checked
+        self.positions_combobox.store_settings()
         self.operator_combobox.store_settings()
         self.output_combobox.store_settings()
+
+    def move_to_position(self):
+        if self.position_checkbox.checked:
+            current = self.positions_combobox.current
+            if current:
+                index = self.positions_combobox.index(current)
+                positions = self.settings.get('table_positions') or []
+                if 0 <= index < len(positions):
+                    position = positions[index]
+                    x, y, z = position.get('x'), position.get('y'), position.get('z')
+                    return from_table_unit(x), from_table_unit(y), from_table_unit(z)
+        return None
+
+    def on_position_checkbox_toggled(self, state):
+        self.positions_combobox.enabled = state

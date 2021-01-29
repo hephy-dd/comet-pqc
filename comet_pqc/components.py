@@ -326,3 +326,17 @@ class CalibrationGroupBox(ui.GroupBox):
         self.rm_y_label.stylesheet = "color: green" if getrm(y) else "color: red"
         self.rm_z_label.text = "rm {}".format(getrm(z))
         self.rm_z_label.stylesheet = "color: green" if getrm(z) else "color: red"
+
+class PositionsComboBox(ui.ComboBox, SettingsMixin):
+
+    def load_settings(self):
+        self.clear()
+        for position in self.settings.get('table_positions') or []:
+            self.append(position.get('name'))
+        index = self.settings.get('current_table_position') or 0
+        if 0 <= index < len(self):
+            self.current = self[index]
+
+    def store_settings(self):
+        index = self.index(self.current or 0)
+        self.settings['current_table_position'] = index

@@ -570,16 +570,24 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         x, y, z = contact.position
         self.table_process.message_changed = lambda message: self.emit('message_changed', message)
         self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
-        self.table_process.absolute_move_finished = self.on_table_finished
-        self.table_process.safe_absolute_move(x, y, z)
+        self.table_process.absolute_move_finished = self.on_table_contact_finished
+        self.table_process.absolute_move(x, y, z)
 
-    def on_table_finished(self):
+    def on_table_finished(self, z_warning=None):
         self.table_process.absolute_move_finished = None
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.mount(current_item)
         self.unlock_controls()
+        if z_warning is not None:
+            ui.show_warning(
+                title="Safe Z Position",
+                text=f"Limited Z movement to {z_warning:.3f} mm to protect probe card."
+            )
+
+    def on_table_contact_finished(self, z_warning=None):
+        self.on_table_finished()
 
     @handle_exception
     def on_start(self):
@@ -595,28 +603,30 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.on_measure_run()
         elif isinstance(current_item, ContactTreeItem):
             contact_item = current_item
-            def verify_start():
-                dialog = StartSequenceDialog(contact_item)
-                self.operator_widget.store_settings()
-                self.output_widget.store_settings()
-                dialog.load_settings()
-                if not dialog.run():
-                    return False
-                dialog.store_settings()
-                self.operator_widget.load_settings()
-                self.output_widget.load_settings()
-                return True
-            if verify_start():
-                self.on_sequence_start(contact_item)
+            dialog = StartSequenceDialog(
+                contact_item=contact_item,
+                table_enabled=self.use_table()
+            )
+            self.operator_widget.store_settings()
+            self.output_widget.store_settings()
+            dialog.load_settings()
+            if not dialog.run():
+                return
+            dialog.store_settings()
+            self.operator_widget.load_settings()
+            self.output_widget.load_settings()
+            move_to_contact = dialog.contact_checkbox.checked
+            move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
+            self.on_sequence_start(contact_item, move_to_contact, move_to_after_position)
 
-    def on_sequence_start(self, contact_item):
+    def on_sequence_start(self, contact_item, move_to_contact=False, move_to_after_position=None):
         self.switch_off_lights()
         self.sync_environment_controls()
         self.lock_controls()
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        sequence = self.processes.get("sequence")
+        sequence = self.sequence_process
         sequence.set("sample_name", self.sample_name())
         sequence.set("sample_type", self.sample_type())
         sequence.set("table_position", self.table_position())
@@ -627,6 +637,8 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         sequence.set("use_table", self.use_table())
         sequence.set("serialize_json", self.export_json())
         sequence.set("serialize_txt", self.export_txt())
+        sequence.set("move_to_contact", move_to_contact)
+        sequence.set("move_to_after_position", move_to_after_position)
         sequence.contact_item = contact_item
         # sequence.sequence_tree = self.sequence_tree
         def show_measurement(item):
@@ -664,16 +676,13 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_stop(self):
         self.stop_button.enabled = False
-        sequence = self.processes.get("sequence")
-        sequence.stop()
-        measure = self.processes.get("measure")
-        measure.stop()
+        self.sequence_process.stop()
+        self.measure_process.stop()
 
     def on_sequence_finished(self):
-        sequence = self.processes.get("sequence")
-        sequence.set("sample_name", None)
-        sequence.set("output_dir", None)
-        sequence.set("contact_item", None)
+        self.sequence_process.set("sample_name", None)
+        self.sequence_process.set("output_dir", None)
+        self.sequence_process.set("contact_item", None)
         self.sync_environment_controls()
         self.unlock_controls()
 
@@ -697,48 +706,44 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         panel.store()
         # TODO
         panel.clear_readings()
-        measure = self.processes.get("measure")
         # Set process parameters
-        measure.set("sample_name", self.sample_name())
-        measure.set("sample_type", self.sample_type())
-        measure.set("table_position", self.table_position())
-        measure.set("operator", self.operator())
-        measure.set("output_dir", self.output_dir())
-        measure.set("write_logfiles", self.write_logfiles())
-        measure.set("use_environ", self.use_environment())
-        measure.set("use_table", self.use_table())
-        measure.set("serialize_json", self.export_json())
-        measure.set("serialize_txt", self.export_txt())
-        measure.measurement_item = measurement
-        measure.reading = panel.append_reading
-        measure.update = panel.update_readings
-        measure.append_analysis = panel.append_analysis
-        measure.state = panel.state
-        measure.push_summary = self.on_push_summary
+        self.measure_process.set("sample_name", self.sample_name())
+        self.measure_process.set("sample_type", self.sample_type())
+        self.measure_process.set("table_position", self.table_position())
+        self.measure_process.set("operator", self.operator())
+        self.measure_process.set("output_dir", self.output_dir())
+        self.measure_process.set("write_logfiles", self.write_logfiles())
+        self.measure_process.set("use_environ", self.use_environment())
+        self.measure_process.set("use_table", self.use_table())
+        self.measure_process.set("serialize_json", self.export_json())
+        self.measure_process.set("serialize_txt", self.export_txt())
+        self.measure_process.measurement_item = measurement
+        self.measure_process.reading = panel.append_reading
+        self.measure_process.update = panel.update_readings
+        self.measure_process.append_analysis = panel.append_analysis
+        self.measure_process.state = panel.state
+        self.measure_process.push_summary = self.on_push_summary
         # TODO
-        measure.start()
+        self.measure_process.start()
 
     def on_measure_finished(self):
         self.sync_environment_controls()
         self.unlock_controls()
-        measure = self.processes.get("measure")
-        measure.reading = lambda data: None
+        self.measure_process.reading = lambda data: None
         self.sequence_tree.unlock()
 
     def on_status_start(self):
         self.lock_controls()
         self.status_tab.reset()
-        status = self.processes.get("status")
-        status.set("use_environ", self.use_environment())
-        status.set("use_table", self.use_table())
-        status.start()
+        self.status_process.set("use_environ", self.use_environment())
+        self.status_process.set("use_table", self.use_table())
+        self.status_process.start()
         # Fix: stay in status tab
         self.tab_widget.current = self.status_tab
 
     def on_status_finished(self):
         self.unlock_controls()
-        status = self.processes.get("status")
-        self.status_tab.update_status(status)
+        self.status_tab.update_status(self.status_process)
 
     # Table calibration
 
@@ -862,10 +867,17 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_environment_groupbox_toggled(self, state):
         if state:
+            self.environ_process.start()
             self.sync_environment_controls()
+        else:
+            self.environ_process.stop()
 
     def on_table_groupbox_toggled(self, state):
-        self.sync_table_controls()
+        if state:
+            self.table_process.start()
+            self.sync_table_controls()
+        else:
+            self.table_process.stop()
 
     @handle_exception
     def on_push_summary(self, *args):
