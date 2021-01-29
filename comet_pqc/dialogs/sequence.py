@@ -5,6 +5,7 @@ from ..components import PositionsComboBox
 from ..components import OperatorWidget
 from ..components import WorkingDirectoryWidget
 
+from ..settings import settings
 from ..utils import from_table_unit
 
 __all__ = ['StartSequenceDialog']
@@ -83,11 +84,10 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
             current = self.positions_combobox.current
             if current:
                 index = self.positions_combobox.index(current)
-                positions = self.settings.get('table_positions') or []
+                positions = settings.table_positions
                 if 0 <= index < len(positions):
                     position = positions[index]
-                    x, y, z = position.get('x'), position.get('y'), position.get('z')
-                    return from_table_unit(x), from_table_unit(y), from_table_unit(z)
+                    return position.x, position.y, position.z
         return None
 
     def on_position_checkbox_toggled(self, state):

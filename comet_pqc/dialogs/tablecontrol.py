@@ -11,10 +11,21 @@ from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
 
 from ..components import PositionLabel
+from ..settings import settings, TablePosition
 
 from qutie.qutie import Qt
 
 import logging
+
+def safe_z_position(z):
+    z_limit = settings.table_z_limit
+    if z > z_limit:
+        ui.show_warning(
+            title="Z Warning",
+            text=f"Limiting Z movement to {z_limit:.3f} mm to protect probe card."
+        )
+        z = z_limit
+    return z
 
 class LinearTransform:
     """Linear transformation of n coordinates between two points."""
@@ -304,30 +315,28 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
 
     def load_settings(self):
         self.positions_tree.clear()
-        for position in self.settings.get('table_positions', []):
+        for position in settings.table_positions:
             self.positions_tree.append(TablePositionItem(
-                name=position.get('name'),
-                x=from_table_unit(position.get('x')),
-                y=from_table_unit(position.get('y')),
-                z=from_table_unit(position.get('z')),
-                comment=position.get('comment') or "",
+                name=position.name,
+                x=position.x,
+                y=position.y,
+                z=position.z,
+                comment=position.comment,
             ))
         self.positions_tree.fit()
-        self.z_limit_movement = self.settings.get('z_limit_movement') or 0.0
 
     def store_settings(self):
         positions = []
-        mm = comet.ureg("mm")
         for position in self.positions_tree:
             x, y, z = position.position
-            positions.append(dict(
+            positions.append(TablePosition(
                 name=position.name,
-                x=to_table_unit(x),
-                y=to_table_unit(y),
-                z=to_table_unit(z),
+                x=x,
+                y=y,
+                z=z,
                 comment=position.comment
             ))
-        self.settings['table_positions'] = positions
+        settings.table_positions = positions
 
     def lock(self):
         self.pick_button.enabled = False
@@ -778,20 +787,14 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.relative_move(0, 0, -self.step_width)
 
     def on_step_toggled(self, state):
-
         logging.info("set table step width to %.3f mm", self.step_width)
         self.update_control_buttons()
 
-    def on_move_finished(self, z_warning=None):
+    def on_move_finished(self):
         self.progress_bar.visible = False
         self.stop_button.visible = False
         self.stop_button.enabled = False
         self.unlock()
-        if z_warning is not None:
-            ui.show_warning(
-                title="Safe Z Position",
-                text=f"Limited Z movement to {z_warning:.3f} mm to protect probe card."
-            )
 
     def on_calibration_finished(self):
         self.progress_bar.visible = False
@@ -816,6 +819,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         callback(x, y, z)
 
     def on_absolute_move(self, x, y, z):
+        z = safe_z_position(z)
         self.lock()
         self.stop_button.visible = True
         self.stop_button.enabled = True
@@ -848,7 +852,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         width, height = self.settings.get('tablecontrol_dialog_size', (640, 480))
         self.resize(width, height)
         self.positions_widget.load_settings()
-        self.z_limit = from_table_unit(self.settings.get('z_limit_movement', 0.0))
+        self.z_limit = settings.table_z_limit
         self.z_limit_label.value = self.z_limit
 
     def store_settings(self):

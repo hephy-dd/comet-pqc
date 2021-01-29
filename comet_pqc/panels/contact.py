@@ -50,7 +50,7 @@ class ContactPanel(BasicPanel):
                 )
             ),
             ui.GroupBox(
-                title="Actions",
+                title="Table Actions",
                 layout=ui.Column(
                     self.move_to_button,
                     self.contact_button

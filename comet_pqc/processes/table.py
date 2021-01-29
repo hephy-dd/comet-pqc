@@ -245,11 +245,13 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def relative_move(self, table, x, y, z):
-        error_handler = TableErrorHandler(table)
+        """Relative move table.
 
-        # error_handler.handle_machine_error()
-        # error_handler.handle_error()
-        # error_handler.handle_calibration_error()
+        Emits following events:
+         - position_changed
+         - relative_move_finished
+        """
+        error_handler = TableErrorHandler(table)
 
         self.emit("message_changed", f"moving table relative to x={x:.3f}, y={y:.3f}, z={z:.3f} mm")
         table.rmove(
@@ -270,14 +272,22 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def safe_absolute_move(self, table, x, y, z):
+        """Safely move to absolute position while moving X/Y axis at zero Z.
+         - move Z down to zero
+         - move X and Y
+         - move Z up
+
+        Emits following events:
+        - position_changed
+        - caldone_changed
+        - absolute_move_finished
+        """
         self.__stop_event.clear()
-        z_warning = None
         self.emit("message_changed", "Moving...")
-        z_origin = z
+
         x = to_table_unit(x)
         y = to_table_unit(y)
-        z_limit_movement = from_table_unit(self.settings.get('z_limit_movement', 0.0))
-        target_z = min(to_table_unit(z), to_table_unit(z_limit_movement))
+        z = to_table_unit(z)
 
         retries = RETRIES
         delay = 1.0
@@ -343,15 +353,15 @@ class AlternateTableProcess(TableProcess):
 
         self.emit("progress_changed", 3, 4)
         self.emit("message_changed", "Move up Z axis...")
-        table.rmove(0, 0, target_z)
+        table.rmove(0, 0, z)
         for i in range(retries):
             handle_abort()
             current_pos = table.pos
             update_status(*current_pos)
-            if current_pos[2] >= target_z:
+            if current_pos[2] >= z:
                 break
             time.sleep(delay)
-        if table.pos != (x, y, target_z):
+        if table.pos != (x, y, z):
             raise RuntimeError(f"failed to relative move, current pos: {pos}")
 
         handle_abort()
@@ -364,14 +374,10 @@ class AlternateTableProcess(TableProcess):
         self.emit("progress_changed", 7, 7)
         self.emit("message_changed", "Movement successful.")
 
-        # Create warning on Z limit
-        if z_origin > from_table_unit(target_z):
-            z_warning = from_table_unit(target_z)
-
         x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
         self.emit('caldone_changed', x, y, z)
 
-        self.emit('absolute_move_finished', z_warning)
+        self.emit('absolute_move_finished')
 
     @async_request
     def calibrate_table(self, table):

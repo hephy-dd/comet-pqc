@@ -3,6 +3,7 @@ import os
 from comet import ui
 from comet.settings import SettingsMixin
 
+from .settings import settings
 from .utils import make_path, create_icon
 from .utils import format_table_unit
 
@@ -145,24 +146,18 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
 
     def load_settings(self):
         self.clear_locations()
-        locations = self.settings.get('output_path')
+        locations = settings.output_path
         if not locations:
             locations = [os.path.join(os.path.expanduser("~"), "PQC")]
-        elif isinstance(locations, str):
-            locations = [locations]
         for location in locations:
             self.append_location(location)
-        try:
-            index = int(self.settings.get("current_output_path", 0))
-        except:
-            index = 0
-        self.location_combo_box.qt.setCurrentIndex(index)
+        self.location_combo_box.current = settings.current_output_path
         self.update_locations()
 
     def store_settings(self):
         self.update_locations()
-        self.settings['output_path'] = self.locations
-        self.settings['current_output_path'] = max(0, self.location_combo_box.qt.currentIndex())
+        settings.output_path = self.locations
+        settings.current_output_path = self.location_combo_box.current
 
 class OperatorComboBox(ui.ComboBox, SettingsMixin):
 
@@ -171,21 +166,17 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         self.duplicates_enabled = False
 
     def load_settings(self):
-        self.items = self.settings.get("operators") or []
-        # Set current operator
-        try:
-            index = int(self.settings.get("current_operator", 0))
-        except:
-            index = 0
-        index = max(0, min(index, len(self)))
-        self.current = self[index]
+        self.clear()
+        for operator in settings.operators:
+            self.append(operator)
+        self.current = settings.current_operator
 
     def store_settings(self):
-        self.settings["current_operator"] = max(0, self.qt.currentIndex())
+        settings.current_operator = self.current
         operators = []
         for index in range(len(self)):
             operators.append(self.qt.itemText(index))
-        self.settings["operators"] = operators
+        settings.operators = operators
 
 class OperatorWidget(ui.Row, SettingsMixin):
 
@@ -331,8 +322,8 @@ class PositionsComboBox(ui.ComboBox, SettingsMixin):
 
     def load_settings(self):
         self.clear()
-        for position in self.settings.get('table_positions') or []:
-            self.append(position.get('name'))
+        for position in settings.table_positions:
+            self.append(position)
         index = self.settings.get('current_table_position') or 0
         if 0 <= index < len(self):
             self.current = self[index]

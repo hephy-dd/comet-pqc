@@ -37,7 +37,10 @@ from .tabs import StatusTab
 from .tabs import SummaryTab
 from .logwindow import LogWidget
 from .formatter import CSVFormatter
+from .settings import settings
 from .utils import make_path, handle_exception
+
+from .dialogs.tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 
@@ -556,9 +559,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def on_table_move_to(self, contact):
-        self.lock_controls()
         x, y, z = contact.position
-        z = min(z, self.settings.get('z_limit_movement', 0))
+        z = safe_z_position(z)
+        self.lock_controls()
         self.table_process.message_changed = lambda message: self.emit('message_changed', message)
         self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
         self.table_process.absolute_move_finished = self.on_table_finished
@@ -570,24 +573,16 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         x, y, z = contact.position
         self.table_process.message_changed = lambda message: self.emit('message_changed', message)
         self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
-        self.table_process.absolute_move_finished = self.on_table_contact_finished
-        self.table_process.absolute_move(x, y, z)
+        self.table_process.absolute_move_finished = self.on_table_finished
+        self.table_process.safe_absolute_move(x, y, z)
 
-    def on_table_finished(self, z_warning=None):
+    def on_table_finished(self):
         self.table_process.absolute_move_finished = None
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.mount(current_item)
         self.unlock_controls()
-        if z_warning is not None:
-            ui.show_warning(
-                title="Safe Z Position",
-                text=f"Limited Z movement to {z_warning:.3f} mm to protect probe card."
-            )
-
-    def on_table_contact_finished(self, z_warning=None):
-        self.on_table_finished()
 
     @handle_exception
     def on_start(self):

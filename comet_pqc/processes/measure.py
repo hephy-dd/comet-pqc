@@ -302,7 +302,7 @@ class SequenceProcess(BaseProcess):
         table_process = self.processes.get("table")
         if table_process.running and table_process.enabled:
             self.emit("message", "Moving table...")
-            def absolute_move_finished(z_warning=None):
+            def absolute_move_finished():
                 table_process.absolute_move_finished = None
                 self.set("table_position", table_process.get_cached_position())
                 self.set("movement_finished", True)
