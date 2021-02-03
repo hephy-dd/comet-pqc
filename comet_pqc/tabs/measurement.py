@@ -1,5 +1,6 @@
 from comet import ui
 
+from ..panels import SamplePanel
 from ..panels import ContactPanel
 from ..panels import IVRampPanel
 from ..panels import IVRampElmPanel
@@ -51,6 +52,7 @@ class PanelStack(ui.Row):
 
     def __init__(self):
         super().__init__()
+        self.append(SamplePanel(visible=False))
         self.append(ContactPanel(visible=False))
         self.append(IVRampPanel(visible=False))
         self.append(IVRampElmPanel(visible=False))

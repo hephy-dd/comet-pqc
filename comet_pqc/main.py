@@ -13,7 +13,6 @@ from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import AlternateTableProcess
 from .processes import MeasureProcess
-from .processes import SequenceProcess
 
 from .dashboard import Dashboard
 from .preferences import TableTab
@@ -119,11 +118,6 @@ def main():
         failed=on_show_error
     ))
     app.processes.add("measure", MeasureProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress,
-    ))
-    app.processes.add("sequence", SequenceProcess(
         failed=on_show_error,
         message=on_message,
         progress=on_progress,

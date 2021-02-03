@@ -20,6 +20,7 @@ from comet.driver.corvus import Venus1
 from . import config
 
 from .sequence import SequenceTree
+from .sequence import SampleTreeItem
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
 from .sequence import SequenceManager
@@ -29,6 +30,7 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .dialogs import TableControlDialog
+from .dialogs import StartSampleDialog
 from .dialogs import StartSequenceDialog
 
 from .tabs import EnvironmentTab
@@ -339,11 +341,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.measure_process.measurement_state = self.on_measurement_state
         self.measure_process.save_to_image = self.on_save_to_image
 
-        self.sequence_process = self.processes.get("sequence")
-        self.sequence_process.finished = self.on_sequence_finished
-        self.sequence_process.measurement_state = self.on_measurement_state
-        self.sequence_process.save_to_image = self.on_save_to_image
-
         # Experimental
 
         # Install timer to update environment controls
@@ -483,11 +480,12 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.hide()
         self.sequence_tree.clear()
         sequence = copy.deepcopy(self.sequence_combobox.current)
-        for contact in sequence:
-            self.sequence_tree.append(ContactTreeItem(contact))
+        sample = self.sequence_tree.append(SampleTreeItem("Sample", sequence))
+        if len(sample.children):
+            self.sequence_tree.current = sample.children[0]
+            for contact in sample.children:
+                contact.expanded = True
         self.sequence_tree.fit()
-        if len(self.sequence_tree):
-            self.sequence_tree.current = self.sequence_tree[0]
         self.settings["current_sequence_id"] = sequence.id
 
     def on_sequence_manager_clicked(self):
@@ -538,6 +536,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.panels.clear_readings()
         self.panels.hide()
         self.measurement_tab.measure_controls.visible = False
+        if isinstance(item, SampleTreeItem):
+            panel = self.panels.get("sample")
+            panel.visible = True
+            panel.mount(item)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.visible = True
@@ -579,6 +581,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_table_finished(self):
         self.table_process.absolute_move_finished = None
         current_item = self.sequence_tree.current
+        if isinstance(current_item, SampleTreeItem):
+            panel = self.panels.get("sample")
+            panel.mount(current_item)
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.mount(current_item)
@@ -595,11 +600,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 title="Run Measurement",
                 text=f"Are you sure to run measurement '{current_item.name}' for '{contact_item.name}'?"
             ): return
-            self.on_measure_run()
+            self._on_start(current_item)
         elif isinstance(current_item, ContactTreeItem):
-            contact_item = current_item
             dialog = StartSequenceDialog(
-                contact_item=contact_item,
+                contact_item=current_item,
                 table_enabled=self.use_table()
             )
             self.operator_widget.store_settings()
@@ -612,30 +616,44 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             self.output_widget.load_settings()
             move_to_contact = dialog.contact_checkbox.checked
             move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-            self.on_sequence_start(contact_item, move_to_contact, move_to_after_position)
+            self._on_start(current_item, move_to_contact, move_to_after_position)
+        elif isinstance(current_item, SampleTreeItem):
+            dialog = StartSampleDialog(
+                sample_item=current_item,
+                table_enabled=self.use_table()
+            )
+            self.operator_widget.store_settings()
+            self.output_widget.store_settings()
+            dialog.load_settings()
+            if not dialog.run():
+                return
+            dialog.store_settings()
+            self.operator_widget.load_settings()
+            self.output_widget.load_settings()
+            move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
+            self._on_start(current_item, move_to_contact=True)
 
-    def on_sequence_start(self, contact_item, move_to_contact=False, move_to_after_position=None):
+    def _on_start(self, context, move_to_contact=False, move_to_after_position=None):
         self.switch_off_lights()
         self.sync_environment_controls()
         self.lock_controls()
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        sequence = self.sequence_process
-        sequence.set("sample_name", self.sample_name())
-        sequence.set("sample_type", self.sample_type())
-        sequence.set("table_position", self.table_position())
-        sequence.set("operator", self.operator())
-        sequence.set("output_dir", self.output_dir())
-        sequence.set("write_logfiles", self.write_logfiles())
-        sequence.set("use_environ", self.use_environment())
-        sequence.set("use_table", self.use_table())
-        sequence.set("serialize_json", self.export_json())
-        sequence.set("serialize_txt", self.export_txt())
-        sequence.set("move_to_contact", move_to_contact)
-        sequence.set("move_to_after_position", move_to_after_position)
-        sequence.contact_item = contact_item
-        # sequence.sequence_tree = self.sequence_tree
+        measure = self.measure_process
+        measure.context = context
+        measure.set("sample_name", self.sample_name())
+        measure.set("sample_type", self.sample_type())
+        measure.set("table_position", self.table_position())
+        measure.set("operator", self.operator())
+        measure.set("output_dir", self.output_dir())
+        measure.set("write_logfiles", self.write_logfiles())
+        measure.set("use_environ", self.use_environment())
+        measure.set("use_table", self.use_table())
+        measure.set("serialize_json", self.export_json())
+        measure.set("serialize_txt", self.export_txt())
+        measure.set("move_to_contact", move_to_contact)
+        measure.set("move_to_after_position", move_to_after_position)
         def show_measurement(item):
             item.selectable = True
             item.series.clear()
@@ -646,17 +664,18 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
-            sequence.reading = panel.append_reading
-            sequence.update = panel.update_readings
-            sequence.append_analysis = panel.append_analysis
-            sequence.state = panel.state
+            measure.reading = panel.append_reading
+            measure.update = panel.update_readings
+            measure.append_analysis = panel.append_analysis
+            measure.state = panel.state
         def hide_measurement(item):
             item.selectable = False
             item[0].color = None
-        sequence.show_measurement = show_measurement
-        sequence.hide_measurement = hide_measurement
-        sequence.push_summary = self.on_push_summary
-        sequence.start()
+        measure.show_measurement = show_measurement
+        measure.hide_measurement = hide_measurement
+        measure.push_summary = self.on_push_summary
+        measure.finished = self.on_finished
+        measure.start()
 
     def on_measurement_state(self, item, state=None, quality=None):
         item.state = state
@@ -671,13 +690,10 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def on_stop(self):
         self.stop_button.enabled = False
-        self.sequence_process.stop()
         self.measure_process.stop()
 
-    def on_sequence_finished(self):
-        self.sequence_process.set("sample_name", None)
-        self.sequence_process.set("output_dir", None)
-        self.sequence_process.set("contact_item", None)
+    def on_finished(self):
+        self.measure_process.set("sample_name", None)
         self.sync_environment_controls()
         self.unlock_controls()
 
@@ -756,14 +772,16 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
     def on_table_controls_start(self):
         dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
-        dialog.load_contacts(self.sequence_tree)
+        if len(self.sequence_tree[0].children):
+            dialog.load_contacts(self.sequence_tree[0].children) # HACK
         if self.use_environment():
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
                 dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
         dialog.run()
         dialog.store_settings()
-        dialog.update_contacts(self.sequence_tree)
+        if len(self.sequence_tree[0].children):
+            dialog.update_contacts(self.sequence_tree[0].children)
         # Prevent glitch
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):

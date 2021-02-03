@@ -18,6 +18,12 @@ from ..utils import format_metric
 from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
 
+from ..sequence import MeasurementTreeItem
+from ..sequence import ContactTreeItem
+from ..sequence import SampleTreeItem
+
+__all__ = ['MeasureProcess']
+
 class LogFileHandler:
     """Context manager for log files."""
 
@@ -157,146 +163,24 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             logging.warning("unable to connect with environment box (test LED OFF)")
 
 class MeasureProcess(BaseProcess):
-    """Measure process executing a single measurements."""
+    """Measure process executing a samples, contacts and measurements."""
 
-    measurement_item = None
+    context = None
 
-    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, **kwargs):
+    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, push_summary=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
         self.measurement_state = measurement_state
         self.reading = reading
         self.save_to_image = save_to_image
-        self.push_summary = None
-        self.stopped = False
+        self.push_summary = push_summary
+        self.stop_requested = False
 
     def stop(self):
-        self.stopped = True
+        """Stop running measurements."""
+        self.stop_requested = True
         super().stop()
-
-    def initialize(self):
-        self.emit("message", "Initialize measurement...")
-        self.stopped = False
-        try:
-            self.safe_initialize()
-        except Exception:
-            self.emit("message", "Initialize measurement... failed.")
-            raise
-        else:
-            self.emit("message", "Initialize measurement... done.")
-
-    def process(self):
-        self.emit("message", "Process measurement...")
-        sample_name = self.get("sample_name")
-        sample_type = self.get("sample_type")
-        table_position = self.get("table_position")
-        operator = self.get("operator")
-        output_dir = self.get("output_dir")
-        write_logfiles = self.get("write_logfiles")
-        # TODO
-        measurement = measurement_factory(
-            self.measurement_item.type,
-            process=self,
-            sample_name=sample_name,
-            sample_type=sample_type,
-            table_position=table_position,
-            operator=operator
-        )
-        measurement.measurement_item = self.measurement_item
-        log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
-        plot_filename = self.create_filename(measurement, suffix='.png')
-        state = self.measurement_item.ActiveState
-        self.emit("measurement_state", self.measurement_item, state)
-        with LogFileHandler(log_filename):
-            try:
-                measurement.run()
-            except ResourceError as e:
-                if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                    state = self.measurement_item.TimeoutState
-                elif isinstance(e.exc, BrokenPipeError):
-                    state = self.measurement_item.TimeoutState
-                else:
-                    state = self.measurement_item.ErrorState
-                raise
-            except ComplianceError:
-                state = self.measurement_item.ComplianceState
-                raise
-            except Exception as e:
-                state = self.measurement_item.ErrorState
-                raise
-            else:
-                if self.stopped:
-                    state = self.measurement_item.StoppedState
-                else:
-                    state = self.measurement_item.SuccessState
-            finally:
-                self.emit("measurement_state", self.measurement_item, state, measurement.quality)
-                self.emit("save_to_image", self.measurement_item, plot_filename)
-                self.emit('push_summary', measurement.timestamp, sample_name, sample_type, self.measurement_item.contact.name, self.measurement_item.name, state)
-                if self.get("serialize_json"):
-                    with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
-                        measurement.serialize_json(fp)
-                if self.get("serialize_txt"):
-                    # See https://docs.python.org/3/library/csv.html#csv.DictWriter
-                    with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
-                        measurement.serialize_txt(fp)
-
-    def finalize(self):
-        self.emit("message", "Finalize measurement...")
-        self.measurement_item = None
-        try:
-            self.safe_finalize()
-        except Exception:
-            self.emit("message", "Finalize measurement... failed.")
-            raise
-        else:
-            self.emit("message", "Finalize measurement... done.")
-        finally:
-            self.stopped = False
-
-    def run(self):
-        try:
-            try:
-                self.initialize()
-                self.process()
-            finally:
-                self.finalize()
-        except Exception:
-            self.emit("message", "Measurement failed.")
-            raise
-        else:
-            self.emit("message", "Measurement done.")
-
-class SequenceProcess(BaseProcess):
-    """Sequence process executing a sequence of measurements."""
-
-    # sequence_tree = []
-    contact_item = None
-
-    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, **kwargs):
-        super().__init__(**kwargs)
-        self.message = message
-        self.progress = progress
-        self.measurement_state = measurement_state
-        self.reading = reading
-        self.save_to_image = save_to_image
-        self.stopped = False
-
-    def stop(self):
-        self.stopped = True
-        super().stop()
-
-    def initialize(self):
-        self.emit("message", "Initialize sequence...")
-        self.stopped = False
-        try:
-            self.safe_initialize()
-        except Exception:
-            self.emit("message", "Initialize sequence... failed.")
-            raise
-        else:
-            self.emit("message", "Initialize sequence... done.")
 
     def safe_move_table(self, position):
         table_process = self.processes.get("table")
@@ -312,14 +196,79 @@ class SequenceProcess(BaseProcess):
             while not self.get("movement_finished"):
                 time.sleep(.25)
 
-    def process(self):
-        self.emit("message", "Process sequence...")
+    def initialize(self):
+        self.emit("message", "Initialize...")
+        self.stop_requested = False
+        try:
+            self.safe_initialize()
+        except Exception:
+            self.emit("message", "Initialize... failed.")
+            raise
+        else:
+            self.emit("message", "Initialize... done.")
+
+    def process_measurement(self, measurement_item):
+        self.emit("message", "Process measurement...")
         sample_name = self.get("sample_name")
         sample_type = self.get("sample_type")
+        table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
         write_logfiles = self.get("write_logfiles")
-        contact_item = self.contact_item
+        # TODO
+        measurement = measurement_factory(
+            measurement_item.type,
+            process=self,
+            sample_name=sample_name,
+            sample_type=sample_type,
+            table_position=table_position,
+            operator=operator
+        )
+        measurement.measurement_item = measurement_item
+        log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
+        plot_filename = self.create_filename(measurement, suffix='.png')
+        state = measurement_item.ActiveState
+        self.emit("measurement_state", measurement_item, state)
+        with LogFileHandler(log_filename):
+            try:
+                measurement.run()
+            except ResourceError as e:
+                self.emit("message", "Process... failed.")
+                if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                    state = measurement_item.TimeoutState
+                elif isinstance(e.exc, BrokenPipeError):
+                    state = measurement_item.TimeoutState
+                else:
+                    state = measurement_item.ErrorState
+                raise
+            except ComplianceError:
+                self.emit("message", "Process... failed.")
+                state = measurement_item.ComplianceState
+                raise
+            except Exception as e:
+                self.emit("message", "Process... failed.")
+                state = measurement_item.ErrorState
+                raise
+            else:
+                self.emit("message", "Process... done.")
+                if self.stop_requested:
+                    state = measurement_item.StoppedState
+                else:
+                    state = measurement_item.SuccessState
+            finally:
+                self.emit("measurement_state", measurement_item, state, measurement.quality)
+                self.emit("save_to_image", measurement_item, plot_filename)
+                self.emit('push_summary', measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
+                if self.get("serialize_json"):
+                    with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
+                        measurement.serialize_json(fp)
+                if self.get("serialize_txt"):
+                    # See https://docs.python.org/3/library/csv.html#csv.DictWriter
+                    with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
+                        measurement.serialize_txt(fp)
+
+    def process_contact(self, contact_item):
+        self.emit("message", "Process contact...")
         self.emit("measurement_state", contact_item, contact_item.ProcessingState)
         logging.info(" => %s", contact_item.name)
         prev_measurement_item = None
@@ -327,6 +276,7 @@ class SequenceProcess(BaseProcess):
         if self.get("move_to_contact") and contact_item.has_position:
             self.safe_move_table(contact_item.position)
         table_position = self.get("table_position")
+        prev_measurement_item = None
         for measurement_item in contact_item.children:
             if not self.running:
                 break
@@ -335,82 +285,51 @@ class SequenceProcess(BaseProcess):
             if not self.running:
                 self.emit("measurement_state", measurement_item, measurement_item.StoppedState)
                 break
-            logging.info("Run %s", measurement_item.name)
-            # TODO
-            measurement = measurement_factory(
-                measurement_item.type,
-                process=self,
-                sample_name=sample_name,
-                sample_type=sample_type,
-                table_position=table_position,
-                operator=operator
-            )
-            measurement.measurement_item = measurement_item
-            log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
-            plot_filename = self.create_filename(measurement, suffix='.png')
-            state = "Active"
-            self.emit("measurement_state", measurement_item, state)
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
             self.emit('show_measurement', measurement_item)
-            with LogFileHandler(log_filename):
-                try:
-                    measurement.run()
-                except ResourceError as e:
-                    if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                        state = measurement_item.TimeoutState
-                    elif isinstance(e.exc, BrokenPipeError):
-                        state = measurement_item.TimeoutState
-                    else:
-                        state = measurement_item.ErrorState
-                    logging.error(format(e))
-                    logging.error("%s failed.", measurement_item.name)
-                except ComplianceError as e:
-                    logging.error(format(e))
-                    logging.error("%s failed.", measurement_item.name)
-                    state = "Compliance"
-                except Exception as e:
-                    logging.error(format(e))
-                    logging.error("%s failed.", measurement_item.name)
-                    state = measurement_item.ErrorState
-                else:
-                    if self.stopped:
-                        state = measurement_item.StoppedState
-                    else:
-                        state = measurement_item.SuccessState
-                    logging.info("%s done.", measurement_item.name)
-                finally:
-                    self.emit("measurement_state", measurement_item, state, measurement.quality)
-                    self.emit("save_to_image", measurement_item, plot_filename)
-                    self.emit('push_summary', measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
-                    if self.get("serialize_json"):
-                        with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
-                            measurement.serialize_json(fp)
-                    if self.get("serialize_txt"):
-                        # See https://docs.python.org/3/library/csv.html#csv.DictWriter
-                        with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
-                            measurement.serialize_txt(fp)
-
+            self.process_measurement(measurement_item)
             prev_measurement_item = measurement_item
         self.emit("measurement_state", contact_item)
         if prev_measurement_item:
             self.emit('hide_measurement', prev_measurement_item)
 
-        if self.get("move_to_after_position"):
-            self.safe_move_table(self.get("move_to_after_position"))
+    def process_sample(self, sample_item):
+        self.emit("message", "Process sample...")
+        self.emit("measurement_state", sample_item, sample_item.ProcessingState)
+        for contact_item in sample_item.children:
+            if not self.running:
+                break
+            if not contact_item.enabled:
+                continue
+            if not self.running:
+                self.emit("measurement_state", contact_item, contact_item.StoppedState)
+                break
+            self.process_contact(contact_item)
+        self.emit("measurement_state", sample_item, sample_item.SuccessState)
+
+    def process(self):
+        if isinstance(self.context, MeasurementTreeItem):
+            self.process_measurement(self.context)
+        elif isinstance(self.context, ContactTreeItem):
+            self.process_contact(self.context)
+        elif isinstance(self.context, SampleTreeItem):
+            self.process_sample(self.context)
+        else:
+            raise TypeError(type(self.context))
 
     def finalize(self):
-        self.emit("message", "Finalize sequence...")
-        self.contact_item = None
+        self.emit("message", "Finalize...")
+        self.context = None
         try:
             self.safe_finalize()
         except Exception:
-            self.emit("message", "Finalize sequence... failed.")
+            self.emit("message", "Finalize... failed.")
             raise
         else:
-            self.emit("message", "Finalize sequence... done.")
+            self.emit("message", "Finalize... done.")
         finally:
-            self.stopped = False
+            self.stop_requested = False
 
     def run(self):
         try:
@@ -420,7 +339,7 @@ class SequenceProcess(BaseProcess):
             finally:
                 self.finalize()
         except Exception:
-            self.emit("message", "Sequence failed.")
+            self.emit("message", "Measurement failed.")
             raise
         else:
-            self.emit("message", "Sequence done.")
+            self.emit("message", "Measurement done.")

@@ -11,6 +11,7 @@ from analysis_pqc import STATUS_PASSED
 from .config import load_sequence
 
 class SequenceManager(ui.Dialog, SettingsMixin):
+    """Dialog for managing custom sequence configuration files."""
 
     def __init__(self):
         super().__init__()
@@ -130,7 +131,7 @@ class SequenceTreeItem(ui.TreeItem):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self[0].checkable = True
+        self.checkable = True
 
     def lock(self):
         self.checkable = False
@@ -210,10 +211,23 @@ class SequenceTreeItem(ui.TreeItem):
             self[3].color = "red"
         self[3].value = value.capitalize()
 
-class ContactTreeItem(SequenceTreeItem):
+class SampleTreeItem(SequenceTreeItem):
+    """Sample (halfmoon) item of sequence tree."""
 
-    def __init__(self, contact):
+    def __init__(self, name, sequence):
+        super().__init__([name, None])
+        self.name = name
+        self.enabled = True
+        self.checkable = False
+        for contact in sequence.contacts:
+            self.append(ContactTreeItem(self, contact))
+
+class ContactTreeItem(SequenceTreeItem):
+    """Contact (flute) item of sequence tree."""
+
+    def __init__(self, sample, contact):
         super().__init__([contact.name, None])
+        self.sample = sample
         self.id = contact.id
         self.name = contact.name
         self.enabled = contact.enabled
@@ -232,6 +246,7 @@ class ContactTreeItem(SequenceTreeItem):
         self.position = float('nan'), float('nan'), float('nan')
 
 class MeasurementTreeItem(SequenceTreeItem):
+    """Measurement item of sequence tree."""
 
     def __init__(self, contact, measurement):
         super().__init__([measurement.name, None])
