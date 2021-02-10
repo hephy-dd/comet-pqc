@@ -2,20 +2,205 @@ import copy
 import math
 import os
 
-from comet import ui
+from comet import ui, app
 from comet.settings import SettingsMixin
-from qutie.qutie import QtCore
+from qutie.qutie import QtCore, QtGui
 
 from analysis_pqc import STATUS_PASSED
 
-from .config import load_sequence
+from .config import load_sequence, list_configs, SEQUENCE_DIR
+
+from .components import PositionsComboBox
+from .components import OperatorWidget
+from .components import WorkingDirectoryWidget
+
+from .settings import settings
+from .utils import from_table_unit
+
+__all__ = ['StartSequenceDialog', 'StartSampleDialog']
+
+def load_all_sequences():
+    configs = []
+    for name, filename in list_configs(SEQUENCE_DIR):
+        configs.append((name, filename, True))
+    for filename in list(set(app().settings.get('custom_sequences') or [])):
+        if os.path.exists(filename):
+            try:
+                sequence = load_sequence(filename)
+            except:
+                pass
+            else:
+                configs.append((sequence.name, filename, False))
+    return configs
+
+class StartSequenceDialog(ui.Dialog, SettingsMixin):
+
+    def __init__(self, contact_item, table_enabled=False):
+        super().__init__()
+        self.title = "Start Sequence"
+        self.contact_checkbox = ui.CheckBox(
+            text="Move table and contact with Probe Card",
+            checked=contact_item.has_position,
+            enabled=contact_item.has_position
+        )
+        self.position_checkbox = ui.CheckBox(
+            text="Move table after measurements",
+            checked=False,
+            changed=self.on_position_checkbox_toggled
+        )
+        self.positions_combobox = PositionsComboBox(
+            enabled=False
+        )
+        self.operator_combobox = OperatorWidget()
+        self.output_combobox = WorkingDirectoryWidget()
+        self.button_box = ui.DialogButtonBox(
+            buttons=("yes", "no"),
+            accepted=self.accept,
+            rejected=self.reject
+        )
+        self.button_box.qt.button(self.button_box.QtClass.Yes).setAutoDefault(False)
+        self.button_box.qt.button(self.button_box.QtClass.No).setDefault(True)
+        self.layout = ui.Column(
+            ui.Label(
+                text=f"<b>Are you sure to start sequence '{contact_item.name}'?</b>"
+            ),
+            ui.GroupBox(
+                title="Table",
+                enabled=table_enabled,
+                layout=ui.Column(
+                    self.contact_checkbox,
+                    ui.Row(
+                        self.position_checkbox,
+                        self.positions_combobox
+                    ),
+                    ui.Spacer()
+                )
+            ),
+            ui.Row(
+                ui.GroupBox(
+                    title="Operator",
+                    layout=self.operator_combobox
+                ),
+                ui.GroupBox(
+                    title="Working Directory",
+                    layout=self.output_combobox
+                )
+            ),
+            self.button_box,
+            stretch=(1, 0, 0, 0)
+        )
+
+    def load_settings(self):
+        self.position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
+        self.positions_combobox.load_settings()
+        self.operator_combobox.load_settings()
+        self.output_combobox.load_settings()
+
+    def store_settings(self):
+        self.settings['move_on_success'] = self.position_checkbox.checked
+        self.positions_combobox.store_settings()
+        self.operator_combobox.store_settings()
+        self.output_combobox.store_settings()
+
+    def move_to_position(self):
+        if self.position_checkbox.checked:
+            current = self.positions_combobox.current
+            if current:
+                index = self.positions_combobox.index(current)
+                positions = settings.table_positions
+                if 0 <= index < len(positions):
+                    position = positions[index]
+                    return position.x, position.y, position.z
+        return None
+
+    def on_position_checkbox_toggled(self, state):
+        self.positions_combobox.enabled = state
+
+class StartSampleDialog(ui.Dialog, SettingsMixin):
+
+    def __init__(self, sample_item, table_enabled=False):
+        super().__init__()
+        self.title = "Start Sequences"
+        self.position_checkbox = ui.CheckBox(
+            text="Move table after measurements",
+            checked=False,
+            changed=self.on_position_checkbox_toggled
+        )
+        self.positions_combobox = PositionsComboBox(
+            enabled=False
+        )
+        self.operator_combobox = OperatorWidget()
+        self.output_combobox = WorkingDirectoryWidget()
+        self.button_box = ui.DialogButtonBox(
+            buttons=("yes", "no"),
+            accepted=self.accept,
+            rejected=self.reject
+        )
+        self.button_box.qt.button(self.button_box.QtClass.Yes).setAutoDefault(False)
+        self.button_box.qt.button(self.button_box.QtClass.No).setDefault(True)
+        self.layout = ui.Column(
+            ui.Label(
+                text=f"<b>Are you sure to start all enabled sequences for '{sample_item.name}'?</b>"
+            ),
+            ui.GroupBox(
+                title="Table",
+                enabled=table_enabled,
+                layout=ui.Column(
+                    ui.Row(
+                        self.position_checkbox,
+                        self.positions_combobox
+                    ),
+                    ui.Spacer()
+                )
+            ),
+            ui.Row(
+                ui.GroupBox(
+                    title="Operator",
+                    layout=self.operator_combobox
+                ),
+                ui.GroupBox(
+                    title="Working Directory",
+                    layout=self.output_combobox
+                )
+            ),
+            self.button_box,
+            stretch=(1, 0, 0, 0)
+        )
+
+    def load_settings(self):
+        self.position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
+        self.positions_combobox.load_settings()
+        self.operator_combobox.load_settings()
+        self.output_combobox.load_settings()
+
+    def store_settings(self):
+        self.settings['move_on_success'] = self.position_checkbox.checked
+        self.positions_combobox.store_settings()
+        self.operator_combobox.store_settings()
+        self.output_combobox.store_settings()
+
+    def move_to_position(self):
+        if self.position_checkbox.checked:
+            current = self.positions_combobox.current
+            if current:
+                index = self.positions_combobox.index(current)
+                positions = settings.table_positions
+                if 0 <= index < len(positions):
+                    position = positions[index]
+                    return position.x, position.y, position.z
+        return None
+
+    def on_position_checkbox_toggled(self, state):
+        self.positions_combobox.enabled = state
 
 class SequenceManager(ui.Dialog, SettingsMixin):
     """Dialog for managing custom sequence configuration files."""
 
     def __init__(self):
         super().__init__()
+        # Properties
         self.title = "Sequence Manager"
+        # Layout
         self.resize(640, 480)
         self.sequence_tree = ui.Tree(
             header=("Name", "Filename"),
@@ -31,9 +216,19 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             enabled=False,
             clicked=self.on_remove_sequence
         )
+        self.preview_textarea = ui.TextArea(
+            readonly=True
+        )
+        font = self.preview_textarea.qt.font()
+        font.setFamily("Monospace")
+        self.preview_textarea.qt.setFont(font)
         self.layout = ui.Column(
             ui.Row(
-                self.sequence_tree,
+                ui.Column(
+                    self.sequence_tree,
+                    self.preview_textarea,
+                    stretch=(4, 3)
+                ),
                 ui.Column(
                     self.add_button,
                     self.remove_button,
@@ -41,18 +236,27 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 ),
                 stretch=(1, 0)
             ),
-            ui.Row(
-                ui.Spacer(),
-                ui.Button("Close", clicked=self.close)
+            ui.DialogButtonBox(
+                buttons=("ok", "cancel"),
+                accepted=self.accept,
+                rejected=self.reject
             ),
             stretch=(1, 0)
         )
 
     def on_sequence_tree_selected(self, item):
-        self.remove_button.enabled = len(self.sequence_tree)
+        self.remove_button.enabled = False
+        self.preview_textarea.clear()
+        if item is not None:
+            self.remove_button.enabled = not item.sequence.builtin
+            if os.path.exists(item.sequence.filename):
+                with open(item.sequence.filename) as f:
+                    self.preview_textarea.qt.setText(f.read())
+                    self.preview_textarea.qt.textCursor().setPosition(0)
+                    self.preview_textarea.qt.ensureCursorVisible()
 
     def on_add_sequence(self):
-        filename = ui.filename_open()
+        filename = ui.filename_open(filter="YAML files (*.yml, *.yaml);;All files (*)")
         if filename:
             try:
                 sequence = load_sequence(filename)
@@ -62,14 +266,17 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 if filename not in self.sequence_filenames:
                     item = self.sequence_tree.append([sequence.name, filename])
                     item.qt.setToolTip(1, filename)
+                    item.sequence = sequence
+                    item.sequence.filename = filename
+                    item.sequence.builtin = False
                     self.sequence_tree.current = item
 
     def on_remove_sequence(self):
         item = self.sequence_tree.current
-        if item:
+        if item and not item.sequence.builtin:
             if ui.show_question(
                 title="Remove Sequence",
-                text=f"Do yo want to remove sequence '{item[0].value}'?"
+                text=f"Do yo want to remove sequence '{item.sequence.name}'?"
             ):
                 self.sequence_tree.remove(item)
                 self.remove_button.enabled = len(self.sequence_tree)
@@ -78,32 +285,35 @@ class SequenceManager(ui.Dialog, SettingsMixin):
     def sequence_filenames(self):
         filenames = []
         for sequence_item in self.sequence_tree:
-            filenames.append(sequence_item[1].value)
+            filenames.append(sequence_item.sequence.filename)
         return filenames
 
     def load_settings(self):
+        width, height = self.settings.get('sequence_manager_dialog_size') or (640, 480)
+        self.resize(width, height)
         self.sequence_tree.clear()
-        for filename in list(set(self.settings.get('custom_sequences') or [])):
-            if os.path.exists(filename):
-                try:
-                    sequence = load_sequence(filename)
-                except Exception as exc:
-                    ui.show_exception(exc)
-                else:
-                    item = self.sequence_tree.append([sequence.name, filename])
-                    item.qt.setToolTip(1, filename)
+        for name, filename, builtin in load_all_sequences():
+            sequence = load_sequence(filename)
+            item = self.sequence_tree.append([sequence.name, '(built-in)' if builtin else filename])
+            item.sequence = sequence
+            item.sequence.filename = filename
+            item.sequence.builtin = builtin
+            item.qt.setToolTip(1, filename)
 
     def store_settings(self):
+        self.settings['sequence_manager_dialog_size'] = self.width, self.height
         sequences = []
         for sequence_item in self.sequence_tree:
-            sequences.append(sequence_item[1].value)
+            if not sequence_item.sequence.builtin:
+                sequences.append(sequence_item.sequence.filename)
         self.settings['custom_sequences'] = list(set(sequences))
 
 class SequenceTree(ui.Tree):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.header = ["Measurement", "Pos", "State"]
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.expands_on_double_click = False
+        self.header = ["Name", "Pos", "State"]
         self.qt.header().setMinimumSectionSize(32)
         self.qt.header().resizeSection(1, 32)
 
@@ -165,6 +375,14 @@ class SequenceTreeItem(ui.TreeItem):
         self.qt.setFlags(flags)
 
     @property
+    def name(self):
+        return self[0].value
+
+    @name.setter
+    def name(self, value):
+        self[0].value = value
+
+    @property
     def enabled(self):
         return self[0].checked
 
@@ -176,7 +394,7 @@ class SequenceTreeItem(ui.TreeItem):
     def pos(self):
         return self[1].value
 
-    @enabled.setter
+    @pos.setter
     def pos(self, enabled):
         self[1].value = {False: '', True: 'OK'}.get(enabled)
 
@@ -214,13 +432,21 @@ class SequenceTreeItem(ui.TreeItem):
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
-    def __init__(self, name, sequence):
+    def __init__(self, name, sample_type, enabled=False, comment=None):
         super().__init__([name, None])
         self.name = name
-        self.enabled = True
-        self.checkable = False
+        self.sample_type = sample_type
+        self.comment = comment or ""
+        self.enabled = enabled
+        self.sequence = None
+
+    def load_sequence(self, sequence):
+        while len(self.children):
+            self.qt.takeChild(0)
+        self.sequence = sequence
         for contact in sequence.contacts:
-            self.append(ContactTreeItem(self, contact))
+            item = self.append(ContactTreeItem(self, contact))
+            item.expanded = True
 
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""

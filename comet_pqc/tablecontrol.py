@@ -10,8 +10,8 @@ from comet_pqc.utils import format_table_unit
 from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
 
-from ..components import PositionLabel
-from ..settings import settings, TablePosition
+from .components import PositionLabel
+from .settings import settings, TablePosition
 
 from qutie.qutie import Qt
 
@@ -750,6 +750,27 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def update_control_buttons(self):
         x, y, z = self.current_position
+        self.update_x_buttons(x)
+        self.update_y_buttons(y)
+        self.update_z_buttons(z)
+        for button in self.control_buttons:
+            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'}}}"
+
+    def update_x_buttons(self, x):
+        x_enabled = True
+        if not math.isnan(x):
+            if (x - self.step_width) < 0:
+                x_enabled = False
+        self.sub_x_button.enabled = x_enabled
+
+    def update_y_buttons(self, y):
+        y_enabled = True
+        if not math.isnan(y):
+            if (y - self.step_width) < 0:
+                y_enabled = False
+        self.sub_y_button.enabled = y_enabled
+
+    def update_z_buttons(self, z):
         # Disable move up button for large step sizes
         z_enabled = False
         if not math.isnan(z):
@@ -758,9 +779,6 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             else:
                 z_enabled = self.step_width <= self.maximum_z_step_size
         self.add_z_button.enabled = z_enabled
-        logging.info("set table step width to %.3f mm", self.step_width)
-        for button in self.control_buttons:
-            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'}}}"
 
     def on_add_x(self):
         self.lock()
@@ -952,4 +970,4 @@ class KeypadButton(ui.Button):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.qt.setFixedSize(30, 30)
+        self.qt.setFixedSize(32, 32)

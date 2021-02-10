@@ -19,7 +19,7 @@ __all__ = [
     'OperatorComboBox',
     'CalibrationGroupBox',
     'PositionGroupBox',
-    'CalibrationGroupBox'
+    'PositionsComboBox'
 ]
 
 class ToggleButton(ui.Button):

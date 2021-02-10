@@ -14,7 +14,6 @@ from comet import ui
 
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
-from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
 
 from . import config
@@ -29,9 +28,9 @@ from .components import ToggleButton
 from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
-from .dialogs import TableControlDialog
-from .dialogs import StartSampleDialog
-from .dialogs import StartSequenceDialog
+from .tablecontrol import TableControlDialog
+from .sequence import StartSampleDialog
+from .sequence import StartSequenceDialog
 
 from .tabs import EnvironmentTab
 from .tabs import MeasurementTab
@@ -42,7 +41,7 @@ from .formatter import CSVFormatter
 from .settings import settings
 from .utils import make_path, handle_exception
 
-from .dialogs.tablecontrol import safe_z_position
+from .tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 
@@ -55,57 +54,27 @@ TABLE_UNITS = {
     6: comet.ureg('mil'),
 }
 
-class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
+class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     environment_poll_interval = 1.0
 
-    def __init__(self, message_changed=None, progress_changed=None):
+    sample_count = 4
+
+    message_changed = None
+    progress_changed = None
+
+    def __init__(self, message_changed=None, progress_changed=None, **kwargs):
         super().__init__()
+        # Properties
+        self.collapsible = False
+        # Callbacks
         self.message_changed = message_changed
         self.progress_changed = progress_changed
-
-        self.sample_name_text = ui.Text(
-            editing_finished=self.on_sample_name_changed
-        )
-        self.sample_type_text = ui.Text(
-            editing_finished=self.on_sample_type_changed
-        )
-        self.sequence_combobox = ui.ComboBox(
-            changed=self.on_load_sequence_tree
-        )
-        self.sequence_manager_button = ui.Button(
-            icon=make_path('assets', 'icons', 'gear.svg'),
-            tool_tip="Open sequence manager",
-            width=24,
-            clicked=self.on_sequence_manager_clicked
-        )
-
-        self.sample_groupbox = ui.GroupBox(
-            title="Sample",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Name"),
-                    ui.Label("Type"),
-                    ui.Label("Sequence")
-                ),
-                ui.Column(
-                    self.sample_name_text,
-                    self.sample_type_text,
-                    ui.Row(
-                        self.sequence_combobox,
-                        self.sequence_manager_button,
-                        stretch=(1, 0)
-                    ),
-                ),
-                stretch=(0, 1)
-            )
-        )
-
+        # Layout
         self.sequence_tree = SequenceTree(
             selected=self.on_tree_selected,
             double_clicked=self.on_tree_double_clicked
         )
-        self.sequence_tree.qt.setExpandsOnDoubleClick(False)
         self.sequence_tree.minimum_width = 360
 
         self.start_button = ui.Button(
@@ -279,7 +248,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         # Controls
 
         self.control_widget = ui.Column(
-            self.sample_groupbox,
             self.sequence_groupbox,
             self.environment_groupbox,
             self.table_groupbox,
@@ -288,7 +256,7 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
                 self.output_groupbox,
                 stretch=(3, 7)
             ),
-            stretch=(0, 1, 0, 0)
+            stretch=(1, 0, 0)
         )
 
         # Tabs
@@ -349,10 +317,28 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     @handle_exception
     def load_settings(self):
-        sample_name = self.settings.get("sample_name", "Unnamed")
-        self.sample_name_text.value = sample_name
-        sample_type = self.settings.get("sample_type", "")
-        self.sample_type_text.value = sample_type
+        self.sizes = self.settings.get("dashboard_sizes") or (300, 500)
+        default_samples = [{"sample_name": f"Position {i+1}"} for i in range(4)]
+        samples = self.settings.get("sequence_samples") or default_samples
+        self.sequence_tree.clear()
+        for sample in samples:
+            item = self.sequence_tree.append(SampleTreeItem(
+                name=sample.get("sample_name", ""),
+                sample_type=sample.get("sample_type", ""),
+                enabled=sample.get("sample_enabled", False),
+                comment=sample.get("sample_comment", ""),
+            ))
+            filename = sample.get("sample_sequence_filename")
+            if filename and os.path.exists(filename):
+                try:
+                    sequence = config.load_sequence(filename)
+                    sequence.filename = filename
+                    item.load_sequence(sequence)
+                except Exception as exc:
+                    logging.error(exc)
+        if len(self.sequence_tree):
+            self.sequence_tree.current = self.sequence_tree[0]
+        self.sequence_tree.fit()
         use_environ = self.settings.get("use_environ", False)
         self.environment_groupbox.checked = use_environ
         use_table =  self.settings.get("use_table", False)
@@ -360,55 +346,49 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
 
-
     @handle_exception
     def store_settings(self):
-        self.settings["sample_name"] = self.sample_name()
-        self.settings["sample_type"] = self.sample_type()
+        self.settings["dashboard_sizes"] = self.sizes
+        samples = []
+        for sample in self.sequence_tree:
+            sample_sequence_filename = ""
+            if sample.sequence:
+                sample_sequence_filename = sample.sequence.filename
+            samples.append({
+                "sample_name": sample.name,
+                "sample_type": sample.sample_type,
+                "sample_enabled": sample.enabled,
+                "sample_comment": sample.comment,
+                "sample_sequence_filename": sample_sequence_filename
+            })
+        print("@@@", samples)
+        self.settings["sequence_samples"] = samples
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
         self.operator_widget.store_settings()
         self.output_widget.store_settings()
 
-    @handle_exception
-    def load_sequences(self):
-        """Load available sequence configurations."""
-        # Mute events
-        self.sequence_combobox.changed = None
-        try:
-            current_sequence_id = self.settings.get("current_sequence_id")
-            self.sequence_combobox.clear()
-            for name, filename in sorted(config.list_configs(config.SEQUENCE_DIR)):
-                sequence = config.load_sequence(filename)
-                sequence.name = f"{sequence.name} (built-in)"
-                self.sequence_combobox.append(sequence)
-            custom_sequences = []
-            for filename in self.settings.get("custom_sequences") or []:
-                if os.path.exists(filename):
-                    try:
-                        sequence = config.load_sequence(filename)
-                    except yaml.parser.ParserError as exc:
-                        raise RuntimeError(f"Failed to load configuration file {filename}:\n{exc}")
-                    sequence.name = f"{sequence.name} (user)"
-                    self.sequence_combobox.append(sequence)
-                    custom_sequences.append(filename)
-            self.settings["custom_sequences"] = custom_sequences
-        finally:
-            # Restore events
-            self.sequence_combobox.changed=self.on_load_sequence_tree
-            for sequence in self.sequence_combobox:
-                if sequence.id == current_sequence_id:
-                    self.sequence_combobox.current = sequence
-                    self.on_load_sequence_tree(sequence.id)
-                    break
-
     def sample_name(self):
         """Return sample name."""
-        return self.sample_name_text.value.strip()
+        item = self.sequence_tree.current
+        if isinstance(item, MeasurementTreeItem):
+            return item.contact.sample.name
+        if isinstance(item, ContactTreeItem):
+            return item.sample.name
+        if isinstance(item, SampleTreeItem):
+            return item.name
+        return ""
 
     def sample_type(self):
         """Return sample type."""
-        return self.sample_type_text.value.strip()
+        item = self.sequence_tree.current
+        if isinstance(item, MeasurementTreeItem):
+            return item.contact.sample.sample_type
+        if isinstance(item, ContactTreeItem):
+            return item.sample.sample_type
+        if isinstance(item, SampleTreeItem):
+            return item.sample_type
+        return ""
 
     def table_position(self):
         """Return table position in millimeters as tuple. If table not available
@@ -456,51 +436,25 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     # Callbacks
 
-    def on_sample_name_changed(self):
-        sample_name = self.sample_name()
-        if self.settings.get("sample_name") != sample_name:
-            self.settings["sample_name"] = sample_name
-            self.on_reset_sequence_state()
-
-    def on_sample_type_changed(self):
-        sample_type = self.sample_type()
-        if self.settings.get("sample_type") != sample_type:
-            self.settings["sample_type"] = sample_type
-            self.on_reset_sequence_state()
-
-    def on_reset_sequence_state(self):
-        # Reset tree
-        sequence = self.sequence_combobox.current
-        if sequence:
-            self.on_load_sequence_tree(sequence.id)
-
     def on_load_sequence_tree(self, index):
         """Clears current sequence tree and loads new sequence tree from configuration."""
         self.panels.unmount()
         self.panels.hide()
-        self.sequence_tree.clear()
-        sequence = copy.deepcopy(self.sequence_combobox.current)
-        sample = self.sequence_tree.append(SampleTreeItem("Sample", sequence))
-        if len(sample.children):
-            self.sequence_tree.current = sample.children[0]
-            for contact in sample.children:
-                contact.expanded = True
-        self.sequence_tree.fit()
-        self.settings["current_sequence_id"] = sequence.id
-
-    def on_sequence_manager_clicked(self):
-        dialog = SequenceManager()
-        custom_sequences = sorted(self.settings.get("custom_sequences"))
-        dialog.load_settings()
-        dialog.run()
-        dialog.store_settings()
-        # Re-load only on changes
-        if custom_sequences != sorted(self.settings.get("custom_sequences")):
-            self.load_sequences()
+        # self.sequence_tree.clear()
+        # sequence = copy.deepcopy(self.sequence_combobox.current)
+        # for index in range(self.sample_count):
+        #     sample = self.sequence_tree.append(SampleTreeItem(f"Position {index+1}", "", sequence))
+        #     if len(sample.children):
+        #         self.sequence_tree.current = sample.children[0]
+        #         for contact in sample.children:
+        #             contact.expanded = True
+        # self.sequence_tree.fit()
+        # if len(self.sequence_tree):
+        #     self.sequence_tree.current = self.sequence_tree[0]
+        # self.settings["current_sequence_id"] = sequence.id
 
     def lock_controls(self):
         """Lock dashboard controls."""
-        self.sample_groupbox.enabled = False
         self.environment_groupbox.enabled = False
         self.table_groupbox.enabled = False
         self.sequence_tree.double_clicked = None
@@ -515,7 +469,6 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
-        self.sample_groupbox.enabled = True
         self.environment_groupbox.enabled = True
         self.table_groupbox.enabled = True
         self.sequence_tree.double_clicked = self.on_tree_double_clicked
@@ -696,6 +649,9 @@ class Dashboard(ui.Row, ProcessMixin, SettingsMixin, ResourceMixin):
         self.measure_process.set("sample_name", None)
         self.sync_environment_controls()
         self.unlock_controls()
+
+    def on_reset_sequence_state(self):
+        pass # TODO
 
     # Measurement control
 

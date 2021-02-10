@@ -164,7 +164,6 @@ def main():
 
     # Load configurations
     dashboard.load_settings()
-    dashboard.load_sequences()
     dashboard.on_reset_sequence_state()
 
     # Sync environment controls
