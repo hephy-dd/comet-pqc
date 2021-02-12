@@ -65,6 +65,8 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_table(self):
         self.set("table_model", "")
         self.set("table_state", "")
+        if not self.get("use_table", False):
+            return
         try:
             table_process = self.processes.get("table")
             model = table_process.get_identification().get(timeout=5.0)
@@ -81,6 +83,8 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_environ(self):
         self.set("env_model", "")
         self.set("env_pc_data", None)
+        if not self.get("use_environ", False):
+            return
         try:
             with self.processes.get("environ") as environment:
                 model = environment.identification()

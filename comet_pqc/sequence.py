@@ -193,6 +193,82 @@ class StartSampleDialog(ui.Dialog, SettingsMixin):
     def on_position_checkbox_toggled(self, state):
         self.positions_combobox.enabled = state
 
+class StartSamplesDialog(ui.Dialog, SettingsMixin):
+
+    def __init__(self, sample_items):
+        super().__init__()
+        self.title = "Start Sequences"
+        self.position_checkbox = ui.CheckBox(
+            text="Move table after measurements",
+            checked=False,
+            changed=self.on_position_checkbox_toggled
+        )
+        self.positions_combobox = PositionsComboBox(
+            enabled=False
+        )
+        self.operator_combobox = OperatorWidget()
+        self.output_combobox = WorkingDirectoryWidget()
+        self.button_box = ui.DialogButtonBox(
+            buttons=("yes", "no"),
+            accepted=self.accept,
+            rejected=self.reject
+        )
+        self.button_box.qt.button(self.button_box.QtClass.Yes).setAutoDefault(False)
+        self.button_box.qt.button(self.button_box.QtClass.No).setDefault(True)
+        self.layout = ui.Column(
+            ui.Label(
+                text=f"<b>Are you sure to start all enabled sequences for all enabled samples?</b>"
+            ),
+            ui.GroupBox(
+                title="Table",
+                layout=ui.Column(
+                    ui.Row(
+                        self.position_checkbox,
+                        self.positions_combobox
+                    ),
+                    ui.Spacer()
+                )
+            ),
+            ui.Row(
+                ui.GroupBox(
+                    title="Operator",
+                    layout=self.operator_combobox
+                ),
+                ui.GroupBox(
+                    title="Working Directory",
+                    layout=self.output_combobox
+                )
+            ),
+            self.button_box,
+            stretch=(1, 0, 0, 0)
+        )
+
+    def load_settings(self):
+        self.position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
+        self.positions_combobox.load_settings()
+        self.operator_combobox.load_settings()
+        self.output_combobox.load_settings()
+
+    def store_settings(self):
+        self.settings['move_on_success'] = self.position_checkbox.checked
+        self.positions_combobox.store_settings()
+        self.operator_combobox.store_settings()
+        self.output_combobox.store_settings()
+
+    def move_to_position(self):
+        if self.position_checkbox.checked:
+            current = self.positions_combobox.current
+            if current:
+                index = self.positions_combobox.index(current)
+                positions = settings.table_positions
+                if 0 <= index < len(positions):
+                    position = positions[index]
+                    return position.x, position.y, position.z
+        return None
+
+    def on_position_checkbox_toggled(self, state):
+        self.positions_combobox.enabled = state
+
 class SequenceManager(ui.Dialog, SettingsMixin):
     """Dialog for managing custom sequence configuration files."""
 
@@ -245,6 +321,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         )
 
     def on_sequence_tree_selected(self, item):
+        """Load sequence config preview."""
         self.remove_button.enabled = False
         self.preview_textarea.clear()
         if item is not None:
@@ -267,7 +344,6 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     item = self.sequence_tree.append([sequence.name, filename])
                     item.qt.setToolTip(1, filename)
                     item.sequence = sequence
-                    item.sequence.filename = filename
                     item.sequence.builtin = False
                     self.sequence_tree.current = item
 
@@ -293,12 +369,18 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         self.resize(width, height)
         self.sequence_tree.clear()
         for name, filename, builtin in load_all_sequences():
-            sequence = load_sequence(filename)
-            item = self.sequence_tree.append([sequence.name, '(built-in)' if builtin else filename])
-            item.sequence = sequence
-            item.sequence.filename = filename
-            item.sequence.builtin = builtin
-            item.qt.setToolTip(1, filename)
+            try:
+                sequence = load_sequence(filename)
+                item = self.sequence_tree.append([sequence.name, '(built-in)' if builtin else filename])
+                item.sequence = sequence
+                item.sequence.builtin = builtin
+                item.qt.setToolTip(1, filename)
+            except Exception as exc:
+                logging.error("failed to load sequence: %s", filename)
+                pass
+        self.sequence_tree.fit()
+        if len(self.sequence_tree):
+            self.sequence_tree.current = self.sequence_tree[0]
 
     def store_settings(self):
         self.settings['sequence_manager_dialog_size'] = self.width, self.height
@@ -328,6 +410,12 @@ class SequenceTree(ui.Tree):
     def reset(self):
         for contact in self:
             contact.reset()
+
+class SampleSequence:
+    """Virtual item holding multiple samples to be executed."""
+
+    def __init__(self, samples):
+        self.samples = samples
 
 class SequenceTreeItem(ui.TreeItem):
 
@@ -389,14 +477,6 @@ class SequenceTreeItem(ui.TreeItem):
     @enabled.setter
     def enabled(self, enabled):
         self[0].checked = enabled
-
-    @property
-    def pos(self):
-        return self[1].value
-
-    @pos.setter
-    def pos(self, enabled):
-        self[1].value = {False: '', True: 'OK'}.get(enabled)
 
     @property
     def state(self):
@@ -464,11 +544,20 @@ class ContactTreeItem(SequenceTreeItem):
             self.append(MeasurementTreeItem(self, measurement))
 
     @property
+    def position(self):
+        return self.__position
+
+    @position.setter
+    def position(self, position):
+        x, y, z = position
+        self.__position = x, y, z
+        self[1].value = {False: '', True: 'OK'}.get(self.has_position)
+
+    @property
     def has_position(self):
-        return any((not math.isnan(value) for value in self.position))
+        return any((not math.isnan(value) for value in self.__position))
 
     def reset_position(self):
-        self.pos = False
         self.position = float('nan'), float('nan'), float('nan')
 
 class MeasurementTreeItem(SequenceTreeItem):

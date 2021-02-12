@@ -36,7 +36,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
-        self.bias_mode = ui.ComboBox(items=["constant", "offset"])
+        self.bias_mode = ui.ComboBox(["constant", "offset"])
 
         self.hvsrc_current_compliance = ui.Number(decimals=3, suffix="uA")
         self.vsrc_current_compliance = ui.Number(decimals=3, suffix="uA")

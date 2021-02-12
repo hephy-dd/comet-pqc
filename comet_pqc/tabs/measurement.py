@@ -90,7 +90,7 @@ class PanelStack(ui.Row):
 
     def get(self, type):
         """Get panel by type."""
-        for child in self.children:
+        for child in self:
             if child.type == type:
                 return child
         return None

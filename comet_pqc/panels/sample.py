@@ -90,7 +90,6 @@ class SamplePanel(BasicPanel, SettingsMixin):
                 self._sequence_text.tool_tip = f"{item.sequence.filename}"
                 if self.context:
                     self.context.load_sequence(item.sequence)
-                    self.context.sequence.filename = item.sequence.filename
 
     def mount(self, context):
         """Mount measurement to panel."""

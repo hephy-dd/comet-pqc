@@ -36,14 +36,48 @@ class LinearTransform:
         diff_z = (a[2] - b[2]) / n
         return [(a[0] - diff_x * i, a[1] - diff_y * i, a[2] - diff_z * i) for i in range(n + 1)]
 
-class TableContactItem(ui.TreeItem):
+class TableSampleItem(ui.TreeItem):
 
-    def __init__(self, name, x, y, z):
+    def __init__(self, sample_item):
         super().__init__()
         for i in range(1, 4):
             self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
-        self.name = name
-        self.position = x, y, z
+        self.sample_item = sample_item
+        self.name = sample_item.name
+        for contact_item in sample_item.children:
+            self.append(TableContactItem(contact_item))
+
+    @property
+    def name(self):
+        return self[0].value
+
+    @name.setter
+    def name(self, value):
+        self[0].value = value
+
+    def update_contacts(self):
+        for contact_item in self.children:
+            contact_item.update_contact()
+            logging.info("updated contact position: %s %s", contact_item.name, contact_item.position)
+
+    def calculate_positions(self):
+        tr = LinearTransform()
+        count = len(self.children)
+        if count > 2:
+            first = self.children[0].position
+            last = list(self.children)[-1].position
+            for i, position in enumerate(tr.calculate(first, last, count - 1)):
+                self.children[i].position = position
+
+class TableContactItem(ui.TreeItem):
+
+    def __init__(self, contact_item):
+        super().__init__()
+        for i in range(1, 4):
+            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
+        self.contact_item = contact_item
+        self.name = contact_item.name
+        self.position = contact_item.position
 
     @property
     def name(self):
@@ -65,6 +99,9 @@ class TableContactItem(ui.TreeItem):
         self[2].value = format(y, '.3f') if y is not None else None
         self[3].value = format(z, '.3f') if z is not None else None
 
+    def update_contact(self):
+        self.contact_item.position = self.position
+
 class TableContactsWidget(ui.Row):
 
     def __init__(self, position_picked=None):
@@ -72,7 +109,6 @@ class TableContactsWidget(ui.Row):
         self.position_picked = position_picked
         self.contacts_tree = ui.Tree(
             header=("Contact", "X", "Y", "Z", None),
-            root_is_decorated=False,
             selected=self.on_contacts_selected
         )
         self.contacts_tree.fit()
@@ -93,7 +129,8 @@ class TableContactsWidget(ui.Row):
         )
         self.calculate_button= ui.Button(
             text="&Calculate",
-            clicked=self.on_calculate
+            clicked=self.on_calculate,
+            enabled=False
         )
         self.append(self.contacts_tree)
         self.append(ui.Column(
@@ -105,57 +142,55 @@ class TableContactsWidget(ui.Row):
         ))
         self.stretch = 1, 0
 
-    def append_contact(self, name, x, y, z):
-        self.contacts_tree.append(TableContactItem(name, x, y, z))
+    def append_sample(self, sample_item):
+        self.contacts_tree.append(TableSampleItem(sample_item))
 
     def on_contacts_selected(self, item):
-        enabled = item is not None
-        self.pick_button.enabled = enabled
-        self.reset_button.enabled = enabled
+        self.update_button_states(item)
+
+    def update_button_states(self, item=None):
+        if item is None:
+            item = self.contacts_tree.current
+        is_contact = isinstance(item, TableContactItem)
+        self.pick_button.enabled = is_contact
+        self.reset_button.enabled = is_contact
+        self.calculate_button.enabled = not is_contact
 
     def on_pick_position(self):
         item = self.contacts_tree.current
-        if item:
-            if ui.show_question(f"Do you want to assign current position to '{item.name}'?"):
-                def callback(x, y, z):
-                    item.position = x, y, z
-                    self.contacts_tree.fit()
-                self.emit('position_picked', callback)
+        if isinstance(item, TableContactItem):
+            def callback(x, y, z):
+                item.position = x, y, z
+                self.contacts_tree.fit()
+            self.emit(self.position_picked, callback)
 
     def on_reset(self):
         item = self.contacts_tree.current
-        if item is not None:
+        if isinstance(item, TableContactItem):
             item.position = float('nan'), float('nan'), float('nan')
             self.contacts_tree.fit()
 
     def on_reset_all(self):
-        for item in self.contacts_tree:
-            item.position = float('nan'), float('nan'), float('nan')
+        if ui.show_question(f"Do you want to reset all contact positions'?"):
+            for sample_item in self.contacts_tree:
+                for contact_item in sample_item.children:
+                    contact_item.position = float('nan'), float('nan'), float('nan')
             self.contacts_tree.fit()
 
     def on_calculate(self):
-        tr = LinearTransform()
-        count = len(self.contacts_tree)
-        if count:
-            first = self.contacts_tree[0].position
-            last = list(self.contacts_tree)[-1].position
-            for i, position in enumerate(tr.calculate(first, last, count - 1)):
-                x, y, z = position
-                self.contacts_tree[i].position = x, y, z
+        current_item = self.contacts_tree.current
+        if isinstance(current_item, TableSampleItem):
+            current_item.calculate_positions()
 
-    def load_contacts(self, contacts):
+    def load_samples(self, sample_items):
         self.contacts_tree.clear()
-        for contact in contacts:
-            x, y, z = contact.position
-            self.append_contact(contact.name, x, y, z)
+        for sample_item in sample_items:
+            self.append_sample(sample_item)
         self.contacts_tree.fit()
 
-    def update_contacts(self, contacts):
-        for i, contact in enumerate(contacts):
-            x, y, z = self.contacts_tree[i].position
-            contact.position = x, y, z
-            contact.pos = contact.has_position
-            logging.info("updated contact position: %s %s", contact.name, contact.position)
+    def update_samples(self):
+        for sample_item in self.contacts_tree:
+            sample_item.update_contacts()
 
     def lock(self):
         self.pick_button.enabled = False
@@ -164,10 +199,8 @@ class TableContactsWidget(ui.Row):
         self.calculate_button.enabled = False
 
     def unlock(self):
-        self.pick_button.enabled = True
-        self.reset_button.enabled = True
+        self.update_button_states()
         self.reset_all_button.enabled = True
-        self.calculate_button.enabled = True
 
 class TablePositionItem(ui.TreeItem):
 
@@ -371,7 +404,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
                 def callback(x, y, z):
                     item.position = x, y, z
                     self.positions_tree.fit()
-                self.emit('position_picked', callback)
+                self.emit(self.position_picked, callback)
 
     def on_add_position(self):
         dialog = PositionDialog()
@@ -411,7 +444,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         if item:
             if ui.show_question(f"Do you want to move table to position '{item.name}'?"):
                 x, y ,z = item.position
-                self.emit('absolute_move', x, y, z)
+                self.emit(self.absolute_move, x, y, z)
 
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
@@ -860,11 +893,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.wait()
         return True
 
-    def load_contacts(self, contacts):
-        self.contacts_widget.load_contacts(contacts)
+    def load_samples(self, sample_items):
+        self.contacts_widget.load_samples(sample_items)
 
-    def update_contacts(self, contacts):
-        self.contacts_widget.update_contacts(contacts)
+    def update_samples(self):
+        self.contacts_widget.update_samples()
 
     def load_settings(self):
         width, height = self.settings.get('tablecontrol_dialog_size', (640, 480))

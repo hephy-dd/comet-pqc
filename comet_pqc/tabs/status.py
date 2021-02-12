@@ -127,4 +127,4 @@ class StatusTab(ui.Tab):
         self.reload_status_button.enabled = True
 
     def on_reload(self):
-        self.emit('reload')
+        self.emit(self.reload)

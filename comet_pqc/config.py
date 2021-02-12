@@ -68,7 +68,7 @@ def load_chuck(filename):
     >>> load_chuck("chuck.yaml")
     <Chuck ...>
     """
-    return Chuck(**load_config(filename, schema='chuck'))
+    return Chuck(**load_config(filename, schema='chuck'), filename=filename)
 
 def load_sample(filename):
     """Returns a sample configuration object, provided for convenience.
@@ -76,7 +76,7 @@ def load_sample(filename):
     >>> load_chuck("sample.yaml")
     <Sample ...>
     """
-    return Sample(**load_config(filename, schema='sample'))
+    return Sample(**load_config(filename, schema='sample'), filename=filename)
 
 def load_sequence(filename):
     """Returns a measurement sequence configuration object, provided for
@@ -85,7 +85,7 @@ def load_sequence(filename):
     >>> load_sequence("sequence.yaml")
     <Sequence ...>
     """
-    return Sequence(**load_config(filename, schema='sequence'))
+    return Sequence(**load_config(filename, schema='sequence'), filename=filename)
 
 def list_configs(directory):
     """Retruns list of located configuration files as tuples containing
@@ -103,12 +103,13 @@ def list_configs(directory):
 class Chuck:
     """Chuck configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", positions=None):
+    def __init__(self, id, name, enabled=True, description="", positions=None, filename=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
         self.positions = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions or []))
+        self.filename = filename
 
     def __str__(self):
         return self.name
@@ -126,12 +127,13 @@ class ChuckSamplePosition:
 class Sample:
     """Silicon sample."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=None):
+    def __init__(self, id, name, enabled=True, description="", contacts=None, filename=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
         self.contacts = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
+        self.filename = filename
 
     def __str__(self):
         return self.name
@@ -150,12 +152,13 @@ class SampleContact:
 class Sequence:
     """Sequence configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=None):
+    def __init__(self, id, name, enabled=True, description="", contacts=None, filename=None):
         self.id = id
         self.name = name
         self.enabled = enabled
         self.description = description
         self.contacts = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
+        self.filename = filename
 
     def __str__(self):
         return self.name

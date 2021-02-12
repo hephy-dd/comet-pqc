@@ -21,6 +21,7 @@ from ..measurements import measurement_factory
 from ..sequence import MeasurementTreeItem
 from ..sequence import ContactTreeItem
 from ..sequence import SampleTreeItem
+from ..sequence import SampleSequence
 
 __all__ = ['MeasureProcess']
 
@@ -63,7 +64,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def create_filename(self, measurement, suffix=''):
         filename = comet.safe_filename(f"{measurement.basename}{suffix}")
-        return os.path.join(self.get('output_dir'), filename)
+        return os.path.join(self.get('output_dir'), measurement.sample_name, filename)
 
     def safe_initialize_hvsrc(self, resource):
         resource.query("*IDN?")
@@ -185,7 +186,9 @@ class MeasureProcess(BaseProcess):
     def safe_move_table(self, position):
         table_process = self.processes.get("table")
         if table_process.running and table_process.enabled:
+            logging.info("safe move table to %s", position)
             self.emit("message", "Moving table...")
+            self.set("movement_finished", False)
             def absolute_move_finished():
                 table_process.absolute_move_finished = None
                 self.set("table_position", table_process.get_cached_position())
@@ -195,6 +198,7 @@ class MeasureProcess(BaseProcess):
             table_process.safe_absolute_move(*position)
             while not self.get("movement_finished"):
                 time.sleep(.25)
+            logging.info("safe move table to %s... done.", position)
 
     def initialize(self):
         self.emit("message", "Initialize...")
@@ -209,11 +213,14 @@ class MeasureProcess(BaseProcess):
 
     def process_measurement(self, measurement_item):
         self.emit("message", "Process measurement...")
-        sample_name = self.get("sample_name")
-        sample_type = self.get("sample_type")
+        sample_name = measurement_item.contact.sample.name
+        sample_type = measurement_item.contact.sample.sample_type
         table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
+        sample_output_dir = os.path.join(output_dir, sample_name)
+        if not os.path.exists(sample_output_dir):
+            os.makedirs(sample_output_dir)
         write_logfiles = self.get("write_logfiles")
         # TODO
         measurement = measurement_factory(
@@ -290,13 +297,18 @@ class MeasureProcess(BaseProcess):
             self.emit('show_measurement', measurement_item)
             self.process_measurement(measurement_item)
             prev_measurement_item = measurement_item
-        self.emit("measurement_state", contact_item)
+        self.emit("measurement_state", contact_item, contact_item.StoppedState if self.stop_requested else contact_item.SuccessState)
         if prev_measurement_item:
             self.emit('hide_measurement', prev_measurement_item)
 
     def process_sample(self, sample_item):
         self.emit("message", "Process sample...")
         self.emit("measurement_state", sample_item, sample_item.ProcessingState)
+        # Check contact positions
+        for contact_item in sample_item.children:
+            if contact_item.enabled:
+                if not contact_item.has_position:
+                    raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
         for contact_item in sample_item.children:
             if not self.running:
                 break
@@ -306,7 +318,32 @@ class MeasureProcess(BaseProcess):
                 self.emit("measurement_state", contact_item, contact_item.StoppedState)
                 break
             self.process_contact(contact_item)
-        self.emit("measurement_state", sample_item, sample_item.SuccessState)
+        self.emit("measurement_state", sample_item, sample_item.StoppedState if self.stop_requested else sample_item.SuccessState)
+        move_to_after_position = self.get("move_to_after_position")
+        if self.get("move_to_after_position") is not None:
+            self.safe_move_table(move_to_after_position)
+
+    def process_samples(self, sample_items):
+        self.emit("message", "Process samples...")
+        # Check contact positions
+        for sample_item in sample_items:
+            if sample_item.enabled:
+                for contact_item in sample_item.children:
+                    if contact_item.enabled:
+                        if not contact_item.has_position:
+                            raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
+        for sample_item in sample_items:
+            if not self.running:
+                break
+            if not sample_item.enabled:
+                continue
+            if not self.running:
+                self.emit("measurement_state", sample_item, contact_item.StoppedState)
+                break
+            self.process_sample(sample_item)
+        move_to_after_position = self.get("move_to_after_position")
+        if self.get("move_to_after_position") is not None:
+            self.safe_move_table(move_to_after_position)
 
     def process(self):
         if isinstance(self.context, MeasurementTreeItem):
@@ -315,6 +352,8 @@ class MeasureProcess(BaseProcess):
             self.process_contact(self.context)
         elif isinstance(self.context, SampleTreeItem):
             self.process_sample(self.context)
+        elif isinstance(self.context, SampleSequence):
+            self.process_samples(self.context.samples)
         else:
             raise TypeError(type(self.context))
 

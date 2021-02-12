@@ -21,12 +21,12 @@ class ContactPanel(BasicPanel):
         self.pos_x_label = PositionLabel()
         self.pos_y_label = PositionLabel()
         self.pos_z_label = PositionLabel()
-        self.move_to_button = ui.Button(
-            text="Move to",
-            tool_tip="Move table to position with safe Z distance.",
-            clicked=self.on_move_to,
-            enabled=False
-        )
+        # self.move_to_button = ui.Button(
+        #     text="Move to",
+        #     tool_tip="Move table to position with safe Z distance.",
+        #     clicked=self.on_move_to,
+        #     enabled=False
+        # )
         self.contact_button = ui.Button(
             text="Contact",
             tool_tip="Move table to position and contact.",
@@ -52,7 +52,7 @@ class ContactPanel(BasicPanel):
             ui.GroupBox(
                 title="Table Actions",
                 layout=ui.Column(
-                    self.move_to_button,
+                    # self.move_to_button,
                     self.contact_button
                 )
             ),
@@ -68,7 +68,7 @@ class ContactPanel(BasicPanel):
         self.pos_y_label.value = y
         self.pos_z_label.value = z
         enabled = not (math.isnan(z) or z is None)
-        self.move_to_button.enabled = enabled
+        # self.move_to_button.enabled = enabled
         self.contact_button.enabled = enabled
 
     def mount(self, context):
@@ -79,11 +79,11 @@ class ContactPanel(BasicPanel):
         self.update_position()
 
     def on_move_to(self):
-        self.move_to_button.enabled = False
+        # self.move_to_button.enabled = False
         self.contact_button.enabled = False
         self.emit('table_move_to', self.context)
 
     def on_contact(self):
-        self.move_to_button.enabled = False
+        # self.move_to_button.enabled = False
         self.contact_button.enabled = False
         self.emit('table_contact', self.context)

@@ -19,6 +19,7 @@ from comet.driver.corvus import Venus1
 from . import config
 
 from .sequence import SequenceTree
+from .sequence import SampleSequence
 from .sequence import SampleTreeItem
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
@@ -29,6 +30,7 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .tablecontrol import TableControlDialog
+from .sequence import StartSamplesDialog
 from .sequence import StartSampleDialog
 from .sequence import StartSequenceDialog
 
@@ -77,12 +79,41 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         )
         self.sequence_tree.minimum_width = 360
 
+        self.start_all_action = ui.Action(
+            text="&All...",
+            triggered=self.on_start_all
+        )
+
+        self.start_sample_action = ui.Action(
+            text="&Sample...",
+            triggered=self.on_start
+        )
+        self.start_sample_action.qt.setEnabled(False)
+
+        self.start_contact_action = ui.Action(
+            text="Contact...",
+            triggered=self.on_start
+        )
+        self.start_contact_action.qt.setEnabled(False)
+
+        self.start_measurement_action = ui.Action(
+            text="&Measurement...",
+            triggered=self.on_start
+        )
+        self.start_measurement_action.qt.setEnabled(False)
+
+        self.start_menu = ui.Menu()
+        self.start_menu.append(self.start_all_action)
+        self.start_menu.append(self.start_sample_action)
+        self.start_menu.append(self.start_contact_action)
+        self.start_menu.append(self.start_measurement_action)
+
         self.start_button = ui.Button(
             text="Start",
             tool_tip="Start measurement sequence.",
-            clicked=self.on_start,
             stylesheet="QPushButton:enabled{color:green;font-weight:bold;}"
         )
+        self.start_button.qt.setMenu(self.start_menu.qt)
 
         self.stop_button = ui.Button(
             text="Stop",
@@ -249,8 +280,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
         self.control_widget = ui.Column(
             self.sequence_groupbox,
-            self.environment_groupbox,
             self.table_groupbox,
+            self.environment_groupbox,
             ui.Row(
                 self.operator_groupbox,
                 self.output_groupbox,
@@ -332,7 +363,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             if filename and os.path.exists(filename):
                 try:
                     sequence = config.load_sequence(filename)
-                    sequence.filename = filename
                     item.load_sequence(sequence)
                 except Exception as exc:
                     logging.error(exc)
@@ -361,7 +391,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
                 "sample_comment": sample.comment,
                 "sample_sequence_filename": sample_sequence_filename
             })
-        print("@@@", samples)
         self.settings["sequence_samples"] = samples
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
@@ -411,10 +440,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         return self.operator_widget.operator_combo_box.qt.currentText().strip()
 
     def output_dir(self):
-        """Return output path."""
-        base = os.path.realpath(self.output_widget.current_location)
-        sample_name = self.sample_name()
-        return os.path.join(base, sample_name)
+        """Return output base path."""
+        return os.path.realpath(self.output_widget.current_location)
 
     def create_output_dir(self):
         """Create output directory for sample if not exists, return directory
@@ -435,23 +462,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         return bool(self.settings.get("export_txt", True))
 
     # Callbacks
-
-    def on_load_sequence_tree(self, index):
-        """Clears current sequence tree and loads new sequence tree from configuration."""
-        self.panels.unmount()
-        self.panels.hide()
-        # self.sequence_tree.clear()
-        # sequence = copy.deepcopy(self.sequence_combobox.current)
-        # for index in range(self.sample_count):
-        #     sample = self.sequence_tree.append(SampleTreeItem(f"Position {index+1}", "", sequence))
-        #     if len(sample.children):
-        #         self.sequence_tree.current = sample.children[0]
-        #         for contact in sample.children:
-        #             contact.expanded = True
-        # self.sequence_tree.fit()
-        # if len(self.sequence_tree):
-        #     self.sequence_tree.current = self.sequence_tree[0]
-        # self.settings["current_sequence_id"] = sequence.id
 
     def lock_controls(self):
         """Lock dashboard controls."""
@@ -489,21 +499,27 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.panels.clear_readings()
         self.panels.hide()
         self.measurement_tab.measure_controls.visible = False
+        self.start_sample_action.qt.setEnabled(False)
+        self.start_contact_action.qt.setEnabled(False)
+        self.start_measurement_action.qt.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.visible = True
             panel.mount(item)
+            self.start_sample_action.qt.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.visible = True
             panel.table_move_to = self.on_table_move_to
             panel.table_contact = self.on_table_contact
             panel.mount(item)
+            self.start_contact_action.qt.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             panel.visible = True
             panel.mount(item)
             self.measurement_tab.measure_controls.visible = True
+            self.start_measurement_action.qt.setEnabled(True)
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 
@@ -541,6 +557,25 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             panel = self.panels.get("contact")
             panel.mount(current_item)
         self.unlock_controls()
+
+    @handle_exception
+    def on_start_all(self):
+        sample_items = []
+        for item in self.sequence_tree:
+            sample_items.append(item)
+        dialog = StartSamplesDialog(
+            sample_items=sample_items
+        )
+        self.operator_widget.store_settings()
+        self.output_widget.store_settings()
+        dialog.load_settings()
+        if not dialog.run():
+            return
+        dialog.store_settings()
+        self.operator_widget.load_settings()
+        self.output_widget.load_settings()
+        move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
+        self._on_start(SampleSequence(sample_items), move_to_contact=True, move_to_after_position=(0, 0, 0))
 
     @handle_exception
     def on_start(self):
@@ -584,7 +619,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.operator_widget.load_settings()
             self.output_widget.load_settings()
             move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-            self._on_start(current_item, move_to_contact=True)
+            self._on_start(current_item, move_to_contact=True, move_to_after_position=move_to_after_position)
 
     def _on_start(self, context, move_to_contact=False, move_to_after_position=None):
         self.switch_off_lights()
@@ -595,8 +630,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.panels.clear_readings()
         measure = self.measure_process
         measure.context = context
-        measure.set("sample_name", self.sample_name())
-        measure.set("sample_type", self.sample_type())
         measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
@@ -646,12 +679,23 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.measure_process.stop()
 
     def on_finished(self):
-        self.measure_process.set("sample_name", None)
         self.sync_environment_controls()
         self.unlock_controls()
 
     def on_reset_sequence_state(self):
-        pass # TODO
+        if not ui.show_question(
+            title="Reset State",
+            text="Do you want to reset all sequence states?"
+        ): return
+        self.panels.unmount()
+        self.panels.hide()
+        for item in self.sequence_tree:
+            if item.sequence:
+                filename = item.sequence.filename
+                sequence = config.load_sequence(filename)
+                item.load_sequence(sequence)
+        if self.sequence_tree:
+            self.sequence_tree.current = self.sequence_tree[0]
 
     # Measurement control
 
@@ -674,8 +718,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         # TODO
         panel.clear_readings()
         # Set process parameters
-        self.measure_process.set("sample_name", self.sample_name())
-        self.measure_process.set("sample_type", self.sample_type())
         self.measure_process.set("table_position", self.table_position())
         self.measure_process.set("operator", self.operator())
         self.measure_process.set("output_dir", self.output_dir())
@@ -728,16 +770,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     def on_table_controls_start(self):
         dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
-        if len(self.sequence_tree[0].children):
-            dialog.load_contacts(self.sequence_tree[0].children) # HACK
+        dialog.load_samples(list(self.sequence_tree)) # HACK
         if self.use_environment():
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
                 dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
         dialog.run()
         dialog.store_settings()
-        if len(self.sequence_tree[0].children):
-            dialog.update_contacts(self.sequence_tree[0].children)
+        dialog.update_samples()
         # Prevent glitch
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):
