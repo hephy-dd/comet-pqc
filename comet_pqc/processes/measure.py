@@ -213,7 +213,7 @@ class MeasureProcess(BaseProcess):
 
     def process_measurement(self, measurement_item):
         self.emit("message", "Process measurement...")
-        sample_name = measurement_item.contact.sample.name
+        sample_name = measurement_item.contact.sample.full_name
         sample_type = measurement_item.contact.sample.sample_type
         table_position = self.get("table_position")
         operator = self.get("operator")

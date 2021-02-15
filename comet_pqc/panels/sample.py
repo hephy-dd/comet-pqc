@@ -17,7 +17,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
 
     sample_changed = None
 
-    def __init__(self, sample_name_changed=None, sample_changed=None, **kwargs):
+    def __init__(self, sample_changed=None, **kwargs):
         super().__init__(**kwargs)
         # Properties
         self.title = "Sample"
@@ -25,6 +25,12 @@ class SamplePanel(BasicPanel, SettingsMixin):
         self.sample_changed = sample_changed
         # Layout
         self._sample_name_text = ui.Text(
+            editing_finished=self.on_sample_name_edited
+        )
+        self._sample_name_prefix_text = ui.Text(
+            editing_finished=self.on_sample_name_edited
+        )
+        self._sample_name_suffix_text = ui.Text(
             editing_finished=self.on_sample_name_edited
         )
         self._sample_type_text = ui.Text(
@@ -52,7 +58,12 @@ class SamplePanel(BasicPanel, SettingsMixin):
                     ui.Label("Sequence")
                 ),
                 ui.Column(
-                    self._sample_name_text,
+                    ui.Row(
+                        self._sample_name_prefix_text,
+                        self._sample_name_text,
+                        self._sample_name_suffix_text,
+                        stretch=(3, 7, 3)
+                    ),
                     self._sample_type_text,
                     self._sample_comment_text,
                     ui.Row(
@@ -69,6 +80,8 @@ class SamplePanel(BasicPanel, SettingsMixin):
     def on_sample_name_edited(self):
         if self.context:
             self.context.name = self._sample_name_text.value
+            self.context.name_prefix = self._sample_name_prefix_text.value
+            self.context.name_suffix = self._sample_name_suffix_text.value
 
     def on_sample_type_edited(self):
         if self.context:
@@ -98,6 +111,8 @@ class SamplePanel(BasicPanel, SettingsMixin):
         self.title_label.text = f"{self.title} &rarr; {context.name}"
         self.description_label.text = "Current halfmoon sample"
         self._sample_name_text.value = context.name
+        self._sample_name_prefix_text.value = context.name_prefix
+        self._sample_name_suffix_text.value = context.name_suffix
         self._sample_type_text.value = context.sample_type
         self._sample_comment_text.value = context.comment
         if context.sequence:
@@ -107,6 +122,8 @@ class SamplePanel(BasicPanel, SettingsMixin):
 
     def unmount(self):
         self._sample_name_text.value = ""
+        self._sample_name_prefix_text.value = ""
+        self._sample_name_suffix_text.value = ""
         self._sample_type_text.value = ""
         self._sample_comment_text.value = ""
         self._sequence_text.value = ""

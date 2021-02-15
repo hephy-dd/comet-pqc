@@ -140,7 +140,7 @@ class StartSampleDialog(ui.Dialog, SettingsMixin):
         self.button_box.qt.button(self.button_box.QtClass.No).setDefault(True)
         self.layout = ui.Column(
             ui.Label(
-                text=f"<b>Are you sure to start all enabled sequences for '{sample_item.name}'?</b>"
+                text=f"<b>Are you sure to start all enabled sequences for '{sample_item.full_name}'?</b>"
             ),
             ui.GroupBox(
                 title="Table",
@@ -512,13 +512,62 @@ class SequenceTreeItem(ui.TreeItem):
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
-    def __init__(self, name, sample_type, enabled=False, comment=None):
+    def __init__(self, name, name_prefix, name_suffix, sample_type, enabled=False, comment=None):
         super().__init__([name, None])
-        self.name = name
-        self.sample_type = sample_type
+        self._name = name
+        self._name_prefix = name_prefix
+        self._name_suffix = name_suffix
+        self._sample_type = sample_type
+        self.update_name()
         self.comment = comment or ""
         self.enabled = enabled
         self.sequence = None
+
+    @property
+    def full_name(self):
+        return f"{self.name_prefix}{self.name}{self.name_suffix}"
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        self.update_name()
+
+    @property
+    def name_prefix(self):
+        return self._name_prefix
+
+    @name_prefix.setter
+    def name_prefix(self, value):
+        self._name_prefix = value
+        self.update_name()
+
+    @property
+    def name_suffix(self):
+        return self._name_suffix
+
+    @name_suffix.setter
+    def name_suffix(self, value):
+        self._name_suffix = value
+        self.update_name()
+
+    @property
+    def sample_type(self):
+        return self._sample_type
+
+    @sample_type.setter
+    def sample_type(self, value):
+        self._sample_type = value
+        self.update_name()
+
+    def update_name(self):
+        names = [self.full_name]
+        if self.sample_type:
+            names.append(self.sample_type)
+        self[0].value = '/'.join(names)
 
     def load_sequence(self, sequence):
         while len(self.children):

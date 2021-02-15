@@ -43,7 +43,7 @@ class TableSampleItem(ui.TreeItem):
         for i in range(1, 4):
             self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
         self.sample_item = sample_item
-        self.name = sample_item.name
+        self.name = sample_item.full_name
         for contact_item in sample_item.children:
             self.append(TableContactItem(contact_item))
 

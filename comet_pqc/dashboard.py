@@ -370,6 +370,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         for sample in samples:
             item = self.sequence_tree.append(SampleTreeItem(
                 name=sample.get("sample_name") or "Unnamed",
+                name_prefix=sample.get("sample_name_prefix") or "",
+                name_suffix=sample.get("sample_name_suffix") or "",
                 sample_type=sample.get("sample_type") or "",
                 enabled=sample.get("sample_enabled") or False,
                 comment=sample.get("sample_comment") or "",
@@ -401,6 +403,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
                 sample_sequence_filename = sample.sequence.filename
             samples.append({
                 "sample_name": sample.name,
+                "sample_name_prefix": sample.name_prefix,
+                "sample_name_suffix": sample.name_suffix,
                 "sample_type": sample.sample_type,
                 "sample_enabled": sample.enabled,
                 "sample_comment": sample.comment,
@@ -722,6 +726,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     def on_add_sample_clicked(self):
         item = SampleTreeItem(
             name="Unnamed",
+            name_prefix="",
+            name_suffix="",
             sample_type="",
             enabled=False
         )
@@ -734,7 +740,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if item in self.sequence_tree:
             if ui.show_question(
                 title="Remove Sample",
-                text=f"Do you want to remove '{item.name}'?"
+                text=f"Do you want to remove '{item.full_name}'?"
             ):
                 self.sequence_tree.remove(item)
 
