@@ -1,3 +1,5 @@
+import math
+
 __all__ = [
     'Position'
 ]
@@ -5,12 +7,26 @@ __all__ = [
 class Position:
     """Three-dimensional Cartesian coordinate."""
 
-    __slots__ = ['x', 'y', 'z']
+    def __init__(self, x='nan', y='nan', z='nan'):
+        self._x = float(x)
+        self._y = float(y)
+        self._z = float(z)
 
-    def __init__(self, x=0.0, y=0.0, z=0.0):
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def z(self):
+        return self._z
+
+    @property
+    def is_valid(self):
+        return all((not math.isnan(value) for value in self))
 
     def asdict(self):
         return dict(x=self.x, y=self.y, z=self.z)
@@ -34,4 +50,4 @@ class Position:
         return tuple(self) <= tuple(rhs)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.x}, {self.y}, {self.z})"
+        return f"{type(self).__name__}({self.x:.3f}, {self.y:.3f}, {self.z:.3f})"

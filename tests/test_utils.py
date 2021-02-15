@@ -40,6 +40,14 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual('4.200 zA', utils.format_metric(4.2e-21, 'A'))
         self.assertEqual('-4.200000 yA', utils.format_metric(-4.2e-24, 'A', decimals=6))
 
+    def test_format_switch(self):
+        self.assertEqual('OFF', utils.format_switch(False))
+        self.assertEqual('ON', utils.format_switch(True))
+
+    def test_format_table_unit(self):
+        self.assertEqual('1.000 mm', utils.format_table_unit(1))
+        self.assertEqual('0.420 mm', utils.format_table_unit(.42))
+
     def test_std_mean_filter(self):
         self.assertTrue(utils.std_mean_filter([0.250, 0.249], threshold=0.005))
         self.assertFalse(utils.std_mean_filter([0.250, 0.224], threshold=0.005))

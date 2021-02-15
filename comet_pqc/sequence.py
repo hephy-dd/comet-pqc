@@ -120,7 +120,7 @@ class StartSampleDialog(ui.Dialog, SettingsMixin):
 
     def __init__(self, sample_item, table_enabled=False):
         super().__init__()
-        self.title = "Start Sequences"
+        self.title = "Start Sequence"
         self.position_checkbox = ui.CheckBox(
             text="Move table after measurements",
             checked=False,
@@ -197,7 +197,7 @@ class StartSamplesDialog(ui.Dialog, SettingsMixin):
 
     def __init__(self, sample_items):
         super().__init__()
-        self.title = "Start Sequences"
+        self.title = "Start Sequence"
         self.position_checkbox = ui.CheckBox(
             text="Move table after measurements",
             checked=False,

@@ -1,16 +1,15 @@
 from comet.settings import SettingsMixin
 
 from .utils import from_table_unit, to_table_unit
+from .position import Position
 
 __all__ = ['settings']
 
-class TablePosition:
+class TablePosition(Position):
 
     def __init__(self, name, x, y, z, comment=None):
+        super().__init__(x, y, z)
         self.name = name
-        self.x = x
-        self.y = y
-        self.z = z
         self.comment = comment
 
     def __str__(self):

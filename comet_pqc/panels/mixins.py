@@ -1,7 +1,7 @@
 from comet import ui
 
 from ..utils import format_metric
-from ..utils import format_output
+from ..utils import format_switch
 
 __all__ = [
     'HVSourceMixin',
@@ -123,7 +123,7 @@ class HVSourceMixin:
                 self.status_hvsrc_current.value = format_metric(value, "A")
             if 'hvsrc_output' in state:
                 value = state.get('hvsrc_output')
-                self.status_hvsrc_output.value = format_output(value, default=NO_VALUE)
+                self.status_hvsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -216,7 +216,7 @@ class VSourceMixin:
                 self.status_vsrc_current.value = format_metric(value, "A")
             if 'vsrc_output' in state:
                 value = state.get('vsrc_output')
-                self.status_vsrc_output.value = format_output(value, default=NO_VALUE)
+                self.status_vsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -422,7 +422,7 @@ class LCRMixin:
                 self.status_lcr_current.value = format_metric(value, "A")
             if 'lcr_output' in state:
                 value = state.get('lcr_output')
-                self.status_lcr_output.value = format_output(value, default=NO_VALUE)
+                self.status_lcr_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 

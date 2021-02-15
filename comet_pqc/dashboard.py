@@ -764,7 +764,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.table_joystick_button.checked = state
 
     def on_table_position_changed(self, x, y, z):
-        self.table_position_label.text = f"X={x:.3f}, Y={y:.3f}, Z={z:.3f} mm"
+        self.table_position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
 
     @handle_exception
     def on_table_controls_start(self):

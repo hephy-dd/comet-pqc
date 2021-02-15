@@ -377,14 +377,17 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.edit_button.enabled = False
         self.remove_button.enabled = False
         self.move_button.enabled = False
+        # Remove event
         self.positions_tree.double_clicked = None
 
     def unlock(self):
-        self.pick_button.enabled = True
+        enabled = self.positions_tree.current is not None
+        self.pick_button.enabled = enabled
         self.add_button.enabled = True
-        self.edit_button.enabled = True
-        self.remove_button.enabled = True
-        self.move_button.enabled = True
+        self.edit_button.enabled = enabled
+        self.remove_button.enabled = enabled
+        self.move_button.enabled = enabled
+        # Restore event
         self.positions_tree.double_clicked = self.on_position_double_clicked
 
     def on_position_selected(self, item):
@@ -580,9 +583,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.message_label = ui.Label()
         self.stop_button = ui.Button(
             text="&Stop",
-            visible=False,
             default=False,
             auto_default=False,
+            enabled=False,
             clicked=self.on_stop
         )
         self.close_button = ui.Button(
@@ -621,7 +624,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Calibrate",
                             layout=ui.Column(
-                                self.calibrate_button
+                                ui.Row(
+                                    self.calibrate_button,
+                                    ui.Label("Calibrate table by moving into stop switches\nof every axis in" \
+                                             " a safe manner to protect the probe card.")
+                                )
                             )
                         ),
                         ui.Tab(
@@ -843,13 +850,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def on_move_finished(self):
         self.progress_bar.visible = False
-        self.stop_button.visible = False
         self.stop_button.enabled = False
         self.unlock()
 
     def on_calibration_finished(self):
         self.progress_bar.visible = False
-        self.stop_button.visible = False
         self.stop_button.enabled = False
         self.unlock()
 
@@ -872,13 +877,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_absolute_move(self, x, y, z):
         z = safe_z_position(z)
         self.lock()
-        self.stop_button.visible = True
         self.stop_button.enabled = True
         self.process.safe_absolute_move(x, y, z)
 
     def on_calibrate(self):
         self.lock()
-        self.stop_button.visible = True
         self.stop_button.enabled = True
         self.process.calibrate_table()
 

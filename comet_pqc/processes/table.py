@@ -9,7 +9,7 @@ import comet
 from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
 
-from comet_pqc.utils import format_table_unit, from_table_unit, to_table_unit
+from comet_pqc.utils import from_table_unit, to_table_unit
 
 UNIT_MICROMETER = 1
 UNIT_MILLIMETER = 2
