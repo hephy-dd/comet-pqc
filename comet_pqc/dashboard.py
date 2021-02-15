@@ -129,6 +129,19 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             clicked=self.on_reset_sequence_state
         )
 
+        self.add_sample_button = ui.Button(
+            icon=make_path('assets', 'icons', 'add.svg'),
+            tool_tip="Add new sample sequence.",
+            width=24,
+            clicked=self.on_add_sample_clicked
+        )
+        self.remove_sample_button = ui.Button(
+            icon=make_path('assets', 'icons', 'delete.svg'),
+            tool_tip="Remove current sample sequence.",
+            width=24,
+            clicked=self.on_remove_sample_clicked
+        )
+
         self.sequence_groupbox = ui.GroupBox(
             title="Sequence",
             layout=ui.Column(
@@ -136,7 +149,9 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
                 ui.Row(
                     self.start_button,
                     self.stop_button,
-                    self.reset_button
+                    self.reset_button,
+                    self.add_sample_button,
+                    self.remove_sample_button
                 )
             )
         )
@@ -298,6 +313,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.summary_tab = SummaryTab()
 
         self.panels = self.measurement_tab.panels
+        self.panels.sample_changed = self.on_sample_changed
 
         self.log_widget = LogWidget()
         self.log_widget.add_logger(logging.getLogger())
@@ -349,15 +365,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     @handle_exception
     def load_settings(self):
         self.sizes = self.settings.get("dashboard_sizes") or (300, 500)
-        default_samples = [{"sample_name": f"Position {i+1}"} for i in range(4)]
-        samples = self.settings.get("sequence_samples") or default_samples
+        samples = self.settings.get("sequence_samples") or []
         self.sequence_tree.clear()
         for sample in samples:
             item = self.sequence_tree.append(SampleTreeItem(
-                name=sample.get("sample_name", ""),
-                sample_type=sample.get("sample_type", ""),
-                enabled=sample.get("sample_enabled", False),
-                comment=sample.get("sample_comment", ""),
+                name=sample.get("sample_name") or "Unnamed",
+                sample_type=sample.get("sample_type") or "",
+                enabled=sample.get("sample_enabled") or False,
+                comment=sample.get("sample_comment") or "",
             ))
             filename = sample.get("sample_sequence_filename")
             if filename and os.path.exists(filename):
@@ -471,6 +486,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.start_button.enabled = False
         self.stop_button.enabled = True
         self.reset_button.enabled = False
+        self.add_sample_button.enabled = False
+        self.remove_sample_button.enabled = False
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
         self.measurement_tab.lock()
@@ -485,6 +502,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.start_button.enabled = True
         self.stop_button.enabled = False
         self.reset_button.enabled = True
+        self.add_sample_button.enabled = True
+        self.remove_sample_button.enabled = True
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
         self.measurement_tab.unlock()
@@ -525,6 +544,9 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def on_tree_double_clicked(self, item, index):
         self.on_start()
+
+    def on_sample_changed(self, item):
+        self.sequence_tree.fit()
 
     # Contcat table controls
 
@@ -575,7 +597,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
         move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-        self._on_start(SampleSequence(sample_items), move_to_contact=True, move_to_after_position=(0, 0, 0))
+        self._on_start(SampleSequence(sample_items), move_to_contact=True, move_to_after_position=move_to_after_position)
 
     @handle_exception
     def on_start(self):
@@ -696,6 +718,25 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
                 item.load_sequence(sequence)
         if self.sequence_tree:
             self.sequence_tree.current = self.sequence_tree[0]
+
+    def on_add_sample_clicked(self):
+        item = SampleTreeItem(
+            name="Unnamed",
+            sample_type="",
+            enabled=False
+        )
+        self.sequence_tree.append(item)
+        self.sequence_tree.fit()
+        self.sequence_tree.current = item
+
+    def on_remove_sample_clicked(self):
+        item = self.sequence_tree.current
+        if item in self.sequence_tree:
+            if ui.show_question(
+                title="Remove Sample",
+                text=f"Do you want to remove '{item.name}'?"
+            ):
+                self.sequence_tree.remove(item)
 
     # Measurement control
 

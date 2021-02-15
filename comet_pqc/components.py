@@ -228,7 +228,7 @@ class PositionsComboBox(ui.ComboBox, SettingsMixin):
     def load_settings(self):
         self.clear()
         for position in settings.table_positions:
-            self.append(position)
+            self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
         index = self.settings.get('current_table_position') or 0
         if 0 <= index < len(self):
             self.current = self[index]

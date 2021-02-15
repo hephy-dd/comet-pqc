@@ -50,9 +50,12 @@ class MeasurementTab(ui.Tab):
 class PanelStack(ui.Row):
     """Stack of measurement panels."""
 
-    def __init__(self):
+    sample_changed = None
+
+    def __init__(self, sample_changed=None):
         super().__init__()
-        self.append(SamplePanel(visible=False))
+        self.sample_changed = sample_changed
+        self.append(SamplePanel(visible=False, sample_changed=lambda item: self.sample_changed(item)))
         self.append(ContactPanel(visible=False))
         self.append(IVRampPanel(visible=False))
         self.append(IVRampElmPanel(visible=False))

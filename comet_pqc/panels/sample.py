@@ -15,14 +15,14 @@ class SamplePanel(BasicPanel, SettingsMixin):
 
     type = "sample"
 
-    sample_name_changed = None
+    sample_changed = None
 
-    def __init__(self, sample_name_changed=None, **kwargs):
+    def __init__(self, sample_name_changed=None, sample_changed=None, **kwargs):
         super().__init__(**kwargs)
         # Properties
         self.title = "Sample"
         # Callbacks
-        self.sample_name_changed = sample_name_changed
+        self.sample_changed = sample_changed
         # Layout
         self._sample_name_text = ui.Text(
             editing_finished=self.on_sample_name_edited
@@ -90,6 +90,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
                 self._sequence_text.tool_tip = f"{item.sequence.filename}"
                 if self.context:
                     self.context.load_sequence(item.sequence)
+                self.emit(self.sample_changed, item)
 
     def mount(self, context):
         """Mount measurement to panel."""
