@@ -327,8 +327,9 @@ class AlternateTableProcess(TableProcess):
             if current_pos[2] == 0:
                 break
             time.sleep(delay)
-        if table.pos[2] != 0:
-            raise RuntimeError(f"failed to relative move, current pos: {pos}")
+        current_pos = table.pos
+        if current_pos[2] != 0:
+            raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
 
@@ -348,8 +349,9 @@ class AlternateTableProcess(TableProcess):
             if current_pos[:2] == (x, y):
                 break
             time.sleep(delay)
-        if table.pos[:2] != (x, y):
-            raise RuntimeError(f"failed to absolute move, current pos: {pos}")
+        current_pos = table.pos
+        if current_pos[:2] != (x, y):
+            raise RuntimeError(f"failed to absolute move, current pos: {current_pos}")
 
         self.emit("progress_changed", 3, 4)
         self.emit("message_changed", "Move up Z axis...")
@@ -361,8 +363,9 @@ class AlternateTableProcess(TableProcess):
             if current_pos[2] >= z:
                 break
             time.sleep(delay)
-        if table.pos != (x, y, z):
-            raise RuntimeError(f"failed to relative move, current pos: {pos}")
+        current_pos = table.pos
+        if current_pos != (x, y, z):
+            raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
 
         handle_abort()
         update_caldone()

@@ -19,7 +19,7 @@ from comet.driver.corvus import Venus1
 from . import config
 
 from .sequence import SequenceTree
-from .sequence import SampleSequence
+from .sequence import SamplesItem
 from .sequence import SampleTreeItem
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
@@ -578,7 +578,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
         self._on_start(
-            SampleSequence(sample_items),
+            SamplesItem(sample_items),
             move_to_contact=dialog.move_to_contact(),
             move_to_after_position=dialog.move_to_position()
         )

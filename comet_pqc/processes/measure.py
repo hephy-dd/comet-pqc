@@ -3,6 +3,7 @@ import logging
 import random
 import time
 import threading
+import traceback
 import os
 
 import pyvisa
@@ -21,7 +22,7 @@ from ..measurements import measurement_factory
 from ..sequence import MeasurementTreeItem
 from ..sequence import ContactTreeItem
 from ..sequence import SampleTreeItem
-from ..sequence import SampleSequence
+from ..sequence import SamplesItem
 
 __all__ = ['MeasureProcess']
 
@@ -295,7 +296,12 @@ class MeasureProcess(BaseProcess):
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
             self.emit('show_measurement', measurement_item)
-            self.process_measurement(measurement_item)
+            try:
+                self.process_measurement(measurement_item)
+            except Exception as exc:
+                tb = traceback.format_exc()
+                logging.error("%s: %s", measurement_item.name, tb)
+                logging.error("%s: %s", measurement_item.name, exc)
             prev_measurement_item = measurement_item
         self.emit("measurement_state", contact_item, contact_item.StoppedState if self.stop_requested else contact_item.SuccessState)
         if prev_measurement_item:
@@ -323,16 +329,16 @@ class MeasureProcess(BaseProcess):
         if self.get("move_to_after_position") is not None:
             self.safe_move_table(move_to_after_position)
 
-    def process_samples(self, sample_items):
+    def process_samples(self, samples_item):
         self.emit("message", "Process samples...")
         # Check contact positions
-        for sample_item in sample_items:
+        for sample_item in samples_item.children:
             if sample_item.enabled:
                 for contact_item in sample_item.children:
                     if contact_item.enabled:
                         if not contact_item.has_position:
                             raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
-        for sample_item in sample_items:
+        for sample_item in samples_item.children:
             if not self.running:
                 break
             if not sample_item.enabled:
@@ -352,8 +358,8 @@ class MeasureProcess(BaseProcess):
             self.process_contact(self.context)
         elif isinstance(self.context, SampleTreeItem):
             self.process_sample(self.context)
-        elif isinstance(self.context, SampleSequence):
-            self.process_samples(self.context.samples)
+        elif isinstance(self.context, SamplesItem):
+            self.process_samples(self.context)
         else:
             raise TypeError(type(self.context))
 

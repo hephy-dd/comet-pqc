@@ -1,6 +1,7 @@
 import copy
 import math
 import os
+import logging
 
 from comet import ui
 from comet.settings import SettingsMixin
@@ -18,9 +19,10 @@ from .components import WorkingDirectoryWidget
 from .settings import settings
 from .utils import from_table_unit, to_table_unit, make_path
 
-__all__ = ['StartSequenceDialog', 'StartSampleDialog']
+__all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
 
 class StartSequenceDialog(ui.Dialog, SettingsMixin):
+    """Start sequence dialog."""
 
     def __init__(self, context, table_enabled):
         super().__init__()
@@ -77,6 +79,8 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
             stretch=(1, 0, 0, 0)
         )
 
+    # Settings
+
     def load_settings(self):
         self._contact_checkbox.checked = bool(self.settings.get('move_to_contact') or False)
         self._position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
@@ -91,8 +95,12 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
         self._operator_combobox.store_settings()
         self._output_combobox.store_settings()
 
+    # Callbacks
+
     def on_position_checkbox_toggled(self, state):
         self._positions_combobox.enabled = state
+
+    # Methods
 
     def move_to_contact(self):
         return self._contact_checkbox.checked
@@ -108,8 +116,10 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
                     return position.x, position.y, position.z
         return None
 
+    # Helpers
+
     def _create_message(self, context):
-        if isinstance(context, SampleSequence):
+        if isinstance(context, SamplesItem):
             return "<b>Are you sure to start all enabled sequences for all enabled samples?</b>"
         elif isinstance(context, SampleTreeItem):
             return f"<b>Are you sure to start all enabled sequences for '{context.name}'?</b>"
@@ -130,11 +140,11 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             indentation=0,
             selected=self.on_sequence_tree_selected
         )
-        self.add_button = ui.Button(
+        self._add_button = ui.Button(
             text="&Add",
             clicked=self.on_add_sequence
         )
-        self.remove_button = ui.Button(
+        self._remove_button = ui.Button(
             text="&Remove",
             enabled=False,
             clicked=self.on_remove_sequence
@@ -148,8 +158,8 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     stretch=(4, 3)
                 ),
                 ui.Column(
-                    self.add_button,
-                    self.remove_button,
+                    self._add_button,
+                    self._remove_button,
                     ui.Spacer()
                 ),
                 stretch=(1, 0)
@@ -162,6 +172,8 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             stretch=(1, 0)
         )
 
+    # Properties
+
     @property
     def current_sequence(self):
         """Return selected sequence object or None if nothing selected."""
@@ -169,6 +181,15 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         if item is not None:
             return item.sequence
         return None
+
+    @property
+    def sequence_filenames(self):
+        filenames = []
+        for sequence_item in self._sequence_tree:
+            filenames.append(sequence_item.sequence.filename)
+        return filenames
+
+    # Settings
 
     def load_settings(self):
         self.load_settings_dialog_size()
@@ -225,12 +246,14 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 sequences.append(item.sequence.filename)
         self.settings['custom_sequences'] = list(set(sequences))
 
+    # Callbacks
+
     def on_sequence_tree_selected(self, item):
         """Load sequence config preview."""
-        self.remove_button.enabled = False
+        self._remove_button.enabled = False
         self._preview_tree.clear()
         if item is not None:
-            self.remove_button.enabled = not item.sequence.builtin
+            self._remove_button.enabled = not item.sequence.builtin
             if os.path.exists(item.sequence.filename):
                 with open(item.sequence.filename) as f:
                     data = yaml.safe_load(f)
@@ -279,23 +302,20 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 text=f"Do yo want to remove sequence '{item.sequence.name}'?"
             ):
                 self._sequence_tree.remove(item)
-                self.remove_button.enabled = len(self._sequence_tree)
-
-    @property
-    def sequence_filenames(self):
-        filenames = []
-        for sequence_item in self._sequence_tree:
-            filenames.append(sequence_item.sequence.filename)
-        return filenames
+                self._remove_button.enabled = len(self._sequence_tree)
 
 class SequenceTree(ui.Tree):
+    """Sequence tree containing sample, contact and measurement items."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.expands_on_double_click = False
         self.header = ["Name", "Pos", "State"]
+        # Qt5 Tweaks
         self.qt.header().setMinimumSectionSize(32)
         self.qt.header().resizeSection(1, 32)
+
+    # Methods
 
     def lock(self):
         for contact in self:
@@ -309,11 +329,19 @@ class SequenceTree(ui.Tree):
         for contact in self:
             contact.reset()
 
-class SampleSequence:
+class SamplesItem:
     """Virtual item holding multiple samples to be executed."""
 
-    def __init__(self, samples):
-        self.samples = samples
+    def __init__(self, iterable):
+        self.children = []
+        self.extend(iterable)
+
+    def append(self, item):
+        self.children.append(item)
+
+    def extend(self, iterable):
+        for item in iterable:
+            self.append(item)
 
 class SequenceTreeItem(ui.TreeItem):
 
@@ -329,27 +357,11 @@ class SequenceTreeItem(ui.TreeItem):
         super().__init__(*args, **kwargs)
         self.checkable = True
 
+    # Properties
+
     @property
     def has_position(self):
         return False
-
-    def lock(self):
-        self.checkable = False
-        self.selectable = False
-        for child in self.children:
-            child.lock()
-
-    def unlock(self):
-        self.checkable = True
-        self.selectable = True
-        for child in self.children:
-            child.unlock()
-
-    def reset(self):
-        self.state = None
-        self.quality = None
-        for child in self.children:
-            child.reset()
 
     @property
     def selectable(self):
@@ -411,10 +423,31 @@ class SequenceTreeItem(ui.TreeItem):
             self[3].color = "red"
         self[3].value = value.capitalize()
 
+    # Methods
+
+    def lock(self):
+        self.checkable = False
+        self.selectable = False
+        for child in self.children:
+            child.lock()
+
+    def unlock(self):
+        self.checkable = True
+        self.selectable = True
+        for child in self.children:
+            child.unlock()
+
+    def reset(self):
+        self.state = None
+        self.quality = None
+        for child in self.children:
+            child.reset()
+
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
-    def __init__(self, name_prefix=None, name_infix=None, name_suffix=None, sample_type=None, enabled=False, comment=None):
+    def __init__(self, name_prefix=None, name_infix=None, name_suffix=None,
+                 sample_type=None, enabled=False, comment=None):
         super().__init__()
         self._name_prefix = name_prefix or ""
         self._name_infix = name_infix or ""
@@ -425,9 +458,53 @@ class SampleTreeItem(SequenceTreeItem):
         self.enabled = enabled
         self.sequence = None
 
+    # Properties
+
     @property
     def sequence_filename(self):
         return self.sequence.filename if self.sequence else None
+
+    @property
+    def name(self):
+        return ''.join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
+
+    @property
+    def name_prefix(self):
+        return self._name_prefix
+
+    @name_prefix.setter
+    def name_prefix(self, value):
+        self._name_prefix = value
+        self.update_name()
+
+    @property
+    def name_infix(self):
+        return self._name_infix
+
+    @name_infix.setter
+    def name_infix(self, value):
+        self._name_infix = value
+        self.update_name()
+
+    @property
+    def name_suffix(self):
+        return self._name_suffix
+
+    @name_suffix.setter
+    def name_suffix(self, value):
+        self._name_suffix = value
+        self.update_name()
+
+    @property
+    def sample_type(self):
+        return self._sample_type.strip()
+
+    @sample_type.setter
+    def sample_type(self, value):
+        self._sample_type = value
+        self.update_name()
+
+    # Settings
 
     def from_settings(self, **kwargs):
         self._name_prefix = kwargs.get("sample_name_prefix") or ""
@@ -473,45 +550,7 @@ class SampleTreeItem(SequenceTreeItem):
             "sample_contacts": sample_contacts
         }
 
-    @property
-    def name(self):
-        return ''.join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
-
-    @property
-    def name_prefix(self):
-        return self._name_prefix
-
-    @name_prefix.setter
-    def name_prefix(self, value):
-        self._name_prefix = value
-        self.update_name()
-
-    @property
-    def name_infix(self):
-        return self._name_infix
-
-    @name_infix.setter
-    def name_infix(self, value):
-        self._name_infix = value
-        self.update_name()
-
-    @property
-    def name_suffix(self):
-        return self._name_suffix
-
-    @name_suffix.setter
-    def name_suffix(self, value):
-        self._name_suffix = value
-        self.update_name()
-
-    @property
-    def sample_type(self):
-        return self._sample_type.strip()
-
-    @sample_type.setter
-    def sample_type(self, value):
-        self._sample_type = value
-        self.update_name()
+    # Methods
 
     def update_name(self):
         tokens = self.name, self.sample_type
@@ -540,6 +579,8 @@ class ContactTreeItem(SequenceTreeItem):
         for measurement in contact.measurements:
             self.append(MeasurementTreeItem(self, measurement))
 
+    # Properties
+
     @property
     def position(self):
         return self.__position
@@ -553,6 +594,8 @@ class ContactTreeItem(SequenceTreeItem):
     @property
     def has_position(self):
         return any((not math.isnan(value) for value in self.__position))
+
+    # Methods
 
     def reset_position(self):
         self.position = float('nan'), float('nan'), float('nan')
