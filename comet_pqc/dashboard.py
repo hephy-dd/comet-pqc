@@ -30,8 +30,6 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .tablecontrol import TableControlDialog
-from .sequence import StartSamplesDialog
-from .sequence import StartSampleDialog
 from .sequence import StartSequenceDialog
 
 from .tabs import EnvironmentTab
@@ -367,22 +365,13 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sizes = self.settings.get("dashboard_sizes") or (300, 500)
         samples = self.settings.get("sequence_samples") or []
         self.sequence_tree.clear()
-        for sample in samples:
-            item = self.sequence_tree.append(SampleTreeItem(
-                name=sample.get("sample_name") or "Unnamed",
-                name_prefix=sample.get("sample_name_prefix") or "",
-                name_suffix=sample.get("sample_name_suffix") or "",
-                sample_type=sample.get("sample_type") or "",
-                enabled=sample.get("sample_enabled") or False,
-                comment=sample.get("sample_comment") or "",
-            ))
-            filename = sample.get("sample_sequence_filename")
-            if filename and os.path.exists(filename):
-                try:
-                    sequence = config.load_sequence(filename)
-                    item.load_sequence(sequence)
-                except Exception as exc:
-                    logging.error(exc)
+        for kwargs in samples:
+            item = SampleTreeItem()
+            self.sequence_tree.append(item)
+            try:
+                item.from_settings(**kwargs)
+            except Exception as exc:
+                logging.error(exc)
         if len(self.sequence_tree):
             self.sequence_tree.current = self.sequence_tree[0]
         self.sequence_tree.fit()
@@ -396,21 +385,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     @handle_exception
     def store_settings(self):
         self.settings["dashboard_sizes"] = self.sizes
-        samples = []
-        for sample in self.sequence_tree:
-            sample_sequence_filename = ""
-            if sample.sequence:
-                sample_sequence_filename = sample.sequence.filename
-            samples.append({
-                "sample_name": sample.name,
-                "sample_name_prefix": sample.name_prefix,
-                "sample_name_suffix": sample.name_suffix,
-                "sample_type": sample.sample_type,
-                "sample_enabled": sample.enabled,
-                "sample_comment": sample.comment,
-                "sample_sequence_filename": sample_sequence_filename
-            })
-        self.settings["sequence_samples"] = samples
+        sequence_samples = [sample.to_settings() for sample in self.sequence_tree]
+        self.settings["sequence_samples"] = sequence_samples
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
         self.operator_widget.store_settings()
@@ -589,8 +565,9 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         sample_items = []
         for item in self.sequence_tree:
             sample_items.append(item)
-        dialog = StartSamplesDialog(
-            sample_items=sample_items
+        dialog = StartSequenceDialog(
+            context=sample_items,
+            table_enabled=self.use_table()
         )
         self.operator_widget.store_settings()
         self.output_widget.store_settings()
@@ -600,13 +577,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         dialog.store_settings()
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
-        move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-        self._on_start(SampleSequence(sample_items), move_to_contact=True, move_to_after_position=move_to_after_position)
+        self._on_start(
+            SampleSequence(sample_items),
+            move_to_contact=dialog.move_to_contact(),
+            move_to_after_position=dialog.move_to_position()
+        )
 
     @handle_exception
     def on_start(self):
-        # Create output directory
-        self.create_output_dir()
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
@@ -617,7 +595,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self._on_start(current_item)
         elif isinstance(current_item, ContactTreeItem):
             dialog = StartSequenceDialog(
-                contact_item=current_item,
+                context=current_item,
                 table_enabled=self.use_table()
             )
             self.operator_widget.store_settings()
@@ -628,12 +606,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             dialog.store_settings()
             self.operator_widget.load_settings()
             self.output_widget.load_settings()
-            move_to_contact = dialog.contact_checkbox.checked
-            move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-            self._on_start(current_item, move_to_contact, move_to_after_position)
+            self._on_start(
+                current_item,
+                move_to_contact=dialog.move_to_contact(),
+                move_to_after_position=dialog.move_to_position()
+            )
         elif isinstance(current_item, SampleTreeItem):
-            dialog = StartSampleDialog(
-                sample_item=current_item,
+            dialog = StartSequenceDialog(
+                context=current_item,
                 table_enabled=self.use_table()
             )
             self.operator_widget.store_settings()
@@ -645,9 +625,15 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.operator_widget.load_settings()
             self.output_widget.load_settings()
             move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
-            self._on_start(current_item, move_to_contact=True, move_to_after_position=move_to_after_position)
+            self._on_start(
+                current_item,
+                move_to_contact=dialog.move_to_contact(),
+                move_to_after_position=dialog.move_to_position()
+            )
 
     def _on_start(self, context, move_to_contact=False, move_to_after_position=None):
+        # Create output directory
+        self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
         self.lock_controls()
@@ -725,8 +711,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def on_add_sample_clicked(self):
         item = SampleTreeItem(
-            name="Unnamed",
             name_prefix="",
+            name_infix="Unnamed",
             name_suffix="",
             sample_type="",
             enabled=False
@@ -740,7 +726,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if item in self.sequence_tree:
             if ui.show_question(
                 title="Remove Sample",
-                text=f"Do you want to remove '{item.full_name}'?"
+                text=f"Do you want to remove '{item.name}'?"
             ):
                 self.sequence_tree.remove(item)
 

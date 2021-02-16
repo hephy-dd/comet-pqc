@@ -24,22 +24,32 @@ class SamplePanel(BasicPanel, SettingsMixin):
         # Callbacks
         self.sample_changed = sample_changed
         # Layout
-        self._sample_name_text = ui.Text(
+        self._sample_name_prefix_text = ui.Text(
+            tool_tip="Sample name prefix",
+            clearable=True,
             editing_finished=self.on_sample_name_edited
         )
-        self._sample_name_prefix_text = ui.Text(
+        self._sample_name_infix_text = ui.Text(
+            tool_tip="Sample name",
+            clearable=True,
             editing_finished=self.on_sample_name_edited
         )
         self._sample_name_suffix_text = ui.Text(
+            tool_tip="Sample name suffix",
+            clearable=True,
             editing_finished=self.on_sample_name_edited
         )
         self._sample_type_text = ui.Text(
+            tool_tip="Sample type",
+            clearable=True,
             editing_finished=self.on_sample_type_edited
         )
         self._sequence_text = ui.Text(
             readonly=True
         )
         self._sample_comment_text = ui.Text(
+            tool_tip="Sample comment (optional)",
+            clearable=True,
             editing_finished=self.on_sample_comment_edited
         )
         self._sequence_manager_button = ui.Button(
@@ -60,7 +70,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
                 ui.Column(
                     ui.Row(
                         self._sample_name_prefix_text,
-                        self._sample_name_text,
+                        self._sample_name_infix_text,
                         self._sample_name_suffix_text,
                         stretch=(3, 7, 3)
                     ),
@@ -79,9 +89,11 @@ class SamplePanel(BasicPanel, SettingsMixin):
 
     def on_sample_name_edited(self):
         if self.context:
-            self.context.name = self._sample_name_text.value
+            self.context.name_infix = self._sample_name_infix_text.value
             self.context.name_prefix = self._sample_name_prefix_text.value
             self.context.name_suffix = self._sample_name_suffix_text.value
+            self.title_label.text = f"{self.title} &rarr; {self.context.name}"
+            self.emit(self.sample_changed, self.context)
 
     def on_sample_type_edited(self):
         if self.context:
@@ -97,21 +109,21 @@ class SamplePanel(BasicPanel, SettingsMixin):
         if dialog.run():
             dialog.store_settings()
             self._sequence_text.clear()
-            item = dialog.sequence_tree.current
-            if item is not None:
-                self._sequence_text.value = f"{item.sequence.name}"
-                self._sequence_text.tool_tip = f"{item.sequence.filename}"
+            sequence = dialog.current_sequence
+            if sequence is not None:
+                self._sequence_text.value = f"{sequence.name}"
+                self._sequence_text.tool_tip = f"{sequence.filename}"
                 if self.context:
-                    self.context.load_sequence(item.sequence)
-                self.emit(self.sample_changed, item)
+                    self.context.load_sequence(sequence)
+                self.emit(self.sample_changed, self.context)
 
     def mount(self, context):
         """Mount measurement to panel."""
         super().mount(context)
         self.title_label.text = f"{self.title} &rarr; {context.name}"
         self.description_label.text = "Current halfmoon sample"
-        self._sample_name_text.value = context.name
         self._sample_name_prefix_text.value = context.name_prefix
+        self._sample_name_infix_text.value = context.name_infix
         self._sample_name_suffix_text.value = context.name_suffix
         self._sample_type_text.value = context.sample_type
         self._sample_comment_text.value = context.comment
@@ -121,10 +133,10 @@ class SamplePanel(BasicPanel, SettingsMixin):
             self._sequence_text.value = ""
 
     def unmount(self):
-        self._sample_name_text.value = ""
-        self._sample_name_prefix_text.value = ""
-        self._sample_name_suffix_text.value = ""
-        self._sample_type_text.value = ""
-        self._sample_comment_text.value = ""
-        self._sequence_text.value = ""
+        self._sample_name_prefix_text.clear()
+        self._sample_name_infix_text.clear()
+        self._sample_name_suffix_text.clear()
+        self._sample_type_text.clear()
+        self._sample_comment_text.clear()
+        self._sequence_text.clear()
         super().unmount()

@@ -12,6 +12,7 @@ from comet_pqc.utils import format_metric
 
 from .components import PositionLabel
 from .settings import settings, TablePosition
+from .utils import format_switch
 
 from qutie.qutie import Qt
 
@@ -43,7 +44,7 @@ class TableSampleItem(ui.TreeItem):
         for i in range(1, 4):
             self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
         self.sample_item = sample_item
-        self.name = sample_item.full_name
+        self.name = sample_item.name
         for contact_item in sample_item.children:
             self.append(TableContactItem(contact_item))
 
@@ -58,7 +59,7 @@ class TableSampleItem(ui.TreeItem):
     def update_contacts(self):
         for contact_item in self.children:
             contact_item.update_contact()
-            logging.info("updated contact position: %s %s", contact_item.name, contact_item.position)
+            logging.info("updated contact position: %s %s %s", self.name, contact_item.name, contact_item.position)
 
     def calculate_positions(self):
         tr = LinearTransform()
@@ -624,11 +625,19 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Calibrate",
                             layout=ui.Column(
-                                ui.Row(
-                                    self.calibrate_button,
-                                    ui.Label("Calibrate table by moving into stop switches\nof every axis in" \
-                                             " a safe manner to protect the probe card.")
-                                )
+                                    ui.GroupBox(
+                                    title="Table Calibration",
+                                    layout=ui.Column(
+                                        ui.Row(
+                                            self.calibrate_button,
+                                            ui.Label("Calibrate table by moving into cal/rm switches\nof every axis in" \
+                                                     " a safe manner to protect the probe card."),
+                                            stretch=(0, 1)
+                                        )
+                                    )
+                                ),
+                                ui.Spacer(),
+                                stretch=(0, 1)
                             )
                         ),
                         ui.Tab(
@@ -993,7 +1002,7 @@ class SwitchLabel(ui.Label):
             self.text = float('nan')
             self.qt.setStyleSheet("")
         else:
-            self.text = "ON" if value else "OFF"
+            self.text = format_switch(value)
             self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
 
 class KeypadSpacer(ui.Spacer):
