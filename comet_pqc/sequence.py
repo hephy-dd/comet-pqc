@@ -25,11 +25,10 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
     def __init__(self, context, table_enabled):
         super().__init__()
         self.title = "Start Sequence"
-        has_position = context.has_position if hasattr(context, 'has_position') else False
         self._contact_checkbox = ui.CheckBox(
             text="Move table and contact with Probe Card",
-            checked=has_position,
-            enabled=has_position and table_enabled
+            checked=True,
+            enabled=table_enabled
         )
         self._position_checkbox = ui.CheckBox(
             text="Move table after measurements",
@@ -79,12 +78,14 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
         )
 
     def load_settings(self):
+        self._contact_checkbox.checked = bool(self.settings.get('move_to_contact') or False)
         self._position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
         self._positions_combobox.load_settings()
         self._operator_combobox.load_settings()
         self._output_combobox.load_settings()
 
     def store_settings(self):
+        self.settings['move_to_contact'] = self._contact_checkbox.checked
         self.settings['move_on_success'] = self._position_checkbox.checked
         self._positions_combobox.store_settings()
         self._operator_combobox.store_settings()
