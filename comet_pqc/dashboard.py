@@ -624,7 +624,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             dialog.store_settings()
             self.operator_widget.load_settings()
             self.output_widget.load_settings()
-            move_to_after_position = dialog.move_to_position() if dialog.position_checkbox.checked else None
+            move_to_after_position = dialog.move_to_position()
             self._on_start(
                 current_item,
                 move_to_contact=dialog.move_to_contact(),

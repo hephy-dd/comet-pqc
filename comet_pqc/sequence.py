@@ -5,6 +5,7 @@ import os
 from comet import ui
 from comet.settings import SettingsMixin
 from qutie.qutie import QtCore, QtGui
+import yaml
 
 from analysis_pqc import STATUS_PASSED
 
@@ -24,10 +25,11 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
     def __init__(self, context, table_enabled):
         super().__init__()
         self.title = "Start Sequence"
+        has_position = context.has_position if hasattr(context, 'has_position') else False
         self._contact_checkbox = ui.CheckBox(
             text="Move table and contact with Probe Card",
-            checked=context.has_position,
-            enabled=context.has_position and table_enabled
+            checked=has_position,
+            enabled=has_position and table_enabled
         )
         self._position_checkbox = ui.CheckBox(
             text="Move table after measurements",
@@ -142,11 +144,13 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         font = self.preview_textarea.qt.font()
         font.setFamily("Monospace")
         self.preview_textarea.qt.setFont(font)
+        self._preview_tree = ui.Tree(header=["Key", "Value"])
         self.layout = ui.Column(
             ui.Row(
                 ui.Column(
                     self._sequence_tree,
                     self.preview_textarea,
+                    self._preview_tree,
                     stretch=(4, 3)
                 ),
                 ui.Column(
@@ -238,6 +242,33 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     self.preview_textarea.qt.setText(f.read())
                     self.preview_textarea.qt.textCursor().setPosition(0)
                     self.preview_textarea.qt.ensureCursorVisible()
+        self._preview_tree.clear()
+        if item is not None:
+            self.remove_button.enabled = not item.sequence.builtin
+            if os.path.exists(item.sequence.filename):
+                with open(item.sequence.filename) as f:
+                    data = yaml.safe_load(f)
+                    def append(item, key, value):
+                        """Recursively append items."""
+                        if isinstance(value, dict):
+                            child = item.append([key])
+                            for key, value in value.items():
+                                append(child, key, value)
+                        elif isinstance(value, list):
+                            child = item.append([key])
+                            for i, obj in enumerate(value):
+                                if isinstance(obj, dict):
+                                    for key, value in obj.items():
+                                        append(child, key, value)
+                                else:
+                                    append(child, f"[{i}]", obj)
+                            child.expanded = True
+                        else:
+                            item.append([key, value])
+                            item.expanded = True
+                    for key, value in data.items():
+                        append(self._preview_tree, key, value)
+                    self._preview_tree.fit()
 
     def on_add_sequence(self):
         filename = ui.filename_open(filter="YAML files (*.yml, *.yaml);;All files (*)")
@@ -311,6 +342,10 @@ class SequenceTreeItem(ui.TreeItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.checkable = True
+
+    @property
+    def has_position(self):
+        return False
 
     def lock(self):
         self.checkable = False
