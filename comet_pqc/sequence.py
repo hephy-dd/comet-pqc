@@ -138,18 +138,11 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             enabled=False,
             clicked=self.on_remove_sequence
         )
-        self.preview_textarea = ui.TextArea(
-            readonly=True
-        )
-        font = self.preview_textarea.qt.font()
-        font.setFamily("Monospace")
-        self.preview_textarea.qt.setFont(font)
         self._preview_tree = ui.Tree(header=["Key", "Value"])
         self.layout = ui.Column(
             ui.Row(
                 ui.Column(
                     self._sequence_tree,
-                    self.preview_textarea,
                     self._preview_tree,
                     stretch=(4, 3)
                 ),
@@ -234,14 +227,6 @@ class SequenceManager(ui.Dialog, SettingsMixin):
     def on_sequence_tree_selected(self, item):
         """Load sequence config preview."""
         self.remove_button.enabled = False
-        self.preview_textarea.clear()
-        if item is not None:
-            self.remove_button.enabled = not item.sequence.builtin
-            if os.path.exists(item.sequence.filename):
-                with open(item.sequence.filename) as f:
-                    self.preview_textarea.qt.setText(f.read())
-                    self.preview_textarea.qt.textCursor().setPosition(0)
-                    self.preview_textarea.qt.ensureCursorVisible()
         self._preview_tree.clear()
         if item is not None:
             self.remove_button.enabled = not item.sequence.builtin
