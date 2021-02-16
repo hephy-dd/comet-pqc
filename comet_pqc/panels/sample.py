@@ -111,10 +111,18 @@ class SamplePanel(BasicPanel, SettingsMixin):
             self._sequence_text.clear()
             sequence = dialog.current_sequence
             if sequence is not None:
+                # Store contact positions
+                sample_contacts = {}
+                for contact in self.context.children:
+                    if contact.has_position:
+                        sample_contacts[contact.id] = contact.position
                 self._sequence_text.value = f"{sequence.name}"
                 self._sequence_text.tool_tip = f"{sequence.filename}"
-                if self.context:
-                    self.context.load_sequence(sequence)
+                self.context.load_sequence(sequence)
+                # Restore contact positions
+                for contact in self.context.children:
+                    if contact.id in sample_contacts:
+                        contact.position = sample_contacts.get(contact.id)
                 self.emit(self.sample_changed, self.context)
 
     def mount(self, context):

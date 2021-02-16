@@ -410,7 +410,7 @@ class SampleTreeItem(SequenceTreeItem):
 
     def from_settings(self, **kwargs):
         self._name_prefix = kwargs.get("sample_name_prefix") or ""
-        self._name_infix = kwargs.get("sample_name_infix") or sample.get("sample_name") or "Unnamed"
+        self._name_infix = kwargs.get("sample_name_infix") or kwargs.get("sample_name") or "Unnamed"
         self._name_suffix = kwargs.get("sample_name_suffix") or ""
         self.update_name()
         self.sample_type = kwargs.get("sample_type") or ""
