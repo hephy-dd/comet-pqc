@@ -433,6 +433,7 @@ class AlternateTableProcess(TableProcess):
                 if reference_pos[index] == current_pos[index]:
                     logging.info("nrm %s... done.", AXIS_NAMES.get(index))
                     break
+                reference_pos = current_pos
                 time.sleep(delay)
             return i < retries
 
@@ -561,7 +562,7 @@ class AlternateTableProcess(TableProcess):
             handle_abort()
             current_pos = table.pos
             update_status(*current_pos)
-            if pos == (0, 0, 0):
+            if current_pos == (0, 0, 0):
                 break
             time.sleep(delay)
         # Verify table position
