@@ -132,7 +132,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         # If output disabled
         voltage = 0
         self.hvsrc_set_voltage_level(hvsrc, voltage)
-        self.hvsrc_set_output_state(hvsrc, True)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
         time.sleep(.100)
 
         self.process.emit("state", dict(
@@ -343,7 +343,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 ))
                 time.sleep(QUICK_RAMP_DELAY)
 
-            self.hvsrc_set_output_state(hvsrc, False)
+            self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
             self.process.emit("state", dict(
                 hvsrc_output=self.hvsrc_get_output_state(hvsrc),
@@ -357,6 +357,6 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
+                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
                 elm=K6517B(es.enter_context(self.resources.get("elm")))
             )

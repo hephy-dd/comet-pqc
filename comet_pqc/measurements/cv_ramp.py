@@ -121,7 +121,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
         self.process.emit("progress", 4, 6)
 
-        self.hvsrc_set_output_state(hvsrc, True)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
             hvsrc_output=hvsrc_output_state,
@@ -282,7 +282,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         ))
 
         self.quick_ramp_zero(hvsrc)
-        self.hvsrc_set_output_state(hvsrc, False)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
             hvsrc_output=hvsrc_output_state,
@@ -299,6 +299,6 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
+                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
                 lcr=E4980A(es.enter_context(self.resources.get("lcr")))
             )

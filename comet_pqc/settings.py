@@ -3,6 +3,9 @@ from comet.settings import SettingsMixin
 from .utils import from_table_unit, to_table_unit
 from .position import Position
 
+from .instruments.k2410 import K2410Instrument
+from .instruments.k2657a import K2657AInstrument
+
 __all__ = ['settings']
 
 class TablePosition(Position):
@@ -110,5 +113,21 @@ class Settings(SettingsMixin):
         if value in output_path:
             index = output_path.index(value)
         self.settings['current_output_path'] = index
+
+    @property
+    def vsrc_instrument(self):
+        vsrc_instrument = self.settings.get('vsrc_instrument') or 'K2657A'
+        return {
+            'K2410': K2410Instrument,
+            'K2657A': K2657AInstrument,
+        }.get(vsrc_instrument)
+
+    @property
+    def hvsrc_instrument(self):
+        hvsrc_instrument = self.settings.get('hvsrc_instrument') or 'K2410'
+        return {
+            'K2410': K2410Instrument,
+            'K2657A': K2657AInstrument,
+        }.get(hvsrc_instrument)
 
 settings = Settings()

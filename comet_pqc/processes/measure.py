@@ -18,6 +18,7 @@ from comet.driver.keithley import K707B
 from ..utils import format_metric
 from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
+from ..settings import settings
 
 from ..sequence import MeasurementTreeItem
 from ..sequence import ContactTreeItem
@@ -68,33 +69,29 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         return os.path.join(self.get('output_dir'), measurement.sample_name, filename)
 
     def safe_initialize_hvsrc(self, resource):
-        resource.query("*IDN?")
-        if int(resource.query(":OUTP:STAT?")):
-            self.emit("message", "Ramping down HVSource...")
-            start_voltage = float(resource.query(":SOUR:VOLT:LEV?"))
+        context = settings.hvsrc_instrument(resource)
+        if context.get_output() == context.OUTPUT_ON:
+            self.emit("message", "Ramping down HV Source...")
+            start_voltage = context.get_source_voltage()
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
-                resource.write(f":SOUR:VOLT:LEV {voltage:E}")
-                resource.query("*OPC?")
-            self.emit("message", "Disable output HVSource...")
-            resource.write(":OUTP:STAT OFF")
-            resource.query("*OPC?")
+                context.set_source_voltage(voltage)
+            self.emit("message", "Disable output HV Source...")
+            context.set_output(context.OUTPUT_OFF)
         self.emit("message", "Initialized HVSource.")
 
     def safe_initialize_vsrc(self, resource):
-        resource.query("*IDN?")
-        if int(float(resource.query("print(smua.source.output)"))):
-            self.emit("message", "Ramping down VSource...")
-            start_voltage = float(resource.query("print(smua.source.levelv)"))
+        context = settings.vsrc_instrument(resource)
+        if context.get_output() == context.OUTPUT_ON:
+            self.emit("message", "Ramping down V Source...")
+            start_voltage = context.get_source_voltage()
             stop_voltage = 0.0
             step_voltage = min(25.0, max(5.0, start_voltage / 100.))
             for voltage in comet.Range(start_voltage, stop_voltage, step_voltage):
-                resource.write(f"smua.source.levelv = {voltage:E}")
-                resource.query("*OPC?")
-            self.emit("message", "Disable output VSource...")
-            resource.write("smua.source.output = 0")
-            resource.query("*OPC?")
+                context.set_source_voltage(voltage)
+            self.emit("message", "Disable output V Source...")
+            context.set_output(context.OUTPUT_OFF)
         self.emit("message", "Initialized VSource.")
 
     def discharge_decoupling(self, context):
@@ -118,7 +115,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
                 with self.processes.get("environ") as environment:
                     environment.set_test_led(True)
         except Exception:
-            logging.warning("unable to connect with environment box (test LED ON)")
+            logging.error("unable to connect with environment box (test LED ON)")
         try:
             with self.resources.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
@@ -129,13 +126,13 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             with self.resources.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.warning("unable to connect with VSource")
+            logging.error("unable to connect with VSource")
         try:
             if self.get("use_environ"):
                 with self.processes.get("environ") as environment:
                     self.discharge_decoupling(environment)
         except Exception:
-            logging.warning("unable to connect with environment box (discharge decoupling)")
+            logging.error("unable to connect with environment box (discharge decoupling)")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
@@ -150,19 +147,19 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             with self.resources.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.warning("unable to connect with VSource")
+            logging.error("unable to connect with VSource")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
         except Exception:
-            logging.warning("unable to connect with: Matrix")
+            logging.error("unable to connect with: Matrix")
             raise RuntimeError("Failed to connect with Matrix")
         try:
             if self.get("use_environ"):
                 with self.processes.get("environ") as environment:
                     environment.set_test_led(False)
         except Exception:
-            logging.warning("unable to connect with environment box (test LED OFF)")
+            logging.error("unable to connect with environment box (test LED OFF)")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a samples, contacts and measurements."""

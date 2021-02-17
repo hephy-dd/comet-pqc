@@ -197,12 +197,12 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
 
         # Output enable
 
-        self.hvsrc_set_output_state(hvsrc, True)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
         time.sleep(.100)
         self.process.emit("state", dict(
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
-        self.vsrc_set_output_state(vsrc, True)
+        self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_ON)
         time.sleep(.100)
         self.process.emit("state", dict(
             vsrc_output=self.vsrc_get_output_state(vsrc)
@@ -426,8 +426,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 ))
                 time.sleep(QUICK_RAMP_DELAY)
 
-            self.hvsrc_set_output_state(hvsrc, False)
-            self.vsrc_set_output_state(vsrc, False)
+            self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
+            self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
 
             self.process.emit("state", dict(
                 hvsrc_output=self.hvsrc_get_output_state(hvsrc),
@@ -446,7 +446,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
-                vsrc=K2657A(es.enter_context(self.resources.get("vsrc"))),
+                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
+                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc"))),
                 elm=K6517B(es.enter_context(self.resources.get("elm")))
             )

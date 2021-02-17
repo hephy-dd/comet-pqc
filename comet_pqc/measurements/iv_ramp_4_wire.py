@@ -109,7 +109,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         # Override display
         self.vsrc_set_display(vsrc, 'voltage')
 
-        self.vsrc_set_output_state(vsrc, True)
+        self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_ON)
         time.sleep(.100)
         self.process.emit("state", dict(
             vsrc_output=self.vsrc_get_output_state(vsrc),
@@ -247,7 +247,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-        self.vsrc_set_output_state(vsrc, False)
+        self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
         self.vsrc_check_error(vsrc)
 
         self.process.emit("state", dict(
@@ -262,5 +262,5 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                vsrc=K2657A(es.enter_context(self.resources.get("vsrc")))
+                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc")))
             )
