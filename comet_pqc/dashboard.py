@@ -78,24 +78,24 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.minimum_width = 360
 
         self.start_all_action = ui.Action(
-            text="&All...",
+            text="&All Samples",
             triggered=self.on_start_all
         )
 
         self.start_sample_action = ui.Action(
-            text="&Sample...",
+            text="&Sample",
             triggered=self.on_start
         )
         self.start_sample_action.qt.setEnabled(False)
 
         self.start_contact_action = ui.Action(
-            text="Contact...",
+            text="&Contact",
             triggered=self.on_start
         )
         self.start_contact_action.qt.setEnabled(False)
 
         self.start_measurement_action = ui.Action(
-            text="&Measurement...",
+            text="&Measurement",
             triggered=self.on_start
         )
         self.start_measurement_action.qt.setEnabled(False)
@@ -350,7 +350,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.table_process.position_changed = self.on_table_position_changed
 
         self.measure_process = self.processes.get("measure")
-        self.measure_process.finished = self.on_measure_finished
+        self.measure_process.finished = self.on_finished
         self.measure_process.measurement_state = self.on_measurement_state
         self.measure_process.save_to_image = self.on_save_to_image
 
@@ -554,17 +554,17 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         current_item = self.sequence_tree.current
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
+            panel.visible = True
             panel.mount(current_item)
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
+            panel.visible = True
             panel.mount(current_item)
         self.unlock_controls()
 
     @handle_exception
     def on_start_all(self):
-        sample_items = []
-        for item in self.sequence_tree:
-            sample_items.append(item)
+        sample_items = SamplesItem(self.sequence_tree)
         dialog = StartSequenceDialog(
             context=sample_items,
             table_enabled=self.use_table()
@@ -578,7 +578,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
         self._on_start(
-            SamplesItem(sample_items),
+            sample_items,
             move_to_contact=dialog.move_to_contact(),
             move_to_after_position=dialog.move_to_position()
         )
@@ -672,7 +672,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measure.show_measurement = show_measurement
         measure.hide_measurement = hide_measurement
         measure.push_summary = self.on_push_summary
-        measure.finished = self.on_finished
         measure.start()
 
     def on_measurement_state(self, item, state=None, quality=None):
@@ -699,15 +698,16 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             title="Reset State",
             text="Do you want to reset all sequence states?"
         ): return
+        current_item = self.sequence_tree.current
         self.panels.unmount()
+        self.panels.clear_readings()
         self.panels.hide()
-        for item in self.sequence_tree:
-            if item.sequence:
-                filename = item.sequence.filename
-                sequence = config.load_sequence(filename)
-                item.load_sequence(sequence)
-        if self.sequence_tree:
-            self.sequence_tree.current = self.sequence_tree[0]
+        for sample_item in self.sequence_tree:
+            sample_item.reset()
+        if current_item is not None:
+            panel = self.panels.get(current_item.type)
+            panel.visible = True
+            panel.mount(current_item)
 
     def on_add_sample_clicked(self):
         item = SampleTreeItem(
@@ -740,39 +740,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measurement = self.sequence_tree.current
         panel = self.panels.get(measurement.type)
         panel.restore()
-
-    def on_measure_run(self):
-        self.switch_off_lights()
-        self.sync_environment_controls()
-        self.lock_controls()
-        measurement = self.sequence_tree.current
-        panel = self.panels.get(measurement.type)
-        panel.store()
-        # TODO
-        panel.clear_readings()
-        # Set process parameters
-        self.measure_process.set("table_position", self.table_position())
-        self.measure_process.set("operator", self.operator())
-        self.measure_process.set("output_dir", self.output_dir())
-        self.measure_process.set("write_logfiles", self.write_logfiles())
-        self.measure_process.set("use_environ", self.use_environment())
-        self.measure_process.set("use_table", self.use_table())
-        self.measure_process.set("serialize_json", self.export_json())
-        self.measure_process.set("serialize_txt", self.export_txt())
-        self.measure_process.measurement_item = measurement
-        self.measure_process.reading = panel.append_reading
-        self.measure_process.update = panel.update_readings
-        self.measure_process.append_analysis = panel.append_analysis
-        self.measure_process.state = panel.state
-        self.measure_process.push_summary = self.on_push_summary
-        # TODO
-        self.measure_process.start()
-
-    def on_measure_finished(self):
-        self.sync_environment_controls()
-        self.unlock_controls()
-        self.measure_process.reading = lambda data: None
-        self.sequence_tree.unlock()
 
     def on_status_start(self):
         self.lock_controls()

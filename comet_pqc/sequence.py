@@ -446,6 +446,8 @@ class SequenceTreeItem(ui.TreeItem):
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
+    type = "sample"
+
     def __init__(self, name_prefix=None, name_infix=None, name_suffix=None,
                  sample_type=None, enabled=False, comment=None):
         super().__init__()
@@ -567,6 +569,8 @@ class SampleTreeItem(SequenceTreeItem):
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""
 
+    type = "contact"
+
     def __init__(self, sample, contact):
         super().__init__([contact.name, None])
         self.sample = sample
@@ -615,3 +619,8 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.description = measurement.description
         self.series = {}
         self.analysis = {}
+
+    def reset(self):
+        super().reset()
+        self.series.clear()
+        self.analysis.clear()

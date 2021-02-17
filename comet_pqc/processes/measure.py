@@ -236,6 +236,7 @@ class MeasureProcess(BaseProcess):
         log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
         plot_filename = self.create_filename(measurement, suffix='.png')
         state = measurement_item.ActiveState
+        self.emit('show_measurement', measurement_item)
         self.emit("measurement_state", measurement_item, state)
         with LogFileHandler(log_filename):
             try:
@@ -295,7 +296,6 @@ class MeasureProcess(BaseProcess):
                 break
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
-            self.emit('show_measurement', measurement_item)
             try:
                 self.process_measurement(measurement_item)
             except Exception as exc:
