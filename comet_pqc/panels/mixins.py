@@ -18,7 +18,7 @@ class HVSourceMixin:
 
     def register_vsource(self):
         self.hvsrc_sense_mode = ui.ComboBox(["local", "remote"])
-        self.hvsrc_route_termination = ui.ComboBox(["front", "rear"])
+        self.hvsrc_route_terminal = ui.ComboBox(["front", "rear"])
 
         def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
@@ -42,7 +42,7 @@ class HVSourceMixin:
         toggle_hvsrc_source_voltage_autorange(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "rear")
+        self.bind("hvsrc_route_terminal", self.hvsrc_route_terminal, "rear")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
@@ -105,8 +105,8 @@ class HVSourceMixin:
                     layout=ui.Column(
                         ui.Label(text="Sense Mode"),
                         self.hvsrc_sense_mode,
-                        ui.Label(text="Route Termination"),
-                        self.hvsrc_route_termination,
+                        ui.Label(text="Route Terminal"),
+                        self.hvsrc_route_terminal,
                         ui.Spacer()
                     )
                 ),

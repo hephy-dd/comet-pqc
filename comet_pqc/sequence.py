@@ -449,12 +449,13 @@ class SampleTreeItem(SequenceTreeItem):
     type = "sample"
 
     def __init__(self, name_prefix=None, name_infix=None, name_suffix=None,
-                 sample_type=None, enabled=False, comment=None):
+                 sample_type=None, sample_position=None, enabled=False, comment=None):
         super().__init__()
         self._name_prefix = name_prefix or ""
         self._name_infix = name_infix or ""
         self._name_suffix = name_suffix or ""
         self._sample_type = sample_type or ""
+        self._sample_position = sample_position or ""
         self.update_name()
         self.comment = comment or ""
         self.enabled = enabled
@@ -506,6 +507,15 @@ class SampleTreeItem(SequenceTreeItem):
         self._sample_type = value
         self.update_name()
 
+    @property
+    def sample_position(self):
+        return self._sample_position
+
+    @sample_position.setter
+    def sample_position(self, value):
+        self._sample_position = value.strip()
+        self[1].value = value.strip()
+
     # Settings
 
     def from_settings(self, **kwargs):
@@ -514,6 +524,7 @@ class SampleTreeItem(SequenceTreeItem):
         self._name_suffix = kwargs.get("sample_name_suffix") or ""
         self.update_name()
         self.sample_type = kwargs.get("sample_type") or ""
+        self.sample_position = kwargs.get("sample_position") or ""
         self.enabled = kwargs.get("sample_enabled") or False
         self.comment = kwargs.get("sample_comment") or ""
         filename = kwargs.get("sample_sequence_filename")
@@ -546,6 +557,7 @@ class SampleTreeItem(SequenceTreeItem):
             "sample_name_infix": self.name_infix,
             "sample_name_suffix": self.name_suffix,
             "sample_type": self.sample_type,
+            "sample_position": self.sample_position,
             "sample_enabled": self.enabled,
             "sample_comment": self.comment,
             "sample_sequence_filename": self.sequence_filename,

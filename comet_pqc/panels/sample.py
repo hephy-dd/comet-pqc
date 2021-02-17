@@ -42,7 +42,12 @@ class SamplePanel(BasicPanel, SettingsMixin):
         self._sample_type_text = ui.Text(
             tool_tip="Sample type",
             clearable=True,
-            editing_finished=self.on_sample_type_edited
+            editing_finished=self.on_sample_name_edited
+        )
+        self._sample_position_text = ui.Text(
+            tool_tip="Sample position on the chuck",
+            clearable=True,
+            editing_finished=self.on_sample_position_edited
         )
         self._sequence_text = ui.Text(
             readonly=True
@@ -64,6 +69,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
                 ui.Column(
                     ui.Label("Name"),
                     ui.Label("Type"),
+                    ui.Label("Position"),
                     ui.Label("Comment"),
                     ui.Label("Sequence")
                 ),
@@ -75,6 +81,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
                         stretch=(3, 7, 3)
                     ),
                     self._sample_type_text,
+                    self._sample_position_text,
                     self._sample_comment_text,
                     ui.Row(
                         self._sequence_text,
@@ -92,16 +99,19 @@ class SamplePanel(BasicPanel, SettingsMixin):
             self.context.name_infix = self._sample_name_infix_text.value
             self.context.name_prefix = self._sample_name_prefix_text.value
             self.context.name_suffix = self._sample_name_suffix_text.value
+            self.context.sample_type = self._sample_type_text.value
             self.title_label.text = f"{self.title} &rarr; {self.context.name}"
             self.emit(self.sample_changed, self.context)
 
-    def on_sample_type_edited(self):
+    def on_sample_position_edited(self):
         if self.context:
-            self.context.sample_type = self._sample_type_text.value
+            self.context.sample_position = self._sample_position_text.value
+            self.emit(self.sample_changed, self.context)
 
     def on_sample_comment_edited(self):
         if self.context:
             self.context.comment = self._sample_comment_text.value
+            self.emit(self.sample_changed, self.context)
 
     def on_sequence_manager_clicked(self):
         dialog = SequenceManager()
@@ -134,6 +144,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
         self._sample_name_infix_text.value = context.name_infix
         self._sample_name_suffix_text.value = context.name_suffix
         self._sample_type_text.value = context.sample_type
+        self._sample_position_text.value = context.sample_position
         self._sample_comment_text.value = context.comment
         if context.sequence:
             self._sequence_text.value = context.sequence.name
@@ -145,6 +156,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
         self._sample_name_infix_text.clear()
         self._sample_name_suffix_text.clear()
         self._sample_type_text.clear()
+        self._sample_position_text.clear()
         self._sample_comment_text.clear()
         self._sequence_text.clear()
         super().unmount()

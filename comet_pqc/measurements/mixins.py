@@ -29,7 +29,7 @@ class HVSourceMixin(Mixin):
     def register_hvsource(self):
         ##self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_route_termination', 'rear', values=('front', 'rear'))
+        self.register_parameter('hvsrc_route_terminal', 'rear', values=('front', 'rear'))
         self.register_parameter('hvsrc_filter_enable', False, type=bool)
         self.register_parameter('hvsrc_filter_count', 10, type=int)
         self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
@@ -39,7 +39,7 @@ class HVSourceMixin(Mixin):
     def hvsrc_update_meta(self):
         """Update meta data parameters."""
         hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_route_terminal = self.get_parameter('hvsrc_route_terminal')
         hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
         hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
@@ -47,7 +47,7 @@ class HVSourceMixin(Mixin):
         hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
 
         self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
-        self.set_meta("hvsrc_route_termination", hvsrc_route_termination)
+        self.set_meta("hvsrc_route_terminal", hvsrc_route_terminal)
         self.set_meta("hvsrc_filter_enable", hvsrc_filter_enable)
         self.set_meta("hvsrc_filter_count", hvsrc_filter_count)
         self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
@@ -78,7 +78,7 @@ class HVSourceMixin(Mixin):
         hvsrc.clear()
 
     def hvsrc_setup(self, hvsrc):
-        hvsrc_route_termination = self.get_parameter('hvsrc_route_termination')
+        hvsrc_route_terminal = self.get_parameter('hvsrc_route_terminal')
         hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
         hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
         hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
@@ -86,7 +86,7 @@ class HVSourceMixin(Mixin):
         hvsrc_source_voltage_autorange_enable = self.get_parameter('hvsrc_source_voltage_autorange_enable')
         hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
 
-        self.hvsrc_set_route_termination(hvsrc, hvsrc_route_termination)
+        self.hvsrc_set_route_terminal(hvsrc, hvsrc_route_terminal)
         self.hvsrc_set_sense_mode(hvsrc, hvsrc_sense_mode)
         self.hvsrc_set_auto_range(hvsrc, True)
         self.hvsrc_set_filter_type(hvsrc, hvsrc_filter_type)
@@ -106,7 +106,7 @@ class HVSourceMixin(Mixin):
         hvsrc.source.voltage.level = voltage
         self.hvsrc_check_error(hvsrc)
 
-    def hvsrc_set_route_termination(self, hvsrc, route_terminals):
+    def hvsrc_set_route_terminal(self, hvsrc, route_terminals):
         logging.info("HV Source set route terminals: '%s'", route_terminals)
         value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
         hvsrc.route.terminals = value
