@@ -34,7 +34,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
-        self.bias_mode = ui.ComboBox(items=["constant", "offset"])
+        self.bias_mode = ui.ComboBox(["constant", "offset"])
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
         self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")

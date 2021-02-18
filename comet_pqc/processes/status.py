@@ -8,7 +8,7 @@ from comet.driver.keithley import K707B
 class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     """Reload instruments status."""
 
-    def __init__(self, message, progress, **kwargs):
+    def __init__(self, message=None, progress=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
@@ -65,26 +65,28 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_table(self):
         self.set("table_model", "")
         self.set("table_state", "")
+        if not self.get("use_table", False):
+            return
         try:
-            with self.resources.get("table") as table_res:
-                table = Venus1(table_res)
-                table.mode = 0
-                model = table.identification
-                self.set("table_model", model)
-                caldone = (table.x.caldone, table.y.caldone, table.z.caldone)
-                if caldone == (3, 3, 3):
-                    state = f"CALIBRATED"
-                else:
-                    state = f"NOT CALIBRATED"
-                self.set("table_state", state)
+            table_process = self.processes.get("table")
+            model = table_process.get_identification().get(timeout=5.0)
+            caldone = table_process.get_caldone().get(timeout=5.0)
+            self.set("table_model", model)
+            if caldone == (3, 3, 3):
+                state = f"CALIBRATED"
+            else:
+                state = f"NOT CALIBRATED"
+            self.set("table_state", state)
         except (ResourceError, OSError):
             pass
 
     def read_environ(self):
         self.set("env_model", "")
         self.set("env_pc_data", None)
+        if not self.get("use_environ", False):
+            return
         try:
-            with self.processes.get("environment") as environment:
+            with self.processes.get("environ") as environment:
                 model = environment.identification()
                 self.set("env_model", model)
                 pc_data = environment.pc_data()

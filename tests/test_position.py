@@ -1,3 +1,4 @@
+import math
 import os
 import unittest
 
@@ -7,10 +8,10 @@ class PositionTest(unittest.TestCase):
 
     def test_empty(self):
         p = Position()
-        self.assertEqual(0.0, p.x)
-        self.assertEqual(0.0, p.y)
-        self.assertEqual(0.0, p.z)
-        self.assertEqual((0.0, 0.0, 0.0), tuple(p))
+        self.assertTrue(math.isnan(p.x))
+        self.assertTrue(math.isnan(p.y))
+        self.assertTrue(math.isnan(p.z))
+        self.assertEqual(False, p.is_valid)
 
     def test_all(self):
         p = Position(1.2, 2.3, 3.4)
@@ -18,6 +19,7 @@ class PositionTest(unittest.TestCase):
         self.assertEqual(2.3, p.y)
         self.assertEqual(3.4, p.z)
         self.assertEqual((1.2, 2.3, 3.4), tuple(p))
+        self.assertEqual(True, p.is_valid)
 
     def test_add(self):
         p1 = Position(1.2, -2.3, 3.4)
@@ -32,7 +34,7 @@ class PositionTest(unittest.TestCase):
         p1 = Position(1.2, -2.3, 3.4)
         p2 = Position(2.3, 3.4, 5.5)
         p3 = p1 - p2
-        ref = Position(p1.x-p2.x, p1.y-p2.y, p1.z-p2.z)
+        ref = Position(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z)
         self.assertEqual(ref, p1 - p2)
         self.assertEqual(ref, p3)
         self.assertEqual(p3, p1 - p2)

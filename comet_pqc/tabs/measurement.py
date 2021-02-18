@@ -1,5 +1,7 @@
 from comet import ui
 
+from ..panels import SamplePanel
+from ..panels import ContactPanel
 from ..panels import IVRampPanel
 from ..panels import IVRampElmPanel
 from ..panels import IVRampBiasPanel
@@ -48,8 +50,13 @@ class MeasurementTab(ui.Tab):
 class PanelStack(ui.Row):
     """Stack of measurement panels."""
 
-    def __init__(self):
+    sample_changed = None
+
+    def __init__(self, sample_changed=None):
         super().__init__()
+        self.sample_changed = sample_changed
+        self.append(SamplePanel(visible=False, sample_changed=lambda item: self.sample_changed(item)))
+        self.append(ContactPanel(visible=False))
         self.append(IVRampPanel(visible=False))
         self.append(IVRampElmPanel(visible=False))
         self.append(IVRampBiasPanel(visible=False))
@@ -86,7 +93,7 @@ class PanelStack(ui.Row):
 
     def get(self, type):
         """Get panel by type."""
-        for child in self.children:
+        for child in self:
             if child.type == type:
                 return child
         return None

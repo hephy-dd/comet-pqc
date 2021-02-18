@@ -1,7 +1,7 @@
 from comet import ui
 
 from ..utils import format_metric
-from ..utils import format_output
+from ..utils import format_switch
 
 __all__ = [
     'HVSourceMixin',
@@ -17,8 +17,8 @@ class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
     def register_vsource(self):
-        self.hvsrc_sense_mode = ui.ComboBox(items=["local", "remote"])
-        self.hvsrc_route_termination = ui.ComboBox(items=["front", "rear"])
+        self.hvsrc_sense_mode = ui.ComboBox(["local", "remote"])
+        self.hvsrc_route_terminal = ui.ComboBox(["front", "rear"])
 
         def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
@@ -29,7 +29,7 @@ class HVSourceMixin:
         self.hvsrc_filter_enable = ui.CheckBox(text="Enable", changed=toggle_hvsrc_filter)
         self.hvsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.hvsrc_filter_count_label = ui.Label(text="Count")
-        self.hvsrc_filter_type = ui.ComboBox(items=["repeat", "moving"])
+        self.hvsrc_filter_type = ui.ComboBox(["repeat", "moving"])
         self.hvsrc_filter_type_label = ui.Label(text="Type")
 
         def toggle_hvsrc_source_voltage_autorange(enabled):
@@ -42,7 +42,7 @@ class HVSourceMixin:
         toggle_hvsrc_source_voltage_autorange(False)
 
         self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_termination", self.hvsrc_route_termination, "rear")
+        self.bind("hvsrc_route_terminal", self.hvsrc_route_terminal, "rear")
         self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
         self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
         self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
@@ -105,8 +105,8 @@ class HVSourceMixin:
                     layout=ui.Column(
                         ui.Label(text="Sense Mode"),
                         self.hvsrc_sense_mode,
-                        ui.Label(text="Route Termination"),
-                        self.hvsrc_route_termination,
+                        ui.Label(text="Route Terminal"),
+                        self.hvsrc_route_terminal,
                         ui.Spacer()
                     )
                 ),
@@ -123,7 +123,7 @@ class HVSourceMixin:
                 self.status_hvsrc_current.value = format_metric(value, "A")
             if 'hvsrc_output' in state:
                 value = state.get('hvsrc_output')
-                self.status_hvsrc_output.value = format_output(value, default=NO_VALUE)
+                self.status_hvsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -131,7 +131,7 @@ class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
 
     def register_hvsource(self):
-        self.vsrc_sense_mode = ui.ComboBox(items=["local", "remote"])
+        self.vsrc_sense_mode = ui.ComboBox(["local", "remote"])
 
         def toggle_vsrc_filter(enabled):
             self.vsrc_filter_count.enabled = enabled
@@ -142,7 +142,7 @@ class VSourceMixin:
         self.vsrc_filter_enable = ui.CheckBox(text="Enable", changed=toggle_vsrc_filter)
         self.vsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.vsrc_filter_count_label = ui.Label(text="Count")
-        self.vsrc_filter_type = ui.ComboBox(items=["repeat", "moving"])
+        self.vsrc_filter_type = ui.ComboBox(["repeat", "moving"])
         self.vsrc_filter_type_label = ui.Label(text="Type")
 
         toggle_vsrc_filter(False)
@@ -216,7 +216,7 @@ class VSourceMixin:
                 self.status_vsrc_current.value = format_metric(value, "A")
             if 'vsrc_output' in state:
                 value = state.get('vsrc_output')
-                self.status_vsrc_output.value = format_output(value, default=NO_VALUE)
+                self.status_vsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 
@@ -233,7 +233,7 @@ class ElectrometerMixin:
         self.elm_filter_enable = ui.CheckBox(text="Enable", changed=toggle_elm_filter)
         self.elm_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.elm_filter_count_label = ui.Label(text="Count")
-        self.elm_filter_type = ui.ComboBox(items=["repeat", "moving"])
+        self.elm_filter_type = ui.ComboBox(["repeat", "moving"])
         self.elm_filter_type_label = ui.Label(text="Type")
 
         self.elm_zero_correction = ui.CheckBox(text="Zero Correction")
@@ -341,11 +341,11 @@ class LCRMixin:
         def change_lcr_open_correction_mode(mode):
             self.lcr_open_correction_channel.enabled = mode == "multi"
 
-        self.lcr_integration_time = ui.ComboBox(items=["short", "medium", "long"])
+        self.lcr_integration_time = ui.ComboBox(["short", "medium", "long"])
         self.lcr_averaging_rate = ui.Number(minimum=1, maximum=256, decimals=0)
         self.lcr_auto_level_control = ui.CheckBox(text="Auto Level Control")
         self.lcr_soft_filter = ui.CheckBox(text="Filter STD/mean < 0.005")
-        self.lcr_open_correction_mode = ui.ComboBox(items=["single", "multi"], changed=change_lcr_open_correction_mode)
+        self.lcr_open_correction_mode = ui.ComboBox(["single", "multi"], changed=change_lcr_open_correction_mode)
         self.lcr_open_correction_channel = ui.Number(minimum=0, maximum=127, decimals=0)
 
         change_lcr_open_correction_mode(self.lcr_open_correction_mode.current)
@@ -422,7 +422,7 @@ class LCRMixin:
                 self.status_lcr_current.value = format_metric(value, "A")
             if 'lcr_output' in state:
                 value = state.get('lcr_output')
-                self.status_lcr_output.value = format_output(value, default=NO_VALUE)
+                self.status_lcr_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
 

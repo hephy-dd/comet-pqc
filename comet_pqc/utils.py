@@ -13,7 +13,7 @@ __all__ = [
     'PACKAGE_PATH',
     'make_path',
     'format_metric',
-    'format_output',
+    'format_switch',
     'std_mean_filter',
     'stitch_pixmaps',
     'create_icon',
@@ -66,13 +66,25 @@ def format_metric(value, unit, decimals=3):
             return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
     return f"{value:.{decimals}f} {unit}"
 
-def format_output(value, default=None):
+def format_switch(value, default=None):
     """Pretty format for instrument output states.
 
-    >>> format_output(False)
+    >>> format_switch(False)
     'OFF'
     """
     return {False: "OFF", True: "ON"}.get(value) or default
+
+def format_table_unit(value):
+    """Formatted table unit to millimeters."""
+    return f"{value:.3f} mm"
+
+def from_table_unit(value):
+    """Convert table unit (micron) to millimeters."""
+    return round((value * ureg("um")).to("mm").m, 3)
+
+def to_table_unit(value):
+    """Convert millimeters to table unit (micron)."""
+    return round((value * ureg("mm")).to("um").m, 0)
 
 def std_mean_filter(values, threshold):
     """Return True if standard deviation (sample) / mean < threshold.
@@ -133,15 +145,3 @@ def handle_exception(func):
             logging.error(tb)
             ui.show_exception(exc, tb)
     return catch_exception_wrapper
-
-def format_table_unit(value):
-    """Formatted table unit to millimeters."""
-    return f"{value / 1000.:.3f} mm"
-
-def from_table_unit(value):
-    """Convert table unit (micron) to millimeters."""
-    return round((value * ureg("um")).to("mm").m, 3)
-
-def to_table_unit(value):
-    """Convert millimeters to table unit (micron)."""
-    return round((value * ureg("mm")).to("um").m, 0)

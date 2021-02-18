@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.28.0
+
+### Added
+- Support for multiple samples.
+- Automatic table movement to contacts.
+
 ## 0.27.1
 
 ### Changed
@@ -212,4 +218,4 @@ nav_order: 10
 - Moved config and schema to assets directory.
 - Updated default matrix channel configurations.
 - Filter selection for type `moving`.
-- Default HV source route termination `rear`.
+- Default HV source route terminal `rear`.

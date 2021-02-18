@@ -36,7 +36,7 @@ Type: `iv_ramp`
 |`waiting_time`             |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
 |`hvsrc_current_compliance` |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`).|
 |`hvsrc_sense_mode`         |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
-|`hvsrc_route_termination`  |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_route_terminal`     |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`      |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`       |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`        |`str`    |`moving` |Type of applied HV Source filter.  Possible values are: `moving`, `repeat`. |
@@ -72,7 +72,7 @@ Type: `iv_ramp`
       waiting_time: 1 s
       current_compliance: 1 uA
       sense_mode: local
-      route_termination: rear
+      route_terminal: rear
       hvsrc_filter_enable: true
       hvsrc_filter_count: 10
       hvsrc_filter_type: moving
@@ -97,7 +97,7 @@ Type: `iv_ramp_elm`
 |`waiting_time`                |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
 |`hvsrc_current_compliance`    |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`). |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
-|`hvsrc_route_termination`     |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
@@ -144,7 +144,7 @@ Type: `iv_ramp_elm`
       waiting_time: 1 s
       hvsrc_current_compliance: 1 uA
       hvsrc_sense_mode: local
-      hvsrc_route_termination: rear
+      hvsrc_route_terminal: rear
       hvsrc_filter_enable: false
       hvsrc_filter_count: 10
       hvsrc_filter_type: repeat
@@ -174,7 +174,7 @@ Type: `iv_ramp_4_wire`
 |`waiting_time`            |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
 |`vsrc_current_compliance` |`volt`   |required |V Source current compliance (`1 mV` to `1000 V`). |
 |`vsrc_sense_mode`         |`str`    |`local`  |V Source sense mode. Possible values are: `local`, `remote`. |
-|`vsrc_route_termination`  |`str`    |`rear`   |V Source route termination. Possible values are: `front`, `rear`. |
+|`vsrc_route_terminal`     |`str`    |`rear`   |V Source route terminal. Possible values are: `front`, `rear`. |
 |`vsrc_filter_enable`      |`bool`   |`false`  |Enable V Source filter. |
 |`vsrc_filter_count`       |`int`    |`10`     |V Source filter count (`1` to `100`). |
 |`vsrc_filter_type`        |`str`    |`repeat` |Type of applied V Source filter. Possible values are: `moving`, `repeat`. |
@@ -233,7 +233,7 @@ Type: `iv_ramp_bias`
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
-|`hvsrc_route_termination`     |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
@@ -291,7 +291,7 @@ Type: `iv_ramp_bias_elm`
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
-|`hvsrc_route_termination`     |`str`    |`rear`   |HV Source route termination. Possible values are: `front`, `rear`. |
+|`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
 |`hvsrc_filter_count`          |`int`    |`10`     |HV Source filter count (`1` to `100`). |
 |`hvsrc_filter_type`           |`str`    |`repeat` |Type of applied HV Source filter. Possible values are: `moving`, `repeat`. |
@@ -359,7 +359,7 @@ Type: `cv_ramp`
 |`bias_voltage_stop`           |`volt`   |required | |
 |`waiting_time`                |`second` |`1 s`    | |
 |`hvsrc_current_compliance`    |`ampere` |`1 uA`   | |
-|`hvsrc_route_termination`     |`str`    |`rear`   | |
+|`hvsrc_route_terminal`        |`str`    |`rear`   | |
 |`hvsrc_sense_mode`            |`str`    |`local`  | Possible values are: `local`, `remote`.
 |`hvsrc_filter_enable`         |`bool`   |`false`  | |
 |`hvsrc_filter_count`          |`int`    |`10`     | |
@@ -406,7 +406,7 @@ Type: `cv_ramp`
       bias_voltage_step: 0.1 V
       waiting_time: 100 ms
       hvsrc_current_compliance: 100 uA
-      hvsrc_route_termination: rear
+      hvsrc_route_terminal: rear
       hvsrc_sense_mode: local
       hvsrc_filter_enable: false
       hvsrc_filter_count: 10

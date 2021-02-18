@@ -101,7 +101,7 @@ contacts:
             bias_voltage_step: 0.1 V
             waiting_time: 100 ms
             hvsrc_current_compliance: 100 uA
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
             analysis_functions: [cv, mos]
@@ -117,7 +117,7 @@ contacts:
             waiting_time: 100 ms
             current_compliance: 1 uA
             sense_mode: local
-            route_termination: rear
+            route_terminal: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
             analysis_functions: [cv, mos]
@@ -133,7 +133,7 @@ contacts:
             waiting_time: 100 ms
             hvsrc_current_compliance: 100 uA
             hvsrc_sense_mode: local
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
             analysis_functions: [cv]
@@ -149,7 +149,7 @@ contacts:
             waiting_time: 100 ms
             current_compliance: 100 uA
             sense_mode: local
-            route_termination: rear
+            route_terminal: rear
             lcr_frequency: 1 kHz
             lcr_amplitude: 250 mV
       - name: Diode IV
@@ -163,7 +163,7 @@ contacts:
             waiting_time: 1 s
             hvsrc_current_compliance: 1 uA
             hvsrc_sense_mode: local
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             hvsrc_filter_enabled: true
             hvsrc_filter_count: 10
             hvsrc_filter_type: repeat
@@ -183,7 +183,7 @@ contacts:
             waiting_time: 500 ms
             hvsrc_current_compliance: 100 uA
             hvsrc_sense_mode: local
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
       - name: Diode CV (V Source)
@@ -212,7 +212,7 @@ contacts:
             waiting_time: 500 ms
             hvsrc_current_compliance: 25 uA
             hvsrc_sense_mode: local
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             lcr_frequency: 10 kHz
             lcr_amplitude: 250 mV
             lcr_integration_time: "long"
@@ -225,7 +225,7 @@ contacts:
             bias_voltage: 300 V
             hvsrc_current_compliance: 10 uA
             hvsrc_sense_mode: local
-            hvsrc_route_termination: rear
+            hvsrc_route_terminal: rear
             lcr_frequency_start: 100 Hz
             lcr_frequency_stop: 2 MHz
             lcr_frequency_steps: 100

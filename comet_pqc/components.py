@@ -3,16 +3,19 @@ import os
 from comet import ui
 from comet.settings import SettingsMixin
 
+from .settings import settings
 from .utils import make_path, create_icon
 from .utils import format_table_unit
+from .utils import from_table_unit, to_table_unit
+
+from qutie.qutie import Qt
 
 __all__ = [
     'ToggleButton',
+    'PositionLabel',
     'DirectoryWidget',
     'OperatorComboBox',
-    'CalibrationGroupBox',
-    'PositionGroupBox',
-    'CalibrationGroupBox'
+    'PositionsComboBox'
 ]
 
 class ToggleButton(ui.Button):
@@ -26,6 +29,25 @@ class ToggleButton(ui.Button):
 
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
+
+class PositionLabel(ui.Label):
+
+    def __init__(self, value=None):
+        super().__init__()
+        self.value = value
+        self.qt.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        self.__value = value
+        if value is None:
+            self.text = format(float('nan'))
+        else:
+            self.text = format_table_unit(value)
 
 class DirectoryWidget(ui.Row):
 
@@ -120,24 +142,18 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
 
     def load_settings(self):
         self.clear_locations()
-        locations = self.settings.get('output_path')
+        locations = settings.output_path
         if not locations:
             locations = [os.path.join(os.path.expanduser("~"), "PQC")]
-        elif isinstance(locations, str):
-            locations = [locations]
         for location in locations:
             self.append_location(location)
-        try:
-            index = int(self.settings.get("current_output_path", 0))
-        except:
-            index = 0
-        self.location_combo_box.qt.setCurrentIndex(index)
+        self.location_combo_box.current = settings.current_output_path
         self.update_locations()
 
     def store_settings(self):
         self.update_locations()
-        self.settings['output_path'] = self.locations
-        self.settings['current_output_path'] = max(0, self.location_combo_box.qt.currentIndex())
+        settings.output_path = self.locations
+        settings.current_output_path = self.location_combo_box.current
 
 class OperatorComboBox(ui.ComboBox, SettingsMixin):
 
@@ -146,21 +162,17 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         self.duplicates_enabled = False
 
     def load_settings(self):
-        self.items = self.settings.get("operators") or []
-        # Set current operator
-        try:
-            index = int(self.settings.get("current_operator", 0))
-        except:
-            index = 0
-        index = max(0, min(index, len(self)))
-        self.current = self[index]
+        self.clear()
+        for operator in settings.operators:
+            self.append(operator)
+        self.current = settings.current_operator
 
     def store_settings(self):
-        self.settings["current_operator"] = max(0, self.qt.currentIndex())
+        settings.current_operator = self.current
         operators = []
         for index in range(len(self)):
             operators.append(self.qt.itemText(index))
-        self.settings["operators"] = operators
+        settings.operators = operators
 
 class OperatorWidget(ui.Row, SettingsMixin):
 
@@ -211,93 +223,16 @@ class OperatorWidget(ui.Row, SettingsMixin):
 
 # Table components
 
-class PositionGroupBox(ui.GroupBox):
+class PositionsComboBox(ui.ComboBox, SettingsMixin):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, title="Position", **kwargs)
-        self.pos_x_label = ui.Label()
-        self.pos_y_label = ui.Label()
-        self.pos_z_label = ui.Label()
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label("X"),
-                ui.Label("Y"),
-                ui.Label("Z"),
-            ),
-            ui.Column(
-                self.pos_x_label,
-                self.pos_y_label,
-                self.pos_z_label
-            ),
-        )
-        self.value = 0, 0, 0
+    def load_settings(self):
+        self.clear()
+        for position in settings.table_positions:
+            self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
+        index = self.settings.get('current_table_position') or 0
+        if 0 <= index < len(self):
+            self.current = self[index]
 
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        x, y, z = value[:3]
-        self.__value = x, y, z
-        self.pos_x_label.text = format_table_unit(x)
-        self.pos_y_label.text = format_table_unit(y)
-        self.pos_z_label.text = format_table_unit(z)
-
-class CalibrationGroupBox(ui.GroupBox):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, title="Calibration", **kwargs)
-        self.cal_x_label = ui.Label()
-        self.cal_y_label = ui.Label()
-        self.cal_z_label = ui.Label()
-        self.rm_x_label = ui.Label()
-        self.rm_y_label = ui.Label()
-        self.rm_z_label = ui.Label()
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label("X"),
-                ui.Label("Y"),
-                ui.Label("Z"),
-            ),
-            ui.Column(
-                self.cal_x_label,
-                self.cal_y_label,
-                self.cal_z_label
-            ),
-            ui.Column(
-                self.rm_x_label,
-                self.rm_y_label,
-                self.rm_z_label
-            )
-        )
-        self.value = 0, 0, 0
-
-    @property
-    def valid(self):
-        return self.value == (3, 3, 3)
-
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        x, y, z = value[:3]
-        self.__value = x, y, z
-        def getcal(value):
-            return value & 0x1
-        def getrm(value):
-            return (value >> 1) & 0x1
-        self.cal_x_label.text = "cal {}".format(getcal(x))
-        self.cal_x_label.stylesheet = "color: green" if getcal(x) else "color: red"
-        self.cal_y_label.text = "cal {}".format(getcal(y))
-        self.cal_y_label.stylesheet = "color: green" if getcal(y) else "color: red"
-        self.cal_z_label.text = "cal {}".format(getcal(z))
-        self.cal_z_label.stylesheet = "color: green" if getcal(z) else "color: red"
-        self.rm_x_label.text = "rm {}".format(getrm(x))
-        self.rm_x_label.stylesheet = "color: green" if getrm(x) else "color: red"
-        self.rm_y_label.text = "rm {}".format(getrm(y))
-        self.rm_y_label.stylesheet = "color: green" if getrm(y) else "color: red"
-        self.rm_z_label.text = "rm {}".format(getrm(z))
-        self.rm_z_label.stylesheet = "color: green" if getrm(z) else "color: red"
+    def store_settings(self):
+        index = self.index(self.current or 0)
+        self.settings['current_table_position'] = index

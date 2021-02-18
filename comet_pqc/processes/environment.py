@@ -2,11 +2,20 @@ import logging
 import time
 
 from comet.driver.hephy import EnvironmentBox
-from .resource import ResourceProcess
+from .resource import ResourceProcess, async_request
 
 class EnvironmentProcess(ResourceProcess):
 
     Driver = EnvironmentBox
+
+    def __init__(self, *args, pc_data_updated=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pc_data_updated = pc_data_updated
+
+    @async_request
+    def request_pc_data(self, context):
+        pc_data = context.pc_data
+        self.emit('pc_data_updated', pc_data)
 
     def pc_data(self):
         def request(context):

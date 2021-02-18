@@ -4,6 +4,7 @@ import comet
 from comet import ui
 from comet.ui.preferences import PreferencesTab
 
+from .settings import settings
 from .utils import from_table_unit
 from .utils import to_table_unit
 
@@ -206,8 +207,7 @@ class TableTab(PreferencesTab):
                 step_color=format(item.get('step_color'))
             ))
         self.steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
-        z_limit_movement = from_table_unit(self.settings.get('z_limit_movement', 0.0))
-        self.z_limit_movement_number.value = z_limit_movement
+        self.z_limit_movement_number.value = settings.table_z_limit
 
     def store(self):
         table_step_sizes = []
@@ -218,8 +218,7 @@ class TableTab(PreferencesTab):
                 step_color=format(item.step_color)
             ))
         self.settings['table_step_sizes'] = table_step_sizes
-        z_limit_movement = to_table_unit(self.z_limit_movement_number.value)
-        self.settings['z_limit_movement'] = z_limit_movement
+        settings.table_z_limit = self.z_limit_movement_number.value
 
 class OptionsTab(PreferencesTab):
     """Options tab for preferences dialog."""

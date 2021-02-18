@@ -11,11 +11,8 @@ from . import __version__
 
 from .processes import EnvironmentProcess
 from .processes import StatusProcess
-from .processes import ControlProcess
-from .processes import MoveProcess
-from .processes import CalibrateProcess
+from .processes import AlternateTableProcess
 from .processes import MeasureProcess
-from .processes import SequenceProcess
 
 from .dashboard import Dashboard
 from .preferences import TableTab
@@ -88,10 +85,6 @@ def main():
     ))
     app.resources.load_settings()
 
-    # Dashboard
-
-    dashboard = Dashboard()
-
     # Callbacks
 
     def on_show_error(exc, tb):
@@ -112,49 +105,30 @@ def main():
 
     # Register processes
 
-    app.processes.add("environment", EnvironmentProcess(
+    app.processes.add("environ", EnvironmentProcess(
         name="environ",
         failed=on_show_error
     ))
     app.processes.add("status", StatusProcess(
-        finished=dashboard.on_status_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress
     ))
-    app.processes.add("control", ControlProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
-    ))
-    app.processes.add("move", MoveProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
-    ))
-    app.processes.add("calibrate", CalibrateProcess(
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress
+    app.processes.add("table", AlternateTableProcess(
+        failed=on_show_error
     ))
     app.processes.add("measure", MeasureProcess(
-        finished=dashboard.on_measure_finished,
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
-        measurement_state=dashboard.on_measurement_state,
-        save_to_image=dashboard.on_save_to_image,
-        reading=None
     ))
-    app.processes.add("sequence", SequenceProcess(
-        finished=dashboard.on_sequence_finished,
-        failed=on_show_error,
-        message=on_message,
-        progress=on_progress,
-        measurement_state=dashboard.on_measurement_state,
-        save_to_image=dashboard.on_save_to_image,
-        reading=None
-    ))
+
+    # Dashboard
+
+    dashboard = Dashboard(
+        message_changed=on_message,
+        progress_changed=on_progress
+    )
 
     # Layout
 
@@ -190,15 +164,15 @@ def main():
 
     # Load configurations
     dashboard.load_settings()
-    dashboard.load_sequences()
-    dashboard.on_reset_sequence_state()
-
-    # Start services
-    app.processes.get("environment").start()
 
     # Sync environment controls
     if dashboard.environment_groupbox.checked:
+        dashboard.environ_process.start()
         dashboard.sync_environment_controls()
+
+    if dashboard.table_groupbox.checked:
+        dashboard.table_process.start()
+        dashboard.sync_table_controls()
 
     # HACK: resize preferences dialog for HiDPI
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))
