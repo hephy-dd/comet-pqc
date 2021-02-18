@@ -366,7 +366,7 @@ class VSourceMixin(Mixin):
 
     def vsrc_read_voltage(self, vsrc):
         voltage = vsrc.read_voltage()
-        logging.info("V Source voltage reading: %s", format_metric(voltage, "A"))
+        logging.info("V Source voltage reading: %s", format_metric(voltage, "V"))
         return voltage
 
 class ElectrometerMixin(Mixin):

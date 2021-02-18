@@ -191,8 +191,16 @@ class K2410Instrument(SMUInstrument):
 
     def read_current(self):
         self.context.format.elements = ['CURRENT']
+        self.context.resource.write(":SENS:FUNC:CONC ON")
+        self.context.resource.query("*OPC?")
+        self.context.resource.write(":SENS:FUNC:ON 'CURR'")
+        self.context.resource.query("*OPC?")
         return self.context.read()[0]
 
     def read_voltage(self):
         self.context.format.elements = ['VOLTAGE']
+        self.context.resource.write(":SENS:FUNC:CONC ON")
+        self.context.resource.query("*OPC?")
+        self.context.resource.write(":SENS:FUNC:ON 'VOLT'")
+        self.context.resource.query("*OPC?")
         return self.context.read()[0]

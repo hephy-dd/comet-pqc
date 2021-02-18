@@ -112,9 +112,23 @@ class Source(Driver):
             def level(self, value: float):
                 self.resource.write(f':SOUR:VOLT:RANG {value:E}')
 
+        class Protection(Driver):
+
+            @property
+            def level(self) -> float:
+                """Returns over voltage limit."""
+                return float(self.resource.query(':SOUR:VOLT:PROT:LEV?'))
+
+            @level.setter
+            @opc_wait
+            def level(self, value: float):
+                """Set over voltage limit for V-Source."""
+                self.resource.write(f':SOUR:VOLT:PROT:LEV {value:E}')
+
         def __init__(self, resource):
             super().__init__(resource)
             self.range = self.Range(resource)
+            self.protection = self.Protection(resource)
 
         @property
         def level(self) -> float:
@@ -287,7 +301,7 @@ class Sense(Driver):
         super().__init__(resource)
         self.average = self.Average(resource)
         self.current = self.Current(resource)
-        self.voltage = self.Current(resource)
+        self.voltage = self.Voltage(resource)
 
 class PowerMixin:
 
