@@ -7,8 +7,10 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
-### Unreleased
-- instrument abstraction using abstract class interface.
+## 0.29.0
+
+### Added
+- Instrument abstraction using abstract class interface.
 
 ## 0.28.0
 
