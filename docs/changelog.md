@@ -11,6 +11,7 @@ nav_order: 10
 
 ### Added
 - Instrument abstraction using abstract class interface.
+- Reload sequence configuration from file.
 
 ## 0.28.0
 

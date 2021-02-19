@@ -127,6 +127,13 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             clicked=self.on_reset_sequence_state
         )
 
+        self.reload_config_button = ui.Button(
+            icon=make_path('assets', 'icons', 'reload.svg'),
+            tool_tip="Reload sequence configurations from file.",
+            width=24,
+            clicked=self.on_reload_config_clicked
+        )
+
         self.add_sample_button = ui.Button(
             icon=make_path('assets', 'icons', 'add.svg'),
             tool_tip="Add new sample sequence.",
@@ -148,6 +155,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
                     self.start_button,
                     self.stop_button,
                     self.reset_button,
+                    self.reload_config_button,
                     self.add_sample_button,
                     self.remove_sample_button
                 )
@@ -656,6 +664,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             item.selectable = True
             item.series.clear()
             item[0].color = 'blue'
+            self.sequence_tree.scroll_to(item)
             self.panels.unmount()
             self.panels.hide()
             self.panels.clear_readings()
@@ -693,6 +702,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sync_environment_controls()
         self.unlock_controls()
 
+    @handle_exception
     def on_reset_sequence_state(self):
         if not ui.show_question(
             title="Reset State",
@@ -709,6 +719,19 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             panel.visible = True
             panel.mount(current_item)
 
+    @handle_exception
+    def on_reload_config_clicked(self):
+        if not ui.show_question(
+            title="Reload Configuration",
+            text="Do you want to reload sequence configurations from file?"
+        ): return
+        for sample_item in self.sequence_tree:
+            if sample_item.sequence:
+                filename = sample_item.sequence.filename
+                sequence = config.load_sequence(filename)
+                sample_item.load_sequence(sequence)
+
+    @handle_exception
     def on_add_sample_clicked(self):
         item = SampleTreeItem(
             name_prefix="",
@@ -721,6 +744,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
         self.sequence_tree.current = item
 
+    @handle_exception
     def on_remove_sample_clicked(self):
         item = self.sequence_tree.current
         if item in self.sequence_tree:
@@ -772,9 +796,26 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         dialog.load_settings()
         dialog.load_samples(list(self.sequence_tree)) # HACK
         if self.use_environment():
+            # TODO !!!
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
                 dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
+                dialog.update_probecard_light(pc_data.relay_states.box_light)
+                dialog.update_microscope_light(pc_data.relay_states.probecard_light)
+                dialog.update_box_light(pc_data.relay_states.microscope_light)
+            dialog.update_lights_enabled(True)
+            def probecard_light_toggled(state):
+                with self.environ_process as environ:
+                    environ.set_probecard_light(state)
+            def microscope_light_toggled(state):
+                with self.environ_process as environ:
+                    environ.set_microscope_light(state)
+            def box_light_toggled(state):
+                with self.environ_process as environ:
+                    environ.set_box_light(state)
+            dialog.probecard_light_toggled = probecard_light_toggled
+            dialog.microscope_light_toggled = microscope_light_toggled
+            dialog.box_light_toggled = box_light_toggled
         dialog.run()
         dialog.store_settings()
         dialog.update_samples()

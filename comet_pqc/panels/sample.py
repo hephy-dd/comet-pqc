@@ -6,7 +6,9 @@ from comet import ui
 from comet.settings import SettingsMixin
 
 from .panel import BasicPanel
+from .. import config
 from ..utils import make_path
+from ..utils import handle_exception
 from ..sequence import SequenceManager
 
 __all__ = ["SamplePanel"]
@@ -57,6 +59,12 @@ class SamplePanel(BasicPanel, SettingsMixin):
             clearable=True,
             editing_finished=self.on_sample_comment_edited
         )
+        self._reload_button = ui.Button(
+            icon=make_path('assets', 'icons', 'reload.svg'),
+            tool_tip="Reload sequence configuration from file.",
+            width=24,
+            clicked=self.on_reload_clicked
+        )
         self._sequence_manager_button = ui.Button(
             icon=make_path('assets', 'icons', 'gear.svg'),
             tool_tip="Open sequence manager",
@@ -85,6 +93,7 @@ class SamplePanel(BasicPanel, SettingsMixin):
                     self._sample_comment_text,
                     ui.Row(
                         self._sequence_text,
+                        self._reload_button,
                         self._sequence_manager_button,
                         stretch=(1, 0)
                     )
@@ -113,6 +122,18 @@ class SamplePanel(BasicPanel, SettingsMixin):
             self.context.comment = self._sample_comment_text.value
             self.emit(self.sample_changed, self.context)
 
+    @handle_exception
+    def on_reload_clicked(self):
+        if not ui.show_question(
+            title="Reload Configuration",
+            text="Do you want to reload sequence configuration from file?"
+        ): return
+        if self.context.sequence:
+            filename = self.context.sequence.filename
+            sequence = config.load_sequence(filename)
+            self.context.load_sequence(sequence)
+
+    @handle_exception
     def on_sequence_manager_clicked(self):
         dialog = SequenceManager()
         dialog.load_settings()
@@ -121,18 +142,9 @@ class SamplePanel(BasicPanel, SettingsMixin):
             self._sequence_text.clear()
             sequence = dialog.current_sequence
             if sequence is not None:
-                # Store contact positions
-                sample_contacts = {}
-                for contact in self.context.children:
-                    if contact.has_position:
-                        sample_contacts[contact.id] = contact.position
                 self._sequence_text.value = f"{sequence.name}"
                 self._sequence_text.tool_tip = f"{sequence.filename}"
                 self.context.load_sequence(sequence)
-                # Restore contact positions
-                for contact in self.context.children:
-                    if contact.id in sample_contacts:
-                        contact.position = sample_contacts.get(contact.id)
                 self.emit(self.sample_changed, self.context)
 
     def mount(self, context):

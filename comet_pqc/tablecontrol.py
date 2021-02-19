@@ -11,6 +11,7 @@ from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
 
 from .components import PositionLabel
+from .components import ToggleButton
 from .settings import settings, TablePosition
 from .utils import format_switch
 
@@ -100,23 +101,42 @@ class TableContactItem(ui.TreeItem):
         self[2].value = format(y, '.3f') if y is not None else None
         self[3].value = format(z, '.3f') if z is not None else None
 
+    @property
+    def has_position(self):
+        return any((not math.isnan(value) for value in self.__position))
+
     def update_contact(self):
         self.contact_item.position = self.position
 
+    def reset_position(self):
+        self.__position = float('nan'), float('nan'), float('nan')
+
 class TableContactsWidget(ui.Row):
 
-    def __init__(self, position_picked=None):
+    def __init__(self, position_picked=None, absolute_move=None):
         super().__init__()
         self.position_picked = position_picked
+        self.absolute_move = absolute_move
         self.contacts_tree = ui.Tree(
             header=("Contact", "X", "Y", "Z", None),
             selected=self.on_contacts_selected
         )
         self.contacts_tree.fit()
         self.pick_button = ui.Button(
-            text="&Pick",
+            text="Assign &Position",
             tool_tip="Assign current table position to selected position item",
             clicked=self.on_pick_position,
+            enabled=False
+        )
+        self.calculate_button= ui.Button(
+            text="&Calculate",
+            clicked=self.on_calculate,
+            enabled=False
+        )
+        self.move_button= ui.Button(
+            text="&Move",
+            tool_tip="Move to selected position",
+            clicked=self.on_move,
             enabled=False
         )
         self.reset_button = ui.Button(
@@ -128,18 +148,14 @@ class TableContactsWidget(ui.Row):
             text="Reset &All",
             clicked=self.on_reset_all
         )
-        self.calculate_button= ui.Button(
-            text="&Calculate",
-            clicked=self.on_calculate,
-            enabled=False
-        )
         self.append(self.contacts_tree)
         self.append(ui.Column(
             self.pick_button,
-            self.reset_button,
-            self.reset_all_button,
+            self.move_button,
+            self.calculate_button,
             ui.Spacer(),
-            self.calculate_button
+            self.reset_button,
+            self.reset_all_button
         ))
         self.stretch = 1, 0
 
@@ -154,8 +170,9 @@ class TableContactsWidget(ui.Row):
             item = self.contacts_tree.current
         is_contact = isinstance(item, TableContactItem)
         self.pick_button.enabled = is_contact
-        self.reset_button.enabled = is_contact
+        self.move_button.enabled = item.has_position if is_contact else False
         self.calculate_button.enabled = not is_contact
+        self.reset_button.enabled = is_contact
 
     def on_pick_position(self):
         item = self.contacts_tree.current
@@ -172,11 +189,19 @@ class TableContactsWidget(ui.Row):
             self.contacts_tree.fit()
 
     def on_reset_all(self):
-        if ui.show_question(f"Do you want to reset all contact positions'?"):
+        if ui.show_question("Do you want to reset all contact positions?"):
             for sample_item in self.contacts_tree:
                 for contact_item in sample_item.children:
                     contact_item.position = float('nan'), float('nan'), float('nan')
             self.contacts_tree.fit()
+
+    def on_move(self):
+        current_item = self.contacts_tree.current
+        if isinstance(current_item, TableContactItem):
+            if current_item.has_position:
+                if ui.show_question(f"Do you want to move tabel to contact {current_item.name}?"):
+                    x, y, z = current_item.position
+                    self.emit(self.absolute_move, x, y, z)
 
     def on_calculate(self):
         current_item = self.contacts_tree.current
@@ -195,9 +220,10 @@ class TableContactsWidget(ui.Row):
 
     def lock(self):
         self.pick_button.enabled = False
+        self.move_button.enabled = False
+        self.calculate_button.enabled = False
         self.reset_button.enabled = False
         self.reset_all_button.enabled = False
-        self.calculate_button.enabled = False
 
     def unlock(self):
         self.update_button_states()
@@ -308,7 +334,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
             double_clicked=self.on_position_double_clicked
         )
         self.pick_button = ui.Button(
-            text="&Pick",
+            text="Assign &Position",
             tool_tip="Assign current table position to selected position item",
             clicked=self.on_pick_position,
             enabled=False
@@ -339,11 +365,11 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         self.append(self.positions_tree)
         self.append(ui.Column(
             self.pick_button,
+            self.move_button,
+            ui.Spacer(),
             self.add_button,
             self.edit_button,
-            self.remove_button,
-            ui.Spacer(),
-            self.move_button
+            self.remove_button
         ))
         self.stretch = 1, 0
 
@@ -463,6 +489,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     maximum_z_step_size = 0.025 # mm
     z_limit = 0.0
 
+    probecard_light_toggled = None
+    microscope_light_toggled = None
+    box_light_toggled = None
+
     def __init__(self, process):
         super().__init__()
         self.mount(process)
@@ -499,6 +529,30 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.sub_y_button,
             self.add_z_button,
             self.sub_z_button
+        )
+        self.probecard_light_button = ToggleButton(
+            text="PC Light",
+            tool_tip="Toggle probe card light",
+            checkable=True,
+            checked=False,
+            enabled=False,
+            toggled=self.on_probecard_light_clicked
+        )
+        self.microscope_light_button = ToggleButton(
+            text="Mic Light",
+            tool_tip="Toggle microscope light",
+            checkable=True,
+            checked=False,
+            enabled=False,
+            toggled=self.on_microscope_light_clicked
+        )
+        self.box_light_button = ToggleButton(
+            text="Box Light",
+            tool_tip="Toggle box light",
+            checkable=True,
+            checked=False,
+            enabled=False,
+            toggled=self.on_box_light_clicked
         )
         # Create movement radio buttons
         self.step_width_buttons = ui.Column()
@@ -552,7 +606,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             absolute_move=self.on_absolute_move
         )
         self.contacts_widget = TableContactsWidget(
-            position_picked=self.on_position_picked
+            position_picked=self.on_position_picked,
+            absolute_move=self.on_absolute_move
         )
         self.pos_x_label = PositionLabel()
         self.pos_y_label = PositionLabel()
@@ -610,6 +665,15 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.GroupBox(
                             title="Step Width",
                             layout=self.step_width_buttons
+                        ),
+                        ui.GroupBox(
+                            title="Lights",
+                            layout=ui.Column(
+                                self.probecard_light_button,
+                                self.microscope_light_button,
+                                self.box_light_button,
+                                ui.Spacer()
+                            )
                         ),
                         stretch=(0, 1)
                     ),
@@ -856,6 +920,29 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_step_toggled(self, state):
         logging.info("set table step width to %.3f mm", self.step_width)
         self.update_control_buttons()
+
+    def on_probecard_light_clicked(self, state):
+        self.emit(self.probecard_light_toggled, state)
+
+    def on_microscope_light_clicked(self, state):
+        self.emit(self.microscope_light_toggled, state)
+
+    def on_box_light_clicked(self, state):
+        self.emit(self.box_light_toggled, state)
+
+    def update_probecard_light(self, state):
+        self.probecard_light_button.checked = state
+
+    def update_microscope_light(self, state):
+        self.microscope_light_button.checked = state
+
+    def update_box_light(self, state):
+        self.box_light_button.checked = state
+
+    def update_lights_enabled(self, state):
+        self.probecard_light_button.enabled = state
+        self.microscope_light_button.enabled = state
+        self.box_light_button.enabled = state
 
     def on_move_finished(self):
         self.progress_bar.visible = False

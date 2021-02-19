@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.29.0] - 2021-02-18
 ### Added
 - Instrument abstraction using abstract class interface (#113).
+- Reload sequence configuration from file (#115).
 
 ## [0.28.0] - 2021-02-18
 ### Added
