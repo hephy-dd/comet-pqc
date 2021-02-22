@@ -22,6 +22,10 @@ Process Quality Control for CMS tracker
 - Corvus TT positioning controller
 - HEPHY Environment Box
 
+### Setup
+
+![PQC setup schematic](assets/MatrixCardsDesign_v10_Diss2.png)
+
 ### Install
 
 Install from GitHub using pip

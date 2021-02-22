@@ -16,6 +16,10 @@ This COMET application provides PQC sensor measurements.
 - Corvus TT positioning controller (table)
 - HEPHY Environment Box (environ)
 
+### Setup
+
+![PQC setup schematic](docs/assets/MatrixCardsDesign_v10_Diss2.png)
+
 ## Install
 
 Install using pip in a virtual environment.
