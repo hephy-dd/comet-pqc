@@ -243,6 +243,6 @@ class Panel(BasicPanel):
             self.data_tabs.current = tab
             if isinstance(tab.layout, ui.Plot):
                 tab.layout.fit()
-            pixmaps.append(self.data_tabs.qt.grab())
+                pixmaps.append(self.data_tabs.qt.grab())
         self.data_tabs.current = current
         stitch_pixmaps(pixmaps).save(filename)

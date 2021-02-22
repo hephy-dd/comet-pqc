@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.29.1
+
+### Fixed
+- PNG images from plots only.
+
 ## 0.29.0
 
 ### Added
