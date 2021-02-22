@@ -45,14 +45,204 @@ from .tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 
-TABLE_UNITS = {
-    1: comet.ureg('um'),
-    2: comet.ureg('mm'),
-    3: comet.ureg('cm'),
-    4: comet.ureg('m'),
-    5: comet.ureg('inch'),
-    6: comet.ureg('mil'),
-}
+class TableControlWidget(ui.GroupBox):
+
+    joystick_toggled = None
+    control_clicked = None
+
+    def __init__(self, joystick_toggled=None, control_clicked=None, **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Table"
+        self.checkable = True
+        self._joystick_button = ToggleButton(
+            text="Joystick",
+            tool_tip="Toggle table joystick",
+            checkable=True,
+            toggled=self.on_joystick_toggled
+        )
+        self._position_label = ui.Label(
+            text="...",
+            tool_tip="Current table position."
+        )
+        self._control_button = ui.Button(
+            text="Control...",
+            tool_tip="Open table controls dialog.",
+            clicked=self.on_control_clicked
+        )
+        self.layout=ui.Row(
+            self._joystick_button,
+            ui.Widget(),
+            self._position_label,
+            ui.Widget(),
+            self._control_button
+        )
+        # Callbacks
+        self.joystick_toggled = joystick_toggled
+        self.control_clicked = control_clicked
+
+    def on_joystick_toggled(self, state):
+        self.emit(self.joystick_toggled, state)
+
+    def on_control_clicked(self):
+        self.emit(self.control_clicked)
+
+    def update_joystick_state(self, state):
+        self._joystick_button.checked = state
+
+    def update_position(self, x, y, z):
+        self._position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
+
+class EnvironmentControlWidget(ui.GroupBox):
+
+    laser_sensor_toggled = None
+    box_light_toggled = None
+    microscope_light_toggled = None
+    microscope_camera_toggled = None
+    microscope_control_toggled = None
+    probecard_light_toggled = None
+    probecard_camera_toggled = None
+    pid_control_toggled = None
+
+    def __init__(self, laser_sensor_toggled=None, box_light_toggled=None,
+                 microscope_light_toggled=None, microscope_camera_toggled=None,
+                 microscope_control_toggled=None, probecard_light_toggled=None,
+                 probecard_camera_toggled=None, pid_control_toggled=None,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Environment Box"
+        self.checkable = True
+        self._laser_sensor_button = ToggleButton(
+            text="Laser",
+            tool_tip="Toggle laser",
+            checkable=True,
+            checked=False,
+            toggled=self.on_laser_sensor_toggled
+        )
+        self._box_light_button = ToggleButton(
+            text="Box Light",
+            tool_tip="Toggle box light",
+            checkable=True,
+            checked=False,
+            toggled=self.on_box_light_toggled
+        )
+        self._microscope_light_button = ToggleButton(
+            text="Mic Light",
+            tool_tip="Toggle microscope light",
+            checkable=True,
+            checked=False,
+            toggled=self.on_microscope_light_toggled
+        )
+        self._microscope_camera_button = ToggleButton(
+            text="Mic Cam",
+            tool_tip="Toggle microscope camera power",
+            checkable=True,
+            checked=False,
+            toggled=self.on_microscope_camera_toggled
+        )
+        self._microscope_control_button = ToggleButton(
+            text="Mic Ctrl",
+            tool_tip="Toggle microscope control",
+            checkable=True,
+            checked=False,
+            toggled=self.on_microscope_control_toggled
+        )
+        self._probecard_light_button = ToggleButton(
+            text="PC Light",
+            tool_tip="Toggle probe card light",
+            checkable=True,
+            checked=False,
+            toggled=self.on_probecard_light_toggled
+        )
+        self._probecard_camera_button = ToggleButton(
+            text="PC Cam",
+            tool_tip="Toggle probe card camera power",
+            checkable=True,
+            checked=False,
+            toggled=self.on_probecard_camera_toggled
+        )
+        self._pid_control_button = ToggleButton(
+            text="PID Control",
+            tool_tip="Toggle PID control",
+            checkable=True,
+            checked=False,
+            toggled=self.on_pid_control_toggled
+        )
+        self.layout=ui.Row(
+            ui.Column(
+                self._laser_sensor_button,
+                self._microscope_camera_button,
+            ),
+            ui.Column(
+                self._box_light_button,
+                self._probecard_camera_button,
+            ),
+            ui.Column(
+                self._microscope_light_button,
+                self._microscope_control_button,
+            ),
+            ui.Column(
+                self._probecard_light_button,
+                self._pid_control_button
+            ),
+            stretch=(1, 1, 1, 1)
+        )
+        # Callbacks
+        self.laser_sensor_toggled = laser_sensor_toggled
+        self.box_light_toggled = box_light_toggled
+        self.microscope_light_toggled = microscope_light_toggled
+        self.microscope_camera_toggled = microscope_camera_toggled
+        self.microscope_control_toggled = microscope_control_toggled
+        self.probecard_light_toggled = probecard_light_toggled
+        self.probecard_camera_toggled = probecard_camera_toggled
+        self.pid_control_toggled = pid_control_toggled
+
+    def on_laser_sensor_toggled(self, state):
+        self.emit(self.laser_sensor_toggled, state)
+
+    def on_box_light_toggled(self, state):
+        self.emit(self.box_light_toggled, state)
+
+    def on_microscope_light_toggled(self, state):
+        self.emit(self.microscope_light_toggled, state)
+
+    def on_microscope_camera_toggled(self, state):
+        self.emit(self.microscope_camera_toggled, state)
+
+    def on_microscope_control_toggled(self, state):
+        self.emit(self.microscope_control_toggled, state)
+
+    def on_probecard_light_toggled(self, state):
+        self.emit(self.probecard_light_toggled, state)
+
+    def on_probecard_camera_toggled(self, state):
+        self.emit(self.probecard_camera_toggled, state)
+
+    def on_pid_control_toggled(self, state):
+        self.emit(self.pid_control_toggled, state)
+
+    def update_laser_sensor_state(self, state):
+        self._laser_sensor_button.checked = state
+
+    def update_box_light_state(self, state):
+        self._box_light_button.checked = state
+
+    def update_microscope_light_state(self, state):
+        self._microscope_light_button.checked = state
+
+    def update_microscope_camera_state(self, state):
+        self._microscope_camera_button.checked = state
+
+    def update_microscope_control_state(self, state):
+        self._microscope_control_button.checked = state
+
+    def update_probecard_light_state(self, state):
+        self._probecard_light_button.checked = state
+
+    def update_probecard_camera_state(self, state):
+        self._probecard_camera_button.checked = state
+
+    def update_pid_control_state(self, state):
+        self._pid_control_button.checked = state
 
 class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
@@ -164,119 +354,24 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
         # Environment Controls
 
-        self.box_laser_button = ToggleButton(
-            text="Laser",
-            tool_tip="Toggle laser",
-            checkable=True,
-            checked=False,
-            clicked=self.on_box_laser_clicked
-        )
-
-        self.box_light_button = ToggleButton(
-            text="Box Light",
-            tool_tip="Toggle box light",
-            checkable=True,
-            checked=False,
-            clicked=self.on_box_light_clicked
-        )
-
-        self.microscope_light_button = ToggleButton(
-            text="Mic Light",
-            tool_tip="Toggle microscope light",
-            checkable=True,
-            checked=False,
-            clicked=self.on_microscope_light_clicked
-        )
-
-        self.microscope_camera_button = ToggleButton(
-            text="Mic Cam",
-            tool_tip="Toggle microscope camera power",
-            checkable=True,
-            checked=False,
-            clicked=self.on_microscope_camera_clicked
-        )
-
-        self.microscope_control_button = ToggleButton(
-            text="Mic Ctrl",
-            tool_tip="Toggle microscope control",
-            checkable=True,
-            checked=False,
-            clicked=self.on_microscope_control_clicked
-        )
-
-        self.probecard_light_button = ToggleButton(
-            text="PC Light",
-            tool_tip="Toggle probe card light",
-            checkable=True,
-            checked=False,
-            clicked=self.on_probecard_light_clicked
-        )
-
-        self.probecard_camera_button = ToggleButton(
-            text="PC Cam",
-            tool_tip="Toggle probe card camera power",
-            checkable=True,
-            checked=False,
-            clicked=self.on_probecard_camera_clicked
-        )
-
-        self.pid_control_button = ToggleButton(
-            text="PID Control",
-            tool_tip="Toggle PID control",
-            checkable=True,
-            checked=False,
-            clicked=self.on_pid_control_clicked
-        )
-
-        self.environment_groupbox = ui.GroupBox(
-            title="Environment Box",
-            checkable=True,
+        self.environment_control_widget = EnvironmentControlWidget(
             toggled=self.on_environment_groupbox_toggled,
-            layout=ui.Column(
-                ui.Row(
-                    self.box_laser_button,
-                    self.box_light_button,
-                    self.microscope_light_button,
-                    self.probecard_light_button
-                ),
-                ui.Row(
-                    self.microscope_camera_button,
-                    self.probecard_camera_button,
-                    self.microscope_control_button,
-                    self.pid_control_button
-                )
-            )
+            laser_sensor_toggled=self.on_laser_sensor_toggled,
+            box_light_toggled=self.on_box_light_toggled,
+            microscope_light_toggled=self.on_microscope_light_toggled,
+            microscope_camera_toggled=self.on_microscope_camera_toggled,
+            microscope_control_toggled=self.on_microscope_control_toggled,
+            probecard_light_toggled=self.on_probecard_light_toggled,
+            probecard_camera_toggled=self.on_probecard_camera_toggled,
+            pid_control_toggled=self.on_pid_control_toggled
         )
 
         # Table controls
 
-        self.table_joystick_button = ToggleButton(
-            text="Joystick",
-            tool_tip="Toggle table joystick",
-            checkable=True,
-            checked=False,
-            clicked=self.on_table_joystick_clicked
-        )
-
-        self.table_position_label = ui.Label()
-
-        self.table_control_button = ui.Button(
-            text="Control...",
-            tool_tip="Virtual table joystick controls.",
-            clicked=self.on_table_controls_start
-        )
-
-        self.table_groupbox = ui.GroupBox(
-            title="Table",
-            checkable=True,
+        self.table_control_widget = TableControlWidget(
             toggled=self.on_table_groupbox_toggled,
-            layout=ui.Row(
-                self.table_joystick_button,
-                ui.Spacer(vertical=False),
-                self.table_position_label,
-                ui.Spacer(vertical=False),
-                self.table_control_button
-            )
+            joystick_toggled=self.on_table_joystick_toggled,
+            control_clicked=self.on_table_control_clicked
         )
 
         # Operator
@@ -301,8 +396,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
         self.control_widget = ui.Column(
             self.sequence_groupbox,
-            self.table_groupbox,
-            self.environment_groupbox,
+            self.table_control_widget,
+            self.environment_control_widget,
             ui.Row(
                 self.operator_groupbox,
                 self.output_groupbox,
@@ -384,9 +479,9 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.sequence_tree.current = self.sequence_tree[0]
         self.sequence_tree.fit()
         use_environ = self.settings.get("use_environ", False)
-        self.environment_groupbox.checked = use_environ
+        self.environment_control_widget.checked = use_environ
         use_table =  self.settings.get("use_table", False)
-        self.table_groupbox.checked = use_table
+        self.table_control_widget.checked = use_table
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
 
@@ -432,11 +527,11 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def use_environment(self):
         """Return True if environment box enabled."""
-        return self.environment_groupbox.checked
+        return self.environment_control_widget.checked
 
     def use_table(self):
         """Return True if table control enabled."""
-        return self.table_groupbox.checked
+        return self.table_control_widget.checked
 
     def operator(self):
         """Return current operator."""
@@ -468,8 +563,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def lock_controls(self):
         """Lock dashboard controls."""
-        self.environment_groupbox.enabled = False
-        self.table_groupbox.enabled = False
+        self.environment_control_widget.enabled = False
+        self.table_control_widget.enabled = False
         self.sequence_tree.double_clicked = None
         self.start_button.enabled = False
         self.stop_button.enabled = True
@@ -484,8 +579,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
-        self.environment_groupbox.enabled = True
-        self.table_groupbox.enabled = True
+        self.environment_control_widget.enabled = True
+        self.table_control_widget.enabled = True
         self.sequence_tree.double_clicked = self.on_tree_double_clicked
         self.start_button.enabled = True
         self.stop_button.enabled = False
@@ -780,18 +875,17 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     # Table calibration
 
-    def on_table_joystick_clicked(self):
-        state = self.table_joystick_button.checked
+    def on_table_joystick_toggled(self, state):
         self.table_process.enable_joystick(state)
 
     def on_table_joystick_changed(self, state):
-        self.table_joystick_button.checked = state
+        self.table_control_widget.update_joystick_state(state)
 
     def on_table_position_changed(self, x, y, z):
-        self.table_position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
+        self.table_control_widget.update_position(x, y, z)
 
     @handle_exception
-    def on_table_controls_start(self):
+    def on_table_control_clicked(self):
         dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
         dialog.load_samples(list(self.sequence_tree)) # HACK
@@ -830,50 +924,42 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sync_table_controls()
 
     @handle_exception
-    def on_box_laser_clicked(self):
-        state = self.box_laser_button.checked
+    def on_laser_sensor_toggled(self, state):
         with self.environ_process as environment:
             environment.set_laser_sensor(state)
 
     @handle_exception
-    def on_box_light_clicked(self):
-        state = self.box_light_button.checked
+    def on_box_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_box_light(state)
 
     @handle_exception
-    def on_microscope_light_clicked(self):
-        state = self.microscope_light_button.checked
+    def on_microscope_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_light(state)
 
     @handle_exception
-    def on_microscope_camera_clicked(self):
-        state = self.microscope_camera_button.checked
+    def on_microscope_camera_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_camera(state)
 
     @handle_exception
-    def on_microscope_control_clicked(self):
-        state = self.microscope_control_button.checked
+    def on_microscope_control_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_control(state)
 
     @handle_exception
-    def on_probecard_light_clicked(self):
-        state = self.probecard_light_button.checked
+    def on_probecard_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_probecard_light(state)
 
     @handle_exception
-    def on_probecard_camera_clicked(self):
-        state = self.probecard_camera_button.checked
+    def on_probecard_camera_toggled(self, state):
         with self.environ_process as environment:
             environment.set_probecard_camera(state)
 
     @handle_exception
-    def on_pid_control_clicked(self):
-        state = self.pid_control_button.checked
+    def on_pid_control_toggled(self, state):
         with self.environ_process as environment:
             environment.set_pid_control(state)
 
@@ -895,14 +981,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.environment_tab.enabled = False
 
     def on_pc_data_updated(self, pc_data):
-        self.box_laser_button.checked = pc_data.relay_states.laser_sensor
-        self.box_light_button.checked = pc_data.relay_states.box_light
-        self.microscope_light_button.checked = pc_data.relay_states.microscope_light
-        self.microscope_camera_button.checked = pc_data.relay_states.microscope_camera
-        self.microscope_control_button.checked = pc_data.relay_states.microscope_control
-        self.probecard_light_button.checked = pc_data.relay_states.probecard_light
-        self.probecard_camera_button.checked = pc_data.relay_states.probecard_camera
-        self.pid_control_button.checked = pc_data.pid_status
+        self.environment_control_widget.update_laser_sensor_state(pc_data.relay_states.laser_sensor)
+        self.environment_control_widget.update_box_light_state(pc_data.relay_states.box_light)
+        self.environment_control_widget.update_microscope_light_state(pc_data.relay_states.microscope_light)
+        self.environment_control_widget.update_microscope_camera_state(pc_data.relay_states.microscope_camera)
+        self.environment_control_widget.update_microscope_control_state(pc_data.relay_states.microscope_control)
+        self.environment_control_widget.update_probecard_light_state(pc_data.relay_states.probecard_light)
+        self.environment_control_widget.update_probecard_camera_state(pc_data.relay_states.probecard_camera)
+        self.environment_control_widget.update_pid_control_state(pc_data.pid_status)
         self.environment_tab.enabled = True
         self.environment_tab.update_data(pc_data)
 
