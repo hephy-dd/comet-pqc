@@ -166,11 +166,11 @@ def main():
     dashboard.load_settings()
 
     # Sync environment controls
-    if dashboard.environment_groupbox.checked:
+    if dashboard.use_environment():
         dashboard.environ_process.start()
         dashboard.sync_environment_controls()
 
-    if dashboard.table_groupbox.checked:
+    if dashboard.use_table():
         dashboard.table_process.start()
         dashboard.sync_table_controls()
 

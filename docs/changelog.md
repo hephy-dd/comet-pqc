@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.29.0
+
+### Added
+- Instrument abstraction using abstract class interface.
+- Reload sequence configuration from file.
+
 ## 0.28.0
 
 ### Added

@@ -41,13 +41,13 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
     def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 0, 0)
 
-        self.hvsrc_set_output_state(hvsrc, False)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
         self.process.emit("progress", 1, 1)
 
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc"))),
+                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
                 lcr=E4980A(es.enter_context(self.resources.get("lcr")))
             )

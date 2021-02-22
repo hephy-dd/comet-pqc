@@ -12,22 +12,28 @@ Process Quality Control for CMS tracker
 
 ## Getting started
 
-### Required instruments:
+### Required instruments
 
-- Keithley 707B Switching Matrix
-- Keysight E4980A LCR Meter
-- Keithley 6517B Electrometer
-- Keithley 2410 Source Meter (HV Source)
-- Keithley 2657A Source Meter (V Source)
-- Corvus TT positioning controller
-- HEPHY Environment Box
+|Instrument                       |Role |
+|:--------------------------------|:----|
+|Keithley 707B Switching Matrix   |Matrix |
+|Keysight E4980A LCR Meter        |LCR Meter |
+|Keithley 6517B Electrometer      |ELM |
+|Keithley 2410 Source Meter       |HV Source, V Source |
+|Keithley 2657A Source Meter      |V Source, HV Source |
+|Corvus TT positioning controller |Table |
+|HEPHY Environment Box            |Environment |
+
+### Setup schematic
+
+![PQC setup schematic](assets/MatrixCardsDesign_v10_Diss2.png)
 
 ### Install
 
 Install from GitHub using pip
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.28.0
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.29.0
 ```
 
 ### Setup

@@ -109,7 +109,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         else:
             voltage = 0
             self.hvsrc_set_voltage_level(hvsrc, voltage)
-            self.hvsrc_set_output_state(hvsrc, True)
+            self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
             time.sleep(.100)
 
         self.process.emit("state", dict(
@@ -246,7 +246,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             ))
             time.sleep(QUICK_RAMP_DELAY)
 
-        self.hvsrc_set_output_state(hvsrc, False)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
         self.process.emit("state", dict(
             hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
@@ -258,5 +258,5 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                hvsrc=K2410(es.enter_context(self.resources.get("hvsrc")))
+                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc")))
             )

@@ -229,6 +229,8 @@ class OptionsTab(PreferencesTab):
         self.export_json_checkbox = ui.CheckBox("Write JSON data (*.json)")
         self.export_txt_checkbox = ui.CheckBox("Write plain text data (*.txt)")
         self.write_logfiles_checkbox = ui.CheckBox("Write measurement log files (*.log)")
+        self._vsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
+        self._hvsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Plots",
@@ -249,6 +251,21 @@ class OptionsTab(PreferencesTab):
                     self.write_logfiles_checkbox
                 )
             ),
+            ui.GroupBox(
+                title="Instruments",
+                layout=ui.Row(
+                    ui.Column(
+                        ui.Label("V Source"),
+                        ui.Label("HV Source")
+                    ),
+                    ui.Column(
+                        self._vsrc_instrument_combobox,
+                        self._hvsrc_instrument_combobox
+                    ),
+                    ui.Spacer(vertical=False),
+                    stretch=(0, 0, 1)
+                )
+            ),
             ui.Spacer()
         )
 
@@ -261,6 +278,12 @@ class OptionsTab(PreferencesTab):
         self.export_txt_checkbox.checked = export_txt
         write_logfiles = self.settings.get("write_logfiles", True)
         self.write_logfiles_checkbox.checked = write_logfiles
+        vsrc_instrument = self.settings.get("vsrc_instrument") or "K2657A"
+        if vsrc_instrument in self._vsrc_instrument_combobox:
+            self._vsrc_instrument_combobox.current = vsrc_instrument
+        hvsrc_instrument = self.settings.get("hvsrc_instrument") or "K2410"
+        if hvsrc_instrument in self._hvsrc_instrument_combobox:
+            self._hvsrc_instrument_combobox.current = hvsrc_instrument
 
     def store(self):
         png_plots = self.png_plots_checkbox.checked
@@ -271,3 +294,7 @@ class OptionsTab(PreferencesTab):
         self.settings["export_txt"] = export_txt
         write_logfiles = self.write_logfiles_checkbox.checked
         self.settings["write_logfiles"] = write_logfiles
+        vsrc_instrument = self._vsrc_instrument_combobox.current or "K2657A"
+        self.settings["vsrc_instrument"] = vsrc_instrument
+        hvsrc_instrument = self._hvsrc_instrument_combobox.current or "K2410"
+        self.settings["hvsrc_instrument"] = hvsrc_instrument

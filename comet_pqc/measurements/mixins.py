@@ -8,6 +8,9 @@ import analysis_pqc
 
 from .measurement import ComplianceError
 from .measurement import InstrumentError
+from ..instruments.k2657a import K2657AInstrument
+
+from ..settings import settings
 
 from ..utils import format_metric
 from ..utils import std_mean_filter
@@ -54,10 +57,13 @@ class HVSourceMixin(Mixin):
         self.set_meta("hvsrc_source_voltage_autorange_enable", hvsrc_source_voltage_autorange_enable)
         self.set_meta("hvsrc_source_voltage_range", f"{hvsrc_source_voltage_range:G} V")
 
+    def hvsrc_create(self, resource):
+        """Return HV source instrument instance."""
+        return settings.hvsrc_instrument(resource)
+
     def hvsrc_check_error(self, hvsrc):
         """Test for error."""
-        code, message = hvsrc.system.error
-        code = int(code)
+        code, message = hvsrc.get_error()
         if code != 0:
             message = message.strip("\"")
             logging.error(f"HV Source error {code}: {message}")
@@ -71,8 +77,6 @@ class HVSourceMixin(Mixin):
 
     def hvsrc_reset(self, hvsrc):
         hvsrc.reset()
-        hvsrc.clear()
-        hvsrc.system.beeper.status = False
 
     def hvsrc_clear(self, hvsrc):
         hvsrc.clear()
@@ -98,84 +102,96 @@ class HVSourceMixin(Mixin):
             # This will overwrite autorange in Keithley 2400 series
             self.hvsrc_set_source_voltage_range(hvsrc, hvsrc_source_voltage_range)
 
+    def hvsrc_set_function_voltage(self, hvsrc):
+        hvsrc.set_source_function(hvsrc.SOURCE_FUNCTION_VOLTAGE)
+        self.hvsrc_check_error(hvsrc)
+
+    def hvsrc_set_function_current(self, hvsrc):
+        hvsrc.set_source_function(hvsrc.SOURCE_FUNCTION_CURRENT)
+        self.hvsrc_check_error(hvsrc)
+
     def hvsrc_get_voltage_level(self, hvsrc):
-        return hvsrc.source.voltage.level
+        return hvsrc.get_source_voltage()
 
     def hvsrc_set_voltage_level(self, hvsrc, voltage):
         logging.info("HV Source set voltage level: %s", format_metric(voltage, "V"))
-        hvsrc.source.voltage.level = voltage
+        hvsrc.set_source_voltage(voltage)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_route_terminal(self, hvsrc, route_terminals):
         logging.info("HV Source set route terminals: '%s'", route_terminals)
         value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
-        hvsrc.route.terminals = value
+        hvsrc.set_terminal(value)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_sense_mode(self, hvsrc, sense_mode):
         logging.info("HV Source set sense mode: '%s'", sense_mode)
-        value = {"remote": "ON", "local": "OFF"}[sense_mode]
-        hvsrc.system.rsense = value
+        value = {"remote": "REMOTE", "local": "LOCAL"}[sense_mode]
+        hvsrc.set_sense_mode(value)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_current_compliance(self, hvsrc, compliance):
-        logging.info("HV Source set compliance: %s", format_metric(compliance, "A"))
-        hvsrc.sense.current.protection.level = compliance
+        logging.info("HV Source set current compliance: %s", format_metric(compliance, "A"))
+        hvsrc.set_compliance_current(compliance)
+        self.hvsrc_check_error(hvsrc)
+
+    def hvsrc_set_voltage_compliance(self, hvsrc, compliance):
+        logging.info("HV Source set voltage compliance: %s", format_metric(compliance, "V"))
+        hvsrc.set_compliance_voltage(compliance)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_compliance_tripped(self, hvsrc):
-        return hvsrc.sense.current.protection.tripped or hvsrc.sense.voltage.protection.tripped
+        return hvsrc.compliance_tripped()
 
     def hvsrc_set_auto_range(self, hvsrc, enabled):
         logging.info("HV Source set auto range (current): %s", enabled)
-        hvsrc.sense.current.range.auto = enabled
+        hvsrc.set_source_current_autorange(enabled)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_enable(self, hvsrc, enabled):
         logging.info("HV Source set filter enable: %s", enabled)
-        hvsrc.sense.average.state = enabled
+        hvsrc.set_filter_enable(enabled)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_count(self, hvsrc, count):
         logging.info("HV Source set filter count: %s", count)
-        hvsrc.sense.average.count = count
+        hvsrc.set_filter_count(count)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_filter_type(self, hvsrc, type):
         logging.info("HV Source set filter type: %s", type)
         value = {"repeat": "REPEAT", "moving": "MOVING"}[type]
-        hvsrc.sense.average.tcontrol = value
+        hvsrc.set_filter_type(value)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_get_output_state(self, hvsrc):
-        return hvsrc.output
+        value = hvsrc.get_output()
+        return {hvsrc.OUTPUT_ON: True, hvsrc.OUTPUT_OFF: False}[value]
 
     def hvsrc_set_output_state(self, hvsrc, enabled):
         logging.info("HV Source set output state: %s", enabled)
-        hvsrc.output = enabled
+        hvsrc.set_output(enabled)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_source_voltage_autorange_enable(self, hvsrc, enabled):
         logging.info("HV Source set source voltage autorange enable: %s", enabled)
-        hvsrc.source.voltage.range.auto = enabled
+        hvsrc.set_source_voltage_autorange(enabled)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_source_voltage_range(self, hvsrc, voltage):
         logging.info("HV Source set source voltage range: %s", format_metric(voltage, "V"))
-        hvsrc.source.voltage.range.level = voltage
+        hvsrc.set_source_voltage_range(voltage)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_read_voltage(self, hvsrc):
         # Set read format to voltage only
-        hvsrc.format.elements = ['VOLTAGE']
-        voltage = hvsrc.read()[0]
+        voltage = hvsrc.read_voltage()
         logging.info("HV Source voltage reading: %s", format_metric(voltage, "V"))
         return voltage
 
     def hvsrc_read_current(self, hvsrc):
         # Set read format to current only
-        hvsrc.format.elements = ['CURRENT']
-        current = hvsrc.read()[0]
+        current = hvsrc.read_current()
         logging.info("HV Source current reading: %s", format_metric(current, "A"))
         return current
 
@@ -184,26 +200,39 @@ class VSourceMixin(Mixin):
     def register_vsource(self):
         ##self.register_parameter('vsrc_current_compliance', unit='A', required=True)
         self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
+        self.register_parameter('vsrc_route_terminal', 'rear', values=('front', 'rear'))
         self.register_parameter('vsrc_filter_enable', False, type=bool)
         self.register_parameter('vsrc_filter_count', 10, type=int)
         self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
+        self.register_parameter('vsrc_source_voltage_autorange_enable', True, type=bool)
+        self.register_parameter('vsrc_source_voltage_range', comet.ureg('20 V'), unit='V')
 
     def vsrc_update_meta(self):
         """Update meta data parameters."""
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_terminal = self.get_parameter('vsrc_route_terminal')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
         vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        vsrc_source_voltage_autorange_enable = self.get_parameter('vsrc_source_voltage_autorange_enable')
+        vsrc_source_voltage_range = self.get_parameter('vsrc_source_voltage_range')
 
         self.set_meta("vsrc_sense_mode", vsrc_sense_mode)
+        self.set_meta("vsrc_route_terminal", vsrc_route_terminal)
         self.set_meta("vsrc_filter_enable", vsrc_filter_enable)
         self.set_meta("vsrc_filter_count", vsrc_filter_count)
         self.set_meta("vsrc_filter_type", vsrc_filter_type)
+        self.set_meta("vsrc_source_voltage_autorange_enable", vsrc_source_voltage_autorange_enable)
+        self.set_meta("vsrc_source_voltage_range", f"{vsrc_source_voltage_range:G} V")
+
+    def vsrc_create(self, resource):
+        """Return V source instrument instance."""
+        return settings.vsrc_instrument(resource)
 
     def vsrc_check_error(self, vsrc):
         """Test for error."""
-        if vsrc.errorqueue.count:
-            code, message = vsrc.errorqueue.next()
+        code, message = vsrc.get_error()
+        if code != 0:
             logging.error(f"V Source error {code}: {message}")
             raise InstrumentError(f"V Source error {code}: {message}")
 
@@ -215,106 +244,129 @@ class VSourceMixin(Mixin):
 
     def vsrc_reset(self, vsrc):
         vsrc.reset()
-        vsrc.clear()
-        vsrc.beeper.enable = False
 
     def vsrc_clear(self, vsrc):
         vsrc.clear()
 
     def vsrc_set_function_voltage(self, vsrc):
-        vsrc.source.func = 'DCVOLTS'
+        vsrc.set_source_function(vsrc.SOURCE_FUNCTION_VOLTAGE)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_function_current(self, vsrc):
-        vsrc.source.func = 'DCAMPS'
+        vsrc.set_source_function(vsrc.SOURCE_FUNCTION_CURRENT)
         self.vsrc_check_error(vsrc)
 
     def vsrc_setup(self, vsrc):
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
+        vsrc_route_terminal = self.get_parameter('vsrc_route_terminal')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
         vsrc_filter_type = self.get_parameter('vsrc_filter_type')
+        vsrc_source_voltage_autorange_enable = self.get_parameter('vsrc_source_voltage_autorange_enable')
+        vsrc_source_voltage_range = self.get_parameter('vsrc_source_voltage_range')
 
         self.vsrc_set_sense_mode(vsrc, vsrc_sense_mode)
+        self.vsrc_set_route_terminal(vsrc, vsrc_route_terminal)
         self.vsrc_set_filter_type(vsrc, vsrc_filter_type)
         self.vsrc_set_filter_count(vsrc, vsrc_filter_count)
         self.vsrc_set_filter_enable(vsrc, vsrc_filter_enable)
+        if vsrc_source_voltage_autorange_enable:
+            self.vsrc_set_source_voltage_autorange_enable(vsrc, vsrc_source_voltage_autorange_enable)
+        else:
+            # This will overwrite autorange
+            self.vsrc_set_source_voltage_range(vsrc, vsrc_source_voltage_range)
+
+    def vsrc_set_route_terminal(self, vsrc, route_terminals):
+        logging.info("V Source set route terminals: '%s'", route_terminals)
+        value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
+        vsrc.set_terminal(value)
+        self.vsrc_check_error(vsrc)
 
     def vsrc_get_voltage_level(self, vsrc):
-        return vsrc.source.levelv
+        return vsrc.get_source_voltage()
 
     def vsrc_set_voltage_level(self, vsrc, voltage):
         logging.info("V Source set voltage level: %s", format_metric(voltage, "V"))
-        vsrc.source.levelv = voltage
+        vsrc.set_source_voltage(voltage)
         self.vsrc_check_error(vsrc)
 
     def vsrc_get_current_level(self, vsrc):
-        return vsrc.source.leveli
+        return vsrc.get_source_current()
 
     def vsrc_set_current_level(self, vsrc, current):
         logging.info("V Source set current level: %s", format_metric(current, "A"))
-        vsrc.source.leveli = current
+        vsrc.set_source_current(current)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_sense_mode(self, vsrc, sense_mode):
         logging.info("V Source set sense mode: '%s'", sense_mode)
-        value = {"remote": "REMOTE", "local": "LOCAL"}[sense_mode]
-        vsrc.sense = value
+        value = {"remote": vsrc.SENSE_MODE_REMOTE, "local": vsrc.SENSE_MODE_LOCAL}[sense_mode]
+        vsrc.set_sense_mode(value)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_current_compliance(self, vsrc, compliance):
         logging.info("V Source set current compliance: %s", format_metric(compliance, "A"))
-        vsrc.source.limiti = compliance
+        vsrc.set_compliance_current(compliance)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_voltage_compliance(self, vsrc, compliance):
         logging.info("V Source set voltage compliance: %s", format_metric(compliance, "V"))
-        vsrc.source.limitv = compliance
+        vsrc.set_compliance_voltage(compliance)
         self.vsrc_check_error(vsrc)
 
     def vsrc_compliance_tripped(self, vsrc):
-        return vsrc.source.compliance
+        return vsrc.compliance_tripped()
 
     def vsrc_set_filter_enable(self, vsrc, enabled):
         logging.info("V Source set filter enable: %s", enabled)
-        vsrc.measure.filter.enable = enabled
+        vsrc.set_filter_enable(enabled)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_filter_count(self, vsrc, count):
         logging.info("V Source set filter count: %s", count)
-        vsrc.measure.filter.count = count
+        vsrc.set_filter_count(count)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_filter_type(self, vsrc, type):
         logging.info("V Source set filter type: %s", type)
-        value = {"repeat": "REPEAT", "moving": "MOVING"}[type]
-        vsrc.measure.filter.type = value
+        value = {"repeat": vsrc.FILTER_TYPE_REPEAT, "moving": vsrc.FILTER_TYPE_MOVING}[type]
+        vsrc.set_filter_type(value)
         self.vsrc_check_error(vsrc)
 
     def vsrc_get_output_state(self, vsrc):
-        value = vsrc.source.output
-        return {"ON": True, "OFF": False}[value]
+        value = vsrc.get_output()
+        return {vsrc.OUTPUT_ON: True, vsrc.OUTPUT_OFF: False}[value]
 
     def vsrc_set_output_state(self, vsrc, enabled):
         logging.info("V Source set output state: %s", enabled)
-        value = {True: "ON", False: "OFF"}[enabled]
-        vsrc.source.output = value
+        vsrc.set_output(enabled)
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_display(self, vsrc, value):
-        logging.info("V Source set display: %s", value)
-        value = {'voltage': 'DCVOLTS', 'current': 'DCAMPS'}[value]
-        vsrc.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
+        if isinstance(vsrc, K2657AInstrument):
+            logging.info("V Source set display: %s", value)
+            value = {'voltage': 'DCVOLTS', 'current': 'DCAMPS'}[value]
+            vsrc.context.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
+            self.vsrc_check_error(vsrc)
+
+    def vsrc_set_source_voltage_autorange_enable(self, vsrc, enabled):
+        logging.info("V Source set source voltage autorange enable: %s", enabled)
+        vsrc.set_source_voltage_autorange(enabled)
+        self.vsrc_check_error(vsrc)
+
+    def vsrc_set_source_voltage_range(self, vsrc, voltage):
+        logging.info("V Source set source voltage range: %s", format_metric(voltage, "V"))
+        vsrc.set_source_voltage_range(voltage)
         self.vsrc_check_error(vsrc)
 
     def vsrc_read_current(self, vsrc):
-        current = vsrc.measure.i()
+        current = vsrc.read_current()
         logging.info("V Source current reading: %s", format_metric(current, "A"))
         return current
 
     def vsrc_read_voltage(self, vsrc):
-        voltage = vsrc.measure.v()
-        logging.info("V Source voltage reading: %s", format_metric(voltage, "A"))
+        voltage = vsrc.read_voltage()
+        logging.info("V Source voltage reading: %s", format_metric(voltage, "V"))
         return voltage
 
 class ElectrometerMixin(Mixin):

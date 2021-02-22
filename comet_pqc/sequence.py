@@ -570,13 +570,25 @@ class SampleTreeItem(SequenceTreeItem):
         tokens = self.name, self.sample_type
         self[0].value = '/'.join((token for token in tokens if token))
 
+    def reset_positions(self):
+        for contact_item in self.children:
+            contact_item.reset_position()
+
     def load_sequence(self, sequence):
+        # Store contact positions
+        contact_positions = {}
+        for contact_item in self.children:
+            if contact_item.has_position:
+                contact_positions[contact_item.id] = contact_item.position
         while len(self.children):
             self.qt.takeChild(0)
         self.sequence = sequence
         for contact in sequence.contacts:
             item = self.append(ContactTreeItem(self, contact))
-            item.expanded = True
+        # Restore contact positions
+        for contact_item in self.children:
+            if contact_item.id in contact_positions:
+                contact_item.position = contact_positions.get(contact_item.id)
 
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""

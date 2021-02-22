@@ -123,7 +123,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.vsrc_set_current_compliance(vsrc, vsrc_current_compliance)
         self.process.emit("progress", 4, 6)
 
-        self.vsrc_set_output_state(vsrc, True)
+        self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_ON)
         vsrc_output_state = self.vsrc_get_output_state(vsrc)
         self.process.emit("state", dict(
             vsrc_output=vsrc_output_state,
@@ -285,7 +285,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         ))
 
         self.quick_ramp_zero(vsrc)
-        self.vsrc_set_output_state(vsrc, False)
+        self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
         self.process.emit("state", dict(
             vsrc_output=self.vsrc_get_output_state(vsrc),
         ))
@@ -301,6 +301,6 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
     def run(self):
         with contextlib.ExitStack() as es:
             super().run(
-                vsrc=K2657A(es.enter_context(self.resources.get("vsrc"))),
+                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc"))),
                 lcr=E4980A(es.enter_context(self.resources.get("lcr")))
             )

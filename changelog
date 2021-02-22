@@ -6,7 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.28.0] - 2021-01-28
+## [0.29.0] - 2021-02-18
+### Added
+- Instrument abstraction using abstract class interface (#113).
+- Reload sequence configuration from file (#115).
+
+## [0.28.0] - 2021-02-18
 ### Added
 - Support for multiple samples (#111).
 - Automatic table movement to contacts (#112).
@@ -181,9 +186,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.28.0...HEAD
-[0.28.0]: https://github.com/hephy-dd/comet-pqc/compare/0.28.0...0.27.1
-[0.27.1]: https://github.com/hephy-dd/comet-pqc/compare/0.27.1...0.27.0
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.29.0...HEAD
+[0.29.0]: https://github.com/hephy-dd/comet-pqc/compare/0.28.0...0.29.0
+[0.28.0]: https://github.com/hephy-dd/comet-pqc/compare/0.27.1...0.28.0
+[0.27.1]: https://github.com/hephy-dd/comet-pqc/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/hephy-dd/comet-pqc/compare/0.26.0...0.27.0
 [0.26.0]: https://github.com/hephy-dd/comet-pqc/compare/0.25.3...0.26.0
 [0.25.3]: https://github.com/hephy-dd/comet-pqc/compare/0.25.2...0.25.3
