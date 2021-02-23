@@ -59,16 +59,14 @@ class SamplePanel(BasicPanel, SettingsMixin):
             clearable=True,
             editing_finished=self.on_sample_comment_edited
         )
-        self._reload_button = ui.Button(
+        self._reload_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'reload.svg'),
             tool_tip="Reload sequence configuration from file.",
-            width=24,
             clicked=self.on_reload_clicked
         )
-        self._sequence_manager_button = ui.Button(
+        self._sequence_manager_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'gear.svg'),
             tool_tip="Open sequence manager",
-            width=24,
             clicked=self.on_sequence_manager_clicked
         )
         self._sample_groupbox = ui.GroupBox(

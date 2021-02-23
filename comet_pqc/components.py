@@ -59,16 +59,14 @@ class DirectoryWidget(ui.Row):
             changed=self.on_location_changed,
         )
         self.location_combo_box.duplicates_enabled = False
-        self.select_button = ui.Button(
+        self.select_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'search.svg'),
             tool_tip="Select a directory.",
-            width=24,
             clicked=self.on_select_clicked
         )
-        self.remove_button = ui.Button(
+        self.remove_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'delete.svg'),
             tool_tip="Remove directory from list.",
-            width=24,
             clicked=self.on_remove_clicked
         )
         self.append(self.location_combo_box)
@@ -179,16 +177,14 @@ class OperatorWidget(ui.Row, SettingsMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.operator_combo_box = OperatorComboBox()
-        self.add_button = ui.Button(
+        self.add_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'add.svg'),
             tool_tip="Add new operator.",
-            width=24,
             clicked=self.on_add_clicked
         )
-        self.remove_button = ui.Button(
+        self.remove_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'delete.svg'),
             tool_tip="Remove current operator from list.",
-            width=24,
             clicked=self.on_remove_clicked
         )
         self.append(self.operator_combo_box)

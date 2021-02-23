@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 
-from comet.driver import Driver, Property, Action
+from comet.driver import Driver, Property
 from comet.driver.iec60488 import IEC60488, opc_wait, lock
 
 __all__ = ['E4980A']
@@ -92,7 +92,6 @@ class Display(Driver):
     def __init__(self, resource):
         super().__init__(resource)
 
-    @Action()
     @opc_wait
     def cclear(self):
         """Clears messages from the display."""
@@ -108,7 +107,7 @@ class Display(Driver):
     def enable(self, value: int):
         self.resource.write(f':DISP:ENAB {value:d}')
 
-    @Property()
+    @property
     def line(self) -> str:
         """Display message line, limited to 30 ASCII characters."""
         return self.resource.query(':DISP:LINE?')
@@ -122,14 +121,12 @@ class Fetch(Driver):
 
     class Impedance(Driver):
 
-        @Action()
         @lock
         def corrected(self) -> Tuple[float]:
             """Return tuple with two corrected values."""
             result = self.resource.query(':FETC:IMP:CORR?')
             return tuple(map(float, result.split(',')))
 
-        @Action()
         @lock
         def formatted(self) -> Tuple[float]:
             """Return tuple with three values."""
@@ -138,19 +135,19 @@ class Fetch(Driver):
 
     class SMonitor(Driver):
 
-        @Property()
+        @property
         def iac(self) -> float:
             return float(self.resource.query(':FETC:SMON:IAC?'))
 
-        @Property()
+        @property
         def idc(self) -> float:
             return float(self.resource.query(':FETC:SMON:IDC?'))
 
-        @Property()
+        @property
         def vac(self) -> float:
             return float(self.resource.query(':FETC:SMON:VAC?'))
 
-        @Property()
+        @property
         def vdc(self) -> float:
             return float(self.resource.query(':FETC:SMON:VDC?'))
 
@@ -159,7 +156,6 @@ class Fetch(Driver):
         self.impedance = self.Impedance(resource)
         self.smonitor = self.SMonitor(resource)
 
-    @Action()
     @lock
     def __call__(self) -> Tuple[float]:
         """Return tuple with three values."""
@@ -168,7 +164,7 @@ class Fetch(Driver):
 
 class Frequency(Driver):
 
-    @Property()
+    @property
     def cw(self) -> float:
         """Frequency for measurement."""
         return float(self.resource.query(':FREQ:CW?'))

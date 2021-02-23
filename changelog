@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.2] - 2021-02-23
+### Changed
+- Migration to comet 0.13.0 (#121).
+### Fixed
+- Prevent table collision while calibrating (#119).
+- Collapse sequence tree items (#120).
+
 ## [0.29.1] - 2021-02-22
 ### Fixed
 - PNG images from plots only (#117).
@@ -190,7 +197,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.29.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.29.2...HEAD
+[0.29.2]: https://github.com/hephy-dd/comet-pqc/compare/0.29.1...0.29.2
 [0.29.1]: https://github.com/hephy-dd/comet-pqc/compare/0.29.0...0.29.1
 [0.29.0]: https://github.com/hephy-dd/comet-pqc/compare/0.28.0...0.29.0
 [0.28.0]: https://github.com/hephy-dd/comet-pqc/compare/0.27.1...0.28.0

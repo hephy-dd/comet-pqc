@@ -6,7 +6,6 @@ import numpy as np
 
 import comet
 from comet.driver.keithley import K6517B
-from ..driver import K2410
 from comet.driver.keithley import K2657A
 
 from ..utils import format_metric

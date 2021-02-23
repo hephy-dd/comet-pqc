@@ -73,7 +73,8 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
                 ui.GroupBox(
                     title="Working Directory",
                     layout=self._output_combobox
-                )
+                ),
+                stretch=(2, 3)
             ),
             self._button_box,
             stretch=(1, 0, 0, 0)
@@ -295,7 +296,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     self._sequence_tree.current = item
 
     def on_remove_sequence(self):
-        item = self.sequence_tree.current
+        item = self._sequence_tree.current
         if item and not item.sequence.builtin:
             if ui.show_question(
                 title="Remove Sequence",
