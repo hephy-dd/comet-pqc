@@ -1,6 +1,5 @@
 import contextlib
 
-from ..driver import K2410
 from comet.driver.keysight import E4980A
 
 from .matrix import MatrixMeasurement

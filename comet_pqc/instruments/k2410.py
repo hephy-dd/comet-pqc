@@ -1,5 +1,5 @@
 from .smu import SMUInstrument
-from ..driver import K2410
+from comet.driver.keithley import K2410
 
 __all__ = ['K2410Instrument']
 

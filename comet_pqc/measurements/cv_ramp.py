@@ -6,7 +6,6 @@ import numpy as np
 
 import comet
 # from comet.driver.keysight import E4980A
-from ..driver import K2410
 from ..driver import E4980A
 
 from ..utils import format_metric

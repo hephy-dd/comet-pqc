@@ -2,14 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='comet-pqc',
-    version='0.29.1',
+    version='0.29.2',
     author="Bernhard Arnold",
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'comet @ git+https://github.com/hephy-dd/comet.git@0.12.0',
+        'comet @ git+https://github.com/hephy-dd/comet.git@0.13.0',
         'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.2',
-        'qutie>=1.6.0',
         'pyyaml',
         'jsonschema'
     ],

@@ -7,6 +7,15 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.29.2
+
+### Changed
+- Migration to comet 0.13.0
+
+### Fixed
+- Prevent table collision while calibrating.
+- Collapse sequence tree items.
+
 ## 0.29.1
 
 ### Fixed

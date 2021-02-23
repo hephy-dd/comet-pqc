@@ -317,23 +317,20 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             clicked=self.on_reset_sequence_state
         )
 
-        self.reload_config_button = ui.Button(
+        self.reload_config_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'reload.svg'),
             tool_tip="Reload sequence configurations from file.",
-            width=24,
             clicked=self.on_reload_config_clicked
         )
 
-        self.add_sample_button = ui.Button(
+        self.add_sample_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'add.svg'),
             tool_tip="Add new sample sequence.",
-            width=24,
             clicked=self.on_add_sample_clicked
         )
-        self.remove_sample_button = ui.Button(
+        self.remove_sample_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'delete.svg'),
             tool_tip="Remove current sample sequence.",
-            width=24,
             clicked=self.on_remove_sample_clicked
         )
 
@@ -471,6 +468,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         for kwargs in samples:
             item = SampleTreeItem()
             self.sequence_tree.append(item)
+            item.expanded = False # do not expand
             try:
                 item.from_settings(**kwargs)
             except Exception as exc:
@@ -480,7 +478,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
-        use_table =  self.settings.get("use_table", False)
+        use_table = self.settings.get("use_table", False)
         self.table_control_widget.checked = use_table
         self.operator_widget.load_settings()
         self.output_widget.load_settings()

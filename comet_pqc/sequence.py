@@ -73,7 +73,8 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
                 ui.GroupBox(
                     title="Working Directory",
                     layout=self._output_combobox
-                )
+                ),
+                stretch=(2, 3)
             ),
             self._button_box,
             stretch=(1, 0, 0, 0)
