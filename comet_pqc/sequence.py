@@ -295,7 +295,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     self._sequence_tree.current = item
 
     def on_remove_sequence(self):
-        item = self.sequence_tree.current
+        item = self._sequence_tree.current
         if item and not item.sequence.builtin:
             if ui.show_question(
                 title="Remove Sequence",
