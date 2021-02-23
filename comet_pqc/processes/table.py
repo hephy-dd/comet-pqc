@@ -527,6 +527,21 @@ class AlternateTableProcess(TableProcess):
         # Clear error 1004
         error_handler.handle_error(ignore=[1004])
 
+        # Move X=52.000 mm before Z calibration to avoid collisions
+        x_offset = 52000
+        table.rmove(x_offset, 0, 0)
+        for i in range(retries):
+            handle_abort()
+            current_pos = table.pos
+            update_status(*current_pos)
+            if current_pos[:2] == (x_offset, 0):
+                break
+            time.sleep(delay)
+        # Verify table position
+        current_pos = table.pos
+        if current_pos[:2] != (x_offset, 0):
+            raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
+
         handle_abort()
         update_caldone()
 
@@ -559,8 +574,7 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_machine_error()
         error_handler.handle_error()
 
-        # Moving into limit switch generates error 1004
-        table.rmove(0, 0, -AXIS_OFFSET)
+        table.move(0, 0, 0)
         for i in range(retries):
             handle_abort()
             current_pos = table.pos
@@ -572,8 +586,6 @@ class AlternateTableProcess(TableProcess):
         current_pos = table.pos
         if current_pos != (0, 0, 0):
             raise RuntimeError(f"failed to calibrate axes, current pos: {current_pos}")
-        # Clear error 1004
-        error_handler.handle_error(ignore=[1004])
 
         update_status(*current_pos)
         update_caldone()
