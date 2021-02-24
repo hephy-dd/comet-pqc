@@ -40,7 +40,7 @@ class PanelStub(ui.Widget):
     def unmount(self):
         self.__context = None
 
-class BasicPanel(PanelStub):
+class BasicPanel(PanelStub, comet.SettingsMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -140,6 +140,12 @@ class Panel(BasicPanel):
         self.load_analysis()
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
+        # Update plot series style
+        points_in_plots = self.settings.get("points_in_plots") or False
+        for tab in self.data_tabs:
+            if isinstance(tab.layout, ui.Plot):
+                for series in tab.layout.series.values():
+                    series.qt.setPointsVisible(points_in_plots)
 
     def unmount(self):
         """Unmount measurement from panel."""
@@ -239,10 +245,14 @@ class Panel(BasicPanel):
         """Save screenshots of data tabs to stitched image."""
         current = self.data_tabs.current
         pixmaps = []
+        png_analysis = self.settings.get("png_analysis") or False
         for tab in self.data_tabs:
             self.data_tabs.current = tab
             if isinstance(tab.layout, ui.Plot):
                 tab.layout.fit()
                 pixmaps.append(self.data_tabs.qt.grab())
+            elif tab.layout is self.analysis_tree:
+                if png_analysis:
+                    pixmaps.append(self.data_tabs.qt.grab())
         self.data_tabs.current = current
         stitch_pixmaps(pixmaps).save(filename)

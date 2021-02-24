@@ -529,17 +529,18 @@ class AlternateTableProcess(TableProcess):
 
         # Move X=52.000 mm before Z calibration to avoid collisions
         x_offset = 52000
-        table.rmove(x_offset, 0, 0)
+        y_offset = 0
+        table.rmove(x_offset, y_offset, 0)
         for i in range(retries):
             handle_abort()
             current_pos = table.pos
             update_status(*current_pos)
-            if current_pos[:2] == (x_offset, 0):
+            if current_pos[:2] == (x_offset, y_offset):
                 break
             time.sleep(delay)
         # Verify table position
         current_pos = table.pos
-        if current_pos[:2] != (x_offset, 0):
+        if current_pos[:2] != (x_offset, y_offset):
             raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
 
         handle_abort()
@@ -585,7 +586,7 @@ class AlternateTableProcess(TableProcess):
         # Verify table position
         current_pos = table.pos
         if current_pos != (0, 0, 0):
-            raise RuntimeError(f"failed to calibrate axes, current pos: {current_pos}")
+            raise RuntimeError(f"failed to absolute move, current pos: {current_pos}")
 
         update_status(*current_pos)
         update_caldone()

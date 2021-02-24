@@ -226,6 +226,8 @@ class OptionsTab(PreferencesTab):
     def __init__(self):
         super().__init__(title="Options")
         self.png_plots_checkbox = ui.CheckBox("Save plots as PNG")
+        self.points_in_plots_checkbox = ui.CheckBox("Show points in plots")
+        self.png_analysis_checkbox = ui.CheckBox("Add analysis preview to PNG")
         self.export_json_checkbox = ui.CheckBox("Write JSON data (*.json)")
         self.export_txt_checkbox = ui.CheckBox("Write plain text data (*.txt)")
         self.write_logfiles_checkbox = ui.CheckBox("Write measurement log files (*.log)")
@@ -234,8 +236,15 @@ class OptionsTab(PreferencesTab):
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Plots",
-                layout=ui.Row(
-                    self.png_plots_checkbox
+                layout=ui.Column(
+                    self.png_plots_checkbox,
+                    self.points_in_plots_checkbox,
+                )
+            ),
+            ui.GroupBox(
+                title="Analysis",
+                layout=ui.Column(
+                    self.png_analysis_checkbox
                 )
             ),
             ui.GroupBox(
@@ -270,13 +279,17 @@ class OptionsTab(PreferencesTab):
         )
 
     def load(self):
-        png_plots = self.settings.get("png_plots", False)
+        png_plots = self.settings.get("png_plots") or False
         self.png_plots_checkbox.checked = png_plots
-        export_json = self.settings.get("export_json", False)
+        points_in_plots = self.settings.get("points_in_plots") or False
+        self.points_in_plots_checkbox.checked = points_in_plots
+        png_analysis = self.settings.get("png_analysis") or False
+        self.png_analysis_checkbox.checked = png_analysis
+        export_json = self.settings.get("export_json") or False
         self.export_json_checkbox.checked = export_json
-        export_txt = self.settings.get("export_txt", True)
+        export_txt = self.settings.get("export_txt") or True
         self.export_txt_checkbox.checked = export_txt
-        write_logfiles = self.settings.get("write_logfiles", True)
+        write_logfiles = self.settings.get("write_logfiles") or True
         self.write_logfiles_checkbox.checked = write_logfiles
         vsrc_instrument = self.settings.get("vsrc_instrument") or "K2657A"
         if vsrc_instrument in self._vsrc_instrument_combobox:
@@ -288,6 +301,10 @@ class OptionsTab(PreferencesTab):
     def store(self):
         png_plots = self.png_plots_checkbox.checked
         self.settings["png_plots"] = png_plots
+        points_in_plots = self.points_in_plots_checkbox.checked
+        self.settings["points_in_plots"] = points_in_plots
+        png_analysis = self.png_analysis_checkbox.checked
+        self.settings["png_analysis"] = png_analysis
         export_json = self.export_json_checkbox.checked
         self.settings["export_json"] = export_json
         export_txt = self.export_txt_checkbox.checked

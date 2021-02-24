@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.30.0
+
+### Added
+- Restricted limits for joystick use.
+- Show points in plot line series.
+
 ## 0.29.2
 
 ### Changed
