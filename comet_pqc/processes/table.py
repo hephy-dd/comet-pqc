@@ -8,6 +8,7 @@ import traceback
 import comet
 from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
+from ..settings import settings
 
 from comet_pqc.utils import from_table_unit, to_table_unit
 
@@ -240,6 +241,15 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def enable_joystick(self, table, state):
+        if state:
+            x, y, z = settings.table_joystick_maximum_limits
+        else:
+            x, y, z = settings.table_probecard_maximum_limits
+        table.limit = (
+            (0, to_table_unit(x)),
+            (0, to_table_unit(y)),
+            (0, to_table_unit(z)),
+        )
         table.joystick = state
         self.emit('joystick_changed', table.joystick)
 

@@ -87,10 +87,15 @@ class TableControlWidget(ui.GroupBox):
         self.emit(self.control_clicked)
 
     def update_joystick_state(self, state):
+        self._joystick_button.toggled = None
         self._joystick_button.checked = state
+        self._joystick_button.toggled = self.on_joystick_toggled
 
     def update_position(self, x, y, z):
         self._position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
+        limits = settings.table_joystick_maximum_limits
+        enabled = x <= limits[0] and y <= limits[1] and z <= limits[2]
+        self._joystick_button.enabled = enabled
 
 class EnvironmentControlWidget(ui.GroupBox):
 
@@ -873,6 +878,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     # Table calibration
 
+    @handle_exception
     def on_table_joystick_toggled(self, state):
         self.table_process.enable_joystick(state)
 
@@ -884,6 +890,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def on_table_control_clicked(self):
+        self.table_process.enable_joystick(False)
         dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
         dialog.load_samples(list(self.sequence_tree)) # HACK

@@ -132,6 +132,19 @@ class TableTab(PreferencesTab):
             suffix="mm",
             changed=self.on_z_limit_movement_changed
         )
+        def make_number():
+            return ui.Number(
+                minimum=0,
+                maximum=1000.0,
+                decimals=3,
+                suffix="mm"
+            )
+        self.probecard_limit_x_maximum_number = make_number()
+        self.probecard_limit_y_maximum_number = make_number()
+        self.probecard_limit_z_maximum_number = make_number()
+        self.joystick_limit_x_maximum_number = make_number()
+        self.joystick_limit_y_maximum_number = make_number()
+        self.joystick_limit_z_maximum_number = make_number()
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Control Steps (mm)",
@@ -147,9 +160,53 @@ class TableTab(PreferencesTab):
                 )
             ),
             ui.GroupBox(
-                title="Movement Z-Limit",
+            title="Movement Z-Limit",
                 layout=ui.Column(
                     self.z_limit_movement_number
+                )
+            ),
+            ui.GroupBox(
+                title="Probe Card Limts",
+                layout=ui.Row(
+                    ui.Column(
+                        ui.Label("X"),
+                        self.probecard_limit_x_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label("Y"),
+                        self.probecard_limit_y_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label("Z"),
+                        self.probecard_limit_z_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label(),
+                        ui.Label("Maximum"),
+                    ),
+                    ui.Spacer()
+                )
+            ),
+            ui.GroupBox(
+                title="Joystick Limits",
+                layout=ui.Row(
+                    ui.Column(
+                        ui.Label("X"),
+                        self.joystick_limit_x_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label("Y"),
+                        self.joystick_limit_y_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label("Z"),
+                        self.joystick_limit_z_maximum_number
+                    ),
+                    ui.Column(
+                        ui.Label(),
+                        ui.Label("Maximum"),
+                    ),
+                    ui.Spacer()
                 )
             )
         )
@@ -208,6 +265,16 @@ class TableTab(PreferencesTab):
             ))
         self.steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
         self.z_limit_movement_number.value = settings.table_z_limit
+        # Probecard limits
+        x, y, z = settings.table_probecard_maximum_limits
+        self.probecard_limit_x_maximum_number.value = x
+        self.probecard_limit_y_maximum_number.value = y
+        self.probecard_limit_z_maximum_number.value = z
+        # Joystick limits
+        x, y, z = settings.table_joystick_maximum_limits
+        self.joystick_limit_x_maximum_number.value = x
+        self.joystick_limit_y_maximum_number.value = y
+        self.joystick_limit_z_maximum_number.value = z
 
     def store(self):
         table_step_sizes = []
@@ -219,6 +286,18 @@ class TableTab(PreferencesTab):
             ))
         self.settings['table_step_sizes'] = table_step_sizes
         settings.table_z_limit = self.z_limit_movement_number.value
+        # Probecard limits
+        settings.table_probecard_maximum_limits = [
+            self.probecard_limit_x_maximum_number.value,
+            self.probecard_limit_y_maximum_number.value,
+            self.probecard_limit_z_maximum_number.value
+        ]
+        # Joystick limits
+        settings.table_joystick_maximum_limits = [
+            self.joystick_limit_x_maximum_number.value,
+            self.joystick_limit_y_maximum_number.value,
+            self.joystick_limit_z_maximum_number.value
+        ]
 
 class OptionsTab(PreferencesTab):
     """Options tab for preferences dialog."""
