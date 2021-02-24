@@ -45,7 +45,7 @@ from .tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 
-class TableControlWidget(ui.GroupBox):
+class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
 
     joystick_toggled = None
     control_clicked = None
@@ -79,6 +79,7 @@ class TableControlWidget(ui.GroupBox):
         # Callbacks
         self.joystick_toggled = joystick_toggled
         self.control_clicked = control_clicked
+        self._joystick_limits = [0, 0, 0]
 
     def on_joystick_toggled(self, state):
         self.emit(self.joystick_toggled, state)
@@ -93,9 +94,14 @@ class TableControlWidget(ui.GroupBox):
 
     def update_position(self, x, y, z):
         self._position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
-        limits = settings.table_joystick_maximum_limits
+        limits = self._joystick_limits
         enabled = x <= limits[0] and y <= limits[1] and z <= limits[2]
         self._joystick_button.enabled = enabled
+
+    def load_settings(self):
+        use_table = self.settings.get("use_table") or False
+        self.checked = use_table
+        self._joystick_limits = settings.table_joystick_maximum_limits
 
 class EnvironmentControlWidget(ui.GroupBox):
 
@@ -483,8 +489,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
-        use_table = self.settings.get("use_table", False)
-        self.table_control_widget.checked = use_table
+        self.table_control_widget.load_settings()
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
 
@@ -1017,6 +1022,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if state:
             self.table_process.start()
             self.sync_table_controls()
+            self.table_process.enable_joystick(False)
         else:
             self.table_process.stop()
 

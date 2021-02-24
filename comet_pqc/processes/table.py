@@ -251,6 +251,8 @@ class AlternateTableProcess(TableProcess):
             (0, to_table_unit(z)),
         )
         table.joystick = state
+        limits = table.limit
+        logging.info("updated table limits: %s mm", limits)
         self.emit('joystick_changed', table.joystick)
 
     @async_request

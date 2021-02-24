@@ -45,7 +45,7 @@ python -m comet.emulator.keithley.k2657a -p 11003
 python -m comet.emulator.keithley.k6517b -p 11004
 python -m comet_pqc.emulator.e4980a -p 11005
 python -m comet_pqc.emulator.environmentbox -p 11006
-python -m comet.emulator.corvus.venus1 -p 11007
+python -m comet_pqc.emulator.venus1 -p 11007
 ```
 
 ## Binaries

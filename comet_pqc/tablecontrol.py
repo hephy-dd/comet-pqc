@@ -619,6 +619,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.rm_y_label = CalibrationLabel("rm")
         self.rm_z_label = CalibrationLabel("rm")
         self.z_limit_label = PositionLabel()
+        self.x_hard_limit_label = PositionLabel()
+        self.y_hard_limit_label = PositionLabel()
+        self.z_hard_limit_label = PositionLabel()
         self.laser_label = SwitchLabel()
         self.calibrate_button = ui.Button(
             text="Calibrate",
@@ -760,13 +763,28 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         )
                     ),
                     ui.GroupBox(
-                        title="Limits",
+                        title="Soft Limits",
                         layout=ui.Row(
                             ui.Column(
                                 ui.Label("Z")
                             ),
                             ui.Column(
                                 self.z_limit_label
+                            )
+                        )
+                    ),
+                    ui.GroupBox(
+                        title="Hard Limits",
+                        layout=ui.Row(
+                            ui.Column(
+                                ui.Label("X"),
+                                ui.Label("Y"),
+                                ui.Label("Z")
+                            ),
+                            ui.Column(
+                                self.x_hard_limit_label,
+                                self.y_hard_limit_label,
+                                self.z_hard_limit_label
                             )
                         )
                     ),
@@ -1004,6 +1022,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.positions_widget.load_settings()
         self.z_limit = settings.table_z_limit
         self.z_limit_label.value = self.z_limit
+        x, y, z = settings.table_probecard_maximum_limits
+        self.x_hard_limit_label.value = x
+        self.y_hard_limit_label.value = y
+        self.z_hard_limit_label.value = z
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
