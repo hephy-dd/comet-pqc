@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.29.2] - 2021-02-23
 ### Changed
-- Migration to comet 0.13.0 (#121).
+- Migration to comet 0.13.1 (#121).
 ### Fixed
 - Prevent table collision while calibrating (#119).
 - Collapse sequence tree items (#120).

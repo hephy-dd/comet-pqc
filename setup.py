@@ -7,7 +7,7 @@ setup(
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'comet @ git+https://github.com/hephy-dd/comet.git@0.13.0',
+        'comet @ git+https://github.com/hephy-dd/comet.git@0.13.1',
         'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.1.2',
         'pyyaml',
         'jsonschema'
