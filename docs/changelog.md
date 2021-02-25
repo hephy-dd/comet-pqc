@@ -16,7 +16,7 @@ nav_order: 10
 ## 0.29.2
 
 ### Changed
-- Migration to comet 0.13.0
+- Migration to comet 0.13.1
 
 ### Fixed
 - Prevent table collision while calibrating.
