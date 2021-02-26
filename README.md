@@ -27,7 +27,7 @@ This COMET application provides PQC sensor measurements.
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.29.2
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.30.0
 comet-pqc
 ```
 
@@ -45,7 +45,7 @@ python -m comet.emulator.keithley.k2657a -p 11003
 python -m comet.emulator.keithley.k6517b -p 11004
 python -m comet_pqc.emulator.e4980a -p 11005
 python -m comet_pqc.emulator.environmentbox -p 11006
-python -m comet.emulator.corvus.venus1 -p 11007
+python -m comet_pqc.emulator.venus1 -p 11007
 ```
 
 ## Binaries

@@ -56,6 +56,50 @@ class Settings(SettingsMixin):
         self.settings['z_limit_movement'] = to_table_unit(value)
 
     @property
+    def table_probecard_maximum_limits(self):
+        default = 0.0, 0.0, 0.0
+        try:
+            limits = self.settings.get('table_probecard_maximum_limits') or default
+            return (
+                from_table_unit(limits.get('x', 0.0)),
+                from_table_unit(limits.get('y', 0.0)),
+                from_table_unit(limits.get('z', 0.0))
+            )
+        except:
+            return default
+
+    @table_probecard_maximum_limits.setter
+    def table_probecard_maximum_limits(self, value):
+        x, y, z = value
+        self.settings['table_probecard_maximum_limits'] = {
+            'x': to_table_unit(x),
+            'y': to_table_unit(y),
+            'z': to_table_unit(z)
+        }
+
+    @property
+    def table_joystick_maximum_limits(self):
+        default = 0.0, 0.0, 0.0
+        try:
+            limits = self.settings.get('table_joystick_maximum_limits') or default
+            return (
+                from_table_unit(limits.get('x', 0.0)),
+                from_table_unit(limits.get('y', 0.0)),
+                from_table_unit(limits.get('z', 0.0))
+            )
+        except:
+            return default
+
+    @table_joystick_maximum_limits.setter
+    def table_joystick_maximum_limits(self, value):
+        x, y, z = value
+        self.settings['table_joystick_maximum_limits'] = {
+            'x': to_table_unit(x),
+            'y': to_table_unit(y),
+            'z': to_table_unit(z)
+        }
+
+    @property
     def operators(self):
         return list(self.settings.get('operators') or [])
 

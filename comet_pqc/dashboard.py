@@ -26,6 +26,8 @@ from .sequence import MeasurementTreeItem
 from .sequence import SequenceManager
 
 from .components import ToggleButton
+from .components import PositionWidget
+from .components import CalibrationWidget
 from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
@@ -39,13 +41,14 @@ from .tabs import SummaryTab
 from .logwindow import LogWidget
 from .formatter import CSVFormatter
 from .settings import settings
-from .utils import make_path, handle_exception
+from .utils import make_path, handle_exception, caldone_valid
+from .position import Position
 
 from .tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 
-class TableControlWidget(ui.GroupBox):
+class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
 
     joystick_toggled = None
     control_clicked = None
@@ -60,25 +63,30 @@ class TableControlWidget(ui.GroupBox):
             checkable=True,
             toggled=self.on_joystick_toggled
         )
-        self._position_label = ui.Label(
-            text="...",
-            tool_tip="Current table position."
-        )
+        self._position_widget = PositionWidget()
+        self._calibration_widget = CalibrationWidget()
         self._control_button = ui.Button(
             text="Control...",
             tool_tip="Open table controls dialog.",
             clicked=self.on_control_clicked
         )
         self.layout=ui.Row(
-            self._joystick_button,
-            ui.Widget(),
-            self._position_label,
-            ui.Widget(),
-            self._control_button
+            self._position_widget,
+            self._calibration_widget,
+            ui.Spacer(),
+            ui.Column(
+                ui.Spacer(),
+                self._control_button,
+                self._joystick_button,
+                ui.Spacer()
+            ),
+            stretch=(0, 0, 1, 0)
         )
         # Callbacks
         self.joystick_toggled = joystick_toggled
         self.control_clicked = control_clicked
+        self._joystick_limits = [0, 0, 0]
+        self.calibration_valid = False
 
     def on_joystick_toggled(self, state):
         self.emit(self.joystick_toggled, state)
@@ -87,10 +95,24 @@ class TableControlWidget(ui.GroupBox):
         self.emit(self.control_clicked)
 
     def update_joystick_state(self, state):
+        self._joystick_button.toggled = None
         self._joystick_button.checked = state
+        self._joystick_button.toggled = self.on_joystick_toggled
 
-    def update_position(self, x, y, z):
-        self._position_label.text = f"X={x:.3f} | Y={y:.3f} | Z={z:.3f} mm"
+    def update_position(self, position):
+        self._position_widget.update_position(position)
+        limits = self._joystick_limits
+        enabled = position.x <= limits[0] and position.y <= limits[1] and position.z <= limits[2]
+        self._joystick_button.enabled = enabled and self.calibration_valid
+
+    def update_calibration(self, position):
+        self._calibration_widget.update_calibration(position)
+        self.calibration_valid = caldone_valid(position)
+
+    def load_settings(self):
+        use_table = self.settings.get("use_table") or False
+        self.checked = use_table
+        self._joystick_limits = settings.table_joystick_maximum_limits
 
 class EnvironmentControlWidget(ui.GroupBox):
 
@@ -448,6 +470,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.table_process = self.processes.get("table")
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed
+        self.table_process.caldone_changed = self.on_table_calibration_changed
 
         self.measure_process = self.processes.get("measure")
         self.measure_process.finished = self.on_finished
@@ -478,8 +501,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
-        use_table = self.settings.get("use_table", False)
-        self.table_control_widget.checked = use_table
+        self.table_control_widget.load_settings()
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
 
@@ -521,7 +543,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         """
         if self.use_table():
             return self.table_process.get_cached_position()
-        return (0., 0., 0.)
+        return Position()
 
     def use_environment(self):
         """Return True if environment box enabled."""
@@ -610,7 +632,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.visible = True
-            panel.table_move_to = self.on_table_move_to
             panel.table_contact = self.on_table_contact
             panel.mount(item)
             self.start_contact_action.qt.setEnabled(True)
@@ -632,23 +653,14 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     # Contcat table controls
 
     @handle_exception
-    def on_table_move_to(self, contact):
-        x, y, z = contact.position
-        z = safe_z_position(z)
-        self.lock_controls()
-        self.table_process.message_changed = lambda message: self.emit('message_changed', message)
-        self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
-        self.table_process.absolute_move_finished = self.on_table_finished
-        self.table_process.safe_absolute_move(x, y, z)
-
-    @handle_exception
     def on_table_contact(self, contact):
-        self.lock_controls()
-        x, y, z = contact.position
-        self.table_process.message_changed = lambda message: self.emit('message_changed', message)
-        self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
-        self.table_process.absolute_move_finished = self.on_table_finished
-        self.table_process.safe_absolute_move(x, y, z)
+        if self.use_table():
+            self.lock_controls()
+            x, y, z = contact.position
+            self.table_process.message_changed = lambda message: self.emit('message_changed', message)
+            self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+            self.table_process.absolute_move_finished = self.on_table_finished
+            self.table_process.safe_absolute_move(x, y, z)
 
     def on_table_finished(self):
         self.table_process.absolute_move_finished = None
@@ -873,17 +885,25 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     # Table calibration
 
+    @handle_exception
     def on_table_joystick_toggled(self, state):
         self.table_process.enable_joystick(state)
 
     def on_table_joystick_changed(self, state):
         self.table_control_widget.update_joystick_state(state)
 
-    def on_table_position_changed(self, x, y, z):
-        self.table_control_widget.update_position(x, y, z)
+    def on_table_position_changed(self, position):
+        self.table_control_widget.update_position(position)
+
+    def on_table_calibration_changed(self, position):
+        self.table_control_widget.update_calibration(position)
+        panel = self.panels.get("contact")
+        if panel:
+            panel.update_use_table(self.use_table() and self.table_control_widget.calibration_valid)
 
     @handle_exception
     def on_table_control_clicked(self):
+        self.table_process.enable_joystick(False)
         dialog = TableControlDialog(self.table_process)
         dialog.load_settings()
         dialog.load_samples(list(self.sequence_tree)) # HACK
@@ -916,9 +936,10 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.mount(current_item)
-        # Restore events
+        # Restore events...
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed
+        self.table_process.caldone_changed = self.on_table_calibration_changed
         self.sync_table_controls()
 
     @handle_exception
@@ -995,7 +1016,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         """Syncronize table controls."""
         enabled = self.use_table()
         self.table_process.enabled = enabled
-        self.on_table_position_changed(float('nan'), float('nan'), float('nan'))
+        self.on_table_position_changed(Position())
+        self.on_table_calibration_changed(Position())
         if enabled:
             self.table_process.status()
 
@@ -1009,9 +1031,10 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     def on_table_groupbox_toggled(self, state):
         if state:
             self.table_process.start()
-            self.sync_table_controls()
+            self.table_process.enable_joystick(False)
         else:
             self.table_process.stop()
+        self.sync_table_controls()
 
     @handle_exception
     def on_push_summary(self, *args):

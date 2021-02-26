@@ -8,6 +8,8 @@ import traceback
 import comet
 from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
+from ..settings import settings
+from ..position import Position
 
 from comet_pqc.utils import from_table_unit, to_table_unit
 
@@ -219,20 +221,20 @@ class AlternateTableProcess(TableProcess):
     @async_request
     def status(self, table):
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
         x, y, z = self._get_caldone(table)
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
         self.emit('joystick_changed', table.joystick)
 
     @async_request
     def position(self, table):
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
 
     @async_request
     def caldone(self, table):
         x, y, z = self._get_caldone(table)
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
 
     @async_request
     def joystick(self, table):
@@ -240,7 +242,18 @@ class AlternateTableProcess(TableProcess):
 
     @async_request
     def enable_joystick(self, table, state):
+        if state:
+            x, y, z = settings.table_joystick_maximum_limits
+        else:
+            x, y, z = settings.table_probecard_maximum_limits
+        table.limit = (
+            (0, to_table_unit(x)),
+            (0, to_table_unit(y)),
+            (0, to_table_unit(z)),
+        )
         table.joystick = state
+        limits = table.limit
+        logging.info("updated table limits: %s mm", limits)
         self.emit('joystick_changed', table.joystick)
 
     @async_request
@@ -265,7 +278,7 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_calibration_error()
 
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
 
         self.emit('relative_move_finished')
         self.emit("message_changed", "Ready")
@@ -307,10 +320,11 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit('position_changed', x, y, z)
+            self.emit('position_changed', Position(x, y, z))
 
         def update_caldone():
-            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
+            x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+            self.emit('caldone_changed', Position(x, y, z))
 
         handle_abort()
         update_caldone()
@@ -378,7 +392,7 @@ class AlternateTableProcess(TableProcess):
         self.emit("message_changed", "Movement successful.")
 
         x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
 
         self.emit('absolute_move_finished')
 
@@ -401,10 +415,11 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit('position_changed', x, y, z)
+            self.emit('position_changed', Position(x, y, z))
 
         def update_caldone():
-            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
+            x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+            self.emit('caldone_changed', Position(x, y, z))
 
         def ncal(axis):
             index = axes.index(axis)
@@ -529,17 +544,18 @@ class AlternateTableProcess(TableProcess):
 
         # Move X=52.000 mm before Z calibration to avoid collisions
         x_offset = 52000
-        table.rmove(x_offset, 0, 0)
+        y_offset = 0
+        table.rmove(x_offset, y_offset, 0)
         for i in range(retries):
             handle_abort()
             current_pos = table.pos
             update_status(*current_pos)
-            if current_pos[:2] == (x_offset, 0):
+            if current_pos[:2] == (x_offset, y_offset):
                 break
             time.sleep(delay)
         # Verify table position
         current_pos = table.pos
-        if current_pos[:2] != (x_offset, 0):
+        if current_pos[:2] != (x_offset, y_offset):
             raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
 
         handle_abort()
@@ -585,7 +601,7 @@ class AlternateTableProcess(TableProcess):
         # Verify table position
         current_pos = table.pos
         if current_pos != (0, 0, 0):
-            raise RuntimeError(f"failed to calibrate axes, current pos: {current_pos}")
+            raise RuntimeError(f"failed to absolute move, current pos: {current_pos}")
 
         update_status(*current_pos)
         update_caldone()

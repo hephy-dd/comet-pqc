@@ -178,6 +178,8 @@ Type: `iv_ramp_4_wire`
 |`vsrc_filter_enable`      |`bool`   |`false`  |Enable V Source filter. |
 |`vsrc_filter_count`       |`int`    |`10`     |V Source filter count (`1` to `100`). |
 |`vsrc_filter_type`        |`str`    |`repeat` |Type of applied V Source filter. Possible values are: `moving`, `repeat`. |
+|`vsrc_source_voltage_autorange_enable` | `bool`  |`true`  |Enable source voltage auto range. |
+|`vsrc_source_voltage_range` |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`analysis_functions`      |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `van_der_pauw`, `cross`, `linewidth`, `cbkr`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
@@ -244,6 +246,8 @@ Type: `iv_ramp_bias`
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
 |`vsrc_filter_type`            |`str`    |`repeat` |Possible values are: `moving`, `repeat`. |
+|`vsrc_source_voltage_autorange_enable`  | `bool`  |`true`  |Enable source voltage auto range. |
+|`vsrc_source_voltage_range`  |`volt`    |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
 
 ### Data columns
@@ -302,6 +306,8 @@ Type: `iv_ramp_bias_elm`
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
 |`vsrc_filter_type`            |`str`    |`repeat` | Possible values are: `moving`, `repeat`. |
+|`vsrc_source_voltage_autorange_enable`  | `bool`  |`true`  |Enable source voltage auto range. |
+|`vsrc_source_voltage_range`   |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`elm_filter_enable`           |`bool`   |`false`  |Enable Electrometer filter. |
 |`elm_filter_count`            |`int`    |`10`     |Electrometer filter count (`1` to `100`). |
 |`elm_filter_type`             |`str`    |`repeat` |Type of applied Electrometer filter. Possible values are: `moving`, `repeat`. |
@@ -443,6 +449,8 @@ Type: `cv_ramp_vsrc`
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
 |`vsrc_filter_type`            |`str`    |`repeat` |Possible values are: `moving`, `repeat`. |
+|`vsrc_source_voltage_autorange_enable`  | `bool`  |`true`  |Enable source voltage auto range. |
+|`vsrc_source_voltage_range`   |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`lcr_soft_filter`             |`bool`   |`true`   |Apply software STD/mean<0.005 filter. |
 |`lcr_frequency`               |`herz`   |`1 kHz`  |Possible range from `1 Hz` to `25 kHz`. |
 |`lcr_amplitude`               |`volt`   |`250 mV` | |

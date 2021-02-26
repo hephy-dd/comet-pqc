@@ -173,6 +173,7 @@ def main():
     if dashboard.use_table():
         dashboard.table_process.start()
         dashboard.sync_table_controls()
+        dashboard.table_process.enable_joystick(False)
 
     # HACK: resize preferences dialog for HiDPI
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2021-02-24
+### Added
+- Restricted limits for joystick use (#123).
+- Show points in plot line series (#124).
+- Disable table controls if not calibrated (#125).
+### Changed
+- Move position assignment into edit dialog (#126).
+
 ## [0.29.2] - 2021-02-23
 ### Changed
 - Migration to comet 0.13.1 (#121).
@@ -197,7 +205,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.29.2...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.30.0...HEAD
+[0.30.0]: https://github.com/hephy-dd/comet-pqc/compare/0.29.2...0.30.0
 [0.29.2]: https://github.com/hephy-dd/comet-pqc/compare/0.29.1...0.29.2
 [0.29.1]: https://github.com/hephy-dd/comet-pqc/compare/0.29.0...0.29.1
 [0.29.0]: https://github.com/hephy-dd/comet-pqc/compare/0.28.0...0.29.0

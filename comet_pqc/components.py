@@ -1,18 +1,23 @@
+import math
 import os
 
 from comet import ui
 from comet.settings import SettingsMixin
 
 from .settings import settings
+from .position import Position
 from .utils import make_path, create_icon
 from .utils import format_table_unit
 from .utils import from_table_unit, to_table_unit
+from .utils import getcal, getrm
 
 from qutie.qutie import Qt
 
 __all__ = [
     'ToggleButton',
     'PositionLabel',
+    'CalibrationLabel',
+    'CalibrationWidget',
     'DirectoryWidget',
     'OperatorComboBox',
     'PositionsComboBox'
@@ -48,6 +53,121 @@ class PositionLabel(ui.Label):
             self.text = format(float('nan'))
         else:
             self.text = format_table_unit(value)
+
+class PositionWidget(ui.GroupBox):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Position"
+        self._pos_x_label = PositionLabel()
+        self._pos_y_label = PositionLabel()
+        self._pos_z_label = PositionLabel()
+        self.layout = ui.Row(
+            ui.Column(
+                ui.Label(
+                    text="X",
+                    tool_tip="X axis position."
+                ),
+                ui.Label(
+                    text="Y",
+                    tool_tip="Y axis position."
+                ),
+                ui.Label(
+                    text="Z",
+                    tool_tip="Z axis position."
+                )
+            ),
+            ui.Column(
+                self._pos_x_label,
+                self._pos_y_label,
+                self._pos_z_label
+            ),
+            stretch=(1, 1)
+        )
+
+    def reset_position(self):
+        self.update_position(Position())
+
+    def update_position(self, position):
+        self._pos_x_label.value = position.x
+        self._pos_y_label.value = position.y
+        self._pos_z_label.value = position.z
+
+class CalibrationLabel(ui.Label):
+
+    def __init__(self, prefix, value=None):
+        super().__init__()
+        self.prefix = prefix
+        self.value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value or float('nan')
+        self.text = f"{self.prefix} {self._value}"
+        if math.isnan(self._value) or not self._value:
+            self.qt.setStyleSheet("QLabel:enabled{color:red}")
+        else:
+            self.qt.setStyleSheet("QLabel:enabled{color:green}")
+
+class CalibrationWidget(ui.GroupBox):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Calibration"
+        self._cal_x_label = CalibrationLabel("cal")
+        self._cal_y_label = CalibrationLabel("cal")
+        self._cal_z_label = CalibrationLabel("cal")
+        self._rm_x_label = CalibrationLabel("rm")
+        self._rm_y_label = CalibrationLabel("rm")
+        self._rm_z_label = CalibrationLabel("rm")
+        self.layout = ui.Row(
+            ui.Column(
+                ui.Label(
+                    text="X",
+                    tool_tip="X axis calibration state."
+                ),
+                ui.Label(
+                    text="Y",
+                    tool_tip="Y axis calibration state."
+                ),
+                ui.Label(
+                    text="Z",
+                    tool_tip="Z axis calibration state."
+                )
+            ),
+            ui.Column(
+                self._cal_x_label,
+                self._cal_y_label,
+                self._cal_z_label
+            ),
+            ui.Column(
+                self._rm_x_label,
+                self._rm_y_label,
+                self._rm_z_label
+            ),
+            stretch=(1, 1, 1)
+        )
+
+    def reset_calibration(self):
+        self.update_calibration(Position())
+
+    def update_calibration(self, position):
+        self._update_cal(position)
+        self._update_rm(position)
+
+    def _update_cal(self, position):
+        self._cal_x_label.value = getcal(position.x)
+        self._cal_y_label.value = getcal(position.y)
+        self._cal_z_label.value = getcal(position.z)
+
+    def _update_rm(self, position):
+        self._rm_x_label.value = getrm(position.x)
+        self._rm_y_label.value = getrm(position.y)
+        self._rm_z_label.value = getrm(position.z)
 
 class DirectoryWidget(ui.Row):
 
