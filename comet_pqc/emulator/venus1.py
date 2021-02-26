@@ -7,6 +7,7 @@ class PQCVenus1Handler(Venus1Handler):
 
     table_limits = (0.0, 0.0, 0.0, 1000000.0, 100000.0, 25000.0)
 
+    getcaldone = 3
 
     @classmethod
     @message(r'(.*)\s+setlimit')

@@ -11,9 +11,12 @@ from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
 
 from .components import PositionLabel
+from .components import PositionWidget
+from .components import CalibrationWidget
 from .components import ToggleButton
 from .settings import settings, TablePosition
-from .utils import format_switch
+from .utils import format_switch, caldone_valid
+from .position import Position
 
 from qutie.qutie import Qt
 
@@ -113,8 +116,8 @@ class TableContactItem(ui.TreeItem):
 
 class TableContactsWidget(ui.Row):
 
-    def __init__(self, position_picked=None, absolute_move=None):
-        super().__init__()
+    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
+        super().__init__(**kwargs)
         self.position_picked = position_picked
         self.absolute_move = absolute_move
         self.contacts_tree = ui.Tree(
@@ -201,7 +204,7 @@ class TableContactsWidget(ui.Row):
             if current_item.has_position:
                 if ui.show_question(f"Do you want to move tabel to contact {current_item.name}?"):
                     x, y, z = current_item.position
-                    self.emit(self.absolute_move, x, y, z)
+                    self.emit(self.absolute_move, Position(x, y, z))
 
     def on_calculate(self):
         current_item = self.contacts_tree.current
@@ -349,8 +352,8 @@ class PositionDialog(ui.Dialog):
 
 class TablePositionsWidget(ui.Row, SettingsMixin):
 
-    def __init__(self, position_picked=None, absolute_move=None):
-        super().__init__()
+    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
+        super().__init__(**kwargs)
         self.position_picked = position_picked
         self.absolute_move = absolute_move
         self.positions_tree = ui.Tree(
@@ -487,7 +490,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         if item:
             if ui.show_question(f"Do you want to move table to position '{item.name}'?"):
                 x, y ,z = item.position
-                self.emit(self.absolute_move, x, y, z)
+                self.emit(self.absolute_move, Position(x, y, z))
 
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
@@ -615,22 +618,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             stretch=(0, 1)
         )
         self.positions_widget = TablePositionsWidget(
+            enabled=False,
             position_picked=self.on_position_picked,
             absolute_move=self.on_absolute_move
         )
         self.contacts_widget = TableContactsWidget(
+            enabled=False,
             position_picked=self.on_position_picked,
             absolute_move=self.on_absolute_move
         )
-        self.pos_x_label = PositionLabel()
-        self.pos_y_label = PositionLabel()
-        self.pos_z_label = PositionLabel()
-        self.cal_x_label = CalibrationLabel("cal")
-        self.cal_y_label = CalibrationLabel("cal")
-        self.cal_z_label = CalibrationLabel("cal")
-        self.rm_x_label = CalibrationLabel("rm")
-        self.rm_y_label = CalibrationLabel("rm")
-        self.rm_z_label = CalibrationLabel("rm")
+        self._position_widget = PositionWidget()
+        self._calibration_widget = CalibrationWidget()
         self.z_limit_label = PositionLabel()
         self.x_hard_limit_label = PositionLabel()
         self.y_hard_limit_label = PositionLabel()
@@ -739,42 +737,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                     stretch=(0, 1)
                 ),
                 ui.Column(
-                    ui.GroupBox(
-                        title="Position",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("X"),
-                                ui.Label("Y"),
-                                ui.Label("Z")
-                            ),
-                            ui.Column(
-                                self.pos_x_label,
-                                self.pos_y_label,
-                                self.pos_z_label
-                            )
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="Calibration",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("X"),
-                                ui.Label("Y"),
-                                ui.Label("Z")
-                            ),
-                            ui.Column(
-                                self.cal_x_label,
-                                self.cal_y_label,
-                                self.cal_z_label
-                            ),
-                            ui.Column(
-                                self.rm_x_label,
-                                self.rm_y_label,
-                                self.rm_z_label
-                            ),
-                            stretch=(1, 1)
-                        )
-                    ),
+                    self._position_widget,
+                    self._calibration_widget,
                     ui.GroupBox(
                         title="Soft Limits",
                         layout=ui.Row(
@@ -848,36 +812,23 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         return self.settings.get("table_step_sizes") or self.default_steps
 
     def reset_position(self):
-        self.update_position(float('nan'), float('nan'), float('nan'))
+        self.update_position(Position())
 
-    def update_position(self, x, y ,z):
-        self.current_position = x, y, z
-        self.pos_x_label.value = x
-        self.pos_y_label.value = y
-        self.pos_z_label.value = z
+    def update_position(self, position):
+        self.current_position = position
+        self._position_widget.update_position(position)
         self.update_limits()
         self.update_control_buttons()
 
     def reset_caldone(self):
-        self.cal_x_label.value = None
-        self.cal_y_label.value = None
-        self.cal_z_label.value = None
-        self.rm_x_label.value = None
-        self.rm_y_label.value = None
-        self.rm_z_label.value = None
+        self._calibration_widget.reset_calibration()
 
-    def update_caldone(self, x, y ,z):
-        self.current_caldone = x, y, z
-        def getcal(value):
-            return value & 0x1
-        def getrm(value):
-            return (value >> 1) & 0x1
-        self.cal_x_label.value = getcal(x)
-        self.cal_y_label.value = getcal(y)
-        self.cal_z_label.value = getcal(z)
-        self.rm_x_label.value = getrm(x)
-        self.rm_y_label.value = getrm(y)
-        self.rm_z_label.value = getrm(z)
+    def update_caldone(self, position):
+        self.current_caldone = position
+        self.positions_widget.enabled = caldone_valid(position)
+        self.contacts_widget.enabled = caldone_valid(position)
+        self.control_layout.enabled = caldone_valid(position)
+        self._calibration_widget.update_calibration(position)
 
     def update_limits(self):
         x, y, z = self.current_position
@@ -1001,11 +952,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         x, y, z = self.current_position
         callback(x, y, z)
 
-    def on_absolute_move(self, x, y, z):
-        z = safe_z_position(z)
+    def on_absolute_move(self, position):
+        z = safe_z_position(position.z)
         self.lock()
         self.stop_button.enabled = True
-        self.process.safe_absolute_move(x, y, z)
+        self.process.safe_absolute_move(position.x, position.y, position.z)
 
     def on_calibrate(self):
         self.lock()
@@ -1085,27 +1036,6 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.process.absolute_move_finished = None
             self.process.stopped = None
             self.process = None
-
-class CalibrationLabel(ui.Label):
-
-    def __init__(self, prefix, value=None):
-        super().__init__()
-        self.prefix = prefix
-        self.value = value
-
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        self.__value = value
-        if value is None:
-            self.text = format(float('nan'))
-            self.qt.setStyleSheet("")
-        else:
-            self.text = f"{self.prefix} {self.__value}"
-            self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
 
 class SwitchLabel(ui.Label):
 

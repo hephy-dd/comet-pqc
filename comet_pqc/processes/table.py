@@ -9,6 +9,7 @@ import comet
 from comet.resource import ResourceMixin
 from comet.driver.corvus import Venus1
 from ..settings import settings
+from ..position import Position
 
 from comet_pqc.utils import from_table_unit, to_table_unit
 
@@ -220,20 +221,20 @@ class AlternateTableProcess(TableProcess):
     @async_request
     def status(self, table):
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
         x, y, z = self._get_caldone(table)
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
         self.emit('joystick_changed', table.joystick)
 
     @async_request
     def position(self, table):
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
 
     @async_request
     def caldone(self, table):
         x, y, z = self._get_caldone(table)
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
 
     @async_request
     def joystick(self, table):
@@ -277,7 +278,7 @@ class AlternateTableProcess(TableProcess):
         error_handler.handle_calibration_error()
 
         x, y, z = self._get_position(table)
-        self.emit('position_changed', x, y, z)
+        self.emit('position_changed', Position(x, y, z))
 
         self.emit('relative_move_finished')
         self.emit("message_changed", "Ready")
@@ -319,10 +320,11 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit('position_changed', x, y, z)
+            self.emit('position_changed', Position(x, y, z))
 
         def update_caldone():
-            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
+            x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+            self.emit('caldone_changed', Position(x, y, z))
 
         handle_abort()
         update_caldone()
@@ -390,7 +392,7 @@ class AlternateTableProcess(TableProcess):
         self.emit("message_changed", "Movement successful.")
 
         x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
-        self.emit('caldone_changed', x, y, z)
+        self.emit('caldone_changed', Position(x, y, z))
 
         self.emit('absolute_move_finished')
 
@@ -413,10 +415,11 @@ class AlternateTableProcess(TableProcess):
         def update_status(x, y, z):
             x, y, z = [from_table_unit(v) for v in (x, y, z)]
             self.__cached_position = x, y, z
-            self.emit('position_changed', x, y, z)
+            self.emit('position_changed', Position(x, y, z))
 
         def update_caldone():
-            self.emit('caldone_changed', table.x.caldone, table.y.caldone, table.z.caldone)
+            x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
+            self.emit('caldone_changed', Position(x, y, z))
 
         def ncal(axis):
             index = axes.index(axis)

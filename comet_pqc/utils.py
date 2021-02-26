@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import traceback
+import math
 
 import numpy as np
 
@@ -145,3 +146,16 @@ def handle_exception(func):
             logging.error(tb)
             ui.show_exception(exc, tb)
     return catch_exception_wrapper
+
+def getcal(value):
+    if not math.isnan(value):
+        return int(value) & 0x1
+    return value
+
+def getrm(value):
+    if not math.isnan(value):
+        return (int(value) >> 1) & 0x1
+    return value
+
+def caldone_valid(position):
+    return all(getcal(value) == 1 and getrm(value) == 1 for value in position)

@@ -7,10 +7,10 @@ __all__ = [
 class Position:
     """Three-dimensional Cartesian coordinate."""
 
-    def __init__(self, x='nan', y='nan', z='nan'):
-        self._x = float(x)
-        self._y = float(y)
-        self._z = float(z)
+    def __init__(self, x=None, y=None, z=None):
+        self._x = float('nan') if x is None else float(x)
+        self._y = float('nan') if y is None else float(y)
+        self._z = float('nan') if z is None else float(z)
 
     @property
     def x(self):

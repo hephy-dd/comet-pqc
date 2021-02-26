@@ -205,7 +205,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("contact_name", self.measurement_item.contact.name)
         self.set_meta("measurement_name", self.measurement_item.name)
         self.set_meta("measurement_type", self.type)
-        self.set_meta("table_position", self.table_position)
+        self.set_meta("table_position", tuple(self.table_position))
         self.set_meta("start_timestamp", self.timestamp_iso)
         self.set_meta("operator", self.operator)
         self.set_meta("pqc_version", __version__)
