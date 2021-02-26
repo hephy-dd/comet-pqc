@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Restricted limits for joystick use (#123).
 - Show points in plot line series (#124).
+- Disable table controls if not calibrated (#125).
+### Changed
+- Move position assignment into edit dialog (#126).
 
 ## [0.29.2] - 2021-02-23
 ### Changed

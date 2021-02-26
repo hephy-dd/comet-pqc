@@ -12,6 +12,10 @@ nav_order: 10
 ### Added
 - Restricted limits for joystick use.
 - Show points in plot line series.
+- Disable table controls if not calibrated.
+
+### Changed
+- Move position assignment into edit dialog.
 
 ## 0.29.2
 
