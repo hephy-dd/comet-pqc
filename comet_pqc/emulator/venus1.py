@@ -5,7 +5,7 @@ from comet.emulator.corvus.venus1 import Venus1Handler
 
 class PQCVenus1Handler(Venus1Handler):
 
-    table_limits = [0.0, 0.0, 0.0, 1000000.0, 100000.0, 25000.0]
+    table_limits = (0.0, 0.0, 0.0, 1000000.0, 100000.0, 25000.0)
 
 
     @classmethod

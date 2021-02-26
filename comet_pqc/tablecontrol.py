@@ -269,57 +269,83 @@ class TablePositionItem(ui.TreeItem):
 
 class PositionDialog(ui.Dialog):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name_text = ui.Text(value="Unnamed")
-        self.x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self.y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self.z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self.comment_text = ui.Text()
-        self.button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
+    def __init__(self, position_picked=None, **kwargs):
+        super().__init__(**kwargs)
+        self.position_picked = position_picked
+        self._name_text = ui.Text(value="Unnamed")
+        self._x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self._y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self._z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
+        self._comment_text = ui.Text()
+        self._assign_button = ui.Button(
+            text="Assign Position",
+            tool_tip="Assign current table position.",
+            clicked=self.on_assign_clicked
+        )
+        self._button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
         self.layout = ui.Column(
             ui.Label("Name", tool_tip="Position name"),
-            self.name_text,
-            ui.Label("X", tool_tip="Position X coordinate"),
-            self.x_number,
-            ui.Label("Y", tool_tip="Position Y coordinate"),
-            self.y_number,
-            ui.Label("Z", tool_tip="Position Z coordinate"),
-            self.z_number,
+            self._name_text,
+            ui.Row(
+                ui.Column(
+                    ui.Label("X", tool_tip="Position X coordinate"),
+                    self._x_number
+                ),
+                ui.Column(
+                    ui.Label("Y", tool_tip="Position Y coordinate"),
+                    self._y_number
+                ),
+                ui.Column(
+                    ui.Label("Z", tool_tip="Position Z coordinate"),
+                    self._z_number
+                ),
+                ui.Column(
+                    ui.Spacer(),
+                    self._assign_button,
+                )
+            ),
             ui.Label("Comment", tool_tip="Optional position comment"),
-            self.comment_text,
-            self.button_box
+            self._comment_text,
+            ui.Spacer(),
+            self._button_box
         )
 
     @property
     def name(self):
-        return self.name_text.value
+        return self._name_text.value
 
     @name.setter
     def name(self, value):
-        self.name_text.value = value
+        self._name_text.value = value
 
     @property
     def position(self):
-        x = self.x_number.value
-        y = self.y_number.value
-        z = self.z_number.value
+        x = self._x_number.value
+        y = self._y_number.value
+        z = self._z_number.value
         return x, y, z
 
     @position.setter
     def position(self, value):
         x, y, z = value
-        self.x_number.value = x
-        self.y_number.value = y
-        self.z_number.value = z
+        self._x_number.value = x
+        self._y_number.value = y
+        self._z_number.value = z
 
     @property
     def comment(self):
-        return self.comment_text.value
+        return self._comment_text.value
 
     @comment.setter
     def comment(self, value):
-        self.comment_text.value = value
+        self._comment_text.value = value
+
+    def on_assign_clicked(self):
+        self.layout.enabled = False
+        def callback(x, y, z):
+            self.position = x, y, z
+            self.layout.enabled = True
+        self.emit(self.position_picked, callback)
 
 class TablePositionsWidget(ui.Row, SettingsMixin):
 
@@ -332,12 +358,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
             root_is_decorated=False,
             selected=self.on_position_selected,
             double_clicked=self.on_position_double_clicked
-        )
-        self.pick_button = ui.Button(
-            text="Assign &Position",
-            tool_tip="Assign current table position to selected position item",
-            clicked=self.on_pick_position,
-            enabled=False
         )
         self.add_button = ui.Button(
             text="&Add",
@@ -364,7 +384,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         )
         self.append(self.positions_tree)
         self.append(ui.Column(
-            self.pick_button,
             self.move_button,
             ui.Spacer(),
             self.add_button,
@@ -399,7 +418,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         settings.table_positions = positions
 
     def lock(self):
-        self.pick_button.enabled = False
         self.add_button.enabled = False
         self.edit_button.enabled = False
         self.remove_button.enabled = False
@@ -409,7 +427,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
 
     def unlock(self):
         enabled = self.positions_tree.current is not None
-        self.pick_button.enabled = enabled
         self.add_button.enabled = True
         self.edit_button.enabled = enabled
         self.remove_button.enabled = enabled
@@ -419,7 +436,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
 
     def on_position_selected(self, item):
         enabled = item is not None
-        self.pick_button.enabled = True
         self.edit_button.enabled = True
         self.remove_button.enabled = True
         self.move_button.enabled = True
@@ -427,17 +443,13 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_position_double_clicked(self, *args):
         self.on_move()
 
-    def on_pick_position(self):
-        item = self.positions_tree.current
-        if item:
-            if ui.show_question(f"Do you want to assign current position to '{item.name}'?"):
-                def callback(x, y, z):
-                    item.position = x, y, z
-                    self.positions_tree.fit()
-                self.emit(self.position_picked, callback)
+    def on_position_picked(self, callback):
+        self.emit(self.position_picked, callback)
 
     def on_add_position(self):
-        dialog = PositionDialog()
+        dialog = PositionDialog(
+            position_picked=self.on_position_picked
+        )
         if dialog.run():
             name = dialog.name
             x, y, z = dialog.position
@@ -448,7 +460,9 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_edit_position(self):
         item = self.positions_tree.current
         if item:
-            dialog = PositionDialog()
+            dialog = PositionDialog(
+                position_picked=self.on_position_picked
+            )
             dialog.name = item.name
             dialog.position = item.position
             dialog.comment = item.comment
@@ -464,7 +478,6 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
             if ui.show_question(f"Do you want to remove position '{item.name}'?"):
                 self.positions_tree.remove(item)
                 if not len(self.positions_tree):
-                    self.pick_button.enabled = False
                     self.edit_button.enabled = False
                     self.remove_button.enabled = False
                 self.positions_tree.fit()

@@ -208,7 +208,8 @@ class TableTab(PreferencesTab):
                     ),
                     ui.Spacer()
                 )
-            )
+            ),
+            stretch=(1, 0, 0, 0)
         )
 
     def on_position_selected(self, item):
