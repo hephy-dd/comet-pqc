@@ -766,6 +766,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measure.set("serialize_txt", self.export_txt())
         measure.set("move_to_contact", move_to_contact)
         measure.set("move_to_after_position", move_to_after_position)
+        measure.set("contact_delay", self.settings.get("table_contact_delay"))
         def show_measurement(item):
             item.selectable = True
             item.series.clear()

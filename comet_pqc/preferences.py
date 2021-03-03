@@ -132,19 +132,26 @@ class TableTab(PreferencesTab):
             suffix="mm",
             changed=self.on_z_limit_movement_changed
         )
-        def make_number():
+        def create_number():
             return ui.Number(
                 minimum=0,
                 maximum=1000.0,
                 decimals=3,
                 suffix="mm"
             )
-        self.probecard_limit_x_maximum_number = make_number()
-        self.probecard_limit_y_maximum_number = make_number()
-        self.probecard_limit_z_maximum_number = make_number()
-        self.joystick_limit_x_maximum_number = make_number()
-        self.joystick_limit_y_maximum_number = make_number()
-        self.joystick_limit_z_maximum_number = make_number()
+        self.probecard_limit_x_maximum_number = create_number()
+        self.probecard_limit_y_maximum_number = create_number()
+        self.probecard_limit_z_maximum_number = create_number()
+        self.joystick_limit_x_maximum_number = create_number()
+        self.joystick_limit_y_maximum_number = create_number()
+        self.joystick_limit_z_maximum_number = create_number()
+        self.probecard_contact_delay_number = ui.Number(
+            minimum=0,
+            maximum=3600,
+            decimals=2,
+            step=.1,
+            suffix="s"
+        )
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Control Steps (mm)",
@@ -209,7 +216,13 @@ class TableTab(PreferencesTab):
                     ui.Spacer()
                 )
             ),
-            stretch=(1, 0, 0, 0)
+            ui.GroupBox(
+                title="Probecard Contact Delay",
+                layout=ui.Row(
+                    self.probecard_contact_delay_number
+                )
+            ),
+            stretch=(1, 0, 0, 0, 0)
         )
 
     def on_position_selected(self, item):
@@ -276,6 +289,8 @@ class TableTab(PreferencesTab):
         self.joystick_limit_x_maximum_number.value = x
         self.joystick_limit_y_maximum_number.value = y
         self.joystick_limit_z_maximum_number.value = z
+        table_contact_delay = self.settings.get('table_contact_delay') or 0
+        self.probecard_contact_delay_number.value = table_contact_delay
 
     def store(self):
         table_step_sizes = []
@@ -299,6 +314,8 @@ class TableTab(PreferencesTab):
             self.joystick_limit_y_maximum_number.value,
             self.joystick_limit_z_maximum_number.value
         ]
+        table_contact_delay = self.probecard_contact_delay_number.value
+        self.settings['table_contact_delay'] = table_contact_delay
 
 class OptionsTab(PreferencesTab):
     """Options tab for preferences dialog."""

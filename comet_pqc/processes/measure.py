@@ -166,7 +166,8 @@ class MeasureProcess(BaseProcess):
 
     context = None
 
-    def __init__(self, message, progress, measurement_state=None, reading=None, save_to_image=None, push_summary=None, **kwargs):
+    def __init__(self, message, progress, measurement_state=None, reading=None,
+                 save_to_image=None, push_summary=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
@@ -184,7 +185,7 @@ class MeasureProcess(BaseProcess):
     def safe_move_table(self, position):
         table_process = self.processes.get("table")
         if table_process.running and table_process.enabled:
-            logging.info("safe move table to %s", position)
+            logging.info("Safe move table to %s", position)
             self.emit("message", "Moving table...")
             self.set("movement_finished", False)
             def absolute_move_finished():
@@ -196,7 +197,7 @@ class MeasureProcess(BaseProcess):
             table_process.safe_absolute_move(*position)
             while not self.get("movement_finished"):
                 time.sleep(.25)
-            logging.info("safe move table to %s... done.", position)
+            logging.info("Safe move table to %s... done.", position)
 
     def initialize(self):
         self.emit("message", "Initialize...")
@@ -281,6 +282,9 @@ class MeasureProcess(BaseProcess):
         self.set("movement_finished", False)
         if self.get("move_to_contact") and contact_item.has_position:
             self.safe_move_table(contact_item.position)
+            contact_delay = self.get("contact_delay") or 0
+            logging.info("Applying contact delay: %s s", contact_delay)
+            time.sleep(contact_delay)
         table_position = self.get("table_position")
         prev_measurement_item = None
         for measurement_item in contact_item.children:
