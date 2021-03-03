@@ -637,10 +637,11 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.start_contact_action.qt.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
-            panel.visible = True
-            panel.mount(item)
-            self.measurement_tab.measure_controls.visible = True
-            self.start_measurement_action.qt.setEnabled(True)
+            if panel:
+                panel.visible = True
+                panel.mount(item)
+                self.measurement_tab.measure_controls.visible = True
+                self.start_measurement_action.qt.setEnabled(True)
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 

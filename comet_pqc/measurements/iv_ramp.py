@@ -38,7 +38,13 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_parameter('voltage_start', unit='V', required=True)
         self.register_parameter('voltage_stop', unit='V', required=True)
         self.register_parameter('voltage_step', unit='V', required=True)
-        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('waiting_time', 1.0, unit='s')
+        self.register_parameter('voltage_step_before', comet.ureg('0 V'), unit='V')
+        self.register_parameter('waiting_time_before', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('voltage_step_after', comet.ureg('0 V'), unit='V')
+        self.register_parameter('waiting_time_after', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
+        self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_hvsource()
         self.register_environment()
@@ -52,6 +58,12 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
+        voltage_step_before = self.get_parameter('voltage_step_before') or self.get_parameter('voltage_step')
+        waiting_time_before = self.get_parameter('waiting_time_before')
+        voltage_step_after = self.get_parameter('voltage_step_after') or self.get_parameter('voltage_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
+        waiting_time_start = self.get_parameter('waiting_time_start')
+        waiting_time_end = self.get_parameter('waiting_time_end')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
 
         # Extend meta data
@@ -59,6 +71,12 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.set_meta("voltage_stop", f"{voltage_stop:G} V")
         self.set_meta("voltage_step", f"{voltage_step:G} V")
         self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("voltage_step_before", f"{voltage_step_before:G} V")
+        self.set_meta("waiting_time_before", f"{waiting_time_before:G} s")
+        self.set_meta("voltage_step_after", f"{voltage_step_after:G} V")
+        self.set_meta("waiting_time_after", f"{waiting_time_after:G} s")
+        self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
+        self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
         self.hvsrc_update_meta()
         self.environment_update_meta()
@@ -93,23 +111,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         self.process.emit("progress", 2, 4)
 
-        # If output enabled
-        if self.hvsrc_get_output_state(hvsrc):
-            voltage = self.hvsrc_get_voltage_level(hvsrc)
-
-            logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-            for voltage in comet.Range(voltage, 0, voltage_step):
-                self.process.emit("message", f"{voltage:.3f} V")
-                self.hvsrc_set_voltage_level(hvsrc, voltage)
-                time.sleep(QUICK_RAMP_DELAY)
-                if not self.process.running:
-                    break
-        # If output disabled
-        else:
-            voltage = 0
-            self.hvsrc_set_voltage_level(hvsrc, voltage)
-            self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
-            time.sleep(.100)
+        voltage = self.hvsrc_get_voltage_level(hvsrc)
+        self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
+        time.sleep(.100)
 
         self.process.emit("state", dict(
             hvsrc_voltage=voltage,
@@ -122,11 +126,11 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step)
-            for voltage in comet.Range(voltage, voltage_start, voltage_step):
+            logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
+            for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
-                time.sleep(QUICK_RAMP_DELAY)
+                time.sleep(waiting_time_before)
 
                 # Compliance tripped?
                 self.hvsrc_check_compliance(hvsrc)
@@ -138,6 +142,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             hvsrc_voltage=voltage,
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
+
+        # Waiting time before measurement ramp.
+        time.sleep(waiting_time_start)
 
         self.process.emit("progress", 4, 4)
 
@@ -205,7 +212,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.process.emit("progress", 0, 0)
 
     def analyze(self, **kwargs):
-        self.process.emit("progress", 1, 2)
+        self.process.emit("progress", 0, 1)
 
         status = None
 
@@ -225,8 +232,12 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
                         self.process.emit("reading", "xfit", x, y)
                     self.process.emit("update")
 
+        self.process.emit("progress", 1, 1)
+
     def finalize(self, hvsrc):
-        voltage_step = self.get_parameter('voltage_step')
+        voltage_step_after = self.get_parameter('voltage_step_after') or self.get_parameter('voltage_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
+        waiting_time_end = self.get_parameter('waiting_time_end')
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
@@ -236,14 +247,17 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
-        logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step)
-        for voltage in comet.Range(voltage, 0, voltage_step):
+        logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
+        for voltage in comet.Range(voltage, 0, voltage_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage
             ))
-            time.sleep(QUICK_RAMP_DELAY)
+            time.sleep(waiting_time_after)
+
+        # Waiting time after ramp down.
+        time.sleep(waiting_time_end)
 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 

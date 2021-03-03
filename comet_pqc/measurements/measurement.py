@@ -219,9 +219,6 @@ class Measurement(ResourceMixin, ProcessMixin):
     def measure(self, **kwargs):
         pass
 
-    def analyze(self, **kwargs):
-        pass
-
     def before_finalize(self, **kwargs):
         pass
 
@@ -229,6 +226,9 @@ class Measurement(ResourceMixin, ProcessMixin):
         pass
 
     def after_finalize(self, **kwargs):
+        pass
+
+    def analyze(self, **kwargs):
         pass
 
     def run(self, **kwargs):
@@ -249,12 +249,6 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.measure(**kwargs)
         self.process.emit("message", "Measure... done.")
 
-    @annotate_step("Analyze")
-    def __analyze(self, **kwargs):
-        self.process.emit("message", "Analyze...")
-        self.analyze(**kwargs)
-        self.process.emit("message", "Analyze... done.")
-
     @annotate_step("Finalize")
     def __finalize(self, **kwargs):
         self.process.emit("message", "Finalize...")
@@ -262,6 +256,12 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.finalize(**kwargs)
         self.after_finalize(**kwargs) # is not executed on error
         self.process.emit("message", "Finalize... done.")
+
+    @annotate_step("Analyze")
+    def __analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
+        self.analyze(**kwargs)
+        self.process.emit("message", "Analyze... done.")
 
     def __run(self, **kwargs):
         """Run measurement.
@@ -274,6 +274,6 @@ class Measurement(ResourceMixin, ProcessMixin):
             self.__measure(**kwargs)
         finally:
             try:
-                self.__analyze(**kwargs)
-            finally:
                 self.__finalize(**kwargs)
+            finally:
+                self.__analyze(**kwargs)

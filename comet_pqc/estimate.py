@@ -20,7 +20,6 @@ class Estimate:
         self.reset(count)
 
     def reset(self, count):
-        assert count > 0
         self._count = count
         self._deltas = []
         self._start = datetime.datetime.now()

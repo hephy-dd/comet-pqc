@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.31.0
+
+### Added
+- Delay after automatic table contact.
+- Optional ramp delay parameters.
+
 ## 0.30.0
 
 ### Added

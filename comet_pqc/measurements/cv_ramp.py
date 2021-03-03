@@ -33,7 +33,13 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.register_parameter('bias_voltage_start', unit='V', required=True)
         self.register_parameter('bias_voltage_stop', unit='V', required=True)
         self.register_parameter('bias_voltage_step', unit='V', required=True)
-        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('waiting_time', 1.0, unit='s')
+        self.register_parameter('bias_voltage_step_before', comet.ureg('0 V'), unit='V')
+        self.register_parameter('waiting_time_before', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('bias_voltage_step_after', comet.ureg('0 V'), unit='V')
+        self.register_parameter('waiting_time_after', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
+        self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
         self.register_hvsource()
         self.register_lcr()
@@ -45,7 +51,8 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.process.emit("message", "Ramp to zero...")
         self.process.emit("progress", 0, 1)
 
-        bias_voltage_step = self.get_parameter('bias_voltage_step')
+        bias_voltage_step_after = self.get_parameter('bias_voltage_step_after') or self.get_parameter('bias_voltage_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
 
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
@@ -53,14 +60,14 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         ))
         if hvsrc_output_state:
             hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
-            ramp = comet.Range(hvsrc_voltage_level, 0, bias_voltage_step)
+            ramp = comet.Range(hvsrc_voltage_level, 0, bias_voltage_step_after)
             for step, voltage in enumerate(ramp):
                 self.process.emit("progress", step + 1, ramp.count)
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage
                 ))
-                time.sleep(QUICK_RAMP_DELAY)
+                time.sleep(waiting_time_after)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
             hvsrc_output=hvsrc_output_state
@@ -76,6 +83,12 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         bias_voltage_step = self.get_parameter('bias_voltage_step')
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
+        bias_voltage_step_before = self.get_parameter('bias_voltage_step_before') or self.get_parameter('bias_voltage_step')
+        waiting_time_before = self.get_parameter('waiting_time_before')
+        bias_voltage_step_after = self.get_parameter('bias_voltage_step_after') or self.get_parameter('bias_voltage_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
+        waiting_time_start = self.get_parameter('waiting_time_start')
+        waiting_time_end = self.get_parameter('waiting_time_end')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
 
         # Extend meta data
@@ -83,6 +96,12 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.set_meta("bias_voltage_stop", f"{bias_voltage_stop:G} V")
         self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
         self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("bias_voltage_step_before", f"{bias_voltage_step_before:G} V")
+        self.set_meta("waiting_time_before", f"{waiting_time_before:G} s")
+        self.set_meta("bias_voltage_step_after", f"{bias_voltage_step_after:G} V")
+        self.set_meta("waiting_time_after", f"{waiting_time_after:G} s")
+        self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
+        self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
         self.hvsrc_update_meta()
         self.lcr_update_meta()
@@ -129,30 +148,19 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         # Initialize LCR
 
         self.lcr_reset(lcr)
-        self.process.emit("progress", 5, 6)
-
         self.lcr_setup(lcr)
-        self.process.emit("progress", 6, 6)
 
-    def measure(self, hvsrc, lcr):
-        self.process.emit("progress", 1, 2)
-        # Parameters
-        bias_voltage_start = self.get_parameter('bias_voltage_start')
-        bias_voltage_step = self.get_parameter('bias_voltage_step')
-        bias_voltage_stop = self.get_parameter('bias_voltage_stop')
-        waiting_time = self.get_parameter('waiting_time')
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+        self.process.emit("progress", 5, 6)
 
         # Ramp to start voltage
 
         hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step)
-        for voltage in comet.Range(hvsrc_voltage_level, bias_voltage_start, bias_voltage_step):
+        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step_before)
+        for voltage in comet.Range(hvsrc_voltage_level, bias_voltage_start, bias_voltage_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
-            time.sleep(QUICK_RAMP_DELAY)
+            time.sleep(waiting_time_before)
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
             ))
@@ -162,6 +170,20 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
             if not self.process.running:
                 break
+
+        # Waiting time before measurement ramp.
+        time.sleep(waiting_time_start)
+
+        self.process.emit("progress", 6, 6)
+
+    def measure(self, hvsrc, lcr):
+        self.process.emit("progress", 1, 2)
+        # Parameters
+        bias_voltage_step = self.get_parameter('bias_voltage_step')
+        bias_voltage_stop = self.get_parameter('bias_voltage_stop')
+        waiting_time = self.get_parameter('waiting_time')
+        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        lcr_soft_filter = self.get_parameter('lcr_soft_filter')
 
         if not self.process.running:
             return
@@ -276,11 +298,17 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
     def finalize(self, hvsrc, lcr):
         self.process.emit("progress", 1, 2)
+        waiting_time_end = self.get_parameter('waiting_time_end')
+
         self.process.emit("state", dict(
             hvsrc_current=None,
         ))
 
         self.quick_ramp_zero(hvsrc)
+
+        # Waiting time after ramp down.
+        time.sleep(waiting_time_end)
+
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)
         self.process.emit("state", dict(
