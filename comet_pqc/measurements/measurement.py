@@ -2,6 +2,7 @@ import datetime
 import logging
 import time
 import json
+import math
 
 import numpy as np
 
@@ -193,6 +194,24 @@ class Measurement(ResourceMixin, ProcessMixin):
                     row[key] = series.get(key)[i]
                 fmt.write_row(row)
         fmt.flush()
+
+    def wait(self, seconds, interval=1.0):
+        logging.info("Waiting %s s...", seconds)
+        interval = abs(interval)
+        steps = math.ceil(seconds / interval)
+        remaining = seconds
+        self.process.emit("message", f"Waiting {seconds} s...")
+        for step in range(steps):
+            self.process.emit("progress", step + 1, steps)
+            if remaining >= interval:
+                time.sleep(interval)
+            else:
+                time.sleep(remaining)
+            remaining -= interval
+            if not self.process.running:
+                return
+        logging.info("Waiting %s s... done.", seconds)
+        self.process.emit("message", "")
 
     def before_initialize(self, **kwargs):
         self.data.clear()

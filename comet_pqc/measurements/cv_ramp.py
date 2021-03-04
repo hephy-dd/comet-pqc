@@ -172,7 +172,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                 break
 
         # Waiting time before measurement ramp.
-        time.sleep(waiting_time_start)
+        self.wait(waiting_time_start)
 
         self.process.emit("progress", 6, 6)
 
@@ -307,7 +307,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         self.quick_ramp_zero(hvsrc)
 
         # Waiting time after ramp down.
-        time.sleep(waiting_time_end)
+        self.wait(waiting_time_end)
 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
         hvsrc_output_state = self.hvsrc_get_output_state(hvsrc)

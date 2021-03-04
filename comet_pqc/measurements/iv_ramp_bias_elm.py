@@ -262,7 +262,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 break
 
         # Waiting time before measurement ramp.
-        time.sleep(waiting_time_start)
+        self.wait(waiting_time_start)
 
         self.process.emit("progress", 5, 5)
 
@@ -451,7 +451,7 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 time.sleep(waiting_time_after)
 
             # Waiting time after ramp down.
-            time.sleep(waiting_time_end)
+            self.wait(waiting_time_end)
 
             self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
             self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)

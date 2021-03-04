@@ -144,7 +144,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         ))
 
         # Waiting time before measurement ramp.
-        time.sleep(waiting_time_start)
+        self.wait(waiting_time_start)
 
         self.process.emit("progress", 4, 4)
 
@@ -257,7 +257,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             time.sleep(waiting_time_after)
 
         # Waiting time after ramp down.
-        time.sleep(waiting_time_end)
+        self.wait(waiting_time_end)
 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 

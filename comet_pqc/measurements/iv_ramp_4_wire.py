@@ -154,7 +154,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
                 break
 
         # Waiting time before measurement ramp.
-        time.sleep(waiting_time_start)
+        self.wait(waiting_time_start)
 
         self.process.emit("progress", 5, 5)
 
@@ -270,7 +270,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             time.sleep(waiting_time_after)
 
         # Waiting time after ramp down.
-        time.sleep(waiting_time_end)
+        self.wait(waiting_time_end)
 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
         self.vsrc_check_error(vsrc)

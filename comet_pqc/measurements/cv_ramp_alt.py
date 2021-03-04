@@ -156,7 +156,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                 break
 
         # Waiting time before measurement ramp.
-        time.sleep(waiting_time_start)
+        self.wait(waiting_time_start)
 
     def measure(self, lcr):
         self.process.emit("progress", 1, 2)
@@ -287,7 +287,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
         self.quick_ramp_zero(lcr)
 
         # Waiting time after ramp down.
-        time.sleep(waiting_time_end)
+        self.wait(waiting_time_end)
 
         self.lcr_set_bias_state(lcr, False)
         self.process.emit("state", dict(
