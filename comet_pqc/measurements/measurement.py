@@ -15,8 +15,6 @@ from ..formatter import PQCFormatter
 
 __all__ = ['Measurement']
 
-QUICK_RAMP_DELAY = 0.100
-
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -121,6 +119,18 @@ class Measurement(ResourceMixin, ProcessMixin):
             key, default, values, unit, type, required
         )
 
+    def validate_parameters(self):
+        for key in self.measurement_item.default_parameters.keys():
+            if key not in self.registered_parameters:
+                logging.warning("Unknown parameter: %s", key)
+        missing_keys = []
+        for key, parameter in self.registered_parameters.items():
+            if parameter.required:
+                if key not in self.measurement_item.parameters:
+                    missing_keys.append(key)
+        if missing_keys:
+            ValueError(f"missing required parameter(s): {missing_keys}")
+
     def get_parameter(self, key):
         """Get measurement parameter."""
         if key not in self.registered_parameters:
@@ -214,6 +224,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.process.emit("message", "")
 
     def before_initialize(self, **kwargs):
+        self.validate_parameters()
         self.data.clear()
         self.data[self.KEY_META] = {}
         self.data[self.KEY_SERIES_UNITS] = {}

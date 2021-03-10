@@ -15,7 +15,6 @@ from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import VSourceMixin
 from .mixins import LCRMixin
@@ -68,7 +67,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 self.process.emit("state", dict(
                     vsrc_voltage=voltage
                 ))
-                time.sleep(QUICK_RAMP_DELAY)
+                time.sleep(waiting_time_after)
         self.process.emit("state", dict(
             vsrc_output=self.vsrc_get_output_state(vsrc)
         ))

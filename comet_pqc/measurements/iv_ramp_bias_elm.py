@@ -14,7 +14,6 @@ from ..benchmark import Benchmark
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import HVSourceMixin
 from .mixins import VSourceMixin

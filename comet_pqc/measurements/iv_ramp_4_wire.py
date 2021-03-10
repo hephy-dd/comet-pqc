@@ -12,7 +12,6 @@ from ..estimate import Estimate
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
