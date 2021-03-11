@@ -202,7 +202,7 @@ class TableContactsWidget(ui.Row):
         current_item = self.contacts_tree.current
         if isinstance(current_item, TableContactItem):
             if current_item.has_position:
-                if ui.show_question(f"Do you want to move tabel to contact {current_item.name}?"):
+                if ui.show_question(f"Do you want to move table to contact {current_item.name}?"):
                     x, y, z = current_item.position
                     self.emit(self.absolute_move, Position(x, y, z))
 

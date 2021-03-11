@@ -2,6 +2,7 @@ import datetime
 import logging
 import time
 import json
+import math
 
 import numpy as np
 
@@ -13,8 +14,6 @@ from .. import __version__
 from ..formatter import PQCFormatter
 
 __all__ = ['Measurement']
-
-QUICK_RAMP_DELAY = 0.100
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -120,6 +119,18 @@ class Measurement(ResourceMixin, ProcessMixin):
             key, default, values, unit, type, required
         )
 
+    def validate_parameters(self):
+        for key in self.measurement_item.default_parameters.keys():
+            if key not in self.registered_parameters:
+                logging.warning("Unknown parameter: %s", key)
+        missing_keys = []
+        for key, parameter in self.registered_parameters.items():
+            if parameter.required:
+                if key not in self.measurement_item.parameters:
+                    missing_keys.append(key)
+        if missing_keys:
+            ValueError(f"missing required parameter(s): {missing_keys}")
+
     def get_parameter(self, key):
         """Get measurement parameter."""
         if key not in self.registered_parameters:
@@ -194,7 +205,26 @@ class Measurement(ResourceMixin, ProcessMixin):
                 fmt.write_row(row)
         fmt.flush()
 
+    def wait(self, seconds, interval=1.0):
+        logging.info("Waiting %s s...", seconds)
+        interval = abs(interval)
+        steps = math.ceil(seconds / interval)
+        remaining = seconds
+        self.process.emit("message", f"Waiting {seconds} s...")
+        for step in range(steps):
+            self.process.emit("progress", step + 1, steps)
+            if remaining >= interval:
+                time.sleep(interval)
+            else:
+                time.sleep(remaining)
+            remaining -= interval
+            if not self.process.running:
+                return
+        logging.info("Waiting %s s... done.", seconds)
+        self.process.emit("message", "")
+
     def before_initialize(self, **kwargs):
+        self.validate_parameters()
         self.data.clear()
         self.data[self.KEY_META] = {}
         self.data[self.KEY_SERIES_UNITS] = {}
@@ -219,9 +249,6 @@ class Measurement(ResourceMixin, ProcessMixin):
     def measure(self, **kwargs):
         pass
 
-    def analyze(self, **kwargs):
-        pass
-
     def before_finalize(self, **kwargs):
         pass
 
@@ -229,6 +256,9 @@ class Measurement(ResourceMixin, ProcessMixin):
         pass
 
     def after_finalize(self, **kwargs):
+        pass
+
+    def analyze(self, **kwargs):
         pass
 
     def run(self, **kwargs):
@@ -249,12 +279,6 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.measure(**kwargs)
         self.process.emit("message", "Measure... done.")
 
-    @annotate_step("Analyze")
-    def __analyze(self, **kwargs):
-        self.process.emit("message", "Analyze...")
-        self.analyze(**kwargs)
-        self.process.emit("message", "Analyze... done.")
-
     @annotate_step("Finalize")
     def __finalize(self, **kwargs):
         self.process.emit("message", "Finalize...")
@@ -262,6 +286,12 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.finalize(**kwargs)
         self.after_finalize(**kwargs) # is not executed on error
         self.process.emit("message", "Finalize... done.")
+
+    @annotate_step("Analyze")
+    def __analyze(self, **kwargs):
+        self.process.emit("message", "Analyze...")
+        self.analyze(**kwargs)
+        self.process.emit("message", "Analyze... done.")
 
     def __run(self, **kwargs):
         """Run measurement.
@@ -274,6 +304,6 @@ class Measurement(ResourceMixin, ProcessMixin):
             self.__measure(**kwargs)
         finally:
             try:
-                self.__analyze(**kwargs)
-            finally:
                 self.__finalize(**kwargs)
+            finally:
+                self.__analyze(**kwargs)

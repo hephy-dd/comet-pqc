@@ -637,10 +637,11 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             self.start_contact_action.qt.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
-            panel.visible = True
-            panel.mount(item)
-            self.measurement_tab.measure_controls.visible = True
-            self.start_measurement_action.qt.setEnabled(True)
+            if panel:
+                panel.visible = True
+                panel.mount(item)
+                self.measurement_tab.measure_controls.visible = True
+                self.start_measurement_action.qt.setEnabled(True)
         # Show measurement tab
         self.tab_widget.current = self.measurement_tab
 
@@ -765,6 +766,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measure.set("serialize_txt", self.export_txt())
         measure.set("move_to_contact", move_to_contact)
         measure.set("move_to_after_position", move_to_after_position)
+        measure.set("contact_delay", self.settings.get("table_contact_delay"))
         def show_measurement(item):
             item.selectable = True
             item.series.clear()
@@ -912,9 +914,9 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
                 dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
-                dialog.update_probecard_light(pc_data.relay_states.box_light)
-                dialog.update_microscope_light(pc_data.relay_states.probecard_light)
-                dialog.update_box_light(pc_data.relay_states.microscope_light)
+                dialog.update_probecard_light(pc_data.relay_states.probecard_light)
+                dialog.update_microscope_light(pc_data.relay_states.microscope_light)
+                dialog.update_box_light(pc_data.relay_states.box_light)
             dialog.update_lights_enabled(True)
             def probecard_light_toggled(state):
                 with self.environ_process as environ:

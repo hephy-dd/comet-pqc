@@ -33,7 +33,13 @@ Type: `iv_ramp`
 |`voltage_start`            |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`             |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_step`             |`volt`   |required |Step voltage for HV Source ramp (`1 mV` to `100 V`). |
-|`waiting_time`             |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
+|`waiting_time`             |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`voltage_step_before`      |`volt`   |`voltage_step` ||
+|`waiting_time_before`      |`second` |`100 ms` ||
+|`voltage_step_after`       |`volt`   |`voltage_step` ||
+|`waiting_time_after`       |`second` |`100 ms` ||
+|`waiting_time_start`       |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`         |`second` |`0 s`    |Additional delay after final ramp down. |
 |`hvsrc_current_compliance` |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`).|
 |`hvsrc_sense_mode`         |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`     |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
@@ -94,7 +100,13 @@ Type: `iv_ramp_elm`
 |`voltage_start`               |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`                |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_step`                |`volt`   |required |Step voltage for HV Source ramp (`1 mV` to `100 V`). |
-|`waiting_time`                |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`voltage_step_before`         |`volt`   |`voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`voltage_step_after`          |`volt`   |`voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`hvsrc_current_compliance`    |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`). |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
@@ -171,7 +183,13 @@ Type: `iv_ramp_4_wire`
 |`current_start`           |`ampere` |required |Start current for V Source ramp. (`-250 mA` to `250 mA`). |
 |`current_stop`            |`ampere` |required |End current for V Source ramp. (`-250 mA` to `250 mA`). |
 |`current_step`            |`ampere` |required |Step current for V Source ramp (`1 nA` to `250 mA`). |
-|`waiting_time`            |`second` |`1 s`    |Additional waiting time between ramp steps (`100 ms` to `3600 s`). |
+|`waiting_time`            |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`current_step_before`     |`ampere`   |`current_step` ||
+|`waiting_time_before`     |`second` |`100 ms` ||
+|`current_step_after`      |`ampere`   |`current_step` ||
+|`waiting_time_after`      |`second` |`100 ms` ||
+|`waiting_time_start`      |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`        |`second` |`0 s`    |Additional delay after final ramp down. |
 |`vsrc_current_compliance` |`volt`   |required |V Source current compliance (`1 mV` to `1000 V`). |
 |`vsrc_sense_mode`         |`str`    |`local`  |V Source sense mode. Possible values are: `local`, `remote`. |
 |`vsrc_route_terminal`     |`str`    |`rear`   |V Source route terminal. Possible values are: `front`, `rear`. |
@@ -230,6 +248,13 @@ Type: `iv_ramp_bias`
 |`voltage_start`               |`volt`   |`0`      | |
 |`voltage_stop`                |`volt`   |`-100 V` | |
 |`voltage_step`                |`volt`   |`10 V`   | |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`voltage_step_before`         |`volt`   |`voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`voltage_step_after`          |`volt`   |`voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`bias_voltage_source`         |`str`    |`hvsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
@@ -290,6 +315,13 @@ Type: `iv_ramp_bias_elm`
 |`voltage_start`               |`volt`   |`0`      | |
 |`voltage_stop`                |`volt`   |`-100 V` | |
 |`voltage_step`                |`volt`   |`10 V`   | |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`voltage_step_before`         |`volt`   |`voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`voltage_step_after`          |`volt`   |`voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`bias_voltage_source`         |`str`    |`hvsrc`  |Possible values are: `hvsrc`, `vsrc`. |
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
@@ -363,7 +395,13 @@ Type: `cv_ramp`
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
 |`bias_voltage_stop`           |`volt`   |required | |
-|`waiting_time`                |`second` |`1 s`    | |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`bias_voltage_step_before`    |`volt`   |`bias_voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`bias_voltage_step_after`     |`volt`   |`bias_voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`hvsrc_current_compliance`    |`ampere` |`1 uA`   | |
 |`hvsrc_route_terminal`        |`str`    |`rear`   | |
 |`hvsrc_sense_mode`            |`str`    |`local`  | Possible values are: `local`, `remote`.
@@ -443,7 +481,13 @@ Type: `cv_ramp_vsrc`
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
 |`bias_voltage_stop`           |`volt`   |required | |
-|`waiting_time`                |`second` |`1 s`    | |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`bias_voltage_step_before`    |`volt`   |`bias_voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`bias_voltage_step_after`     |`volt`   |`bias_voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`vsrc_current_compliance`     |`ampere` |`1 uA`   | |
 |`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
@@ -519,7 +563,13 @@ Type: `cv_ramp_alt`
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
 |`bias_voltage_stop`           |`volt`   |required | |
-|`waiting_time`                |`second` |`1 s`    | |
+|`waiting_time`                |`second` |`1 s`    |Additional delay between ramp steps (`0 ms` to `3600 s`). |
+|`bias_voltage_step_before`    |`volt`   |`bias_voltage_step` ||
+|`waiting_time_before`         |`second` |`100 ms` ||
+|`bias_voltage_step_after`     |`volt`   |`bias_voltage_step` ||
+|`waiting_time_after`          |`second` |`100 ms` ||
+|`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
+|`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`lcr_soft_filter`             |`bool`   |`true`   |Apply software STD/mean<0.005 filter. |
 |`lcr_frequency`               |`herz`   |`1 kHz`  |Possible range from `1 Hz` to `25 kHz`. |
 |`lcr_amplitude`               |`volt`   |`250 mV` | |

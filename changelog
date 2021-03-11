@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2021-03-03
+### Added
+- Delay after automatic table contact (#128).
+- Optional ramp delay parameters (#102).
+
 ## [0.30.0] - 2021-02-24
 ### Added
 - Restricted limits for joystick use (#123).
@@ -205,7 +210,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.30.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.31.0...HEAD
+[0.31.0]: https://github.com/hephy-dd/comet-pqc/compare/0.30.0...0.31.0
 [0.30.0]: https://github.com/hephy-dd/comet-pqc/compare/0.29.2...0.30.0
 [0.29.2]: https://github.com/hephy-dd/comet-pqc/compare/0.29.1...0.29.2
 [0.29.1]: https://github.com/hephy-dd/comet-pqc/compare/0.29.0...0.29.1

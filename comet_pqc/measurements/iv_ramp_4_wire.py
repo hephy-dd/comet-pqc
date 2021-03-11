@@ -12,7 +12,6 @@ from ..estimate import Estimate
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .measurement import QUICK_RAMP_DELAY
 
 from .mixins import VSourceMixin
 from .mixins import EnvironmentMixin
@@ -39,7 +38,13 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.register_parameter('current_start', unit='A', required=True)
         self.register_parameter('current_stop', unit='A', required=True)
         self.register_parameter('current_step', unit='A', required=True)
-        self.register_parameter('waiting_time', unit='s', required=True)
+        self.register_parameter('waiting_time', 1.0, unit='s')
+        self.register_parameter('current_step_before', comet.ureg('0 A'), unit='A')
+        self.register_parameter('waiting_time_before', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('current_step_after', comet.ureg('0 A'), unit='A')
+        self.register_parameter('waiting_time_after', comet.ureg('100 ms'), unit='s')
+        self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
+        self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('vsrc_voltage_compliance', unit='V', required=True)
         self.register_vsource()
         self.register_environment()
@@ -53,6 +58,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         current_stop = self.get_parameter('current_stop')
         current_step = self.get_parameter('current_step')
         waiting_time = self.get_parameter('waiting_time')
+        current_step_before = self.get_parameter('current_step_before') or self.get_parameter('current_step')
+        waiting_time_before = self.get_parameter('waiting_time_before')
+        current_step_after = self.get_parameter('current_step_after') or self.get_parameter('current_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
+        waiting_time_start = self.get_parameter('waiting_time_start')
+        waiting_time_end = self.get_parameter('waiting_time_end')
         vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
@@ -64,6 +75,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.set_meta("current_stop", f"{current_stop:G} A")
         self.set_meta("current_step", f"{current_step:G} A")
         self.set_meta("waiting_time", f"{waiting_time:G} s")
+        self.set_meta("current_step_before", f"{current_step_before:G} A")
+        self.set_meta("waiting_time_before", f"{waiting_time_before:G} s")
+        self.set_meta("current_step_after", f"{current_step_after:G} A")
+        self.set_meta("waiting_time_after", f"{waiting_time_after:G} s")
+        self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
+        self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
         self.vsrc_update_meta()
         self.environment_update_meta()
@@ -117,25 +134,26 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         self.process.emit("progress", 4, 5)
 
-        if self.process.running:
+        current = self.vsrc_get_current_level(vsrc)
 
-            current = self.vsrc_get_current_level(vsrc)
+        logging.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step_before)
+        for current in comet.Range(current, current_start, current_step_before):
+            self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
+            self.vsrc_set_current_level(vsrc, current)
+            time.sleep(waiting_time_before)
 
-            logging.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step)
-            for current in comet.Range(current, current_start, current_step):
-                self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
-                self.vsrc_set_current_level(vsrc, current)
-                time.sleep(QUICK_RAMP_DELAY)
+            self.process.emit("state", dict(
+                vsrc_current=current,
+            ))
 
-                self.process.emit("state", dict(
-                    vsrc_current=current,
-                ))
+            # Compliance tripped?
+            self.vsrc_check_compliance(vsrc)
 
-                # Compliance tripped?
-                self.vsrc_check_compliance(vsrc)
+            if not self.process.running:
+                break
 
-                if not self.process.running:
-                    break
+        # Waiting time before measurement ramp.
+        self.wait(waiting_time_start)
 
         self.process.emit("progress", 5, 5)
 
@@ -206,7 +224,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
                 break
 
     def analyze(self, **kwargs):
-        self.process.emit("progress", 1, 2)
+        self.process.emit("progress", 0, 1)
 
         status = None
 
@@ -226,7 +244,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
                         self.process.emit("reading", "xfit", x, y)
                     self.process.emit("update")
 
-        self.process.emit("progress", 2, 2)
+        self.process.emit("progress", 1, 1)
 
     def finalize(self, vsrc):
         self.process.emit("progress", 1, 2)
@@ -235,17 +253,23 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             vsrc_voltage=None
         ))
 
-        current_step = self.get_parameter('current_step')
+        current_step_after = self.get_parameter('current_step_after') or self.get_parameter('current_step')
+        waiting_time_after = self.get_parameter('waiting_time_after')
+        waiting_time_end = self.get_parameter('waiting_time_end')
+
         current = self.vsrc_get_current_level(vsrc)
 
-        logging.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step)
-        for current in comet.Range(current, 0, current_step):
+        logging.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step_after)
+        for current in comet.Range(current, 0, current_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", dict(
                 vsrc_current=current,
             ))
-            time.sleep(QUICK_RAMP_DELAY)
+            time.sleep(waiting_time_after)
+
+        # Waiting time after ramp down.
+        self.wait(waiting_time_end)
 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
         self.vsrc_check_error(vsrc)
