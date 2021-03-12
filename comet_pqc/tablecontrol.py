@@ -6,8 +6,6 @@ import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
 
-from comet_pqc.utils import format_table_unit
-from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.utils import format_metric
 
 from .components import PositionLabel
@@ -953,7 +951,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         callback(x, y, z)
 
     def on_absolute_move(self, position):
-        z = safe_z_position(position.z)
+        # Update to safe Z position
+        position = Position(position.x, position.y, safe_z_position(position.z))
         self.lock()
         self.stop_button.enabled = True
         self.process.safe_absolute_move(position.x, position.y, position.z)
