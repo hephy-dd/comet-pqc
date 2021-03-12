@@ -40,6 +40,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
         self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_accept_compliance', False, type=bool)
         self.register_vsource()
         self.register_lcr()
         self.register_environment()
@@ -88,6 +89,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         waiting_time_start = self.get_parameter('waiting_time_start')
         waiting_time_end = self.get_parameter('waiting_time_end')
         vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         # Extend meta data
         self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
@@ -101,6 +103,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("vsrc_accept_compliance", vsrc_accept_compliance)
         self.vsrc_update_meta()
         self.lcr_update_meta()
         self.environment_update_meta()
@@ -185,6 +188,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
         lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         if not self.process.running:
             return
@@ -268,7 +272,12 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 )
 
                 # Compliance tripped?
-                self.vsrc_check_compliance(vsrc)
+                if vsrc_accept_compliance:
+                    if self.vsrc_compliance_tripped(vsrc):
+                        logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                        break
+                else:
+                    self.vsrc_check_compliance(vsrc)
 
                 if not self.process.running:
                     break

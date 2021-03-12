@@ -31,12 +31,14 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.current_step = ui.Number(minimum=0, decimals=3, suffix="uA")
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
         self.vsrc_voltage_compliance = ui.Number(decimals=3, suffix="V")
+        self.vsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.bind("current_start", self.current_start, 0, unit="uA")
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("vsrc_voltage_compliance", self.vsrc_voltage_compliance, 0, unit="V")
+        self.bind("vsrc_accept_compliance", self.vsrc_accept_compliance, False)
 
         self.general_tab.layout = ui.Row(
             ui.GroupBox(
@@ -58,6 +60,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 layout=ui.Column(
                     ui.Label(text="Compliance"),
                     self.vsrc_voltage_compliance,
+                    self.vsrc_accept_compliance,
                     ui.Spacer()
                 )
             ),

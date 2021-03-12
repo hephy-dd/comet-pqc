@@ -39,7 +39,9 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.register_parameter('bias_voltage', unit='V', required=True)
         self.register_parameter('bias_mode', 'constant', values=('constant', 'offset'))
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_accept_compliance', False, type=bool)
         self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_accept_compliance', False, type=bool)
         self.register_hvsource()
         self.register_vsource()
         self.register_environment()
@@ -62,7 +64,9 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         bias_voltage = self.get_parameter('bias_voltage')
         bias_mode = self.get_parameter('bias_mode')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
         vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         # Extend meta data
         self.set_meta("voltage_start", f"{voltage_start:G} V")
@@ -77,8 +81,10 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("bias_voltage", f"{bias_voltage:G} V")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_accept_compliance", hvsrc_accept_compliance)
         self.hvsrc_update_meta()
         self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("vsrc_accept_compliance", vsrc_accept_compliance)
         self.vsrc_update_meta()
         self.environment_update_meta()
 
@@ -194,6 +200,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         waiting_time = self.get_parameter('waiting_time')
         bias_voltage = self.get_parameter('bias_voltage')
         bias_mode = self.get_parameter('bias_mode')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         if not self.process.running:
             return
@@ -261,8 +269,18 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
             )
 
             # Compliance tripped?
-            self.hvsrc_check_compliance(hvsrc)
-            self.vsrc_check_compliance(vsrc)
+            if hvsrc_accept_compliance:
+                if self.hvsrc_compliance_tripped(hvsrc):
+                    logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                    break
+            else:
+                self.hvsrc_check_compliance(hvsrc)
+            if vsrc_accept_compliance:
+                if self.vsrc_compliance_tripped(vsrc):
+                    logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                    break
+            else:
+                self.vsrc_check_compliance(vsrc)
 
             if not self.process.running:
                 break

@@ -42,7 +42,9 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.register_parameter('bias_voltage', unit='V', required=True)
         self.register_parameter('bias_mode', 'constant', values=('constant', 'offset'))
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_accept_compliance', False, type=bool)
         self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_accept_compliance', False, type=bool)
         self.register_parameter('elm_filter_enable', False, type=bool)
         self.register_parameter('elm_filter_count', 10, type=int)
         self.register_parameter('elm_filter_type', 'repeat')
@@ -75,7 +77,9 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         bias_voltage = self.get_parameter('bias_voltage')
         bias_mode = self.get_parameter('bias_mode')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
         vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
@@ -104,8 +108,10 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("bias_voltage", f"{bias_voltage:G} V")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_accept_compliance", hvsrc_accept_compliance)
         self.hvsrc_update_meta()
         self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("vsrc_accept_compliance", vsrc_accept_compliance)
         self.vsrc_update_meta()
         self.set_meta("elm_filter_enable", elm_filter_enable)
         self.set_meta("elm_filter_count", elm_filter_count)
@@ -274,6 +280,8 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
         waiting_time = self.get_parameter('waiting_time')
         bias_voltage = self.get_parameter('bias_voltage')
         bias_mode = self.get_parameter('bias_mode')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
         elm_read_timeout = self.get_parameter('elm_read_timeout')
 
         if not self.process.running:
@@ -368,8 +376,18 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 )
 
                 # Compliance tripped?
-                self.hvsrc_check_compliance(hvsrc)
-                self.vsrc_check_compliance(vsrc)
+                if hvsrc_accept_compliance:
+                    if self.hvsrc_compliance_tripped(hvsrc):
+                        logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                        break
+                else:
+                    self.hvsrc_check_compliance(hvsrc)
+                if vsrc_accept_compliance:
+                    if self.vsrc_compliance_tripped(vsrc):
+                        logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                        break
+                else:
+                    self.vsrc_check_compliance(vsrc)
 
                 if not self.process.running:
                     break

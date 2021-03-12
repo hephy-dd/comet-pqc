@@ -40,6 +40,7 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
 
         self.hvsrc_current_compliance = ui.Number(decimals=3, suffix="uA")
+        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.lcr_frequency = ui.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
         self.lcr_amplitude = ui.Number(minimum=0, decimals=3, suffix="mV")
@@ -49,6 +50,7 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
         self.bind("bias_voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
         self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
 
@@ -72,6 +74,7 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
                 layout=ui.Column(
                     ui.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
+                    self.hvsrc_accept_compliance,
                     ui.Spacer()
                 )
             ),

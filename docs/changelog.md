@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.32.0
+
+### Added
+- Accept compliance measurement options.
+
 ## 0.31.0
 
 ### Added

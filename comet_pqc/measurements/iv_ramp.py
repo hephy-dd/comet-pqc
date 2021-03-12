@@ -45,6 +45,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
         self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_accept_compliance', False, type=bool)
         self.register_hvsource()
         self.register_environment()
         self.register_analysis()
@@ -64,6 +65,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         waiting_time_start = self.get_parameter('waiting_time_start')
         waiting_time_end = self.get_parameter('waiting_time_end')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
 
         # Extend meta data
         self.set_meta("voltage_start", f"{voltage_start:G} V")
@@ -77,6 +79,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_accept_compliance", hvsrc_accept_compliance)
+
         self.hvsrc_update_meta()
         self.environment_update_meta()
 
@@ -153,6 +157,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
 
         if not self.process.running:
             return
@@ -203,7 +208,12 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             self.process.emit("progress", *est.progress)
 
             # Compliance tripped?
-            self.hvsrc_check_compliance(hvsrc)
+            if hvsrc_accept_compliance:
+                if self.hvsrc_compliance_tripped(hvsrc):
+                    logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                    break
+            else:
+                self.hvsrc_check_compliance(hvsrc)
 
             if not self.process.running:
                 break

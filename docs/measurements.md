@@ -40,7 +40,8 @@ Type: `iv_ramp`
 |`waiting_time_after`       |`second` |`100 ms` ||
 |`waiting_time_start`       |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`         |`second` |`0 s`    |Additional delay after final ramp down. |
-|`hvsrc_current_compliance` |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`).|
+|`hvsrc_current_compliance` |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`). |
+|`hvsrc_accept_compliance`  |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_sense_mode`         |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`     |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`      |`bool`   |`false`  |Enable HV Source filter. |
@@ -108,6 +109,7 @@ Type: `iv_ramp_elm`
 |`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`hvsrc_current_compliance`    |`ampere` |required |HV Source current compliance (`1 nA` to `1 mA`). |
+|`hvsrc_accept_compliance`     |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
@@ -191,6 +193,7 @@ Type: `iv_ramp_4_wire`
 |`waiting_time_start`      |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`        |`second` |`0 s`    |Additional delay after final ramp down. |
 |`vsrc_current_compliance` |`volt`   |required |V Source current compliance (`1 mV` to `1000 V`). |
+|`vsrc_accept_compliance`  |`bool`   |`false`  |Stop measurement gracefully if V Source compliance tripped. |
 |`vsrc_sense_mode`         |`str`    |`local`  |V Source sense mode. Possible values are: `local`, `remote`. |
 |`vsrc_route_terminal`     |`str`    |`rear`   |V Source route terminal. Possible values are: `front`, `rear`. |
 |`vsrc_filter_enable`      |`bool`   |`false`  |Enable V Source filter. |
@@ -259,6 +262,7 @@ Type: `iv_ramp_bias`
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
+|`hvsrc_accept_compliance`     |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
@@ -267,6 +271,7 @@ Type: `iv_ramp_bias`
 |`hvsrc_source_voltage_autorange_enable` | `bool`  |`true`  |Enable source voltage auto range. |
 |`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
+|`vsrc_accept_compliance`      |`bool`   |`false`  |Stop measurement gracefully if V Source compliance tripped. |
 |`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
@@ -326,6 +331,7 @@ Type: `iv_ramp_bias_elm`
 |`bias_voltage_start`          |`volt`   |`10 V`   | |
 |`bias_voltage_stop`           |`volt`   |`-90 V`  | |
 |`hvsrc_current_compliance`    |`volt`   |required |HV Source current compliance. |
+|`hvsrc_accept_compliance`     |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_sense_mode`            |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
 |`hvsrc_route_terminal`        |`str`    |`rear`   |HV Source route terminal. Possible values are: `front`, `rear`. |
 |`hvsrc_filter_enable`         |`bool`   |`false`  |Enable HV Source filter. |
@@ -334,6 +340,7 @@ Type: `iv_ramp_bias_elm`
 |`hvsrc_source_voltage_autorange_enable` | `bool`   |`true`  |Enable source voltage auto range. |
 |`hvsrc_source_voltage_range`  |`volt`   |`20 V`   |Set source voltage range. (`-1 kV` to `1 kV`). |
 |`vsrc_current_compliance`     |`volt`   |required |V Source current compliance. |
+|`vsrc_accept_compliance`      |`bool`   |`false`  |Stop measurement gracefully if V Source compliance tripped. |
 |`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |
@@ -403,6 +410,7 @@ Type: `cv_ramp`
 |`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`hvsrc_current_compliance`    |`ampere` |`1 uA`   | |
+|`hvsrc_accept_compliance`     |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_route_terminal`        |`str`    |`rear`   | |
 |`hvsrc_sense_mode`            |`str`    |`local`  | Possible values are: `local`, `remote`.
 |`hvsrc_filter_enable`         |`bool`   |`false`  | |
@@ -489,6 +497,7 @@ Type: `cv_ramp_vsrc`
 |`waiting_time_start`          |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`            |`second` |`0 s`    |Additional delay after final ramp down. |
 |`vsrc_current_compliance`     |`ampere` |`1 uA`   | |
+|`vsrc_accept_compliance`      |`bool`   |`false`  |Stop measurement gracefully if V Source compliance tripped. |
 |`vsrc_sense_mode`             |`str`    |`local`  |Possible values are: `local`, `remote`.
 |`vsrc_filter_enable`          |`bool`   |`false`  | |
 |`vsrc_filter_count`           |`int`    |`10`     | |

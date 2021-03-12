@@ -45,6 +45,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
         self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('vsrc_voltage_compliance', unit='V', required=True)
+        self.register_parameter('vsrc_accept_compliance', False, type=bool)
         self.register_vsource()
         self.register_environment()
         self.register_analysis()
@@ -64,6 +65,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         waiting_time_start = self.get_parameter('waiting_time_start')
         waiting_time_end = self.get_parameter('waiting_time_end')
         vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
         vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
         vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
         vsrc_filter_count = self.get_parameter('vsrc_filter_count')
@@ -81,6 +83,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("vsrc_voltage_compliance", f"{vsrc_voltage_compliance:G} V")
+        self.set_meta("vsrc_accept_compliance", vsrc_accept_compliance)
         self.vsrc_update_meta()
         self.environment_update_meta()
 
@@ -162,6 +165,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         current_stop = self.get_parameter('current_stop')
         waiting_time = self.get_parameter('waiting_time')
         vsrc_voltage_compliance = self.get_parameter('vsrc_voltage_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         if not self.process.running:
             return
@@ -217,7 +221,12 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             )
 
             # Compliance tripped?
-            self.vsrc_check_compliance(vsrc)
+            if vsrc_accept_compliance:
+                if self.vsrc_compliance_tripped(vsrc):
+                    logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                    break
+            else:
+                self.vsrc_check_compliance(vsrc)
 
             if not self.process.running:
                 break

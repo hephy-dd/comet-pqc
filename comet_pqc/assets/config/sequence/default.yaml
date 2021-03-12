@@ -15,6 +15,7 @@ contacts:
             current_step: 500 nA
             waiting_time: 200 ms
             vsrc_voltage_compliance: 20 V
+            vsrc_accept_compliance: true
             vsrc_sense_mode: remote
             analysis_functions: [iv, van_der_pauw]
       - name: Reverse Polysilicon Van-der-Pauw cross
