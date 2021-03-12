@@ -8,7 +8,6 @@ from .settings import settings
 from .position import Position
 from .utils import make_path, create_icon
 from .utils import format_table_unit
-from .utils import from_table_unit, to_table_unit
 from .utils import getcal, getrm
 
 from qutie.qutie import Qt

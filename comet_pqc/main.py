@@ -2,8 +2,6 @@ import argparse
 import logging
 import sys
 
-from PyQt5 import QtWidgets
-
 import comet
 from comet import ui
 

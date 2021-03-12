@@ -1,6 +1,5 @@
 from qutie.qutie import QtCore, QtWidgets
 
-import comet
 from comet import ui
 from comet.ui.preferences import PreferencesTab
 

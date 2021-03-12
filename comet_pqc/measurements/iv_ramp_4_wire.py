@@ -3,7 +3,6 @@ import logging
 import time
 
 import comet
-from comet.driver.keithley import K2657A
 
 import numpy as np
 

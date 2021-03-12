@@ -1,7 +1,3 @@
-import logging
-import math
-
-import comet
 from comet import ui
 from comet.settings import SettingsMixin
 

@@ -5,7 +5,7 @@ import logging
 
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qutie import QtCore, QtGui
+from qutie.qutie import QtCore
 import yaml
 
 from analysis_pqc import STATUS_PASSED
@@ -17,7 +17,8 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .settings import settings
-from .utils import from_table_unit, to_table_unit, make_path
+from .utils import from_table_unit
+from .utils import to_table_unit
 
 __all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
 

@@ -1,8 +1,6 @@
 import comet
 from comet.resource import ResourceMixin, ResourceError
 from comet.process import ProcessMixin
-from comet.driver.corvus import Venus1
-from comet.driver.hephy import EnvironmentBox
 from comet.driver.keithley import K707B
 
 class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):

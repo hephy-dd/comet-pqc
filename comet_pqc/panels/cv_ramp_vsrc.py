@@ -3,7 +3,6 @@ import logging
 import comet
 from comet import ui
 
-from ..utils import format_metric
 from .matrix import MatrixPanel
 from .mixins import VSourceMixin
 from .mixins import LCRMixin

@@ -1,12 +1,7 @@
-import copy
-import datetime
 import logging
 import os
 import webbrowser
 
-import yaml
-
-from qutie.qutie import QtCore, QtGui
 from qutie import Timer
 
 import comet
@@ -14,7 +9,6 @@ from comet import ui
 
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
-from comet.driver.corvus import Venus1
 
 from . import config
 
@@ -23,7 +17,6 @@ from .sequence import SamplesItem
 from .sequence import SampleTreeItem
 from .sequence import ContactTreeItem
 from .sequence import MeasurementTreeItem
-from .sequence import SequenceManager
 
 from .components import ToggleButton
 from .components import PositionWidget
@@ -43,8 +36,6 @@ from .formatter import CSVFormatter
 from .settings import settings
 from .utils import make_path, handle_exception, caldone_valid
 from .position import Position
-
-from .tablecontrol import safe_z_position
 
 SUMMARY_FILENAME = "summary.csv"
 

@@ -1,11 +1,8 @@
-import logging
-
 from PyQt5 import QtCore
 
 import comet
 from comet import ui
 
-from ..utils import format_metric
 from ..utils import stitch_pixmaps
 
 __all__ = ['PanelStub', 'BasicPanel', 'Panel']
