@@ -24,7 +24,7 @@ from .components import CalibrationWidget
 from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
-from .tablecontrol import TableControlDialog
+from .tablecontrol import TableControlDialog, safe_z_position
 from .sequence import StartSequenceDialog
 
 from .tabs import EnvironmentTab
@@ -649,6 +649,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if self.use_table():
             self.lock_controls()
             x, y, z = contact.position
+            z = safe_z_position(z)
             self.table_process.message_changed = lambda message: self.emit('message_changed', message)
             self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
