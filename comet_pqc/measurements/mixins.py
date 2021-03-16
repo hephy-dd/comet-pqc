@@ -586,6 +586,19 @@ class EnvironmentMixin(Mixin):
             self.environment_humidity_box = pc_data.box_humidity
             logging.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
 
+class AnalysisError(Exception): pass
+
+def create_analyze_function(type, parameters):
+    f = analysis_pqc.__dict__.get(f'analyse_{type}')
+    if not callable(f):
+        raise KeyError(f"No such analysis function: {type}")
+    def f_wrapper(*args, **kwargs):
+        logging.info("Running analysis function '%s'...", type)
+        r = f(*args, **kwargs)
+        logging.info("Running analysis function '%s'... done.", type)
+        return r
+    return partial(f_wrapper, **parameters)
+
 class AnalysisMixin(Mixin):
 
     def register_analysis(self):
@@ -600,15 +613,34 @@ class AnalysisMixin(Mixin):
                 analysis = {'type': analysis}
             if not isinstance(analysis, dict):
                 raise TypeError(f"Invalid analysis type: '{analysis}'")
-            def create_analyze_function(type, **kwargs):
-                f = analysis_pqc.__dict__.get(f'analyse_{type}')
-                if not callable(f):
-                    raise KeyError(f"No such analysis function: {type}")
-                def f_wrapper(*args, **kwargs):
-                    logging.info("Running analysis function '%s'...", type)
-                    r = f(*args, **kwargs)
-                    logging.info("Running analysis function '%s'... done.", type)
-                    return r
-                return partial(f_wrapper, **kwargs)
-            functions.append(create_analyze_function(**analysis))
+            if 'parameters' not in analysis:
+                analysis['parameters'] = {}
+            functions.append(create_analyze_function(analysis.get('type'), analysis.get('parameters')))
         return functions
+
+    def analysis_verify(self, result):
+        for analysis in self.get_parameter('analysis_functions'):
+            # String only argument to dictionary
+            if isinstance(analysis, str):
+                analysis = {'type': analysis}
+            if not isinstance(analysis, dict):
+                raise TypeError(f"Invalid analysis type: '{analysis}'")
+            limits = analysis.get('limits') or {}
+            logging.error(analysis.get('type'))
+            logging.error(type(result).__name__)
+            # TODO: associate result with config
+            analysis_type = analysis.get('type')
+            if analysis_type == type(result).__name__.lstrip('analyse_'):
+                for key, limit in limits.items():
+                    value = result._asdict().get(key)
+                    if isinstance(value, (int, float)):
+                        minimum = limit.get('minimum')
+                        if isinstance(minimum, (int, float)):
+                            if value < float(minimum):
+                                raise AnalysisError(f"Out of range '{key}' for {analysis_type}: {value} < {minimum}")
+                        maximum = limit.get('maximum')
+                        if isinstance(maximum, (int, float)):
+                            if value > float(maximum):
+                                raise AnalysisError(f"Out of range '{key}' for {analysis_type}: {value} > {maximum}")
+                    else:
+                        logging.warning("No such limit: %s for %s", key, type)

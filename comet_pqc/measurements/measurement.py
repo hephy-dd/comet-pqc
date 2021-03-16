@@ -79,7 +79,6 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.sample_type = sample_type
         self.table_position = table_position
         self.operator = operator
-        self.quality = "Check"
         self.registered_parameters = {}
         self.__timestamp = timestamp or time.time()
         self.__data = {}

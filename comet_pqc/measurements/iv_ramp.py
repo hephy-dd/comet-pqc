@@ -230,9 +230,11 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         if len(i) > 1 and len(v) > 1:
 
+            results = []
             for f in self.analysis_functions():
                 r = f(v=v, i=i)
                 logging.info(r)
+                results.append(r)
                 key, values = type(r).__name__, r._asdict()
                 self.set_analysis(key, values)
                 self.process.emit("append_analysis", key, values)
@@ -240,6 +242,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
                     for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
                         self.process.emit("reading", "xfit", x, y)
                     self.process.emit("update")
+            for r in results:
+                self.analysis_verify(r)
 
         self.process.emit("progress", 1, 1)
 

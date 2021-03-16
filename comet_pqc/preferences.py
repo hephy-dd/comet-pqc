@@ -329,6 +329,8 @@ class OptionsTab(PreferencesTab):
         self.write_logfiles_checkbox = ui.CheckBox("Write measurement log files (*.log)")
         self._vsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
         self._hvsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
+        self._retry_measurement_number = ui.Number(minimum=0, suffix="x")
+        self._retry_contact_number = ui.Number(minimum=0, suffix="x")
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Plots",
@@ -371,6 +373,20 @@ class OptionsTab(PreferencesTab):
                     stretch=(0, 0, 1)
                 )
             ),
+            ui.GroupBox(
+                title="Auto Retry",
+                layout=ui.Row(
+                    ui.Column(
+                        ui.Label("Retry Measurements"),
+                        ui.Label("Retry Contact")
+                    ),
+                    ui.Column(
+                        self._retry_measurement_number,
+                        self._retry_contact_number
+                    ),
+                    ui.Spacer()
+                )
+            ),
             ui.Spacer()
         )
 
@@ -393,6 +409,8 @@ class OptionsTab(PreferencesTab):
         hvsrc_instrument = self.settings.get("hvsrc_instrument") or "K2410"
         if hvsrc_instrument in self._hvsrc_instrument_combobox:
             self._hvsrc_instrument_combobox.current = hvsrc_instrument
+        self._retry_measurement_number.value = settings.retry_measurement_count
+        self._retry_contact_number.value = settings.retry_contact_count
 
     def store(self):
         png_plots = self.png_plots_checkbox.checked
@@ -411,3 +429,5 @@ class OptionsTab(PreferencesTab):
         self.settings["vsrc_instrument"] = vsrc_instrument
         hvsrc_instrument = self._hvsrc_instrument_combobox.current or "K2410"
         self.settings["hvsrc_instrument"] = hvsrc_instrument
+        settings.retry_measurement_count = self._retry_measurement_number.value
+        settings.retry_contact_count = self._retry_contact_number.value
