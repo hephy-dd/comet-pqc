@@ -588,16 +588,43 @@ class EnvironmentMixin(Mixin):
 
 class AnalysisError(Exception): pass
 
-def create_analyze_function(type, parameters):
-    f = analysis_pqc.__dict__.get(f'analyse_{type}')
-    if not callable(f):
-        raise KeyError(f"No such analysis function: {type}")
-    def f_wrapper(*args, **kwargs):
-        logging.info("Running analysis function '%s'...", type)
-        r = f(*args, **kwargs)
-        logging.info("Running analysis function '%s'... done.", type)
+class AnalysisFunction:
+
+    prefix = 'analyse_'
+
+    def __init__(self, config):
+        # Auto convert from string
+        if isinstance(config, str):
+            config = {'type': config}
+        if 'type' not in config:
+            raise KeyError("Missing analysis key: type")
+        self.type = config.get('type')
+        self.parameters = config.get('parameters', {})
+        self.limits = config.get('limits', {})
+
+    def __call__(self, **kwargs):
+        f = analysis_pqc.__dict__.get(f'{self.prefix}{self.type}')
+        if not callable(f):
+            raise KeyError(f"No such analysis function: {self.type}")
+        logging.info("Running analysis function '%s'...", self.type)
+        r = f(**kwargs)
+        logging.info("Running analysis function '%s'... done.", self.type)
         return r
-    return partial(f_wrapper, **parameters)
+
+    def verify(self, result):
+        for key, limit in self.limits.items():
+            value = result._asdict().get(key)
+            if isinstance(value, (int, float)):
+                minimum = limit.get('minimum')
+                if isinstance(minimum, (int, float)):
+                    if value < float(minimum):
+                        raise AnalysisError(f"Out of range '{key}' for {self.type}: {value} < {minimum}")
+                maximum = limit.get('maximum')
+                if isinstance(maximum, (int, float)):
+                    if value > float(maximum):
+                        raise AnalysisError(f"Out of range '{key}' for {self.type}: {value} > {maximum}")
+            else:
+                logging.warning("No such limit: %s for %s", key, self.type)
 
 class AnalysisMixin(Mixin):
 
@@ -607,40 +634,30 @@ class AnalysisMixin(Mixin):
     def analysis_functions(self):
         """Return analysis functions."""
         functions = []
-        for analysis in self.get_parameter('analysis_functions'):
-            # String only argument to dictionary
-            if isinstance(analysis, str):
-                analysis = {'type': analysis}
-            if not isinstance(analysis, dict):
-                raise TypeError(f"Invalid analysis type: '{analysis}'")
-            if 'parameters' not in analysis:
-                analysis['parameters'] = {}
-            functions.append(create_analyze_function(analysis.get('type'), analysis.get('parameters')))
+        for config in self.get_parameter('analysis_functions'):
+            functions.append(AnalysisFunction(config))
         return functions
 
-    def analysis_verify(self, result):
-        for analysis in self.get_parameter('analysis_functions'):
-            # String only argument to dictionary
-            if isinstance(analysis, str):
-                analysis = {'type': analysis}
-            if not isinstance(analysis, dict):
-                raise TypeError(f"Invalid analysis type: '{analysis}'")
-            limits = analysis.get('limits') or {}
-            logging.error(analysis.get('type'))
-            logging.error(type(result).__name__)
-            # TODO: associate result with config
-            analysis_type = analysis.get('type')
-            if analysis_type == type(result).__name__.lstrip('analyse_'):
-                for key, limit in limits.items():
-                    value = result._asdict().get(key)
-                    if isinstance(value, (int, float)):
-                        minimum = limit.get('minimum')
-                        if isinstance(minimum, (int, float)):
-                            if value < float(minimum):
-                                raise AnalysisError(f"Out of range '{key}' for {analysis_type}: {value} < {minimum}")
-                        maximum = limit.get('maximum')
-                        if isinstance(maximum, (int, float)):
-                            if value > float(maximum):
-                                raise AnalysisError(f"Out of range '{key}' for {analysis_type}: {value} > {maximum}")
-                    else:
-                        logging.warning("No such limit: %s for %s", key, type)
+    def analysis_iv(self, i, v):
+        if len(i) > 1 and len(v) > 1:
+            self.analysis_all(i=i, v=v)
+
+    def analysis_cv(self, c, v):
+        if len(c) > 1 and len(v) > 1:
+            self.analysis_all(c=c, v=v)
+
+    def analysis_all(self, **kwargs):
+        results = []
+        for f in self.analysis_functions():
+            r = f(**kwargs)
+            logging.info(r)
+            results.append((f, r))
+            key, values = type(r).__name__, r._asdict()
+            self.set_analysis(key, values)
+            self.process.emit("append_analysis", key, values)
+            if 'x_fit' in r._asdict():
+                for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
+                    self.process.emit("reading", "xfit", x, y)
+                self.process.emit("update")
+        for f, r in results:
+            f.verify(r)

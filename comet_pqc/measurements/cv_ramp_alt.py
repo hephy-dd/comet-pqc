@@ -259,23 +259,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
 
         v = np.array(self.get_series('voltage_lcr'))
         c = np.array(self.get_series('capacitance'))
-
-        if len(v) > 1 and len(c) > 1:
-
-            results = []
-            for f in self.analysis_functions():
-                r = f(v=v, c=c)
-                logging.info(r)
-                results.append(r)
-                key, values = type(r).__name__, r._asdict()
-                self.set_analysis(key, values)
-                self.process.emit("append_analysis", key, values)
-                if 'x_fit' in r._asdict():
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        self.process.emit("reading", "xfit", x, y)
-                    self.process.emit("update")
-            for r in results:
-                self.analysis_verify(r)
+        self.analysis_cv(c, v)
 
         self.process.emit("progress", 1, 1)
 
