@@ -229,9 +229,9 @@ class MeasureProcess(BaseProcess):
         log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
         plot_filename = self.create_filename(measurement, suffix='.png')
         state = measurement_item.ActiveState
-        self.emit('show_measurement', measurement_item)
         self.emit(self.measurement_reset, measurement_item)
         self.emit(self.measurement_state, measurement_item, state)
+        self.emit('show_measurement', measurement_item)
         with LogFileHandler(log_filename):
             try:
                 measurement.run()
