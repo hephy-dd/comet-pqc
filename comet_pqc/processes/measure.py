@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 import traceback
 import os
@@ -14,6 +15,7 @@ from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
 from ..measurements.mixins import AnalysisError
 from ..settings import settings
+from ..utils import format_metric
 
 from ..sequence import MeasurementTreeItem
 from ..sequence import ContactTreeItem
@@ -291,9 +293,15 @@ class MeasureProcess(BaseProcess):
             self.set("movement_finished", False)
             if self.get("move_to_contact") and contact_item.has_position:
                 self.safe_move_table(contact_item.position)
-                contact_delay = self.get("contact_delay") or 0
-                logging.info("Applying contact delay: %s s", contact_delay)
-                time.sleep(contact_delay)
+                contact_delay = abs(self.get("contact_delay") or 0)
+                if contact_delay > 0:
+                    logging.info("Applying contact delay: %s s", contact_delay)
+                    contact_delay_step = contact_delay / 25.
+                    contact_delay_steps = int(math.ceil(contact_delay / contact_delay_step))
+                    for step in range(contact_delay_steps):
+                        self.emit("message", f"Applying contact delay of {format_metric(contact_delay, unit='s', decimals=1)}...")
+                        self.emit("progress", step + 1, contact_delay_steps)
+                        time.sleep(contact_delay_step)
             table_position = self.get("table_position")
             # Auto retry measurement
             for retry_measurement in range(retry_measurement_count + 1):
