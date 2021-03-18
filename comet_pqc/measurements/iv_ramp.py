@@ -177,6 +177,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             time.sleep(waiting_time)
 
             td = time.time() - t0
+
+            self.environment_update()
+
             reading_current = self.hvsrc_read_current(hvsrc)
             self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
@@ -184,14 +187,6 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             self.process.emit("state", dict(
                 hvsrc_voltage=voltage,
                 hvsrc_current=reading_current
-            ))
-
-            self.environment_update()
-
-            self.process.emit("state", dict(
-                env_chuck_temperature=self.environment_temperature_chuck,
-                env_box_temperature=self.environment_temperature_box,
-                env_box_humidity=self.environment_humidity_box
             ))
 
             # Append series data

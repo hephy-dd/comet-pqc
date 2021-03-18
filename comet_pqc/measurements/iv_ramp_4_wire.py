@@ -193,6 +193,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
             self.process.emit("progress", *est.progress)
 
+            self.environment_update()
+
             # read V Source
             vsrc_reading = self.vsrc_read_voltage(vsrc)
             self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
@@ -200,14 +202,6 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             self.process.emit("update")
             self.process.emit("state", dict(
                 vsrc_voltage=vsrc_reading
-            ))
-
-            self.environment_update()
-
-            self.process.emit("state", dict(
-                env_chuck_temperature=self.environment_temperature_chuck,
-                env_box_temperature=self.environment_temperature_box,
-                env_box_humidity=self.environment_humidity_box
             ))
 
             # Append series data

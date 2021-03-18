@@ -197,6 +197,18 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # LCR read current
+                with benchmark_lcr_source:
+                    lcr_reading = self.lcr_get_bias_polarity_current_level(lcr)
+
+                self.process.emit("update")
+                self.process.emit("state", dict(
+                    lcr_voltage=voltage,
+                    lcr_current=lcr_reading
+                ))
+
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 with benchmark_lcr:
                     try:
@@ -211,27 +223,8 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                     except ZeroDivisionError:
                         lcr_prim2 = 0.0
 
-                # read V Source
-                with benchmark_lcr_source:
-                    lcr_reading = self.lcr_get_bias_polarity_current_level(lcr)
-                logging.info("LCR reading: %s", format_metric(lcr_reading, "A"))
-
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
-
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    lcr_voltage=voltage,
-                    lcr_current=lcr_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
 
                 # Append series data
                 self.append_series(

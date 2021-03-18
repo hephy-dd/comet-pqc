@@ -163,12 +163,14 @@ class MeasureProcess(BaseProcess):
 
     context = None
 
-    def __init__(self, message, progress, measurement_state=None, reading=None,
-                 save_to_image=None, push_summary=None, **kwargs):
+    def __init__(self, message, progress, measurement_state=None,
+                 measurement_reset=None, reading=None, save_to_image=None,
+                 push_summary=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
         self.measurement_state = measurement_state
+        self.measurement_reset = measurement_reset
         self.reading = reading
         self.save_to_image = save_to_image
         self.push_summary = push_summary

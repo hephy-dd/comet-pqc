@@ -223,6 +223,18 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read V Source
+                with benchmark_vsrc:
+                    vsrc_reading = self.vsrc_read_current(vsrc)
+
+                self.process.emit("update")
+                self.process.emit("state", dict(
+                    vsrc_voltage=voltage,
+                    vsrc_current=vsrc_reading
+                ))
+
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 with benchmark_lcr:
                     try:
@@ -237,26 +249,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                     except ZeroDivisionError:
                         lcr_prim2 = 0.0
 
-                # read V Source
-                with benchmark_vsrc:
-                    vsrc_reading = self.vsrc_read_current(vsrc)
-
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
-
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    vsrc_voltage=voltage,
-                    vsrc_current=vsrc_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
 
                 # Append series data
                 self.append_series(

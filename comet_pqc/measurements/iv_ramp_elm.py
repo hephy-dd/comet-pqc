@@ -263,6 +263,13 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
+                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+
                 # read ELM
                 with benchmark_elm:
                     try:
@@ -273,24 +280,11 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 logging.info("ELM reading: %s", format_metric(elm_reading, "A"))
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                # read HV Source
-                with benchmark_hvsrc:
-                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
-                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
-
                 self.process.emit("update")
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage,
                     hvsrc_current=hvsrc_reading,
                     elm_current=elm_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
                 ))
 
                 # Append series data

@@ -236,6 +236,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
             self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
             self.process.emit("progress", *est.progress)
 
+            self.environment_update()
+
             # read V Source
             vsrc_reading = self.vsrc_read_current(vsrc)
             self.process.emit("reading", "vsrc", abs(voltage) if ramp.step < 0 else voltage, vsrc_reading)
@@ -247,14 +249,6 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
             self.process.emit("state", dict(
                 hvsrc_current=hvsrc_reading,
                 vsrc_current=vsrc_reading
-            ))
-
-            self.environment_update()
-
-            self.process.emit("state", dict(
-                env_chuck_temperature=self.environment_temperature_chuck,
-                env_box_temperature=self.environment_temperature_box,
-                env_box_humidity=self.environment_humidity_box
             ))
 
             # Append series data

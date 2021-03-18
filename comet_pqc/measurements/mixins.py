@@ -521,7 +521,7 @@ class LCRMixin(Mixin):
         """Return primary and secondary LCR reading."""
         self.lcr_safe_write(lcr, "TRIG:IMM")
         prim, sec = lcr.fetch()[:2]
-        logging.info("lcr reading: %s-%s", prim, sec)
+        logging.info("LCR Meter reading: %s-%s", prim, sec)
         return prim, sec
 
     def lcr_acquire_filter_reading(self, lcr, maximum=64, threshold=0.005, size=2):
@@ -551,7 +551,9 @@ class LCRMixin(Mixin):
         self.lcr_check_error(lcr)
 
     def lcr_get_bias_polarity_current_level(self, lcr):
-        return lcr.bias.polarity.current.level
+        current = lcr.bias.polarity.current.level
+        logging.info("LCR Meter bias polarity current: %s", format_metric(current, "A"))
+        return current
 
     def lcr_get_bias_state(self, lcr):
         return lcr.bias.state
@@ -585,6 +587,11 @@ class EnvironmentMixin(Mixin):
             logging.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logging.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
+        self.process.emit("state", dict(
+            env_chuck_temperature=self.environment_temperature_chuck,
+            env_box_temperature=self.environment_temperature_box,
+            env_box_humidity=self.environment_humidity_box
+        ))
 
 class AnalysisError(Exception): pass
 

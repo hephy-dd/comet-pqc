@@ -329,8 +329,16 @@ class OptionsTab(PreferencesTab):
         self.write_logfiles_checkbox = ui.CheckBox("Write measurement log files (*.log)")
         self._vsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
         self._hvsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
-        self._retry_measurement_number = ui.Number(minimum=0, suffix="x")
-        self._retry_contact_number = ui.Number(minimum=0, suffix="x")
+        self._retry_measurement_number = ui.Number(
+            minimum=0,
+            suffix="x",
+            tool_tip="Number of retries for measurements with failed analysis."
+        )
+        self._retry_contact_number = ui.Number(
+            minimum=0,
+            suffix="x",
+            tool_tip="Number of re-contact retries for measurements with failed analysis."
+        )
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Plots",

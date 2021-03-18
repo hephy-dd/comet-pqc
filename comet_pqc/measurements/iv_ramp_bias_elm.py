@@ -329,6 +329,24 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 self.process.emit("message", "{} | HV Source {} | Bias {}".format(format_estimate(est), format_metric(voltage, "V"), format_metric(bias_voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read V Source
+                with benchmark_vsrc:
+                    vsrc_reading = self.vsrc_read_current(vsrc)
+
+                self.process.emit("state", dict(
+                    vsrc_current=vsrc_reading
+                ))
+
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
+
+                self.process.emit("state", dict(
+                    hvsrc_current=hvsrc_reading
+                ))
+
                 # read ELM
                 with benchmark_elm:
                     try:
@@ -339,27 +357,9 @@ class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, E
                 logging.info("ELM reading: %s", format_metric(elm_reading, "A"))
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                # read V Source
-                with benchmark_vsrc:
-                    vsrc_reading = self.vsrc_read_current(vsrc)
-
-                # read HV Source
-                with benchmark_hvsrc:
-                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
-
                 self.process.emit("update")
                 self.process.emit("state", dict(
-                    elm_current=elm_reading,
-                    hvsrc_current=hvsrc_reading,
-                    vsrc_current=vsrc_reading,
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
+                    elm_current=elm_reading
                 ))
 
                 # Append series data

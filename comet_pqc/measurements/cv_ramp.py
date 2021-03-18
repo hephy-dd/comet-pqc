@@ -219,6 +219,18 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                 self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
+
+                self.process.emit("update", )
+                self.process.emit("state", dict(
+                    hvsrc_voltage=voltage,
+                    hvsrc_current=hvsrc_reading
+                ))
+
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 with benchmark_lcr:
                     try:
@@ -233,26 +245,8 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                     except ZeroDivisionError:
                         lcr_prim2 = 0.0
 
-                # read HV Source
-                with benchmark_hvsrc:
-                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
-
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
-
-                self.process.emit("update", )
-                self.process.emit("state", dict(
-                    hvsrc_voltage=voltage,
-                    hvsrc_current=hvsrc_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
 
                 # Append series data
                 self.append_series(
