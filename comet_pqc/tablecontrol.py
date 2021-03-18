@@ -1,6 +1,7 @@
 """Table control widgets and dialogs."""
 
 import math
+import time
 
 import comet
 import comet.ui as ui
@@ -13,7 +14,7 @@ from .components import PositionWidget
 from .components import CalibrationWidget
 from .components import ToggleButton
 from .settings import settings, TablePosition
-from .utils import format_switch, caldone_valid
+from .utils import format_switch, caldone_valid, make_path
 from .position import Position
 
 from qutie.qutie import Qt
@@ -536,13 +537,19 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             text="-Z",
             clicked=self.on_sub_z
         )
+        self.step_up_button = KeypadButton(
+            text="↑⇵",
+            tool_tip="Step up, move single step up then double step down and double step up (experimental).",
+            clicked=self.on_step_up
+        )
         self.control_buttons = (
             self.add_x_button,
             self.sub_x_button,
             self.add_y_button,
             self.sub_y_button,
             self.add_z_button,
-            self.sub_z_button
+            self.sub_z_button,
+            self.step_up_button
         )
         self.probecard_light_button = ToggleButton(
             text="PC Light",
@@ -604,7 +611,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                     ),
                     KeypadSpacer(),
                     ui.Column(
-                        self.add_z_button,
+                        ui.Row(
+                            self.add_z_button,
+                            self.step_up_button
+                        ),
                         KeypadSpacer(),
                         self.sub_z_button
                     )
@@ -644,6 +654,13 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             step=0.25,
             suffix="s",
             changed=self.on_update_interval_changed
+        )
+        self.step_up_delay_number = ui.Number(
+            minimum=0,
+            maximum=1000,
+            decimals=0,
+            step=25,
+            suffix="ms"
         )
         self.progress_bar = ui.ProgressBar(
             visible=False
@@ -727,8 +744,16 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                                         stretch=(0, 1)
                                     )
                                 ),
+                                ui.GroupBox(
+                                    title="Step Up Delay (↑⇵)",
+                                    layout=ui.Row(
+                                        self.step_up_delay_number,
+                                        ui.Spacer(),
+                                        stretch=(0, 1)
+                                    )
+                                ),
                                 ui.Spacer(),
-                                stretch=(0, 1)
+                                stretch=(0, 0, 1)
                             )
                         )
                     ),
@@ -806,6 +831,15 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                 return button.movement_color
         return "black"
 
+    @property
+    def step_up_delay(self):
+        """Return step up delay in seconds."""
+        return (self.step_up_delay_number.value * comet.ureg('ms')).to('s').m
+
+    @step_up_delay.setter
+    def step_up_delay(self, value):
+        self.step_up_delay_number.value = (value * comet.ureg('s')).to('ms').m
+
     def load_table_step_sizes(self):
         return self.settings.get("table_step_sizes") or self.default_steps
 
@@ -872,6 +906,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             else:
                 z_enabled = self.step_width <= self.maximum_z_step_size
         self.add_z_button.enabled = z_enabled
+        step_up_limit = comet.ureg('10.0 um').to('mm').m
+        self.step_up_button.enabled = z_enabled and (self.step_width <= step_up_limit) # TODO
 
     def on_add_x(self):
         self.lock()
@@ -896,6 +932,16 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_sub_z(self):
         self.lock()
         self.process.relative_move(0, 0, -self.step_width)
+
+    def on_step_up(self):
+        self.lock()
+        step_width = self.step_width
+        vector = (
+            [0, 0, +step_width],
+            [0, 0, -step_width * 2],
+            [0, 0, +step_width * 2],
+        )
+        self.process.relative_move_vector(vector, delay=self.step_up_delay)
 
     def on_step_toggled(self, state):
         logging.info("set table step width to %.3f mm", self.step_width)
@@ -989,9 +1035,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.x_hard_limit_label.value = x
         self.y_hard_limit_label.value = y
         self.z_hard_limit_label.value = z
+        self.step_up_delay = self.settings.get('tablecontrol_step_up_delay') or 0
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
+        self.settings['tablecontrol_step_up_delay'] = self.step_up_delay
         self.positions_widget.store_settings()
 
     def lock(self):

@@ -284,6 +284,36 @@ class AlternateTableProcess(TableProcess):
         self.emit("message_changed", "Ready")
 
     @async_request
+    def relative_move_vector(self, table, vector, delay=0.0):
+        """Relative move table along a given vector.
+
+        Emits following events:
+         - position_changed
+         - relative_move_finished
+        """
+        error_handler = TableErrorHandler(table)
+
+        for x, y, z in vector:
+            self.emit("message_changed", f"moving table relative to x={x:.3f}, y={y:.3f}, z={z:.3f} mm")
+            table.rmove(
+                to_table_unit(x),
+                to_table_unit(y),
+                to_table_unit(z)
+            )
+
+            error_handler.handle_machine_error()
+            error_handler.handle_error()
+            error_handler.handle_calibration_error()
+
+            x, y, z = self._get_position(table)
+            self.emit('position_changed', Position(x, y, z))
+
+            time.sleep(delay)
+
+        self.emit('relative_move_finished')
+        self.emit("message_changed", "Ready")
+
+    @async_request
     def safe_absolute_move(self, table, x, y, z):
         """Safely move to absolute position while moving X/Y axis at zero Z.
          - move Z down to zero
