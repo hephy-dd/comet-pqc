@@ -12,7 +12,7 @@ class MatrixMeasurement(Measurement):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.register_parameter('matrix_enable', False, type=bool)
+        self.register_parameter('matrix_enable', True, type=bool)
         self.register_parameter('matrix_channels', [], type=list)
 
     def before_initialize(self, **kwargs):

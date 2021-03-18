@@ -28,7 +28,7 @@ Type: `iv_ramp`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`            |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`            |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`             |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -71,7 +71,6 @@ Type: `iv_ramp`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [1A02, 2C11]
       voltage_start: 0 V
       voltage_stop: -1000 V
@@ -96,7 +95,7 @@ Type: `iv_ramp_elm`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_start`               |`volt`   |required |Start voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
 |`voltage_stop`                |`volt`   |required |End voltage for HV Source ramp. (`-1 kV` to `1 kV`). |
@@ -150,7 +149,6 @@ Type: `iv_ramp_elm`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [1A02, 2C11]
       voltage_start: 0 V
       voltage_stop: -1000 V
@@ -180,7 +178,7 @@ Type: `iv_ramp_4_wire`
 
 | Parameter                | Type    | Default | Description |
 |--------------------------|---------|---------|-------------|
-|`matrix_enable`           |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`           |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`         |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`current_start`           |`ampere` |required |Start current for V Source ramp. (`-250 mA` to `250 mA`). |
 |`current_stop`            |`ampere` |required |End current for V Source ramp. (`-250 mA` to `250 mA`). |
@@ -223,7 +221,6 @@ Type: `iv_ramp_4_wire`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [2D12, 2E09, 2F10, 2G11]
       current_start: -10 uA
       current_stop: 10 uA
@@ -245,7 +242,7 @@ Type: `iv_ramp_bias`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_source`              |`str`    |`vsrc`   |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
@@ -301,7 +298,6 @@ Type: `iv_ramp_bias`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: false
       matrix_channels: []
       analysis_functions: [iv]
 ```
@@ -314,7 +310,7 @@ Type: `iv_ramp_bias_elm`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`voltage_source`              |`str`    |`vsrc`   |Possible values are: `hvsrc`, `vsrc`. |
 |`voltage_start`               |`volt`   |`0`      | |
@@ -382,7 +378,6 @@ Type: `iv_ramp_bias_elm`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: false
       matrix_channels: []
       analysis_functions: [iv]
 ```
@@ -397,7 +392,7 @@ Type: `cv_ramp`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
@@ -451,7 +446,6 @@ Type: `cv_ramp`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [1A01, 1B02, 2H11, 2G12]
       bias_voltage_start: -5 V
       bias_voltage_stop: 10 V
@@ -484,7 +478,7 @@ Type: `cv_ramp_vsrc`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
@@ -537,7 +531,6 @@ Type: `cv_ramp_vsrc`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [1A01, 1B02, 2H11, 2G12]
       bias_voltage_start: -5 V
       bias_voltage_stop: 10 V
@@ -567,7 +560,7 @@ Type: `cv_ramp_alt`
 
 | Parameter                    | Type    | Default | Description |
 |------------------------------|---------|---------|-------------|
-|`matrix_enable`               |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`               |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`             |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 |`bias_voltage_start`          |`volt`   |required | |
 |`bias_voltage_step`           |`volt`   |required | |
@@ -612,7 +605,6 @@ Type: `cv_ramp_alt`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: true
       matrix_channels: [1A01, 1B02, 2H11, 2G12]
       bias_voltage_start: -5 V
       bias_voltage_stop: 10 V
@@ -639,7 +631,7 @@ Type: `frequency_scan`
 
 | Parameter                 | Type    | Default | Description |
 |---------------------------|---------|---------|-------------|
-|`matrix_enable`            |`bool`   |`false`  |Enable matrix configuration. |
+|`matrix_enable`            |`bool`   |`true`   |Enable matrix configuration. |
 |`matrix_channels`          |`list`   |`[]`     |List of matrix channels to be closed. All matrix slots can be addressed. |
 
 ### Data columns
@@ -656,6 +648,5 @@ Type: `frequency_scan`
   enabled: true
   description: An example measurement.
   parameters:
-      matrix_enable: false
       matrix_channels: []
 ```
