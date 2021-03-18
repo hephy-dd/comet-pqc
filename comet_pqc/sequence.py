@@ -354,6 +354,7 @@ class SequenceTreeItem(ui.TreeItem):
     TimeoutState = "Timeout"
     ErrorState = "Error"
     StoppedState = "Stopped"
+    AnalysisErrorState = "AnalysisError"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -411,20 +412,6 @@ class SequenceTreeItem(ui.TreeItem):
             self[2].color = "red"
         self[2].value = value
 
-    @property
-    def quality(self):
-        return self[3].value
-
-    @quality.setter
-    def quality(self, value):
-        # Oh dear...
-        value = value or ""
-        if value.lower() == STATUS_PASSED.lower():
-            self[3].color = "green"
-        else:
-            self[3].color = "red"
-        self[3].value = value.capitalize()
-
     # Methods
 
     def lock(self):
@@ -441,7 +428,6 @@ class SequenceTreeItem(ui.TreeItem):
 
     def reset(self):
         self.state = None
-        self.quality = None
         for child in self.children:
             child.reset()
 

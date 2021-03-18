@@ -48,6 +48,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
         self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('hvsrc_accept_compliance', False, type=bool)
         self.register_parameter('elm_filter_enable', False, type=bool)
         self.register_parameter('elm_filter_count', 10, type=int)
         self.register_parameter('elm_filter_type', 'repeat')
@@ -77,6 +78,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         waiting_time_start = self.get_parameter('waiting_time_start')
         waiting_time_end = self.get_parameter('waiting_time_end')
         hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
         elm_filter_enable = self.get_parameter('elm_filter_enable')
         elm_filter_count = self.get_parameter('elm_filter_count')
         elm_filter_type = self.get_parameter('elm_filter_type')
@@ -100,6 +102,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
+        self.set_meta("hvsrc_accept_compliance", hvsrc_accept_compliance)
         self.hvsrc_update_meta()
         self.set_meta("elm_filter_enable", elm_filter_enable)
         self.set_meta("elm_filter_count", elm_filter_count)
@@ -222,6 +225,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         voltage_stop = self.get_parameter('voltage_stop')
         voltage_step = self.get_parameter('voltage_step')
         waiting_time = self.get_parameter('waiting_time')
+        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
         elm_read_timeout = self.get_parameter('elm_read_timeout')
 
         if not self.process.running:
@@ -259,6 +263,13 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read HV Source
+                with benchmark_hvsrc:
+                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
+                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
+
                 # read ELM
                 with benchmark_elm:
                     try:
@@ -269,24 +280,11 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 logging.info("ELM reading: %s", format_metric(elm_reading, "A"))
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
-                # read HV Source
-                with benchmark_hvsrc:
-                    hvsrc_reading = self.hvsrc_read_current(hvsrc)
-                self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, hvsrc_reading)
-
                 self.process.emit("update")
                 self.process.emit("state", dict(
                     hvsrc_voltage=voltage,
                     hvsrc_current=hvsrc_reading,
                     elm_current=elm_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
                 ))
 
                 # Append series data
@@ -301,7 +299,12 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 )
 
                 # Compliance tripped?
-                self.hvsrc_check_compliance(hvsrc)
+                if hvsrc_accept_compliance:
+                    if self.hvsrc_compliance_tripped(hvsrc):
+                        logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                        break
+                else:
+                    self.hvsrc_check_compliance(hvsrc)
 
                 if not self.process.running:
                     break
@@ -316,23 +319,9 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
     def analyze(self, **kwargs):
         self.process.emit("progress", 0, 1)
 
-        status = None
-
         i = np.array(self.get_series('current_elm'))
         v = np.array(self.get_series('voltage'))
-
-        if len(i) > 1 and len(v) > 1:
-
-            for f in self.analysis_functions():
-                r = f(v=v, i=i)
-                logging.info(r)
-                key, values = type(r).__name__, r._asdict()
-                self.set_analysis(key, values)
-                self.process.emit("append_analysis", key, values)
-                if 'x_fit' in r._asdict():
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        self.process.emit("reading", "xfit", x, y)
-                    self.process.emit("update")
+        self.analysis_iv(i, v)
 
         self.process.emit("progress", 1, 1)
 

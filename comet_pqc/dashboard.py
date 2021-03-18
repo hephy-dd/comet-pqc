@@ -24,7 +24,7 @@ from .components import CalibrationWidget
 from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
-from .tablecontrol import TableControlDialog
+from .tablecontrol import TableControlDialog, safe_z_position
 from .sequence import StartSequenceDialog
 
 from .tabs import EnvironmentTab
@@ -466,6 +466,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.measure_process = self.processes.get("measure")
         self.measure_process.finished = self.on_finished
         self.measure_process.measurement_state = self.on_measurement_state
+        self.measure_process.measurement_reset = self.on_measurement_reset
         self.measure_process.save_to_image = self.on_save_to_image
 
         # Experimental
@@ -473,6 +474,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         # Install timer to update environment controls
         self.environment_timer = Timer(timeout=self.sync_environment_controls)
         self.environment_timer.start(self.environment_poll_interval)
+
+        self.close_event = self.on_stop
 
     @handle_exception
     def load_settings(self):
@@ -649,6 +652,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if self.use_table():
             self.lock_controls()
             x, y, z = contact.position
+            z = safe_z_position(z)
             self.table_process.message_changed = lambda message: self.emit('message_changed', message)
             self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
@@ -781,9 +785,12 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measure.push_summary = self.on_push_summary
         measure.start()
 
-    def on_measurement_state(self, item, state=None, quality=None):
+    def on_measurement_state(self, item, state=None):
         item.state = state
-        item.quality = quality
+        self.sequence_tree.fit()
+
+    def on_measurement_reset(self, item):
+        item.reset()
         self.sequence_tree.fit()
 
     def on_save_to_image(self, item, filename):

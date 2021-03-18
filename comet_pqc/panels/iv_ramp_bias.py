@@ -36,7 +36,9 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.bias_mode = ui.ComboBox(["constant", "offset"])
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
         self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.vsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
@@ -45,7 +47,9 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
+        self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
         self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="A")
+        self.bind("vsrc_accept_compliance", self.vsrc_accept_compliance, False)
 
         self.general_tab.layout = ui.Row(
             ui.GroupBox(
@@ -69,6 +73,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
                     self.bias_voltage,
                     ui.Label(text="Bias Compliance"),
                     self.vsrc_current_compliance,
+                    self.vsrc_accept_compliance,
                     ui.Label(text="Bias Mode"),
                     self.bias_mode,
                     ui.Spacer()
@@ -79,6 +84,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
                 layout=ui.Column(
                     ui.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
+                    self.hvsrc_accept_compliance,
                     ui.Spacer()
                 )
             ),

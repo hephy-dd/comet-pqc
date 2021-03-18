@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 import traceback
 import os
@@ -12,7 +13,9 @@ from comet.driver.keithley import K707B
 
 from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
+from ..measurements.mixins import AnalysisError
 from ..settings import settings
+from ..utils import format_metric
 
 from ..sequence import MeasurementTreeItem
 from ..sequence import ContactTreeItem
@@ -160,12 +163,14 @@ class MeasureProcess(BaseProcess):
 
     context = None
 
-    def __init__(self, message, progress, measurement_state=None, reading=None,
-                 save_to_image=None, push_summary=None, **kwargs):
+    def __init__(self, message, progress, measurement_state=None,
+                 measurement_reset=None, reading=None, save_to_image=None,
+                 push_summary=None, **kwargs):
         super().__init__(**kwargs)
         self.message = message
         self.progress = progress
         self.measurement_state = measurement_state
+        self.measurement_reset = measurement_reset
         self.reading = reading
         self.save_to_image = save_to_image
         self.push_summary = push_summary
@@ -228,8 +233,9 @@ class MeasureProcess(BaseProcess):
         log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
         plot_filename = self.create_filename(measurement, suffix='.png')
         state = measurement_item.ActiveState
+        self.emit(self.measurement_reset, measurement_item)
+        self.emit(self.measurement_state, measurement_item, state)
         self.emit('show_measurement', measurement_item)
-        self.emit("measurement_state", measurement_item, state)
         with LogFileHandler(log_filename):
             try:
                 measurement.run()
@@ -246,6 +252,10 @@ class MeasureProcess(BaseProcess):
                 self.emit("message", "Process... failed.")
                 state = measurement_item.ComplianceState
                 raise
+            except AnalysisError:
+                self.emit("message", "Process... analysis failed.")
+                state = measurement_item.AnalysisErrorState
+                raise
             except Exception as e:
                 self.emit("message", "Process... failed.")
                 state = measurement_item.ErrorState
@@ -257,7 +267,7 @@ class MeasureProcess(BaseProcess):
                 else:
                     state = measurement_item.SuccessState
             finally:
-                self.emit("measurement_state", measurement_item, state, measurement.quality)
+                self.emit(self.measurement_state, measurement_item, state)
                 self.emit("save_to_image", measurement_item, plot_filename)
                 self.emit('push_summary', measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
                 if self.get("serialize_json"):
@@ -269,25 +279,57 @@ class MeasureProcess(BaseProcess):
                         measurement.serialize_txt(fp)
 
     def process_contact(self, contact_item):
-        self.emit("message", "Process contact...")
-        self.emit("measurement_state", contact_item, contact_item.ProcessingState)
-        logging.info(" => %s", contact_item.name)
+        retry_contact_count = settings.retry_contact_count
+        retry_measurement_count = settings.retry_measurement_count
+        # Queue of measurements for the retry loops.
+        measurement_items = [item for item in contact_item.children if item.enabled]
+        # Auto retry table contact
+        for retry_contact in range(retry_contact_count + 1):
+            if not measurement_items:
+                break
+            if retry_contact:
+                logging.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
+            self.emit("message", "Process contact...")
+            self.emit(self.measurement_state, contact_item, contact_item.ProcessingState)
+            logging.info(" => %s", contact_item.name)
+            self.set("movement_finished", False)
+            if self.get("move_to_contact") and contact_item.has_position:
+                self.safe_move_table(contact_item.position)
+                contact_delay = abs(self.get("contact_delay") or 0)
+                if contact_delay > 0:
+                    logging.info("Applying contact delay: %s s", contact_delay)
+                    contact_delay_step = contact_delay / 25.
+                    contact_delay_steps = int(math.ceil(contact_delay / contact_delay_step))
+                    for step in range(contact_delay_steps):
+                        self.emit("message", f"Applying contact delay of {format_metric(contact_delay, unit='s', decimals=1)}...")
+                        self.emit("progress", step + 1, contact_delay_steps)
+                        time.sleep(contact_delay_step)
+            table_position = self.get("table_position")
+            # Auto retry measurement
+            for retry_measurement in range(retry_measurement_count + 1):
+                self.emit(self.measurement_state, contact_item, contact_item.ProcessingState)
+                if retry_measurement:
+                    logging.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
+                measurement_items = self.process_measurement_sequence(measurement_items)
+                state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
+                if self.stop_requested:
+                    state = contact_item.StoppedState
+                self.emit(self.measurement_state, contact_item, state)
+                if not measurement_items:
+                    break
+        return contact_item.ErrorState if measurement_items else contact_item.SuccessState
+
+    def process_measurement_sequence(self, measurement_items):
+        """Returns a list of failed measurement items."""
         prev_measurement_item = None
-        self.set("movement_finished", False)
-        if self.get("move_to_contact") and contact_item.has_position:
-            self.safe_move_table(contact_item.position)
-            contact_delay = self.get("contact_delay") or 0
-            logging.info("Applying contact delay: %s s", contact_delay)
-            time.sleep(contact_delay)
-        table_position = self.get("table_position")
-        prev_measurement_item = None
-        for measurement_item in contact_item.children:
+        failed_measurements = []
+        for measurement_item in measurement_items:
             if not self.running:
                 break
             if not measurement_item.enabled:
                 continue
             if not self.running:
-                self.emit("measurement_state", measurement_item, measurement_item.StoppedState)
+                self.emit(self.measurement_state, measurement_item, measurement_item.StoppedState)
                 break
             if prev_measurement_item:
                 self.emit('hide_measurement', prev_measurement_item)
@@ -297,29 +339,40 @@ class MeasureProcess(BaseProcess):
                 tb = traceback.format_exc()
                 logging.error("%s: %s", measurement_item.name, tb)
                 logging.error("%s: %s", measurement_item.name, exc)
+                # TODO: for now only analysis errors trigger retries...
+                if isinstance(exc, AnalysisError):
+                    failed_measurements.append(measurement_item)
             prev_measurement_item = measurement_item
-        self.emit("measurement_state", contact_item, contact_item.StoppedState if self.stop_requested else contact_item.SuccessState)
         if prev_measurement_item:
             self.emit('hide_measurement', prev_measurement_item)
+        return failed_measurements
 
     def process_sample(self, sample_item):
         self.emit("message", "Process sample...")
-        self.emit("measurement_state", sample_item, sample_item.ProcessingState)
+        self.emit(self.measurement_state, sample_item, sample_item.ProcessingState)
         # Check contact positions
         for contact_item in sample_item.children:
             if contact_item.enabled:
                 if not contact_item.has_position:
                     raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
+        results = []
         for contact_item in sample_item.children:
             if not self.running:
                 break
             if not contact_item.enabled:
                 continue
             if not self.running:
-                self.emit("measurement_state", contact_item, contact_item.StoppedState)
+                self.emit(self.measurement_state, contact_item, contact_item.StoppedState)
                 break
-            self.process_contact(contact_item)
-        self.emit("measurement_state", sample_item, sample_item.StoppedState if self.stop_requested else sample_item.SuccessState)
+            result = self.process_contact(contact_item)
+            if result != sample_item.SuccessState:
+                results.append(result)
+        state = sample_item.ErrorState
+        if self.stop_requested:
+            state = sample_item.StoppedState
+        if not results:
+            state = sample_item.SuccessState
+        self.emit(self.measurement_state, sample_item, state)
         move_to_after_position = self.get("move_to_after_position")
         if self.get("move_to_after_position") is not None:
             self.safe_move_table(move_to_after_position)
@@ -339,7 +392,7 @@ class MeasureProcess(BaseProcess):
             if not sample_item.enabled:
                 continue
             if not self.running:
-                self.emit("measurement_state", sample_item, contact_item.StoppedState)
+                self.emit(self.measurement_state, sample_item, contact_item.StoppedState)
                 break
             self.process_sample(sample_item)
         move_to_after_position = self.get("move_to_after_position")

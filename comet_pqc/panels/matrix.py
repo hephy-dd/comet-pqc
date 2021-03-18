@@ -39,7 +39,7 @@ class MatrixPanel(Panel, ResourceMixin):
             tool_tip="Matrix card switching channels, comma separated list."
         )
 
-        self.bind("matrix_enable", self.matrix_enable, False)
+        self.bind("matrix_enable", self.matrix_enable, True)
         self.bind("matrix_channels", self.matrix_channels, [])
 
         self.control_tabs.append(ui.Tab(

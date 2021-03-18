@@ -40,6 +40,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
         self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
         self.register_parameter('vsrc_current_compliance', unit='A', required=True)
+        self.register_parameter('vsrc_accept_compliance', False, type=bool)
         self.register_vsource()
         self.register_lcr()
         self.register_environment()
@@ -88,6 +89,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         waiting_time_start = self.get_parameter('waiting_time_start')
         waiting_time_end = self.get_parameter('waiting_time_end')
         vsrc_current_compliance = self.get_parameter('vsrc_current_compliance')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         # Extend meta data
         self.set_meta("bias_voltage_start", f"{bias_voltage_start:G} V")
@@ -101,6 +103,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("vsrc_current_compliance", f"{vsrc_current_compliance:G} A")
+        self.set_meta("vsrc_accept_compliance", vsrc_accept_compliance)
         self.vsrc_update_meta()
         self.lcr_update_meta()
         self.environment_update_meta()
@@ -185,6 +188,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         bias_voltage_stop = self.get_parameter('bias_voltage_stop')
         waiting_time = self.get_parameter('waiting_time')
         lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+        vsrc_accept_compliance = self.get_parameter('vsrc_accept_compliance')
 
         if not self.process.running:
             return
@@ -219,6 +223,18 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
                 self.process.emit("progress", *est.progress)
 
+                self.environment_update()
+
+                # read V Source
+                with benchmark_vsrc:
+                    vsrc_reading = self.vsrc_read_current(vsrc)
+
+                self.process.emit("update")
+                self.process.emit("state", dict(
+                    vsrc_voltage=voltage,
+                    vsrc_current=vsrc_reading
+                ))
+
                 # read LCR, for CpRp -> prim: Cp, sec: Rp
                 with benchmark_lcr:
                     try:
@@ -233,26 +249,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                     except ZeroDivisionError:
                         lcr_prim2 = 0.0
 
-                # read V Source
-                with benchmark_vsrc:
-                    vsrc_reading = self.vsrc_read_current(vsrc)
-
                 self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
                 self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
-
-                self.process.emit("update")
-                self.process.emit("state", dict(
-                    vsrc_voltage=voltage,
-                    vsrc_current=vsrc_reading
-                ))
-
-                self.environment_update()
-
-                self.process.emit("state", dict(
-                    env_chuck_temperature=self.environment_temperature_chuck,
-                    env_box_temperature=self.environment_temperature_box,
-                    env_box_humidity=self.environment_humidity_box
-                ))
 
                 # Append series data
                 self.append_series(
@@ -268,7 +266,12 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 )
 
                 # Compliance tripped?
-                self.vsrc_check_compliance(vsrc)
+                if vsrc_accept_compliance:
+                    if self.vsrc_compliance_tripped(vsrc):
+                        logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                        break
+                else:
+                    self.vsrc_check_compliance(vsrc)
 
                 if not self.process.running:
                     break
@@ -283,19 +286,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         v = np.array(self.get_series('voltage_vsrc'))
         c = np.array(self.get_series('capacitance'))
-
-        if len(v) > 1 and len(c) > 1:
-
-            for f in self.analysis_functions():
-                r = f(v=v, c=c)
-                logging.info(r)
-                key, values = type(r).__name__, r._asdict()
-                self.set_analysis(key, values)
-                self.process.emit("append_analysis", key, values)
-                if 'x_fit' in r._asdict():
-                    for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                        self.process.emit("reading", "xfit", x, y)
-                    self.process.emit("update")
+        self.analysis_cv(c, v)
 
         self.process.emit("progress", 1, 1)
 

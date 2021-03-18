@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='comet-pqc',
-    version='0.31.0',
+    version='0.32.0',
     author="Bernhard Arnold",
     author_email="bernhard.arnold@oeaw.ac.at",
     packages=find_packages(exclude=['tests']),

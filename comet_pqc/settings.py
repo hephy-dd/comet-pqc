@@ -174,4 +174,26 @@ class Settings(SettingsMixin):
             'K2657A': K2657AInstrument,
         }.get(hvsrc_instrument)
 
+    @property
+    def retry_measurement_count(self):
+        try:
+            return int(self.settings.get('retry_measurement_count') or 0)
+        except:
+            return 0
+
+    @retry_measurement_count.setter
+    def retry_measurement_count(self, value):
+        self.settings['retry_measurement_count'] = int(value)
+
+    @property
+    def retry_contact_count(self):
+        try:
+            return int(self.settings.get('retry_contact_count') or 0)
+        except:
+            return 0
+
+    @retry_contact_count.setter
+    def retry_contact_count(self, value):
+        self.settings['retry_contact_count'] = int(value)
+
 settings = Settings()

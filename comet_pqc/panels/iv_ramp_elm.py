@@ -35,12 +35,14 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
+        self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
 
         # Instruments status
 
@@ -64,6 +66,7 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
                 layout=ui.Column(
                     ui.Label(text="Compliance"),
                     self.hvsrc_current_compliance,
+                    self.hvsrc_accept_compliance,
                     ui.Spacer()
                 )
             ),

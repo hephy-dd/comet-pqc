@@ -7,6 +7,18 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.32.0
+
+### Added
+- Repeat measurements based on analysis results.
+- Accept compliance measurement options.
+- Limits for analysis results.
+- Step up function for table control.
+
+### Changed
+- Optimized measurement waiting time.
+- Enable matrix at default.
+
 ## 0.31.0
 
 ### Added
