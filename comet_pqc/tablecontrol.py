@@ -662,6 +662,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             step=25,
             suffix="ms"
         )
+        self.step_up_multiply_number = ui.Number(
+            minimum=1,
+            maximum=10,
+            decimals=0,
+            suffix="x"
+        )
         self.progress_bar = ui.ProgressBar(
             visible=False
         )
@@ -745,11 +751,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                                     )
                                 ),
                                 ui.GroupBox(
-                                    title="Step Up Delay (↑⇵)",
+                                    title="Step Up (↑⇵)",
                                     layout=ui.Row(
-                                        self.step_up_delay_number,
-                                        ui.Spacer(),
-                                        stretch=(0, 1)
+                                        ui.Column(
+                                            ui.Label("Delay"),
+                                            ui.Label("Multiplicator (⇵)")
+                                        ),
+                                        ui.Column(
+                                            self.step_up_delay_number,
+                                            self.step_up_multiply_number
+                                        ),
+                                        ui.Spacer()
                                     )
                                 ),
                                 ui.Spacer(),
@@ -839,6 +851,15 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     @step_up_delay.setter
     def step_up_delay(self, value):
         self.step_up_delay_number.value = (value * comet.ureg('s')).to('ms').m
+
+    @property
+    def step_up_multiply(self):
+        """Return step up delay in seconds."""
+        return int(self.step_up_multiply_number.value)
+
+    @step_up_multiply.setter
+    def step_up_multiply(self, value):
+        self.step_up_multiply_number.value = value
 
     def load_table_step_sizes(self):
         return self.settings.get("table_step_sizes") or self.default_steps
@@ -936,10 +957,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_step_up(self):
         self.lock()
         step_width = self.step_width
+        multiply = self.step_up_multiply
         vector = (
             [0, 0, +step_width],
-            [0, 0, -step_width * 2],
-            [0, 0, +step_width * 2],
+            [0, 0, -step_width * multiply],
+            [0, 0, +step_width * multiply],
         )
         self.process.relative_move_vector(vector, delay=self.step_up_delay)
 
@@ -1036,10 +1058,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.y_hard_limit_label.value = y
         self.z_hard_limit_label.value = z
         self.step_up_delay = self.settings.get('tablecontrol_step_up_delay') or 0
+        self.step_up_multiply = self.settings.get('tablecontrol_step_up_multiply') or 2
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
-        self.settings['tablecontrol_step_up_delay'] = self.step_up_delay
+        self.settings['tablecontrol_step_up_multiply'] = self.step_up_multiply
         self.positions_widget.store_settings()
 
     def lock(self):
