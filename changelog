@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.32.0] - 2021-03-12
 ### Added
-- Accept compliance measurement options (#132)
+- Repeat measurements based on analysis results (#130).
+- Accept compliance measurement options (#132).
+- Limits for analysis results (#133).
+- Step up function for table control (#135).
+### Changed
+- Optimized measurement waiting time (#134).
+- Enable matrix at default (#136).
 
 ## [0.31.0] - 2021-03-03
 ### Added
