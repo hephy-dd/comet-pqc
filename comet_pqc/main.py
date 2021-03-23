@@ -177,14 +177,15 @@ def main():
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))
     app.window.preferences_dialog.resize(*dialog_size)
 
-    result = app.run()
+    try:
+        result = app.run()
+    finally:
+        dashboard.store_settings()
 
-    dashboard.store_settings()
-
-    # Store window size
-    app.settings['window_size'] = app.width, app.height
-    dialog_size = app.window.preferences_dialog.size
-    app.settings['preferences_dialog_size'] = dialog_size
+        # Store window size
+        app.settings['window_size'] = app.width, app.height
+        dialog_size = app.window.preferences_dialog.size
+        app.settings['preferences_dialog_size'] = dialog_size
 
     return result
 
