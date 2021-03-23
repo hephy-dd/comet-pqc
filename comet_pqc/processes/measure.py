@@ -373,6 +373,8 @@ class MeasureProcess(BaseProcess):
         if not results:
             state = sample_item.SuccessState
         self.emit(self.measurement_state, sample_item, state)
+        if not self.running:
+            return
         move_to_after_position = self.get("move_to_after_position")
         if self.get("move_to_after_position") is not None:
             self.safe_move_table(move_to_after_position)
@@ -395,6 +397,8 @@ class MeasureProcess(BaseProcess):
                 self.emit(self.measurement_state, sample_item, contact_item.StoppedState)
                 break
             self.process_sample(sample_item)
+        if not self.running:
+            return
         move_to_after_position = self.get("move_to_after_position")
         if self.get("move_to_after_position") is not None:
             self.safe_move_table(move_to_after_position)

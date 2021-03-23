@@ -1,4 +1,5 @@
 import logging
+import math
 import threading
 
 from PyQt5 import QtCore
@@ -46,6 +47,9 @@ class LogItem(ui.TreeItem):
 
     @classmethod
     def format_time(cls, seconds):
+        # Note: occasional crashes due to `NaN` timestamp.
+        if math.isnan(seconds):
+            seconds = 0
         dt = QtCore.QDateTime.fromMSecsSinceEpoch(seconds * 1000)
         return dt.toString("yyyy-MM-dd hh:mm:ss")
 
