@@ -9,6 +9,9 @@ nav_order: 10
 
 ## 0.33.0
 
+### Added
+- Writing to a rotating main log file.
+
 ### Changed
 - Migrated to analysis-pqc version 0.2.0.
 
