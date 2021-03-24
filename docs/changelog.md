@@ -7,6 +7,16 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.33.0
+
+### Changed
+- Migrated to analysis-pqc version 0.2.0.
+
+## 0.32.1
+
+### Fixed
+- Crash if log record timestamp is `NaN`.
+
 ## 0.32.0
 
 ### Added
