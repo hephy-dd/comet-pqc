@@ -44,10 +44,9 @@ class TableSampleItem(ui.TreeItem):
 
     def __init__(self, sample_item):
         super().__init__()
-        for i in range(1, 4):
-            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
         self.sample_item = sample_item
-        self.name = sample_item.name
+        self.name = '/'.join([item for item in (sample_item.name, sample_item.sample_type) if item])
+        self.position = sample_item.sample_position
         for contact_item in sample_item.children:
             self.append(TableContactItem(contact_item))
 
@@ -59,10 +58,18 @@ class TableSampleItem(ui.TreeItem):
     def name(self, value):
         self[0].value = value
 
+    @property
+    def position(self):
+        return self[1].value
+
+    @name.setter
+    def position(self, value):
+        self[1].value = value
+
     def update_contacts(self):
         for contact_item in self.children:
             contact_item.update_contact()
-            logging.info("updated contact position: %s %s %s", self.name, contact_item.name, contact_item.position)
+            logging.info("Updated contact position: %s %s %s", self.name, contact_item.name, contact_item.position)
 
     def calculate_positions(self):
         tr = LinearTransform()
@@ -77,7 +84,7 @@ class TableContactItem(ui.TreeItem):
 
     def __init__(self, contact_item):
         super().__init__()
-        for i in range(1, 4):
+        for i in range(2, 5):
             self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
         self.contact_item = contact_item
         self.name = contact_item.name
@@ -99,9 +106,9 @@ class TableContactItem(ui.TreeItem):
     def position(self, value):
         x, y, z = value
         self.__position = x, y, z
-        self[1].value = format(x, '.3f') if x is not None else None
-        self[2].value = format(y, '.3f') if y is not None else None
-        self[3].value = format(z, '.3f') if z is not None else None
+        self[2].value = format(x, '.3f') if x is not None else None
+        self[3].value = format(y, '.3f') if y is not None else None
+        self[4].value = format(z, '.3f') if z is not None else None
 
     @property
     def has_position(self):
@@ -120,7 +127,7 @@ class TableContactsWidget(ui.Row):
         self.position_picked = position_picked
         self.absolute_move = absolute_move
         self.contacts_tree = ui.Tree(
-            header=("Contact", "X", "Y", "Z", None),
+            header=("Contact", "Pos", "X", "Y", "Z", None),
             selected=self.on_contacts_selected
         )
         self.contacts_tree.fit()
