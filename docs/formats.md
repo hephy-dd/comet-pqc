@@ -54,15 +54,20 @@ a data series dictionary.
 ```json
 {
   "meta": {
+    "uuid": "7f21460d-cec0-4ef8-b927-0cf7708c5469",
     "sample_name": "HPK_VPX112233_042_PSS",
     "sample_type": "PQCFlutesLeft",
+    "sample_position": "Pos1",
+    "sample_comment": "Nobody expects the Spanish Inquisition!",
     "contact_name": "PQC Flute 1",
     "measurement_name": "Diode IV",
     "measurement_type": "iv_ramp",
+    "measurement_tags": ["spam", "cheese"],
     "table_position": [0, 0, 0],
     "start_timestamp": "2020-09-17T10:32:14",
     "operator": "Monty",
     "pqc_version": "0.24.3",
+    "analysis_pqc_version": "0.2.0",
     ...
   },
   "series_units": {
@@ -115,15 +120,20 @@ value pairs, a data table header and a data table. Table header and body uses
 ### Example
 
 ```
+uuid: 7f21460d-cec0-4ef8-b927-0cf7708c5469
 sample_name: HPK_VPX112233_042_PSS
 sample_type: PQCFlutesLeft
+sample_position: Pos1
+sample_comment: Nobody expects the Spanish Inquisition!
 contact_name: PQC Flute 1
 measurement_name: Diode IV
 measurement_type: iv_ramp
+measurement_tags: spam, cheese
 table_position: (0, 0, 0)
 start_timestamp: 2020-09-17T10:32:14
 operator: Monty
 pqc_version: 0.24.3
+analysis_pqc_version: 0.2.0
 ...
 timestamp[s]	voltage[V]	current[A]
 3.315091E-02	0.000000E+00	3.741383E-04

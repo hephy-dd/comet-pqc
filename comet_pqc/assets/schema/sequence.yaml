@@ -36,6 +36,8 @@ properties:
                                 type: string
                             description:
                                 type: string
+                            tags:
+                                type: array
                             type:
                                 type: string
                             parameters:

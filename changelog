@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.33.0] - 2021-03-24
 ### Added
 - Writing to a rotating main log file (#141).
+- Tags for measurement configuration and output data (#143).
 ### Changed
 - Migrated to analysis-pqc version 0.2.0 (#140).
 

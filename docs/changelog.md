@@ -11,6 +11,7 @@ nav_order: 10
 
 ### Added
 - Writing to a rotating main log file.
+- Tags for measurement configuration and output data.
 
 ### Changed
 - Migrated to analysis-pqc version 0.2.0.
