@@ -3,8 +3,11 @@ import logging
 import time
 import json
 import math
+import uuid
 
 import numpy as np
+
+import analysis_pqc
 
 import comet
 from comet.resource import ResourceMixin
@@ -73,13 +76,18 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
-    def __init__(self, process, sample_name, sample_type, table_position, operator, timestamp=None):
+    def __init__(self, process, sample_name, sample_type, sample_position,
+                 sample_comment, table_position, operator, tags, timestamp=None):
         self.process = process
         self.sample_name = sample_name
         self.sample_type = sample_type
+        self.sample_position = sample_position
+        self.sample_comment = sample_comment
         self.table_position = table_position
         self.operator = operator
+        self.tags = tags
         self.registered_parameters = {}
+        self.uuid = format(uuid.uuid4())
         self.__timestamp = timestamp or time.time()
         self.__data = {}
 
@@ -151,6 +159,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         return value
 
     def set_meta(self, key, value):
+        logging.info("Meta %s: %s", key, value)
         self.data.get(self.KEY_META)[key] = value
 
     def set_series_unit(self, key, value):
@@ -187,6 +196,8 @@ class Measurement(ResourceMixin, ProcessMixin):
         fmt = PQCFormatter(fp)
         # Write meta data
         for key, value in meta.items():
+            if key == 'measurement_tags':
+                value = ', '.join([tag for tag in value if tag])
             fmt.write_meta(key, value)
         # Create columns
         columns = list(series.keys())
@@ -229,15 +240,20 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.data[self.KEY_SERIES_UNITS] = {}
         self.data[self.KEY_SERIES] = {}
         self.data[self.KEY_ANALYSIS] = {}
+        self.set_meta("uuid", self.uuid)
         self.set_meta("sample_name", self.sample_name)
         self.set_meta("sample_type", self.sample_type)
+        self.set_meta("sample_position", self.sample_position)
+        self.set_meta("sample_comment", self.sample_comment)
         self.set_meta("contact_name", self.measurement_item.contact.name)
         self.set_meta("measurement_name", self.measurement_item.name)
         self.set_meta("measurement_type", self.type)
+        self.set_meta("measurement_tags", self.tags)
         self.set_meta("table_position", tuple(self.table_position))
         self.set_meta("start_timestamp", self.timestamp_iso)
         self.set_meta("operator", self.operator)
         self.set_meta("pqc_version", __version__)
+        self.set_meta("analysis_pqc_version", analysis_pqc.__version__)
 
     def initialize(self, **kwargs):
         pass

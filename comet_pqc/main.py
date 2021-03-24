@@ -1,6 +1,13 @@
 import argparse
 import logging
+import os
 import sys
+
+from logging import Formatter
+from logging import StreamHandler
+from logging.handlers import RotatingFileHandler
+
+import analysis_pqc
 
 import comet
 from comet import ui
@@ -24,14 +31,40 @@ def parse_args():
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args()
 
+def configure_logging():
+    logger = logging.getLogger()
+    # Stream handler
+    stream_formatter = Formatter(
+        fmt='%(levelname)s:%(name)s:%(message)s'
+    )
+    stream_handler = StreamHandler()
+    stream_handler.setFormatter(stream_formatter)
+    logger.addHandler(stream_handler)
+    # Rotating file handler
+    filename = os.path.join(os.path.expanduser("~"), 'comet-pqc.log')
+    file_formatter = Formatter(
+        fmt='%(asctime)s:%(name)s:%(levelname)s:%(message)s',
+        datefmt='%Y-%m-%dT%H:%M:%S'
+    )
+    file_handler = RotatingFileHandler(
+        filename=filename,
+        maxBytes=10485760,
+        backupCount=10
+    )
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+
 def main():
 
     args = parse_args()
 
     # Logging
 
-    logging.getLogger().setLevel(logging.INFO)
+    configure_logging()
+
     logging.info("PQC version %s", __version__)
+    logging.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
     app = comet.Application("comet-pqc")
     app.version = __version__
@@ -92,7 +125,6 @@ def main():
         ui.show_exception(exc, tb)
 
     def on_message(message):
-        ## logging.info(message)
         app.message = message
 
     def on_progress(value, maximum):
@@ -177,15 +209,14 @@ def main():
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))
     app.window.preferences_dialog.resize(*dialog_size)
 
-    try:
-        result = app.run()
-    finally:
-        dashboard.store_settings()
+    result = app.run()
 
-        # Store window size
-        app.settings['window_size'] = app.width, app.height
-        dialog_size = app.window.preferences_dialog.size
-        app.settings['preferences_dialog_size'] = dialog_size
+    dashboard.store_settings()
+
+    # Store window size
+    app.settings['window_size'] = app.width, app.height
+    dialog_size = app.window.preferences_dialog.size
+    app.settings['preferences_dialog_size'] = dialog_size
 
     return result
 

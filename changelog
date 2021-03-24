@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.31.1] - 2021-03-23
+## [0.33.0] - 2021-03-24
+### Added
+- Writing to a rotating main log file (#141).
+- Tags for measurement configuration and output data (#143).
+### Changed
+- Migrated to analysis-pqc version 0.2.0 (#140).
+
+## [0.32.1] - 2021-03-23
 ### Fixed
 - Crash if log record timestamp is `NaN` (#138).
 
@@ -224,7 +231,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.32.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.33.0...HEAD
+[0.33.0]: https://github.com/hephy-dd/comet-pqc/compare/0.32.1...0.33.0
 [0.32.1]: https://github.com/hephy-dd/comet-pqc/compare/0.31.0...0.32.1
 [0.32.0]: https://github.com/hephy-dd/comet-pqc/compare/0.31.0...0.32.0
 [0.31.0]: https://github.com/hephy-dd/comet-pqc/compare/0.30.0...0.31.0

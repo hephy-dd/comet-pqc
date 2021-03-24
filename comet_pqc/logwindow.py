@@ -1,6 +1,8 @@
+import datetime
 import logging
 import math
 import threading
+import os
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -36,7 +38,6 @@ class LogItem(ui.TreeItem):
         self.load_record(record)
 
     def load_record(self, record):
-        self.record = record
         self[self.TimeColumn].value = self.format_time(record.created)
         self[self.LevelColumn].value = record.levelname
         self[self.MessageColumn].value = record.getMessage()
@@ -47,11 +48,8 @@ class LogItem(ui.TreeItem):
 
     @classmethod
     def format_time(cls, seconds):
-        # Note: occasional crashes due to `NaN` timestamp.
-        if math.isnan(seconds):
-            seconds = 0
-        dt = QtCore.QDateTime.fromMSecsSinceEpoch(seconds * 1000)
-        return dt.toString("yyyy-MM-dd hh:mm:ss")
+        dt = datetime.datetime.fromtimestamp(seconds)
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
 
     def __str__(self):
         return "\t".join((self[self.TimeColumn].value, self[self.LevelColumn].value, self[self.MessageColumn].value))
@@ -61,30 +59,39 @@ class LogWidget(ui.Tree):
     def __init__(self):
         super().__init__()
         self.header = "Time", "Level", "Message"
-        self.indentation = 0
+        self.root_is_decorated = False
         self.mutex = threading.RLock()
         self.message = self.append_record
         self.handler = LogHandler(context=self)
         self.level = logging.INFO
-        self.qt.setColumnWidth(0, 128)
+        self.qt.setSelectionMode(self.qt.ContiguousSelection)
+        self.qt.setAutoScroll(True)
+        self.qt.setColumnWidth(0, 132)
         self.qt.setColumnWidth(1, 64)
         self.qt.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.qt.customContextMenuRequested.connect(self.on_context_menu)
 
+    def on_clipboard(self):
+        """Copy selected items to clipboard."""
+        items = self.qt.selectedItems()
+        if items:
+            text = os.linesep.join([format(item.reflection()) for item in items])
+            QtWidgets.QApplication.clipboard().setText(text)
+
     def on_context_menu(self, pos):
-        item = self.qt.itemAt(pos)
-        if item:
-            def set_clipboard():
-                text = format(item.data(0, item.UserType))
-                QtWidgets.QApplication.clipboard().setText(text)
-            menu = QtWidgets.QMenu(self.qt)
-            copyAction = QtWidgets.QAction("&Copy to clipboard")
-            copyAction.triggered.connect(set_clipboard)
-            menu.addAction(copyAction)
-            menu.exec(self.qt.mapToGlobal(pos))
+        """Provide custom context menu."""
+        menu = QtWidgets.QMenu(self.qt)
+        copyAction = QtWidgets.QAction("&Copy to clipboard")
+        copyAction.triggered.connect(self.on_clipboard)
+        menu.addAction(copyAction)
+        menu.exec(self.qt.mapToGlobal(pos))
 
     @property
     def level(self):
+        """Logging level for log window.
+
+        >>> window.level = logging.INFO
+        """
         return self.handler.level()
 
     @level.setter
@@ -92,23 +99,24 @@ class LogWidget(ui.Tree):
         self.handler.setLevel(value)
 
     def add_logger(self, logger):
+        """Add logger to log window.
+
+        >>> window.add_logger(logging.getLogger('root'))
+        """
         logger.addHandler(self.handler)
 
     def remove_logger(self, logger):
+        """Remove logger from log window.
+
+        >>> window.remove_logger(logging.getLogger('root'))
+        """
         logger.removeHandler(self.handler)
 
     def append_record(self, record):
+        """Append logging record to log window."""
         with self.mutex:
             item = LogItem(record)
             self.append(item)
-            self.scroll_to(item)
-
-    def dump(self):
-        records = []
-        for item in self:
-            records.append(item.record)
-        return records
-
-    def load(self, records):
-        for record in records:
-            self.append_record(record)
+            scroll_bar = self.qt.verticalScrollBar()
+            if scroll_bar.value() >= scroll_bar.maximum():
+                self.scroll_to(item)

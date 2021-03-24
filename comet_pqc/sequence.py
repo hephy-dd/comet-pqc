@@ -443,7 +443,7 @@ class SampleTreeItem(SequenceTreeItem):
         self._name_infix = name_infix or ""
         self._name_suffix = name_suffix or ""
         self._sample_type = sample_type or ""
-        self._sample_position = sample_position or ""
+        self.sample_position = sample_position or ""
         self.update_name()
         self.comment = comment or ""
         self.enabled = enabled
@@ -504,6 +504,14 @@ class SampleTreeItem(SequenceTreeItem):
         self._sample_position = value.strip()
         self[1].value = value.strip()
 
+    @property
+    def comment(self):
+        return self._sample_comment
+
+    @comment.setter
+    def comment(self, value):
+        self._sample_comment = value.strip()
+
     # Settings
 
     def from_settings(self, **kwargs):
@@ -513,8 +521,8 @@ class SampleTreeItem(SequenceTreeItem):
         self.update_name()
         self.sample_type = kwargs.get("sample_type") or ""
         self.sample_position = kwargs.get("sample_position") or ""
-        self.enabled = kwargs.get("sample_enabled") or False
         self.comment = kwargs.get("sample_comment") or ""
+        self.enabled = kwargs.get("sample_enabled") or False
         filename = kwargs.get("sample_sequence_filename")
         if filename and os.path.exists(filename):
             sequence = load_sequence(filename)
@@ -546,8 +554,8 @@ class SampleTreeItem(SequenceTreeItem):
             "sample_name_suffix": self.name_suffix,
             "sample_type": self.sample_type,
             "sample_position": self.sample_position,
-            "sample_enabled": self.enabled,
             "sample_comment": self.comment,
+            "sample_enabled": self.enabled,
             "sample_sequence_filename": self.sequence_filename,
             "sample_contacts": sample_contacts
         }
@@ -628,6 +636,7 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.enabled = measurement.enabled
         self.parameters = copy.deepcopy(measurement.parameters)
         self.default_parameters = copy.deepcopy(measurement.default_parameters)
+        self.tags = measurement.tags
         self.description = measurement.description
         self.series = {}
         self.analysis = {}

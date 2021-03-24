@@ -14,8 +14,9 @@ class ContactPanel(BasicPanel):
 
     type = "contact"
 
-    def __init__(self, *args, table_move_to=None, table_contact=None, **kwargs):
+    def __init__(self, *args, table_move=None, table_contact=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.table_move = table_move
         self.table_contact = table_contact
         self.use_table = False
         self._position_valid = False
@@ -24,16 +25,23 @@ class ContactPanel(BasicPanel):
         self._position_widget.title = "Contact Position"
         self._move_button = ui.Button(
             text="Move",
-            tool_tip="Move table to position and contact.",
+            tool_tip="Move table to position with safe Z position.",
+            clicked=self.on_move,
+            enabled=False
+        )
+        self._contact_button = ui.Button(
+            text="Contact",
+            tool_tip="Move table to position and contact with sample.",
             clicked=self.on_contact,
             enabled=False
         )
         self.layout.insert(2, ui.Row(
             self._position_widget,
             ui.GroupBox(
-                title="Table Actions",
+                title="Table Control",
                 layout=ui.Column(
                     self._move_button,
+                    self._contact_button,
                     ui.Spacer()
                 )
             ),
@@ -46,6 +54,7 @@ class ContactPanel(BasicPanel):
     def update_use_table(self, enabled):
         self.use_table = enabled
         self._move_button.enabled = self._position_valid and self.use_table
+        self._contact_button.enabled = self._position_valid and self.use_table
 
     def update_position(self):
         if self.context is None:
@@ -55,6 +64,7 @@ class ContactPanel(BasicPanel):
         self._position_widget.update_position(position)
         self._position_valid = not math.isnan(position.z)
         self._move_button.enabled = self._position_valid and self.use_table
+        self._contact_button.enabled = self._position_valid and self.use_table
 
     def mount(self, context):
         """Mount measurement to panel."""
@@ -63,6 +73,10 @@ class ContactPanel(BasicPanel):
         self.description_label.text = context.description
         self.update_position()
 
-    def on_contact(self):
+    def on_move(self):
         self._move_button.enabled = False
-        self.emit('table_contact', self.context)
+        self.emit(self.table_move, self.context)
+
+    def on_contact(self):
+        self._contact_button.enabled = False
+        self.emit(self.table_contact, self.context)

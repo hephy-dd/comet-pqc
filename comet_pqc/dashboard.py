@@ -626,7 +626,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.visible = True
-            panel.table_contact = self.on_table_contact
+            panel.table_move = self.on_table_contact
+            panel.table_contact = self.on_table_move
             panel.mount(item)
             self.start_contact_action.qt.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
@@ -646,6 +647,16 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
 
     # Contcat table controls
+
+    @handle_exception
+    def on_table_move(self, contact):
+        if self.use_table():
+            self.lock_controls()
+            x, y, z = contact.position
+            self.table_process.message_changed = lambda message: self.emit('message_changed', message)
+            self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+            self.table_process.absolute_move_finished = self.on_table_finished
+            self.table_process.safe_absolute_move(x, y, z)
 
     @handle_exception
     def on_table_contact(self, contact):

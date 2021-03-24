@@ -213,6 +213,9 @@ class MeasureProcess(BaseProcess):
         self.emit("message", "Process measurement...")
         sample_name = measurement_item.contact.sample.name
         sample_type = measurement_item.contact.sample.sample_type
+        sample_position = measurement_item.contact.sample.sample_position
+        sample_comment = measurement_item.contact.sample.comment
+        tags = measurement_item.tags
         table_position = self.get("table_position")
         operator = self.get("operator")
         output_dir = self.get("output_dir")
@@ -226,8 +229,11 @@ class MeasureProcess(BaseProcess):
             process=self,
             sample_name=sample_name,
             sample_type=sample_type,
+            sample_position=sample_position,
+            sample_comment=sample_comment,
             table_position=table_position,
-            operator=operator
+            operator=operator,
+            tags=tags
         )
         measurement.measurement_item = measurement_item
         log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
