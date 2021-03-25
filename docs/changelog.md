@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.33.1
+
+### Fixed
+- Handle NaN in analysis function limits.
+
 ## 0.33.0
 
 ### Added

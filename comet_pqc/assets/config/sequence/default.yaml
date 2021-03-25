@@ -16,7 +16,11 @@ contacts:
             vsrc_voltage_compliance: 20 V
             vsrc_accept_compliance: true
             vsrc_sense_mode: remote
-            analysis_functions: [iv, van_der_pauw]
+            analysis_functions:
+              - type: iv
+                limits:
+                  i_800: {minimum: 0.25, maximum: 22.4}
+              - type: van_der_pauw
       - name: Reverse Polysilicon Van-der-Pauw cross
         type: iv_ramp_4_wire
         parameters:
