@@ -1,5 +1,6 @@
 import logging
 import time
+import math
 
 from functools import partial
 
@@ -622,6 +623,8 @@ class AnalysisFunction:
         for key, limit in self.limits.items():
             value = result._asdict().get(key)
             if isinstance(value, (int, float)):
+                if math.isnan(value):
+                    raise AnalysisError(f"Out of range '{key}' for {self.type}: {value}")
                 minimum = limit.get('minimum')
                 if isinstance(minimum, (int, float)):
                     if value < float(minimum):
