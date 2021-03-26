@@ -1,3 +1,4 @@
+from .contactquality import ContactQualityProcess
 from .environment import EnvironmentProcess
 from .status import StatusProcess
 from .table import AlternateTableProcess

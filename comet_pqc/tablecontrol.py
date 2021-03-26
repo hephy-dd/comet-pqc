@@ -515,8 +515,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     microscope_light_toggled = None
     box_light_toggled = None
 
-    def __init__(self, process):
+    def __init__(self, process, lcr_process):
         super().__init__()
+        self.lcr_process = lcr_process
+        self.lcr_process.finished = self.on_contact_quality_finished
+        self.lcr_process.failed = self.on_contact_quality_failed
+        self.lcr_process.reading = self.on_contact_quality_reading
         self.mount(process)
         self.resize(640, 480)
         self.title = "Table Control"
@@ -557,6 +561,29 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.add_z_button,
             self.sub_z_button,
             self.step_up_button
+        )
+        self.lcr_toggle_button = ui.Button(
+            text="LCR",
+            tool_tip="Enable LCR continous resistivity measurement.",
+            checkable=True,
+            toggled=self.on_contact_quality_toggled
+        )
+        self.lcr_prim_text = ui.Text(readonly=True)
+        self.lcr_sec_text = ui.Text(readonly=True)
+        self.lcr_group_box = ui.GroupBox(
+            title="Contact Quality",
+            layout=ui.Column(
+                self.lcr_toggle_button,
+                ui.Row(
+                    ui.Label("Cp"),
+                    self.lcr_prim_text
+                ),
+                ui.Row(
+                    ui.Label("Rp"),
+                    self.lcr_sec_text
+                ),
+                ui.Spacer()
+            )
         )
         self.probecard_light_button = ToggleButton(
             text="PC Light",
@@ -708,6 +735,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                             title="Step Width",
                             layout=self.step_width_buttons
                         ),
+                        self.lcr_group_box,
                         ui.GroupBox(
                             title="Lights",
                             layout=ui.Column(
@@ -1066,6 +1094,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.z_hard_limit_label.value = z
         self.step_up_delay = self.settings.get('tablecontrol_step_up_delay') or 0
         self.step_up_multiply = self.settings.get('tablecontrol_step_up_multiply') or 2
+        matrix_channels = self.settings.get('tablecontrol_matrix_channels') or [
+            '3H01', '2B04', '1B03', '1B12', '2B06', '2B07', '2B08', '2B09',
+            '2B10', '2B11', '1H04', '1H05', '1H06', '1H07', '1H08', '1H09',
+            '1H10', '1H11', '2H12', '2H05', '1A01'
+        ]
+        self.lcr_process.matrix_channels = matrix_channels
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
@@ -1113,6 +1147,25 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.process.absolute_move_finished = None
             self.process.stopped = None
             self.process = None
+
+    def on_contact_quality_toggled(self, state):
+        self.lcr_prim_text.enabled = state
+        self.lcr_sec_text.enabled = state
+        if state:
+            self.lcr_process.start()
+        else:
+            self.lcr_process.stop()
+
+    def on_contact_quality_finished(self):
+        pass
+
+    def on_contact_quality_failed(self, *args):
+        self.lcr_prim_text.value = "ERROR"
+        self.lcr_sec_text.value = "ERROR"
+
+    def on_contact_quality_reading(self, prim, sec):
+        self.lcr_prim_text.value = format_metric(prim, unit='F')
+        self.lcr_sec_text.value = format_metric(sec, unit='Ohm')
 
 class SwitchLabel(ui.Label):
 

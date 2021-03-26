@@ -187,6 +187,15 @@ class System(Driver):
         def state(self, value: int):
             self.resource.write(f':SYST:BEEP:STAT {value:d}')
 
+    @property
+    def error(self) -> Tuple[int, str]:
+        """Returns current instrument error.
+        >>> system.error
+        (0, "No error")
+        """
+        result = self.resource.query(':SYST:ERR?').split(',')
+        return int(result[0]), result[1].strip().strip('"')
+
     def __init__(self, resource):
         super().__init__(resource)
         self.beeper = self.Beeper(resource)
