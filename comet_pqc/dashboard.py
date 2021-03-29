@@ -707,6 +707,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def on_start(self):
+        # Store settings
+        self.store_settings()
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
@@ -956,6 +958,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.table_process.position_changed = self.on_table_position_changed
         self.table_process.caldone_changed = self.on_table_calibration_changed
         self.sync_table_controls()
+        # Store settings
+        self.store_settings()
 
     @handle_exception
     def on_laser_sensor_toggled(self, state):

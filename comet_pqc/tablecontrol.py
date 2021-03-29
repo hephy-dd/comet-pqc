@@ -62,7 +62,7 @@ class TableSampleItem(ui.TreeItem):
     def position(self):
         return self[1].value
 
-    @name.setter
+    @position.setter
     def position(self, value):
         self[1].value = value
 

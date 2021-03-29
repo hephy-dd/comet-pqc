@@ -7,10 +7,20 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.34.0
+
+### Added
+- Contact quality with LCR Meter.
+
+## 0.33.2
+
+### Fixed
+- Store samples to settings on edits.
+
 ## 0.33.1
 
 ### Fixed
-- Handle NaN in analysis function limits.
+- Handle `NaN` in analysis function limits.
 
 ## 0.33.0
 
