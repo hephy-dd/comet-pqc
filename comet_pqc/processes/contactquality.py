@@ -39,10 +39,8 @@ class LCRInstrument:
 
     def acquire_reading(self):
         """Return primary and secondary LCR reading."""
-        self.context.resource.write(":TRIG:IMM")
-        self.context.resource.query("*OPC?")
+        self.safe_write(":TRIG:IMM")
         prim, sec = self.context.fetch()[:2]
-        logging.info("LCR Meter reading: %s, %s", prim, sec)
         return prim, sec
 
 class ContactQualityProcess(comet.Process, comet.ResourceMixin):
@@ -61,6 +59,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
                 closed_channels = matrix.channel.getclose()
                 if sorted(closed_channels) != sorted(channels):
                     raise RuntimeError("Matrix mismatch in closed channels")
+                logging.info("Matrix: closed channels: %s", ', '.join(closed_channels))
         except Exception as exc:
             raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {exc.args}") from exc
 
@@ -69,6 +68,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
             with self.resources.get("matrix") as matrix_res:
                 matrix = K707B(matrix_res)
                 matrix.channel.open() # open all
+            logging.info("Matrix: opened all channels")
         except Exception as exc:
             raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc
 
@@ -79,7 +79,6 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
             lcr.quick_setup_cp_rp()
             while self.running:
                 prim, sec = lcr.acquire_reading()
-                logging.info("LCR Meter reading: %s %s", prim, sec)
                 self.emit(self.reading, prim, sec)
                 time.sleep(self.update_interval)
 
