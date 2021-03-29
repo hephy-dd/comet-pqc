@@ -15,6 +15,7 @@ from .components import CalibrationWidget
 from .components import ToggleButton
 from .settings import settings, TablePosition
 from .utils import format_switch, caldone_valid, make_path
+from .utils import handle_exception
 from .position import Position
 
 from qutie.qutie import Qt
@@ -1197,6 +1198,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.process.stopped = None
             self.process = None
 
+    @handle_exception
     def on_lcr_toggled(self, state):
         self.lcr_prim_text.enabled = state
         self.lcr_sec_text.enabled = state
