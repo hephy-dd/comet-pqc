@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.2] - 2021-03-25
+### Fixed
+- Store samples to settings on edits (#148).
+
 ## [0.33.1] - 2021-03-25
 ### Fixed
-- Handle NaN in analysis function limits (#145).
+- Handle `NaN` in analysis function limits (#145).
 
 ## [0.33.0] - 2021-03-24
 ### Added
@@ -235,7 +239,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.33.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.33.2...HEAD
+[0.33.2]: https://github.com/hephy-dd/comet-pqc/compare/0.33.1...0.33.2
 [0.33.1]: https://github.com/hephy-dd/comet-pqc/compare/0.33.0...0.33.1
 [0.33.0]: https://github.com/hephy-dd/comet-pqc/compare/0.32.1...0.33.0
 [0.32.1]: https://github.com/hephy-dd/comet-pqc/compare/0.31.0...0.32.1
