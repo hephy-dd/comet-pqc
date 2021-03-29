@@ -47,8 +47,9 @@ class LCRInstrument:
 
 class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
-    def __init__(self, matrix_channels=None, reading=None, **kwargs):
+    def __init__(self, update_interval=.250, matrix_channels=None, reading=None, **kwargs):
         super().__init__(**kwargs)
+        self.update_interval = update_interval
         self.matrix_channels = matrix_channels or []
         self.reading = reading
 
@@ -80,7 +81,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
                 prim, sec = lcr.acquire_reading()
                 logging.info("LCR Meter reading: %s %s", prim, sec)
                 self.emit(self.reading, prim, sec)
-                time.sleep(0.250)
+                time.sleep(self.update_interval)
 
     def run(self):
         try:
