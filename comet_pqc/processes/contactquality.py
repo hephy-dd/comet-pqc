@@ -50,6 +50,10 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
         self.update_interval = update_interval
         self.matrix_channels = matrix_channels or []
         self.reading = reading
+        self._cached_reading = None, None
+
+    def cached_reading(self):
+        return self._cached_reading
 
     def close_matrix(self, channels):
         try:
@@ -80,11 +84,14 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
             while self.running:
                 prim, sec = lcr.acquire_reading()
                 self.emit(self.reading, prim, sec)
+                self._cached_reading = prim, sec
                 time.sleep(self.update_interval)
 
     def run(self):
+        self._cached_reading = None, None
         try:
             self.close_matrix(self.matrix_channels)
             self.measure()
         finally:
+            self._cached_reading = None, None
             self.open_matrix()

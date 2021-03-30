@@ -10,7 +10,8 @@ setup(
         'comet @ git+https://github.com/hephy-dd/comet.git@0.13.1',
         'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.2.0',
         'pyyaml',
-        'jsonschema'
+        'jsonschema',
+        'bottle==0.12.*'
     ],
     package_data={
         'comet_pqc': [
