@@ -1,3 +1,5 @@
+import logging
+import json
 import socket
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
 from wsgiref.simple_server import make_server
@@ -7,10 +9,27 @@ import comet
 
 __all__ = ['WebAPIProcess']
 
+def metric(value, unit):
+    """Return metric dictionary."""
+    if value is None:
+        return None
+    return {'value': value, 'unit': unit}
+
 class WSGIRefServer(bottle.ServerAdapter):
+    """Custom bottle server adapter for WSGI reference server."""
+
     quiet = True
+    """Run server in quiet mode."""
+
     def stop(self):
-        self.srv.shutdown()
+        """Stop running server."""
+        try:
+            logging.info('Request stopping WSGI server...')
+            self.srv.shutdown()
+            logging.info('Request stopping WSGI server... done.')
+        except:
+            logging.error('Request stopping WSGI server... failed')
+
     def run(self, app):
         class FixedHandler(WSGIRequestHandler):
             def address_string(self): # Prevent reverse DNS lookups please.
@@ -27,23 +46,42 @@ class WSGIRefServer(bottle.ServerAdapter):
                 class server_cls(server_cls):
                     address_family = socket.AF_INET6
 
-        srv = self.srv = make_server(self.host, self.port, app, server_cls, handler_cls)
-        srv.serve_forever()
-        srv.server_close()
+        self.srv = make_server(self.host, self.port, app, server_cls, handler_cls)
+        with self.srv as srv:
+            srv.serve_forever()
+        logging.info('WSGI server stopped.')
+
+class JSONErrorBottle(bottle.Bottle):
+    """Custom bollte application with default JSON error handling."""
+
+    def default_error_handler(self, res):
+        bottle.response.content_type = 'application/json'
+        return json.dumps(dict(error=res.body, status_code=res.status_code))
 
 class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
     host = 'localhost'
     port = 9000
+    srv = None
 
     def stop(self):
-        try:
+        super().stop()
+        if self.srv:
             self.srv.stop()
-        finally:
-            super().stop()
 
     def run(self):
-        app = self.app = bottle.default_app()
+        self.enabled = self.settings.get('webapi_enabled') or False
+        self.port = int(self.settings.get('webapi_port') or 9000)
+
+        if not self.enabled:
+            return
+
+        app = JSONErrorBottle()
+
+        # Fix Cross-Origin Request Blocked error on client side
+        def apply_cors():
+            bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+        app.add_hook('after_request', apply_cors)
 
         @app.route('/')
         def index():
@@ -51,21 +89,43 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         @app.route('/table')
         def table():
-            if self.processes.get('table').running:
-                x, y, z = self.processes.get('table').get_cached_position()
-                position = {
-                    'x': {'value': x, 'unit': 'mm'},
-                    'y': {'value': y, 'unit': 'mm'},
-                    'z': {'value': z, 'unit': 'mm'}
-                }
-                cp, rp = self.processes.get('contact_quality').cached_reading()
-                contact_quality = {
-                    'cp': {'value': cp, 'unit': 'F'},
-                    'rp': {'value': rp, 'unit': 'Ohm'}
-                }
-                return {'table': {'position': position, 'contact_quality': contact_quality}}
-            return {}
+            enabled = self._table_enabled()
+            position = self._table_position()
+            contact_quality = self._contact_quality()
+            return {'table': {
+                'enabled': enabled,
+                'position': position,
+                'contact_quality': contact_quality
+            }}
 
         self.srv = WSGIRefServer(host=self.host, port=self.port)
         while self.running:
             bottle.run(app, server=self.srv)
+
+    def _table_enabled(self):
+        table_process = self.processes.get('table')
+        if table_process:
+            return table_process.enabled
+        return False
+
+    def _table_position(self):
+        x, y, z = None, None, None
+        table_process = self.processes.get('table')
+        if table_process and table_process.running:
+            if table_process.enabled:
+                x, y, z = table_process.get_cached_position()
+        return {
+            'x': metric(x, 'mm'),
+            'y': metric(y, 'mm'),
+            'z': metric(z, 'mm')
+        }
+
+    def _contact_quality(self):
+        cp, rp = None, None
+        contact_quality_process = self.processes.get('contact_quality')
+        if contact_quality_process and contact_quality_process.running:
+            cp, rp = contact_quality_process.cached_reading()
+        return {
+            'cp': metric(cp, 'F'),
+            'rp': metric(rp, 'Ohm')
+        }

@@ -23,7 +23,9 @@ from .processes import WebAPIProcess
 
 from .dashboard import Dashboard
 from .preferences import TableTab
+from .preferences import WebAPITab
 from .preferences import OptionsTab
+
 
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
@@ -157,7 +159,6 @@ def main():
     app.processes.add("contact_quality", ContactQualityProcess(
         failed=on_show_error
     ))
-
     app.processes.add("webapi", WebAPIProcess(
         failed=on_show_error
     ))
@@ -190,6 +191,9 @@ def main():
     table_tab = TableTab()
     app.window.preferences_dialog.tab_widget.append(table_tab)
     app.window.preferences_dialog.table_tab = table_tab
+    webapi_tab = WebAPITab()
+    app.window.preferences_dialog.tab_widget.append(webapi_tab)
+    app.window.preferences_dialog.webapi_tab = webapi_tab
     options_tab = OptionsTab()
     app.window.preferences_dialog.tab_widget.append(options_tab)
     app.window.preferences_dialog.options_tab = options_tab
