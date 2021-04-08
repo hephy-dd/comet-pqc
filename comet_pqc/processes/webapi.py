@@ -3,7 +3,10 @@ import json
 
 import bottle
 import comet
+import analysis_pqc
 from waitress.server import TcpWSGIServer
+
+from .. import __version__
 
 __all__ = ['WebAPIProcess']
 
@@ -69,18 +72,24 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         @app.route('/')
         def index():
-            return {'status': 'OK'}
+            return {
+                'pqc_version': __version__,
+                'comet_version': comet.__version__,
+                'analyze_pqc_version': analysis_pqc.__version__,
+            }
 
         @app.route('/table')
         def table():
             enabled = self._table_enabled()
             position = self._table_position()
             contact_quality = self._contact_quality()
-            return {'table': {
-                'enabled': enabled,
-                'position': position,
-                'contact_quality': contact_quality
-            }}
+            return {
+                'table': {
+                    'enabled': enabled,
+                    'position': position,
+                    'contact_quality': contact_quality
+                }
+            }
 
         self.server = WSGIServer(app, host=self.host, port=self.port)
         while self.running:

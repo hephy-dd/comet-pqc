@@ -26,7 +26,6 @@ from .preferences import TableTab
 from .preferences import WebAPITab
 from .preferences import OptionsTab
 
-
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
 
@@ -162,6 +161,7 @@ def main():
     app.processes.add("webapi", WebAPIProcess(
         failed=on_show_error
     ))
+
 
     # Dashboard
 
