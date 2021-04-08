@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.34.0
+
+### Added
+- Contact quality with LCR Meter.
+
 ## 0.33.2
 
 ### Fixed

@@ -14,6 +14,7 @@ from comet import ui
 
 from . import __version__
 
+from .processes import ContactQualityProcess
 from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import AlternateTableProcess
@@ -151,6 +152,9 @@ def main():
         failed=on_show_error,
         message=on_message,
         progress=on_progress,
+    ))
+    app.processes.add("contact_quality", ContactQualityProcess(
+        failed=on_show_error
     ))
 
     # Dashboard

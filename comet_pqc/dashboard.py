@@ -469,6 +469,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.measure_process.measurement_reset = self.on_measurement_reset
         self.measure_process.save_to_image = self.on_save_to_image
 
+        self.contact_quality_process = self.processes.get("contact_quality")
+
         # Experimental
 
         # Install timer to update environment controls
@@ -917,7 +919,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     @handle_exception
     def on_table_control_clicked(self):
         self.table_process.enable_joystick(False)
-        dialog = TableControlDialog(self.table_process)
+        dialog = TableControlDialog(self.table_process, self.contact_quality_process)
         dialog.load_settings()
         dialog.load_samples(list(self.sequence_tree)) # HACK
         if self.use_environment():
@@ -942,6 +944,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             dialog.microscope_light_toggled = microscope_light_toggled
             dialog.box_light_toggled = box_light_toggled
         dialog.run()
+        self.contact_quality_process.stop()
+        self.contact_quality_process.join()
         dialog.store_settings()
         dialog.update_samples()
         # Prevent glitch
