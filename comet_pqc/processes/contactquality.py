@@ -61,7 +61,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
                     raise RuntimeError("Matrix mismatch in closed channels")
                 logging.info("Matrix: closed channels: %s", ', '.join(closed_channels))
         except Exception as exc:
-            raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {exc.args}") from exc
+            raise RuntimeError(f"Failed to close matrix channels {channels}, {exc.args}") from exc
 
     def open_matrix(self):
         try:
