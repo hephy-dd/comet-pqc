@@ -1,11 +1,9 @@
 import logging
 import json
-import socket
-from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
-from wsgiref.simple_server import make_server
 
 import bottle
 import comet
+from waitress.server import TcpWSGIServer
 
 __all__ = ['WebAPIProcess']
 
@@ -15,42 +13,22 @@ def metric(value, unit):
         return None
     return {'value': value, 'unit': unit}
 
-class WSGIRefServer(bottle.ServerAdapter):
-    """Custom bottle server adapter for WSGI reference server."""
+class WSGIServer(TcpWSGIServer):
 
-    quiet = True
-    """Run server in quiet mode."""
+    def run(self):
+        self.asyncore.loop(.5, map=self._map)
 
-    def stop(self):
-        """Stop running server."""
-        try:
-            logging.info('Request stopping WSGI server...')
-            self.srv.shutdown()
-            logging.info('Request stopping WSGI server... done.')
-        except:
-            logging.error('Request stopping WSGI server... failed')
-
-    def run(self, app):
-        logging.info('WSGI server starting... %s:%s', self.host, self.port)
-        class FixedHandler(WSGIRequestHandler):
-            def address_string(self): # Prevent reverse DNS lookups please.
-                return self.client_address[0]
-            def log_request(*args, **kw):
-                if not self.quiet:
-                    return WSGIRequestHandler.log_request(*args, **kw)
-
-        handler_cls = self.options.get('handler_class', FixedHandler)
-        server_cls  = self.options.get('server_class', WSGIServer)
-
-        if ':' in self.host: # Fix wsgiref for IPv6 addresses.
-            if getattr(server_cls, 'address_family') == socket.AF_INET:
-                class server_cls(server_cls):
-                    address_family = socket.AF_INET6
-
-        self.srv = make_server(self.host, self.port, app, server_cls, handler_cls)
-        with self.srv as srv:
-            srv.serve_forever()
-        logging.info('WSGI server stopped.')
+    def shutdown(self):
+        """Shutdown the server, see https://github.com/Pylons/webtest/blob/cf4ccaa0fcd0d73b690855abb379d96d9555d0d5/webtest/http.py#L92"""
+        # avoid showing traceback related to asyncore
+        self.logger.setLevel(logging.FATAL)
+        while self._map:
+            triggers = list(self._map.values())
+            for trigger in triggers:
+                trigger.handle_close()
+        self.maintenance(0)
+        self.task_dispatcher.shutdown()
+        return True
 
 class JSONErrorBottle(bottle.Bottle):
     """Custom bollte application with default JSON error handling."""
@@ -63,13 +41,14 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
     host = 'localhost'
     port = 9000
-    srv = None
     enabled = False
+    server = None
 
     def stop(self):
         super().stop()
-        if self.srv:
-            self.srv.stop()
+        server = self.server
+        if server:
+            server.shutdown()
 
     def run(self):
         self.enabled = self.settings.get('webapi_enabled') or type(self).enabled
@@ -78,6 +57,8 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         if not self.enabled:
             return
+
+        logging.info("start serving webapi... %s:%s", self.host, self.port)
 
         app = JSONErrorBottle()
 
@@ -101,9 +82,11 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
                 'contact_quality': contact_quality
             }}
 
-        self.srv = WSGIRefServer(host=self.host, port=self.port)
+        self.server = WSGIServer(app, host=self.host, port=self.port)
         while self.running:
-            bottle.run(app, server=self.srv)
+            self.server.run()
+        self.server = None
+        logging.info("stopped serving webapi")
 
     def _table_enabled(self):
         table_process = self.processes.get('table')

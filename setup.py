@@ -11,7 +11,8 @@ setup(
         'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.2.0',
         'pyyaml',
         'jsonschema',
-        'bottle==0.12.*'
+        'bottle==0.12.*',
+        'waitress==2.0.*',
     ],
     package_data={
         'comet_pqc': [

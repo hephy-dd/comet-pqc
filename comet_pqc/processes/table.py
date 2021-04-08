@@ -137,7 +137,7 @@ class TableProcess(comet.Process, ResourceMixin):
                 tb = traceback.format_exc()
                 logging.error("%s: %s", type(self).__name__, tb)
                 logging.error("%s: %s", type(self).__name__, exc)
-        logging.info("stopped serving table.")
+        logging.info("stopped serving table")
 
     def initialize(self, context):
         context.mode = 0
