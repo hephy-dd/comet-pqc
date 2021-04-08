@@ -19,9 +19,11 @@ from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import AlternateTableProcess
 from .processes import MeasureProcess
+from .processes import WebAPIProcess
 
 from .dashboard import Dashboard
 from .preferences import TableTab
+from .preferences import WebAPITab
 from .preferences import OptionsTab
 
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
@@ -156,6 +158,10 @@ def main():
     app.processes.add("contact_quality", ContactQualityProcess(
         failed=on_show_error
     ))
+    app.processes.add("webapi", WebAPIProcess(
+        failed=on_show_error
+    ))
+
 
     # Dashboard
 
@@ -185,6 +191,9 @@ def main():
     table_tab = TableTab()
     app.window.preferences_dialog.tab_widget.append(table_tab)
     app.window.preferences_dialog.table_tab = table_tab
+    webapi_tab = WebAPITab()
+    app.window.preferences_dialog.tab_widget.append(webapi_tab)
+    app.window.preferences_dialog.webapi_tab = webapi_tab
     options_tab = OptionsTab()
     app.window.preferences_dialog.tab_widget.append(options_tab)
     app.window.preferences_dialog.options_tab = options_tab
@@ -208,6 +217,8 @@ def main():
         dashboard.table_process.start()
         dashboard.sync_table_controls()
         dashboard.table_process.enable_joystick(False)
+
+    app.processes.get("webapi").start()
 
     # HACK: resize preferences dialog for HiDPI
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))
