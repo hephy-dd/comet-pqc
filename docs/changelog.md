@@ -7,11 +7,15 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.35.0
+
+### Added
+- JSON web API server.
+
 ## 0.34.0
 
 ### Added
 - Contact quality with LCR Meter.
-- JSON web API server.
 
 ## 0.33.2
 
