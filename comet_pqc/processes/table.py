@@ -207,11 +207,13 @@ class AlternateTableProcess(TableProcess):
         self.__queue.append(request)
 
     def _get_position(self, table):
+        self.__cached_position = float('nan'), float('nan'), float('nan')
         x, y, z = [from_table_unit(v) for v in table.pos]
         self.__cached_position = x, y, z
         return x, y, z
 
     def _get_caldone(self, table):
+        self.__cached_caldone = float('nan'), float('nan'), float('nan')
         x, y, z = table.x.caldone, table.y.caldone, table.z.caldone
         self.__cached_caldone = x, y, z
         return x, y, z
