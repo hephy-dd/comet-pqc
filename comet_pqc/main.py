@@ -19,7 +19,6 @@ from .processes import EnvironmentProcess
 from .processes import StatusProcess
 from .processes import AlternateTableProcess
 from .processes import MeasureProcess
-from .processes import WebAPIProcess
 
 from .dashboard import Dashboard
 from .preferences import TableTab
@@ -158,10 +157,6 @@ def main():
         failed=on_show_error
     ))
 
-    app.processes.add("webapi", WebAPIProcess(
-        failed=on_show_error
-    ))
-
     # Dashboard
 
     dashboard = Dashboard(
@@ -213,8 +208,6 @@ def main():
         dashboard.table_process.start()
         dashboard.sync_table_controls()
         dashboard.table_process.enable_joystick(False)
-
-    app.processes.get("webapi").start()
 
     # HACK: resize preferences dialog for HiDPI
     dialog_size = app.settings.get('preferences_dialog_size', (640, 480))
