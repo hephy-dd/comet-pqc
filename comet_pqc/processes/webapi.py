@@ -31,6 +31,7 @@ class WSGIRefServer(bottle.ServerAdapter):
             logging.error('Request stopping WSGI server... failed')
 
     def run(self, app):
+        logging.info('WSGI server starting... %s:%s', self.host, self.port)
         class FixedHandler(WSGIRequestHandler):
             def address_string(self): # Prevent reverse DNS lookups please.
                 return self.client_address[0]
@@ -63,6 +64,7 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
     host = 'localhost'
     port = 9000
     srv = None
+    enabled = False
 
     def stop(self):
         super().stop()
@@ -70,8 +72,9 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             self.srv.stop()
 
     def run(self):
-        self.enabled = self.settings.get('webapi_enabled') or False
-        self.port = int(self.settings.get('webapi_port') or 9000)
+        self.enabled = self.settings.get('webapi_enabled') or type(self).enabled
+        self.host = self.settings.get('webapi_host') or type(self).host
+        self.port = int(self.settings.get('webapi_port') or type(self).port)
 
         if not self.enabled:
             return
