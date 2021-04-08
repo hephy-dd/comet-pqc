@@ -11,7 +11,6 @@ nav_order: 10
 
 ### Added
 - Contact quality with LCR Meter.
-- JSON web API server.
 
 ## 0.33.2
 
