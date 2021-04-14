@@ -35,7 +35,7 @@ from .tabs import SummaryTab
 from .logwindow import LogWidget
 from .formatter import CSVFormatter
 from .settings import settings
-from .utils import make_path, handle_exception, caldone_valid
+from .utils import user_home, make_path, handle_exception, caldone_valid
 from .position import Position
 
 SUMMARY_FILENAME = "summary.csv"
@@ -46,6 +46,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
 
     def __init__(self, *, tree_selected, tree_double_clicked, start_all, start, stop, reset_sequence_state):
         super().__init__()
+        self.current_path = user_home()
         self.title = "Sequence"
         self.tree_double_clicked = tree_double_clicked
 
@@ -163,16 +164,19 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
         self._sequence_tree.fit()
+        self.current_path = self.settings.get("sequence_default_path") or user_home()
 
     def store_settings(self):
         sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
         self.settings["sequence_samples"] = sequence_samples
+        self.settings["sequence_default_path"] = self.current_path
 
     def lock(self):
         self._sequence_tree.double_clicked = None
         self._start_button.enabled = False
         self._stop_button.enabled = True
         self._reset_button.enabled = False
+        self._reload_config_button.enabled = False
         self._add_sample_button.enabled = False
         self._remove_sample_button.enabled = False
         self._save_button.enabled = False
@@ -184,6 +188,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._start_button.enabled = True
         self._stop_button.enabled = False
         self._reset_button.enabled = True
+        self._reload_config_button.enabled = True
         self._add_sample_button.enabled = True
         self._remove_sample_button.enabled = True
         self._sequence_tree.unlock()
@@ -228,12 +233,13 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
 
     @handle_exception
     def on_open_clicked(self):
-        filename = ui.filename_open(filter="JSON (*.json)")
+        filename = ui.filename_open(path=self.current_path, filter="JSON (*.json)")
         if filename:
             with open(filename) as f:
                 logging.info("Reading sequence... %s", filename)
                 data = json.load(f)
                 logging.info("Reading sequence... done.")
+            self.current_path = os.path.dirname(filename)
             version = data.get('version')
             if version is None:
                 raise RuntimeError(f"Missing version information in sequence: {filename}")
@@ -258,7 +264,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
 
     @handle_exception
     def on_save_clicked(self):
-        filename = ui.filename_save(filter="JSON (*.json)")
+        filename = ui.filename_save(path=self.current_path, filter="JSON (*.json)")
         if filename:
             samples = [sample.to_settings() for sample in self._sequence_tree]
             data = {
@@ -275,6 +281,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                 logging.info("Writing sequence... %s", filename)
                 json.dump(data, f)
                 logging.info("Writing sequence... done.")
+            self.current_path = os.path.dirname(filename)
 
 class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
 

@@ -6,7 +6,7 @@ from comet.settings import SettingsMixin
 
 from .settings import settings
 from .position import Position
-from .utils import make_path, create_icon
+from .utils import user_home, make_path, create_icon
 from .utils import format_table_unit
 from .utils import getcal, getrm
 
@@ -261,7 +261,7 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
         self.clear_locations()
         locations = settings.output_path
         if not locations:
-            locations = [os.path.join(os.path.expanduser("~"), "PQC")]
+            locations = [os.path.join(user_home(), "PQC")]
         for location in locations:
             self.append_location(location)
         self.location_combo_box.current = settings.current_output_path
