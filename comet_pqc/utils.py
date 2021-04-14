@@ -12,6 +12,7 @@ from comet import ureg
 __all__ = [
     'PACKAGE_PATH',
     'make_path',
+    'user_home',
     'format_metric',
     'format_switch',
     'std_mean_filter',
@@ -33,6 +34,14 @@ def make_path(*args):
     '/usr/local/lib/python/comet_pqc/assets/sample.txt'
     """
     return os.path.join(PACKAGE_PATH, *args)
+
+def user_home():
+    """Return absolute path of user home directory.
+
+    >>> user_home()
+    '/home/user'
+    """
+    return os.path.expanduser("~")
 
 def format_metric(value, unit, decimals=3):
     """Pretty format metric units.

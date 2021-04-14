@@ -13,6 +13,7 @@ import comet
 from comet import ui
 
 from . import __version__
+from .utils import user_home
 
 from .processes import ContactQualityProcess
 from .processes import EnvironmentProcess
@@ -44,7 +45,7 @@ def configure_logging():
     stream_handler.setFormatter(stream_formatter)
     logger.addHandler(stream_handler)
     # Rotating file handler
-    filename = os.path.join(os.path.expanduser("~"), 'comet-pqc.log')
+    filename = os.path.join(user_home(), 'comet-pqc.log')
     file_formatter = Formatter(
         fmt='%(asctime)s:%(name)s:%(levelname)s:%(message)s',
         datefmt='%Y-%m-%dT%H:%M:%S'

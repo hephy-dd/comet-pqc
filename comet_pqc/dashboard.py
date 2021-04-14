@@ -1,6 +1,7 @@
 import logging
 import os
 import webbrowser
+import json
 
 from qutie import Timer
 
@@ -34,10 +35,253 @@ from .tabs import SummaryTab
 from .logwindow import LogWidget
 from .formatter import CSVFormatter
 from .settings import settings
-from .utils import make_path, handle_exception, caldone_valid
+from .utils import user_home, make_path, handle_exception, caldone_valid
 from .position import Position
 
 SUMMARY_FILENAME = "summary.csv"
+
+class SequenceWidget(ui.GroupBox, SettingsMixin):
+
+    config_version = 1
+
+    def __init__(self, *, tree_selected, tree_double_clicked, start_all, start, stop, reset_sequence_state):
+        super().__init__()
+        self.current_path = user_home()
+        self.title = "Sequence"
+        self.tree_double_clicked = tree_double_clicked
+
+        self._sequence_tree = SequenceTree(
+            selected=tree_selected,
+            double_clicked=self.tree_double_clicked
+        )
+        self._sequence_tree.minimum_width = 360
+
+        self._start_all_action = ui.Action(
+            text="&All Samples",
+            triggered=start_all
+        )
+
+        self._start_sample_action = ui.Action(
+            text="&Sample",
+            triggered=start
+        )
+        self._start_sample_action.qt.setEnabled(False)
+
+        self._start_contact_action = ui.Action(
+            text="&Contact",
+            triggered=start
+        )
+        self._start_contact_action.qt.setEnabled(False)
+
+        self._start_measurement_action = ui.Action(
+            text="&Measurement",
+            triggered=start
+        )
+        self._start_measurement_action.qt.setEnabled(False)
+
+        self._start_menu = ui.Menu()
+        self._start_menu.append(self._start_all_action)
+        self._start_menu.append(self._start_sample_action)
+        self._start_menu.append(self._start_contact_action)
+        self._start_menu.append(self._start_measurement_action)
+
+        self._start_button = ui.Button(
+            text="Start",
+            tool_tip="Start measurement sequence.",
+            stylesheet="QPushButton:enabled{color:green;font-weight:bold;}"
+        )
+        self._start_button.qt.setMenu(self._start_menu.qt)
+
+        self._stop_button = ui.Button(
+            text="Stop",
+            tool_tip="Stop measurement sequence.",
+            enabled=False,
+            clicked=stop,
+            stylesheet="QPushButton:enabled{color:red;font-weight:bold;}"
+        )
+
+        self._reset_button = ui.Button(
+            text="Reset",
+            tool_tip="Reset measurement sequence state.",
+            clicked=reset_sequence_state
+        )
+
+        self._reload_config_button = ui.ToolButton(
+            icon=make_path('assets', 'icons', 'reload.svg'),
+            tool_tip="Reload sequence configurations from file.",
+            clicked=self.on_reload_config_clicked
+        )
+
+        self._add_sample_button = ui.ToolButton(
+            icon=make_path('assets', 'icons', 'add.svg'),
+            tool_tip="Add new sample sequence.",
+            clicked=self.on_add_sample_clicked
+        )
+
+        self._remove_sample_button = ui.ToolButton(
+            icon=make_path('assets', 'icons', 'delete.svg'),
+            tool_tip="Remove current sample sequence.",
+            clicked=self.on_remove_sample_clicked
+        )
+
+        self._open_button = ui.ToolButton(
+            icon=make_path('assets', 'icons', 'document_open.svg'),
+            tool_tip="Open sequence tree from file.",
+            clicked=self.on_open_clicked
+        )
+
+        self._save_button = ui.ToolButton(
+            icon=make_path('assets', 'icons', 'document_save.svg'),
+            tool_tip="Save sequence tree to file.",
+            clicked=self.on_save_clicked
+        )
+
+        self.layout = ui.Column(
+            self._sequence_tree,
+            ui.Row(
+                self._start_button,
+                self._stop_button,
+                self._reset_button,
+                self._reload_config_button,
+                self._add_sample_button,
+                self._remove_sample_button,
+                self._open_button,
+                self._save_button
+            )
+        )
+
+    def load_settings(self):
+        samples = self.settings.get("sequence_samples") or []
+        self._sequence_tree.clear()
+        for kwargs in samples:
+            item = SampleTreeItem()
+            self._sequence_tree.append(item)
+            item.expanded = False # do not expand
+            try:
+                item.from_settings(**kwargs)
+            except Exception as exc:
+                logging.error(exc)
+        if len(self._sequence_tree):
+            self._sequence_tree.current = self._sequence_tree[0]
+        self._sequence_tree.fit()
+        self.current_path = self.settings.get("sequence_default_path") or user_home()
+
+    def store_settings(self):
+        sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
+        self.settings["sequence_samples"] = sequence_samples
+        self.settings["sequence_default_path"] = self.current_path
+
+    def lock(self):
+        self._sequence_tree.double_clicked = None
+        self._start_button.enabled = False
+        self._stop_button.enabled = True
+        self._reset_button.enabled = False
+        self._reload_config_button.enabled = False
+        self._add_sample_button.enabled = False
+        self._remove_sample_button.enabled = False
+        self._save_button.enabled = False
+        self._open_button.enabled = False
+        self._sequence_tree.lock()
+
+    def unlock(self):
+        self._sequence_tree.double_clicked = self.tree_double_clicked
+        self._start_button.enabled = True
+        self._stop_button.enabled = False
+        self._reset_button.enabled = True
+        self._reload_config_button.enabled = True
+        self._add_sample_button.enabled = True
+        self._remove_sample_button.enabled = True
+        self._sequence_tree.unlock()
+
+    def stop(self):
+        self._stop_button.enabled = False
+
+    @handle_exception
+    def on_reload_config_clicked(self):
+        if not ui.show_question(
+            title="Reload Configuration",
+            text="Do you want to reload sequence configurations from file?"
+        ): return
+        for sample_item in self._sequence_tree:
+            if sample_item.sequence:
+                filename = sample_item.sequence.filename
+                sequence = config.load_sequence(filename)
+                sample_item.load_sequence(sequence)
+
+    @handle_exception
+    def on_add_sample_clicked(self):
+        item = SampleTreeItem(
+            name_prefix="",
+            name_infix="Unnamed",
+            name_suffix="",
+            sample_type="",
+            enabled=False
+        )
+        self._sequence_tree.append(item)
+        self._sequence_tree.fit()
+        self._sequence_tree.current = item
+
+    @handle_exception
+    def on_remove_sample_clicked(self):
+        item = self._sequence_tree.current
+        if item in self._sequence_tree:
+            if ui.show_question(
+                title="Remove Sample",
+                text=f"Do you want to remove '{item.name}'?"
+            ):
+                self._sequence_tree.remove(item)
+
+    @handle_exception
+    def on_open_clicked(self):
+        filename = ui.filename_open(path=self.current_path, filter="JSON (*.json)")
+        if filename:
+            with open(filename) as f:
+                logging.info("Reading sequence... %s", filename)
+                data = json.load(f)
+                logging.info("Reading sequence... done.")
+            self.current_path = os.path.dirname(filename)
+            version = data.get('version')
+            if version is None:
+                raise RuntimeError(f"Missing version information in sequence: {filename}")
+            elif isinstance(version, int):
+                if version != self.config_version:
+                    raise RuntimeError(f"Invalid version in sequence: {filename}")
+            else:
+                raise RuntimeError(f"Invalid version information in sequence: {filename}")
+            samples = data.get('sequence') or []
+            self._sequence_tree.clear()
+            for kwargs in samples:
+                item = SampleTreeItem()
+                self._sequence_tree.append(item)
+                item.expanded = False # do not expand
+                try:
+                    item.from_settings(**kwargs)
+                except Exception as exc:
+                    logging.error(exc)
+            if len(self._sequence_tree):
+                self._sequence_tree.current = self._sequence_tree[0]
+            self._sequence_tree.fit()
+
+    @handle_exception
+    def on_save_clicked(self):
+        filename = ui.filename_save(path=self.current_path, filter="JSON (*.json)")
+        if filename:
+            samples = [sample.to_settings() for sample in self._sequence_tree]
+            data = {
+                'version': self.config_version,
+                'sequence': samples
+            }
+            # Auto filename extension
+            if os.path.splitext(filename)[-1] not in ['.json']:
+                filename = f'{filename}.json'
+                if os.path.exists(filename):
+                    if not ui.show_question(f"Do you want to overwrite existing file {filename}?"):
+                        return
+            with open(filename, 'w') as f:
+                logging.info("Writing sequence... %s", filename)
+                json.dump(data, f)
+                logging.info("Writing sequence... done.")
+            self.current_path = os.path.dirname(filename)
 
 class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
 
@@ -274,93 +518,18 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         # Layout
-        self.sequence_tree = SequenceTree(
-            selected=self.on_tree_selected,
-            double_clicked=self.on_tree_double_clicked
+        self.sequence_widget = SequenceWidget(
+            tree_selected=self.on_tree_selected,
+            tree_double_clicked=self.on_tree_double_clicked,
+            start_all=self.on_start_all,
+            start=self.on_start,
+            stop=self.on_stop,
+            reset_sequence_state=self.on_reset_sequence_state
         )
-        self.sequence_tree.minimum_width = 360
-
-        self.start_all_action = ui.Action(
-            text="&All Samples",
-            triggered=self.on_start_all
-        )
-
-        self.start_sample_action = ui.Action(
-            text="&Sample",
-            triggered=self.on_start
-        )
-        self.start_sample_action.qt.setEnabled(False)
-
-        self.start_contact_action = ui.Action(
-            text="&Contact",
-            triggered=self.on_start
-        )
-        self.start_contact_action.qt.setEnabled(False)
-
-        self.start_measurement_action = ui.Action(
-            text="&Measurement",
-            triggered=self.on_start
-        )
-        self.start_measurement_action.qt.setEnabled(False)
-
-        self.start_menu = ui.Menu()
-        self.start_menu.append(self.start_all_action)
-        self.start_menu.append(self.start_sample_action)
-        self.start_menu.append(self.start_contact_action)
-        self.start_menu.append(self.start_measurement_action)
-
-        self.start_button = ui.Button(
-            text="Start",
-            tool_tip="Start measurement sequence.",
-            stylesheet="QPushButton:enabled{color:green;font-weight:bold;}"
-        )
-        self.start_button.qt.setMenu(self.start_menu.qt)
-
-        self.stop_button = ui.Button(
-            text="Stop",
-            tool_tip="Stop measurement sequence.",
-            enabled=False,
-            clicked=self.on_stop,
-            stylesheet="QPushButton:enabled{color:red;font-weight:bold;}"
-        )
-
-        self.reset_button = ui.Button(
-            text="Reset",
-            tool_tip="Reset measurement sequence state.",
-            clicked=self.on_reset_sequence_state
-        )
-
-        self.reload_config_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'reload.svg'),
-            tool_tip="Reload sequence configurations from file.",
-            clicked=self.on_reload_config_clicked
-        )
-
-        self.add_sample_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'add.svg'),
-            tool_tip="Add new sample sequence.",
-            clicked=self.on_add_sample_clicked
-        )
-        self.remove_sample_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'delete.svg'),
-            tool_tip="Remove current sample sequence.",
-            clicked=self.on_remove_sample_clicked
-        )
-
-        self.sequence_groupbox = ui.GroupBox(
-            title="Sequence",
-            layout=ui.Column(
-                self.sequence_tree,
-                ui.Row(
-                    self.start_button,
-                    self.stop_button,
-                    self.reset_button,
-                    self.reload_config_button,
-                    self.add_sample_button,
-                    self.remove_sample_button
-                )
-            )
-        )
+        self.sequence_tree = self.sequence_widget._sequence_tree
+        self.start_sample_action = self.sequence_widget._start_sample_action
+        self.start_contact_action = self.sequence_widget._start_contact_action
+        self.start_measurement_action = self.sequence_widget._start_measurement_action
 
         # Environment Controls
 
@@ -405,7 +574,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         # Controls
 
         self.control_widget = ui.Column(
-            self.sequence_groupbox,
+            self.sequence_widget,
             self.table_control_widget,
             self.environment_control_widget,
             ui.Row(
@@ -482,19 +651,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     @handle_exception
     def load_settings(self):
         self.sizes = self.settings.get("dashboard_sizes") or (300, 500)
-        samples = self.settings.get("sequence_samples") or []
-        self.sequence_tree.clear()
-        for kwargs in samples:
-            item = SampleTreeItem()
-            self.sequence_tree.append(item)
-            item.expanded = False # do not expand
-            try:
-                item.from_settings(**kwargs)
-            except Exception as exc:
-                logging.error(exc)
-        if len(self.sequence_tree):
-            self.sequence_tree.current = self.sequence_tree[0]
-        self.sequence_tree.fit()
+        self.sequence_widget.load_settings()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
         self.table_control_widget.load_settings()
@@ -504,8 +661,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
     @handle_exception
     def store_settings(self):
         self.settings["dashboard_sizes"] = self.sizes
-        sequence_samples = [sample.to_settings() for sample in self.sequence_tree]
-        self.settings["sequence_samples"] = sequence_samples
+        self.sequence_widget.store_settings()
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
         self.operator_widget.store_settings()
@@ -581,32 +737,20 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         """Lock dashboard controls."""
         self.environment_control_widget.enabled = False
         self.table_control_widget.enabled = False
-        self.sequence_tree.double_clicked = None
-        self.start_button.enabled = False
-        self.stop_button.enabled = True
-        self.reset_button.enabled = False
-        self.add_sample_button.enabled = False
-        self.remove_sample_button.enabled = False
+        self.sequence_widget.lock()
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
         self.measurement_tab.lock()
-        self.sequence_tree.lock()
         self.status_tab.lock()
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
         self.environment_control_widget.enabled = True
         self.table_control_widget.enabled = True
-        self.sequence_tree.double_clicked = self.on_tree_double_clicked
-        self.start_button.enabled = True
-        self.stop_button.enabled = False
-        self.reset_button.enabled = True
-        self.add_sample_button.enabled = True
-        self.remove_sample_button.enabled = True
+        self.sequence_widget.unlock()
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
         self.measurement_tab.unlock()
-        self.sequence_tree.unlock()
         self.status_tab.unlock()
 
     # Sequence control
@@ -815,7 +959,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             panel.save_to_image(filename)
 
     def on_stop(self):
-        self.stop_button.enabled = False
+        self.sequence_widget.stop()
         self.measure_process.stop()
 
     def on_finished(self):
@@ -838,41 +982,6 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             panel = self.panels.get(current_item.type)
             panel.visible = True
             panel.mount(current_item)
-
-    @handle_exception
-    def on_reload_config_clicked(self):
-        if not ui.show_question(
-            title="Reload Configuration",
-            text="Do you want to reload sequence configurations from file?"
-        ): return
-        for sample_item in self.sequence_tree:
-            if sample_item.sequence:
-                filename = sample_item.sequence.filename
-                sequence = config.load_sequence(filename)
-                sample_item.load_sequence(sequence)
-
-    @handle_exception
-    def on_add_sample_clicked(self):
-        item = SampleTreeItem(
-            name_prefix="",
-            name_infix="Unnamed",
-            name_suffix="",
-            sample_type="",
-            enabled=False
-        )
-        self.sequence_tree.append(item)
-        self.sequence_tree.fit()
-        self.sequence_tree.current = item
-
-    @handle_exception
-    def on_remove_sample_clicked(self):
-        item = self.sequence_tree.current
-        if item in self.sequence_tree:
-            if ui.show_question(
-                title="Remove Sample",
-                text=f"Do you want to remove '{item.name}'?"
-            ):
-                self.sequence_tree.remove(item)
 
     # Measurement control
 

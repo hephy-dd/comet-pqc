@@ -563,9 +563,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.sub_z_button,
             self.step_up_button
         )
-        self.lcr_prim_text = ui.Text(readonly=True)
-        self.lcr_sec_text = ui.Text(readonly=True)
-        self.lcr_group_box = ui.GroupBox(
+        self._lcr_prim_text = ui.Text(readonly=True)
+        self._lcr_sec_text = ui.Text(readonly=True)
+        self._lcr_groupbox = ui.GroupBox(
             title="Contact Quality (LCR)",
             checkable=True,
             checked=False,
@@ -573,11 +573,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             layout=ui.Column(
                 ui.Row(
                     ui.Label("Cp"),
-                    self.lcr_prim_text
+                    self._lcr_prim_text
                 ),
                 ui.Row(
                     ui.Label("Rp"),
-                    self.lcr_sec_text
+                    self._lcr_sec_text
                 ),
                 ui.Spacer()
             )
@@ -673,12 +673,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.y_hard_limit_label = PositionLabel()
         self.z_hard_limit_label = PositionLabel()
         self.laser_label = SwitchLabel()
-        self.calibrate_button = ui.Button(
+        self._calibrate_button = ui.Button(
             text="Calibrate",
             clicked=self.on_calibrate
         )
-        self.update_interval_number = ui.Number(
-            value = self.settings.get("table_control_update_interval") or 1.0,
+        self._update_interval_number = ui.Number(
+            value = settings.table_control_update_interval,
             minimum=.5,
             maximum=10.0,
             decimals=2,
@@ -686,27 +686,84 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             suffix="s",
             changed=self.on_update_interval_changed
         )
-        self.step_up_delay_number = ui.Number(
+        self._interval_groupbox = ui.GroupBox(
+            title="Update Interval",
+            layout=ui.Row(
+                self._update_interval_number,
+                ui.Spacer(),
+                stretch=(0, 1)
+            )
+        )
+        self._dodge_height_number = ui.Number(
+            tool_tip="Doge height in microns.",
+            minimum=0,
+            maximum=10000,
+            decimals=0,
+            step=1,
+            suffix="um"
+        )
+        self._dodge_groupbox = ui.GroupBox(
+            title="X/Y Dodge",
+            tool_tip="Enables -/+ Z dodge for XY movements.",
+            checkable=True,
+            layout=ui.Row(
+                ui.Label("Height"),
+                self._dodge_height_number,
+                ui.Spacer(),
+                stretch=(0, 0, 1)
+            )
+        )
+        self._step_up_delay_number = ui.Number(
             minimum=0,
             maximum=1000,
             decimals=0,
             step=25,
             suffix="ms"
         )
-        self.step_up_multiply_number = ui.Number(
+        self._step_up_multiply_number = ui.Number(
             minimum=1,
             maximum=10,
             decimals=0,
             suffix="x"
         )
-        self.lcr_update_interval_number =ui.Number(
+        self._step_up_groubox = ui.GroupBox(
+            title="Step Up (↑⇵)",
+            layout=ui.Row(
+                ui.Column(
+                    ui.Label("Delay"),
+                    ui.Label("Multiplicator (⇵)")
+                ),
+                ui.Column(
+                    self._step_up_delay_number,
+                    self._step_up_multiply_number
+                ),
+                ui.Spacer()
+            )
+        )
+        self._lcr_update_interval_number =ui.Number(
             minimum=0,
             maximum=1000,
             decimals=0,
             step=25,
             suffix="ms"
         )
-        self.lcr_matrix_channels_text = ui.Text(
+        self._lcr_matrix_channels_text = ui.Text(
+        )
+        self._lcr_options_groupbox = ui.GroupBox(
+            title="Contact Quality (LCR)",
+            layout=ui.Row(
+                ui.Column(
+                    ui.Label("Reading Interval"),
+                    ui.Label("Matrix Channels"),
+                ),
+                ui.Column(
+                    ui.Row(
+                        self._lcr_update_interval_number,
+                        ui.Spacer()
+                    ),
+                    self._lcr_matrix_channels_text
+                )
+            )
         )
         self.progress_bar = ui.ProgressBar(
             visible=False
@@ -741,7 +798,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                             title="Step Width",
                             layout=self.step_width_buttons
                         ),
-                        self.lcr_group_box,
+                        ui.Column(
+                            self._lcr_groupbox,
+                            self._dodge_groupbox,
+                            stretch=(1, 0)
+                        ),
                         ui.GroupBox(
                             title="Lights",
                             layout=ui.Column(
@@ -765,11 +826,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Calibrate",
                             layout=ui.Column(
-                                    ui.GroupBox(
+                                ui.GroupBox(
                                     title="Table Calibration",
                                     layout=ui.Column(
                                         ui.Row(
-                                            self.calibrate_button,
+                                            self._calibrate_button,
                                             ui.Label("Calibrate table by moving into cal/rm switches\nof every axis in" \
                                                      " a safe manner to protect the probe card."),
                                             stretch=(0, 1)
@@ -783,44 +844,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Options",
                             layout=ui.Column(
-                                ui.GroupBox(
-                                    title="Update Interval",
-                                    layout=ui.Row(
-                                        self.update_interval_number,
-                                        ui.Spacer(),
-                                        stretch=(0, 1)
-                                    )
-                                ),
-                                ui.GroupBox(
-                                    title="Step Up (↑⇵)",
-                                    layout=ui.Row(
-                                        ui.Column(
-                                            ui.Label("Delay"),
-                                            ui.Label("Multiplicator (⇵)")
-                                        ),
-                                        ui.Column(
-                                            self.step_up_delay_number,
-                                            self.step_up_multiply_number
-                                        ),
-                                        ui.Spacer()
-                                    )
-                                ),
-                                ui.GroupBox(
-                                    title="Contact Quality (LCR)",
-                                    layout=ui.Row(
-                                        ui.Column(
-                                            ui.Label("Reading Interval"),
-                                            ui.Label("Matrix Channels"),
-                                        ),
-                                        ui.Column(
-                                            ui.Row(
-                                                self.lcr_update_interval_number,
-                                                ui.Spacer()
-                                            ),
-                                            self.lcr_matrix_channels_text
-                                        )
-                                    )
-                                ),
+                                self._interval_groupbox,
+                                self._step_up_groubox,
+                                self._lcr_options_groupbox,
                                 ui.Spacer(),
                                 stretch=(0, 0, 0, 1)
                             )
@@ -901,37 +927,61 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         return "black"
 
     @property
+    def update_interval(self):
+        return self._update_interval_number.value
+
+    @update_interval.setter
+    def update_interval(self, value):
+        self._update_interval_number.value = value
+
+    @property
+    def dodge_enabled(self):
+        return self._dodge_groupbox.checked
+
+    @dodge_enabled.setter
+    def dodge_enabled(self, value):
+        self._dodge_groupbox.checked = value
+
+    @property
+    def dodge_height(self):
+        return (self._dodge_height_number.value * comet.ureg('um')).to('mm').m
+
+    @dodge_height.setter
+    def dodge_height(self, value):
+        self._dodge_height_number.value = (value * comet.ureg('mm')).to('um').m
+
+    @property
     def step_up_delay(self):
         """Return step up delay in seconds."""
-        return (self.step_up_delay_number.value * comet.ureg('ms')).to('s').m
+        return (self._step_up_delay_number.value * comet.ureg('ms')).to('s').m
 
     @step_up_delay.setter
     def step_up_delay(self, value):
-        self.step_up_delay_number.value = (value * comet.ureg('s')).to('ms').m
+        self._step_up_delay_number.value = (value * comet.ureg('s')).to('ms').m
 
     @property
     def step_up_multiply(self):
         """Return step up delay in seconds."""
-        return int(self.step_up_multiply_number.value)
+        return int(self._step_up_multiply_number.value)
 
     @step_up_multiply.setter
     def step_up_multiply(self, value):
-        self.step_up_multiply_number.value = value
+        self._step_up_multiply_number.value = value
 
     @property
     def lcr_update_interval(self):
         """LCR update interval in seconds."""
-        return (self.lcr_update_interval_number.value * comet.ureg('ms')).to('s').m
+        return (self._lcr_update_interval_number.value * comet.ureg('ms')).to('s').m
 
     @lcr_update_interval.setter
     def lcr_update_interval(self, value):
-        self.lcr_update_interval_number.value = (value * comet.ureg('s')).to('ms').m
+        self._lcr_update_interval_number.value = (value * comet.ureg('s')).to('ms').m
 
     @property
     def lcr_matrix_channels(self):
         """Matrix channels used for LCR readings."""
         tokens = []
-        for token in self.lcr_matrix_channels_text.value.split(','):
+        for token in self._lcr_matrix_channels_text.value.split(','):
             token = token.strip()
             if token:
                 tokens.append(token)
@@ -939,7 +989,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     @lcr_matrix_channels.setter
     def lcr_matrix_channels(self, value):
-        self.lcr_matrix_channels_text.value = ', '.join([token for token in value])
+        self._lcr_matrix_channels_text.value = ', '.join([token for token in value])
 
     def load_table_step_sizes(self):
         return self.settings.get("table_step_sizes") or self.default_steps
@@ -1010,21 +1060,32 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         step_up_limit = comet.ureg('10.0 um').to('mm').m
         self.step_up_button.enabled = z_enabled and (self.step_width <= step_up_limit) # TODO
 
+    def relative_move_xy(self, x, y):
+        if self.dodge_enabled:
+            dodge_height = self.dodge_height
+            current_position = self.current_position
+            if current_position.z < dodge_height:
+                dodge_height = max(0, current_position.z)
+            vector = [(0, 0, -dodge_height), (x, y, 0), (0, 0, +dodge_height)]
+        else:
+            vector = [(x, y, 0)]
+        self.process.relative_move_vector(vector)
+
     def on_add_x(self):
         self.lock()
-        self.process.relative_move(+self.step_width, 0, 0)
+        self.relative_move_xy(+self.step_width, 0)
 
     def on_sub_x(self):
         self.lock()
-        self.process.relative_move(-self.step_width, 0, 0)
+        self.relative_move_xy(-self.step_width, 0)
 
     def on_add_y(self):
         self.lock()
-        self.process.relative_move(0, +self.step_width, 0)
+        self.relative_move_xy(0, +self.step_width)
 
     def on_sub_y(self):
         self.lock()
-        self.process.relative_move(0, -self.step_width, 0)
+        self.relative_move_xy(0, -self.step_width)
 
     def on_add_z(self):
         self.lock()
@@ -1148,6 +1209,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.lcr_matrix_channels = matrix_channels
         self.lcr_process.update_interval = self.lcr_update_interval
         self.lcr_process.matrix_channels = self.lcr_matrix_channels
+        self.update_interval = settings.table_control_update_interval
+        self.dodge_enabled = settings.table_control_dodge_enabled
+        self.dodge_height = settings.table_control_dodge_height
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
@@ -1155,6 +1219,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.settings['tablecontrol_lcr_update_delay'] = self.lcr_update_interval
         self.settings['tablecontrol_lcr_matrix_channels'] = self.lcr_matrix_channels
         self.positions_widget.store_settings()
+        settings.table_control_update_interval = self.update_interval
+        settings.table_control_dodge_enabled = self.dodge_enabled
+        settings.table_control_dodge_height = self.dodge_height
 
     def lock(self):
         self.control_layout.enabled = False
@@ -1200,8 +1267,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     @handle_exception
     def on_lcr_toggled(self, state):
-        self.lcr_prim_text.enabled = state
-        self.lcr_sec_text.enabled = state
+        self._lcr_prim_text.enabled = state
+        self._lcr_sec_text.enabled = state
         if state:
             self.lcr_process.update_interval = self.lcr_update_interval
             self.lcr_process.matrix_channels = self.lcr_matrix_channels
@@ -1213,12 +1280,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         pass
 
     def on_lcr_failed(self, *args):
-        self.lcr_prim_text.value = "ERROR"
-        self.lcr_sec_text.value = "ERROR"
+        self._lcr_prim_text.value = "ERROR"
+        self._lcr_sec_text.value = "ERROR"
 
     def on_lcr_reading(self, prim, sec):
-        self.lcr_prim_text.value = format_metric(prim, unit='F')
-        self.lcr_sec_text.value = format_metric(sec, unit='Ohm')
+        self._lcr_prim_text.value = format_metric(prim, unit='F')
+        self._lcr_sec_text.value = format_metric(sec, unit='Ohm')
 
 class SwitchLabel(ui.Label):
 

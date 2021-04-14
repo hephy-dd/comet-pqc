@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.36.0
+
+### Added
+- Load and save sequence tree to file.
+- Dodge X/Y table movements.
+
 ## 0.35.0
 
 ### Added

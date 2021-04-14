@@ -8,6 +8,21 @@ from .instruments.k2657a import K2657AInstrument
 
 __all__ = ['settings']
 
+def safe_value(type, value, default):
+    try:
+        return type(value)
+    except (ValueError, TypeError):
+        return type(default)
+
+def safe_bool(value, default=False):
+    return safe_value(bool, value, default)
+
+def safe_int(value, default=0):
+    return safe_value(int, value, default)
+
+def safe_float(value, default=0):
+    return safe_value(float, value, default)
+
 class TablePosition(Position):
 
     def __init__(self, name, x, y, z, comment=None):
@@ -99,6 +114,36 @@ class Settings(SettingsMixin):
             'z': to_table_unit(z)
         }
 
+    default_table_control_update_interval = 1.0
+
+    @property
+    def table_control_update_interval(self):
+        return safe_float(self.settings.get('table_control_update_interval'), self.default_table_control_update_interval)
+
+    @table_control_update_interval.setter
+    def table_control_update_interval(self, value):
+        self.settings['table_control_update_interval'] = float(value)
+
+    default_table_control_dodge_enabled = False
+
+    @property
+    def table_control_dodge_enabled(self):
+        return bool(self.settings.get('table_control_dodge_enabled') or self.default_table_control_dodge_enabled)
+
+    @table_control_dodge_enabled.setter
+    def table_control_dodge_enabled(self, value):
+        self.settings['table_control_dodge_enabled'] = bool(value)
+
+    default_table_control_dodge_height = 500 # micron
+
+    @property
+    def table_control_dodge_height(self):
+        return from_table_unit(safe_int(self.settings.get('table_control_dodge_height'), self.default_table_control_dodge_height))
+
+    @table_control_dodge_height.setter
+    def table_control_dodge_height(self, value):
+        self.settings['table_control_dodge_height'] = to_table_unit(value)
+
     @property
     def operators(self):
         return list(self.settings.get('operators') or [])
@@ -109,10 +154,7 @@ class Settings(SettingsMixin):
 
     @property
     def current_operator(self):
-        try:
-            index = int(self.settings.get('current_operator') or 0)
-        except ValueError:
-            index = 0
+        index = safe_int(self.settings.get('current_operator'), 0)
         operators = self.operators
         if 0 <= index < len(operators):
             return operators[index]
@@ -141,10 +183,7 @@ class Settings(SettingsMixin):
 
     @property
     def current_output_path(self):
-        try:
-            index = int(self.settings.get('current_output_path') or 0)
-        except ValueError:
-            index = 0
+        index = safe_int(self.settings.get('current_output_path'), 0)
         output_path = self.output_path
         if 0 <= index < len(output_path):
             return output_path[index]
@@ -176,10 +215,7 @@ class Settings(SettingsMixin):
 
     @property
     def retry_measurement_count(self):
-        try:
-            return int(self.settings.get('retry_measurement_count') or 0)
-        except:
-            return 0
+        return safe_int(self.settings.get('retry_measurement_count'), 0)
 
     @retry_measurement_count.setter
     def retry_measurement_count(self, value):
@@ -187,10 +223,7 @@ class Settings(SettingsMixin):
 
     @property
     def retry_contact_count(self):
-        try:
-            return int(self.settings.get('retry_contact_count') or 0)
-        except:
-            return 0
+        return safe_int(self.settings.get('retry_contact_count'), 0)
 
     @retry_contact_count.setter
     def retry_contact_count(self, value):
