@@ -11,6 +11,7 @@ nav_order: 10
 
 ### Added
 - Load and save sequence tree to file.
+- Dodge X/Y table movements.
 
 ## 0.35.0
 
