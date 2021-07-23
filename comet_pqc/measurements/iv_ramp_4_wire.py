@@ -8,6 +8,7 @@ import numpy as np
 
 from ..utils import format_metric
 from ..estimate import Estimate
+from ..functions import LinearRange
 
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -172,14 +173,15 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         current = self.vsrc_get_current_level(vsrc)
 
-        ramp = comet.Range(current, current_stop, current_step)
-        est = Estimate(ramp.count)
+        ramp = LinearRange(current, current_stop, current_step)
+        est = Estimate(len(ramp))
         self.process.emit("progress", *est.progress)
 
         t0 = time.time()
 
         logging.info("V Source ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
-        for current in ramp:
+        for i, current in enumerate(ramp):
+            logging.info("XXX %s %s", i, current)
             self.vsrc_clear(vsrc)
             self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", dict(
