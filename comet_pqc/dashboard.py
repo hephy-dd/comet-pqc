@@ -920,7 +920,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         measure.set("serialize_txt", self.export_txt())
         measure.set("move_to_contact", move_to_contact)
         measure.set("move_to_after_position", move_to_after_position)
-        measure.set("contact_delay", self.settings.get("table_contact_delay"))
+        measure.set("contact_delay", self.settings.get("table_contact_delay") or 0)
+        measure.set("retry_contact_overdrive", settings.retry_contact_overdrive)
         def show_measurement(item):
             item.selectable = True
             item.series.clear()

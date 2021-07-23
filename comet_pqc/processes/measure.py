@@ -300,7 +300,15 @@ class MeasureProcess(BaseProcess):
             logging.info(" => %s", contact_item.name)
             self.set("movement_finished", False)
             if self.get("move_to_contact") and contact_item.has_position:
-                self.safe_move_table(contact_item.position)
+                x, y, z = contact_item.position
+                # Add re-contact overdrive
+                if retry_contact:
+                    retry_contact_overdrive = abs(self.get("retry_contact_overdrive") or 0)
+                    z = z + retry_contact_overdrive
+                    logging.info(" => applying re-contact overdrive: %g mm", retry_contact_overdrive)
+                # Move table to position
+                self.safe_move_table((x, y, z))
+                # Apply contact delay
                 contact_delay = abs(self.get("contact_delay") or 0)
                 if contact_delay > 0:
                     logging.info("Applying contact delay: %s s", contact_delay)

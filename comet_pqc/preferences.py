@@ -1,5 +1,6 @@
 from qutie.qutie import QtCore, QtWidgets
 
+import comet
 from comet import ui
 from comet.ui.preferences import PreferencesTab
 
@@ -151,6 +152,13 @@ class TableTab(PreferencesTab):
             step=.1,
             suffix="s"
         )
+        self.recontact_overdrive_number = ui.Number(
+            minimum=0,
+            maximum=0.025,
+            decimals=3,
+            step=.001,
+            suffix="mm"
+        )
         self.layout = ui.Column(
             ui.GroupBox(
                 title="Control Steps (mm)",
@@ -215,11 +223,19 @@ class TableTab(PreferencesTab):
                     ui.Spacer()
                 )
             ),
-            ui.GroupBox(
-                title="Probecard Contact Delay",
-                layout=ui.Row(
-                    self.probecard_contact_delay_number
-                )
+            ui.Row(
+                ui.GroupBox(
+                    title="Probecard Contact Delay",
+                    layout=ui.Row(
+                        self.probecard_contact_delay_number
+                    )
+                ),
+                ui.GroupBox(
+                    title="Re-Contact Z-Overdrive (1x)",
+                    layout=ui.Row(
+                        self.recontact_overdrive_number
+                    )
+                ),
             ),
             stretch=(1, 0, 0, 0, 0)
         )
@@ -290,6 +306,7 @@ class TableTab(PreferencesTab):
         self.joystick_limit_z_maximum_number.value = z
         table_contact_delay = self.settings.get('table_contact_delay') or 0
         self.probecard_contact_delay_number.value = table_contact_delay
+        self.recontact_overdrive_number.value = settings.retry_contact_overdrive
 
     def store(self):
         table_step_sizes = []
@@ -315,6 +332,7 @@ class TableTab(PreferencesTab):
         ]
         table_contact_delay = self.probecard_contact_delay_number.value
         self.settings['table_contact_delay'] = table_contact_delay
+        settings.retry_contact_overdrive = self.recontact_overdrive_number.value
 
 class WebAPITab(PreferencesTab):
     """Web API settings tab for preferences dialog."""
