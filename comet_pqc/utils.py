@@ -24,6 +24,8 @@ __all__ = [
     'to_table_unit'
 ]
 
+logger = logging.getLogger(__name__)
+
 PACKAGE_PATH = os.path.abspath(os.path.dirname(__file__))
 """Absolute path to package directory."""
 
@@ -150,8 +152,8 @@ def handle_exception(func):
             return func(*args, **kwargs)
         except Exception as exc:
             tb = traceback.format_exc()
-            logging.error(exc)
-            logging.error(tb)
+            logger.error(exc)
+            logger.error(tb)
             ui.show_exception(exc, tb)
     return catch_exception_wrapper
 

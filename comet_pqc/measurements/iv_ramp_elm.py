@@ -21,6 +21,8 @@ from .mixins import AnalysisMixin
 
 __all__ = ["IVRampElmMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp with electrometer measurement.
 
@@ -198,7 +200,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
+        logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
         for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
             self.process.emit("message", f"{voltage:.3f} V")
             self.hvsrc_set_voltage_level(hvsrc, voltage)
@@ -249,7 +251,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         benchmark_hvsrc = Benchmark("Read_HV_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        logger.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
                 self.hvsrc_clear(hvsrc)
@@ -277,7 +279,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                     except Exception as exc:
                         raise RuntimeError(f"Failed to read from ELM: {exc}") from exc
                 self.elm_check_error(elm)
-                logging.info("ELM reading: %s", format_metric(elm_reading, "A"))
+                logger.info("ELM reading: %s", format_metric(elm_reading, "A"))
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
                 self.process.emit("update")
@@ -301,7 +303,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 # Compliance tripped?
                 if hvsrc_accept_compliance:
                     if self.hvsrc_compliance_tripped(hvsrc):
-                        logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                        logger.info("HV Source compliance tripped, gracefully stopping measurement.")
                         break
                 else:
                     self.hvsrc_check_compliance(hvsrc)
@@ -309,10 +311,10 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 if not self.process.running:
                     break
 
-        logging.info(benchmark_step)
-        logging.info(benchmark_elm)
-        logging.info(benchmark_hvsrc)
-        logging.info(benchmark_environ)
+        logger.info(benchmark_step)
+        logger.info(benchmark_elm)
+        logger.info(benchmark_hvsrc)
+        logger.info(benchmark_environ)
 
         self.process.emit("progress", 4, 5)
 
@@ -344,7 +346,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
+            logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
             for voltage in comet.Range(voltage, 0, voltage_step_after):
                 self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)

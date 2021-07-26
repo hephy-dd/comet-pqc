@@ -10,6 +10,8 @@ from comet.resource import ResourceMixin
 
 __all__ = ['ResourceProcess', 'async_request']
 
+logger = logging.getLogger(__name__)
+
 def async_request(method):
     def async_request(self, *args, **kwargs):
         self.async_request(lambda context: method(self, context, *args, **kwargs))
@@ -88,7 +90,7 @@ class ResourceProcess(Process, ResourceMixin):
             return r.get()
 
     def serve(self):
-        logging.info("start serving %s", self.name)
+        logger.info("start serving %s", self.name)
         try:
             with self.resources.get(self.name) as resource:
                 driver = type(self).Driver(resource)
@@ -102,7 +104,7 @@ class ResourceProcess(Process, ResourceMixin):
                         r.dispatch(driver)
                     time.sleep(self.throttle_time)
         finally:
-            logging.info("stopped serving %s", self.name)
+            logger.info("stopped serving %s", self.name)
 
     def run(self):
         while self.running:
@@ -110,7 +112,7 @@ class ResourceProcess(Process, ResourceMixin):
                 try:
                     self.serve()
                 except Exception as exc:
-                    logging.error("%s: %s", type(self).__name__, exc)
+                    logger.error("%s: %s", type(self).__name__, exc)
                     #tb = traceback.format_exc()
                     #self.emit('failed', exc, tb)
             time.sleep(self.throttle_time)

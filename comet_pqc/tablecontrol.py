@@ -22,6 +22,8 @@ from qutie.qutie import Qt
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 def safe_z_position(z):
     z_limit = settings.table_z_limit
     if z > z_limit:
@@ -70,7 +72,7 @@ class TableSampleItem(ui.TreeItem):
     def update_contacts(self):
         for contact_item in self.children:
             contact_item.update_contact()
-            logging.info("Updated contact position: %s %s %s", self.name, contact_item.name, contact_item.position)
+            logger.info("Updated contact position: %s %s %s", self.name, contact_item.name, contact_item.position)
 
     def calculate_positions(self):
         tr = LinearTransform()
@@ -1107,7 +1109,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.relative_move_vector(vector, delay=self.step_up_delay)
 
     def on_step_toggled(self, state):
-        logging.info("set table step width to %.3f mm", self.step_width)
+        logger.info("set table step width to %.3f mm", self.step_width)
         self.update_control_buttons()
 
     def on_probecard_light_clicked(self, state):
@@ -1145,7 +1147,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     def on_message_changed(self, message):
         self.message_label.text = message
-        logging.info(message)
+        logger.info(message)
 
     def on_progress_changed(self, a, b):
         self.progress_bar.value = a

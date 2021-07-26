@@ -19,6 +19,8 @@ from .mixins import AnalysisMixin
 
 __all__ = ["IVRamp4WireMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp 4wire with electrometer measurement.
 
@@ -139,7 +141,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         current = self.vsrc_get_current_level(vsrc)
 
-        logging.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step_before)
+        logger.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step_before)
         for current in comet.Range(current, current_start, current_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
@@ -179,9 +181,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         t0 = time.time()
 
-        logging.info("V Source ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
+        logger.info("V Source ramp to end current: from %E A to %E A with step %E A", current, ramp.end, ramp.step)
         for i, current in enumerate(ramp):
-            logging.info("XXX %s %s", i, current)
             self.vsrc_clear(vsrc)
             self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", dict(
@@ -219,7 +220,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
             # Compliance tripped?
             if vsrc_accept_compliance:
                 if self.vsrc_compliance_tripped(vsrc):
-                    logging.info("V Source compliance tripped, gracefully stopping measurement.")
+                    logger.info("V Source compliance tripped, gracefully stopping measurement.")
                     break
             else:
                 self.vsrc_check_compliance(vsrc)
@@ -249,7 +250,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         current = self.vsrc_get_current_level(vsrc)
 
-        logging.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step_after)
+        logger.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step_after)
         for current in comet.Range(current, 0, current_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)

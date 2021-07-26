@@ -10,6 +10,8 @@ from .. import __version__
 
 __all__ = ['WebAPIProcess']
 
+logger = logging.getLogger(__name__)
+
 def metric(value, unit):
     """Return metric dictionary."""
     if value is None:
@@ -61,7 +63,7 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
         if not self.enabled:
             return
 
-        logging.info("start serving webapi... %s:%s", self.host, self.port)
+        logger.info("start serving webapi... %s:%s", self.host, self.port)
 
         app = JSONErrorBottle()
 
@@ -95,7 +97,7 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
         while self.running:
             self.server.run()
         self.server = None
-        logging.info("stopped serving webapi")
+        logger.info("stopped serving webapi")
 
     def _table_enabled(self):
         table_process = self.processes.get('table')

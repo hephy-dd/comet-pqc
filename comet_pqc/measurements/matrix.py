@@ -5,6 +5,8 @@ from .measurement import Measurement
 
 __all__ = ["MatrixMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
 
@@ -21,7 +23,7 @@ class MatrixMeasurement(Measurement):
         matrix_enable = self.get_parameter('matrix_enable')
         if matrix_enable:
             matrix_channels = self.get_parameter('matrix_channels')
-            logging.info("Matrix close channels: %s", matrix_channels)
+            logger.info("Matrix close channels: %s", matrix_channels)
             try:
                 with self.resources.get("matrix") as matrix_res:
                     matrix = K707B(matrix_res)

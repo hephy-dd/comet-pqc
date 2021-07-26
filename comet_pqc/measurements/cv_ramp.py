@@ -22,6 +22,8 @@ from .mixins import AnalysisMixin
 
 __all__ = ["CVRampMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """CV ramp measurement."""
 
@@ -158,7 +160,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
 
         hvsrc_voltage_level = self.hvsrc_get_voltage_level(hvsrc)
 
-        logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step_before)
+        logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, bias_voltage_start, bias_voltage_step_before)
         for voltage in comet.Range(hvsrc_voltage_level, bias_voltage_start, bias_voltage_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
@@ -206,7 +208,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
         benchmark_hvsrc = Benchmark("Read_HV_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
+        logger.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", hvsrc_voltage_level, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
@@ -264,7 +266,7 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                 # Compliance tripped?
                 if hvsrc_accept_compliance:
                     if self.hvsrc_compliance_tripped(hvsrc):
-                        logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                        logger.info("HV Source compliance tripped, gracefully stopping measurement.")
                         break
                 else:
                     self.hvsrc_check_compliance(hvsrc)
@@ -272,10 +274,10 @@ class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentM
                 if not self.process.running:
                     break
 
-        logging.info(benchmark_step)
-        logging.info(benchmark_lcr)
-        logging.info(benchmark_hvsrc)
-        logging.info(benchmark_environ)
+        logger.info(benchmark_step)
+        logger.info(benchmark_lcr)
+        logger.info(benchmark_hvsrc)
+        logger.info(benchmark_environ)
 
     def analyze(self, **kwargs):
         self.process.emit("progress", 0, 1)

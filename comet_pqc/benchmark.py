@@ -1,12 +1,10 @@
-import logging
 import time
 
 class Benchmark:
     """Bench mark context manager."""
 
-    def __init__(self, name, verbose=False):
+    def __init__(self, name):
         self.name = name
-        self.verbose = verbose
         self.history = []
         self.t0 = None
 
@@ -18,8 +16,6 @@ class Benchmark:
         delta = time.time() - self.t0
         self.history.append(delta)
         self.t0 = None
-        if self.verbose:
-            logging.info(format(self))
         return False
 
     def clear(self):

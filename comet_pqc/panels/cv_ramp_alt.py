@@ -1,5 +1,3 @@
-import logging
-
 import comet
 from comet import ui
 

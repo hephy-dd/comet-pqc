@@ -22,6 +22,8 @@ from .utils import to_table_unit
 
 __all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
 
+logger = logging.getLogger(__name__)
+
 class StartSequenceDialog(ui.Dialog, SettingsMixin):
     """Start sequence dialog."""
 
@@ -226,7 +228,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                 item.sequence.builtin = builtin
                 item.qt.setToolTip(1, filename)
             except Exception as exc:
-                logging.error("failed to load sequence: %s", filename)
+                logger.error("failed to load sequence: %s", filename)
                 pass
         self._sequence_tree.fit()
         if len(self._sequence_tree):
