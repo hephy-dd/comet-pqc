@@ -24,6 +24,8 @@ from ..sequence import SamplesItem
 
 __all__ = ['MeasureProcess']
 
+logger = logging.getLogger(__name__)
+
 class LogFileHandler:
     """Context manager for log files."""
 
@@ -100,10 +102,10 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.emit("message", "Open all matrix channels...")
         matrix = K707B(resource)
         matrix.identification
-        logging.info("matrix: open all channels.")
+        logger.info("matrix: open all channels.")
         matrix.channel.open()
         channels = matrix.channel.getclose()
-        logging.info("matrix channels: %s", channels)
+        logger.info("matrix channels: %s", channels)
         self.emit("message", "Opened all matrix channels.")
 
     def safe_initialize(self):
@@ -112,29 +114,29 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
                 with self.processes.get("environ") as environment:
                     environment.set_test_led(True)
         except Exception:
-            logging.error("unable to connect with environment box (test LED ON)")
+            logger.error("unable to connect with environment box (test LED ON)")
         try:
             with self.resources.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
         except Exception:
-            logging.error("unable to connect with HVSource")
+            logger.error("unable to connect with HVSource")
             raise RuntimeError("Failed to connect with HVSource")
         try:
             with self.resources.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.error("unable to connect with VSource")
+            logger.error("unable to connect with VSource")
         try:
             if self.get("use_environ"):
                 with self.processes.get("environ") as environment:
                     self.discharge_decoupling(environment)
         except Exception:
-            logging.error("unable to connect with environment box (discharge decoupling)")
+            logger.error("unable to connect with environment box (discharge decoupling)")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
         except Exception:
-            logging.error("unable to connect with Matrix")
+            logger.error("unable to connect with Matrix")
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
@@ -144,19 +146,19 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
             with self.resources.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
-            logging.error("unable to connect with VSource")
+            logger.error("unable to connect with VSource")
         try:
             with self.resources.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
         except Exception:
-            logging.error("unable to connect with: Matrix")
+            logger.error("unable to connect with: Matrix")
             raise RuntimeError("Failed to connect with Matrix")
         try:
             if self.get("use_environ"):
                 with self.processes.get("environ") as environment:
                     environment.set_test_led(False)
         except Exception:
-            logging.error("unable to connect with environment box (test LED OFF)")
+            logger.error("unable to connect with environment box (test LED OFF)")
 
 class MeasureProcess(BaseProcess):
     """Measure process executing a samples, contacts and measurements."""
@@ -184,7 +186,7 @@ class MeasureProcess(BaseProcess):
     def safe_move_table(self, position):
         table_process = self.processes.get("table")
         if table_process.running and table_process.enabled:
-            logging.info("Safe move table to %s", position)
+            logger.info("Safe move table to %s", position)
             self.emit("message", "Moving table...")
             self.set("movement_finished", False)
             def absolute_move_finished():
@@ -196,10 +198,10 @@ class MeasureProcess(BaseProcess):
             table_process.safe_absolute_move(*position)
             while not self.get("movement_finished"):
                 time.sleep(.25)
-            logging.info("Safe move table to %s... done.", position)
+            logger.info("Safe move table to %s... done.", position)
 
     def initialize(self):
-        self.emit("message", "Initialize...")
+        self.emit("meressage", "Initialize...")
         self.stop_requested = False
         try:
             self.safe_initialize()
@@ -294,10 +296,10 @@ class MeasureProcess(BaseProcess):
             if not measurement_items:
                 break
             if retry_contact:
-                logging.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
+                logger.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
             self.emit("message", "Process contact...")
             self.emit(self.measurement_state, contact_item, contact_item.ProcessingState)
-            logging.info(" => %s", contact_item.name)
+            logger.info(" => %s", contact_item.name)
             self.set("movement_finished", False)
             if self.get("move_to_contact") and contact_item.has_position:
                 x, y, z = contact_item.position
@@ -305,13 +307,13 @@ class MeasureProcess(BaseProcess):
                 if retry_contact:
                     retry_contact_overdrive = abs(self.get("retry_contact_overdrive") or 0)
                     z = z + retry_contact_overdrive
-                    logging.info(" => applying re-contact overdrive: %g mm", retry_contact_overdrive)
+                    logger.info(" => applying re-contact overdrive: %g mm", retry_contact_overdrive)
                 # Move table to position
                 self.safe_move_table((x, y, z))
                 # Apply contact delay
                 contact_delay = abs(self.get("contact_delay") or 0)
                 if contact_delay > 0:
-                    logging.info("Applying contact delay: %s s", contact_delay)
+                    logger.info("Applying contact delay: %s s", contact_delay)
                     contact_delay_step = contact_delay / 25.
                     contact_delay_steps = int(math.ceil(contact_delay / contact_delay_step))
                     for step in range(contact_delay_steps):
@@ -323,7 +325,7 @@ class MeasureProcess(BaseProcess):
             for retry_measurement in range(retry_measurement_count + 1):
                 self.emit(self.measurement_state, contact_item, contact_item.ProcessingState)
                 if retry_measurement:
-                    logging.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
+                    logger.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
                 measurement_items = self.process_measurement_sequence(measurement_items)
                 state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
                 if self.stop_requested:
@@ -351,8 +353,8 @@ class MeasureProcess(BaseProcess):
                 self.process_measurement(measurement_item)
             except Exception as exc:
                 tb = traceback.format_exc()
-                logging.error("%s: %s", measurement_item.name, tb)
-                logging.error("%s: %s", measurement_item.name, exc)
+                logger.error("%s: %s", measurement_item.name, tb)
+                logger.error("%s: %s", measurement_item.name, exc)
                 # TODO: for now only analysis errors trigger retries...
                 if isinstance(exc, AnalysisError):
                     failed_measurements.append(measurement_item)

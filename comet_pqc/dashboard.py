@@ -38,6 +38,8 @@ from .settings import settings
 from .utils import user_home, make_path, handle_exception, caldone_valid
 from .position import Position
 
+logger = logging.getLogger(__name__)
+
 SUMMARY_FILENAME = "summary.csv"
 
 class SequenceWidget(ui.GroupBox, SettingsMixin):
@@ -160,7 +162,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             try:
                 item.from_settings(**kwargs)
             except Exception as exc:
-                logging.error(exc)
+                logger.error(exc)
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
         self._sequence_tree.fit()
@@ -236,9 +238,9 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         filename = ui.filename_open(path=self.current_path, filter="JSON (*.json)")
         if filename:
             with open(filename) as f:
-                logging.info("Reading sequence... %s", filename)
+                logger.info("Reading sequence... %s", filename)
                 data = json.load(f)
-                logging.info("Reading sequence... done.")
+                logger.info("Reading sequence... done.")
             self.current_path = os.path.dirname(filename)
             version = data.get('version')
             if version is None:
@@ -257,7 +259,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                 try:
                     item.from_settings(**kwargs)
                 except Exception as exc:
-                    logging.error(exc)
+                    logger.error(exc)
             if len(self._sequence_tree):
                 self._sequence_tree.current = self._sequence_tree[0]
             self._sequence_tree.fit()
@@ -278,9 +280,9 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                     if not ui.show_question(f"Do you want to overwrite existing file {filename}?"):
                         return
             with open(filename, 'w') as f:
-                logging.info("Writing sequence... %s", filename)
+                logger.info("Writing sequence... %s", filename)
                 json.dump(data, f)
-                logging.info("Writing sequence... done.")
+                logger.info("Writing sequence... done.")
             self.current_path = os.path.dirname(filename)
 
 class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
