@@ -7,6 +7,15 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.37.0
+
+### Added
+- Table re-contact overdrive.
+- Distinct module loggers.
+
+### Fixed
+- Issue with linear ramp for small ranges.
+
 ## 0.36.0
 
 ### Added

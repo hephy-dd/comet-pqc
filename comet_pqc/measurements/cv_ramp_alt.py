@@ -21,6 +21,8 @@ from .mixins import AnalysisMixin
 
 __all__ = ["CVRampAltMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """Alternate CV ramp measurement."""
 
@@ -141,7 +143,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
 
         lcr_voltage_level = self.lcr_get_bias_voltage_level(lcr)
 
-        logging.info("LCR Meter ramp to start voltage: from %E V to %E V with step %E V", lcr_voltage_level, bias_voltage_start, bias_voltage_step_before)
+        logger.info("LCR Meter ramp to start voltage: from %E V to %E V with step %E V", lcr_voltage_level, bias_voltage_start, bias_voltage_step_before)
         for voltage in comet.Range(lcr_voltage_level, bias_voltage_start, bias_voltage_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.process.emit("progress", 0, 1)
@@ -184,7 +186,7 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
         benchmark_lcr_source = Benchmark("Read_LCR_Source")
         benchmark_environ = Benchmark("Read_Environment")
 
-        logging.info("LCR Meter ramp to end voltage: from %E V to %E V with step %E V", lcr_voltage_level, ramp.end, ramp.step)
+        logger.info("LCR Meter ramp to end voltage: from %E V to %E V with step %E V", lcr_voltage_level, ramp.end, ramp.step)
         for voltage in ramp:
             with benchmark_step:
                 self.lcr_set_bias_voltage_level(lcr, voltage)
@@ -242,10 +244,10 @@ class CVRampAltMeasurement(MatrixMeasurement, LCRMixin, EnvironmentMixin, Analys
                 if not self.process.running:
                     break
 
-        logging.info(benchmark_step)
-        logging.info(benchmark_lcr)
-        logging.info(benchmark_lcr_source)
-        logging.info(benchmark_environ)
+        logger.info(benchmark_step)
+        logger.info(benchmark_lcr)
+        logger.info(benchmark_lcr_source)
+        logger.info(benchmark_environ)
 
     def analyze(self, **kwargs):
         self.process.emit("progress", 0, 1)

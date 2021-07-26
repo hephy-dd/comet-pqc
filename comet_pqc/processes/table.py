@@ -25,6 +25,8 @@ AXIS_NAMES = {
 
 RETRIES = 180
 
+logger = logging.getLogger(__name__)
+
 class TableError(Exception): pass
 
 class TableMachineError(Exception): pass
@@ -124,7 +126,7 @@ class TableProcess(comet.Process, ResourceMixin):
 
     def run(self):
         while self.running:
-            logging.info("start serving table...")
+            logger.info("start serving table...")
             try:
                 with self.resources.get('table') as resource:
                     context = Venus1(resource)
@@ -135,9 +137,9 @@ class TableProcess(comet.Process, ResourceMixin):
                         self.finalize(context)
             except Exception as exc:
                 tb = traceback.format_exc()
-                logging.error("%s: %s", type(self).__name__, tb)
-                logging.error("%s: %s", type(self).__name__, exc)
-        logging.info("stopped serving table")
+                logger.error("%s: %s", type(self).__name__, tb)
+                logger.error("%s: %s", type(self).__name__, exc)
+        logger.info("stopped serving table")
 
     def initialize(self, context):
         context.mode = 0
@@ -251,7 +253,7 @@ class AlternateTableProcess(TableProcess):
         )
         table.joystick = state
         limits = table.limit
-        logging.info("updated table limits: %s mm", limits)
+        logger.info("updated table limits: %s mm", limits)
         self.emit('joystick_changed', table.joystick)
 
     @async_request
@@ -451,7 +453,7 @@ class AlternateTableProcess(TableProcess):
 
         def ncal(axis):
             index = axes.index(axis)
-            logging.info("ncal %s...", AXIS_NAMES.get(index))
+            logger.info("ncal %s...", AXIS_NAMES.get(index))
             axis.ncal()
             for i in range(retries + 1):
                 handle_abort()
@@ -459,14 +461,14 @@ class AlternateTableProcess(TableProcess):
                 current_pos = table.pos
                 update_status(*current_pos)
                 if current_pos[index] == 0.0:
-                    logging.info("ncal %s... done.", AXIS_NAMES.get(index))
+                    logger.info("ncal %s... done.", AXIS_NAMES.get(index))
                     break
                 time.sleep(delay)
             return i < retries
 
         def nrm(axis):
             index = axes.index(axis)
-            logging.info("nrm %s...", AXIS_NAMES.get(index))
+            logger.info("nrm %s...", AXIS_NAMES.get(index))
             axis.nrm()
             reference_pos = table.pos
             update_status(*reference_pos)
@@ -477,7 +479,7 @@ class AlternateTableProcess(TableProcess):
                 update_status(*current_pos)
                 # Axis stopped moving?
                 if reference_pos[index] == current_pos[index]:
-                    logging.info("nrm %s... done.", AXIS_NAMES.get(index))
+                    logger.info("nrm %s... done.", AXIS_NAMES.get(index))
                     break
                 reference_pos = current_pos
                 time.sleep(delay)

@@ -229,4 +229,12 @@ class Settings(SettingsMixin):
     def retry_contact_count(self, value):
         self.settings['retry_contact_count'] = int(value)
 
+    @property
+    def retry_contact_overdrive(self):
+        return from_table_unit(self.settings.get('retry_contact_overdrive') or 0)
+
+    @retry_contact_overdrive.setter
+    def retry_contact_overdrive(self, value):
+        self.settings['retry_contact_overdrive'] = to_table_unit(value)
+
 settings = Settings()

@@ -1,3 +1,4 @@
+import logging
 import contextlib
 
 from comet.driver.keysight import E4980A
@@ -9,6 +10,8 @@ from .mixins import EnvironmentMixin
 from .mixins import AnalysisMixin
 
 __all__ = ["FrequencyScanMeasurement"]
+
+logger = logging.getLogger(__name__)
 
 class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """Frequency scan."""

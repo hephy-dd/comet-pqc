@@ -18,6 +18,8 @@ from .mixins import AnalysisMixin
 
 __all__ = ["IVRampMeasurement"]
 
+logger = logging.getLogger(__name__)
+
 class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp measurement.
 
@@ -129,7 +131,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-            logging.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
+            logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
             for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
@@ -170,7 +172,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         est = Estimate(ramp.count)
         self.process.emit("progress", *est.progress)
 
-        logging.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
+        logger.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
             self.hvsrc_set_voltage_level(hvsrc, voltage)
 
@@ -205,7 +207,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             # Compliance tripped?
             if hvsrc_accept_compliance:
                 if self.hvsrc_compliance_tripped(hvsrc):
-                    logging.info("HV Source compliance tripped, gracefully stopping measurement.")
+                    logger.info("HV Source compliance tripped, gracefully stopping measurement.")
                     break
             else:
                 self.hvsrc_check_compliance(hvsrc)
@@ -237,7 +239,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             hvsrc_output=self.hvsrc_get_output_state(hvsrc)
         ))
 
-        logging.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
+        logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
         for voltage in comet.Range(voltage, 0, voltage_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)

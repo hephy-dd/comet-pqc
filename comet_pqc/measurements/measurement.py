@@ -18,6 +18,8 @@ from ..formatter import PQCFormatter
 
 __all__ = ['Measurement']
 
+logger = logging.getLogger(__name__)
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -40,15 +42,15 @@ def format_estimate(est):
 def annotate_step(name):
     def annotate_step(method):
         def annotate_step(self, *args, **kwargs):
-            logging.info(f"%s %s...", name, self.type)
+            logger.info(f"%s %s...", name, self.type)
             try:
                 method(self, *args, **kwargs)
             except Exception as exc:
-                logging.error(exc)
-                logging.error(f"%s %s... failed.", name, self.type)
+                logger.error(exc)
+                logger.error(f"%s %s... failed.", name, self.type)
                 raise
             else:
-                logging.info(f"%s %s... done.", name, self.type)
+                logger.info(f"%s %s... done.", name, self.type)
         return annotate_step
     return annotate_step
 
@@ -129,7 +131,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     def validate_parameters(self):
         for key in self.measurement_item.default_parameters.keys():
             if key not in self.registered_parameters:
-                logging.warning("Unknown parameter: %s", key)
+                logger.warning("Unknown parameter: %s", key)
         missing_keys = []
         for key, parameter in self.registered_parameters.items():
             if parameter.required:
@@ -159,7 +161,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         return value
 
     def set_meta(self, key, value):
-        logging.info("Meta %s: %s", key, value)
+        logger.info("Meta %s: %s", key, value)
         self.data.get(self.KEY_META)[key] = value
 
     def set_series_unit(self, key, value):
@@ -216,7 +218,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         fmt.flush()
 
     def wait(self, seconds, interval=1.0):
-        logging.info("Waiting %s s...", seconds)
+        logger.info("Waiting %s s...", seconds)
         interval = abs(interval)
         steps = math.ceil(seconds / interval)
         remaining = seconds
@@ -230,7 +232,7 @@ class Measurement(ResourceMixin, ProcessMixin):
             remaining -= interval
             if not self.process.running:
                 return
-        logging.info("Waiting %s s... done.", seconds)
+        logger.info("Waiting %s s... done.", seconds)
         self.process.emit("message", "")
 
     def before_initialize(self, **kwargs):

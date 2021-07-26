@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2021-07-26
+### Added
+- Table re-contact overdrive (#158).
+- Distinct module loggers (#159).
+### Fixed
+- Issue with linear ramp for small ranges (#157).
+
 ## [0.36.0] - 2021-04-13
 ### Added
 - Load and save sequence tree to file (#154).

@@ -30,6 +30,8 @@ from .preferences import OptionsTab
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
 
+logger = logging.getLogger(__name__)
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -66,9 +68,6 @@ def main():
     # Logging
 
     configure_logging()
-
-    logging.info("PQC version %s", __version__)
-    logging.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
     app = comet.Application("comet-pqc")
     app.version = __version__
@@ -170,6 +169,9 @@ def main():
         message_changed=on_message,
         progress_changed=on_progress
     )
+
+    logger.info("PQC version %s", __version__)
+    logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
     # Layout
 
