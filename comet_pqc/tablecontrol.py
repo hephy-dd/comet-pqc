@@ -2,6 +2,11 @@
 
 import math
 import time
+import random
+
+from PyQt5 import QtCore
+from PyQt5 import QtGui
+from PyQt5 import QtChart
 
 import comet
 import comet.ui as ui
@@ -501,6 +506,65 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
                 x, y ,z = item.position
                 self.emit(self.absolute_move, Position(x, y, z))
 
+class LCRChart(ui.Widget):
+
+    max_points = 1000
+
+    def __init__(self):
+        super().__init__()
+        self.chart = QtChart.QChart()
+        self.chart.legend().hide()
+        self.chart.layout().setContentsMargins(0, 0, 0, 0)
+        self.chart.setBackgroundRoundness(0)
+        self.chart.setBackgroundVisible(False)
+        self.chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
+
+        self.xAxis = QtChart.QValueAxis()
+        self.xAxis.setTickCount(3)
+        self.xAxis.setMinorTickCount(4)
+        self.xAxis.setLabelFormat("%.3f mm")
+        self.chart.addAxis(self.xAxis, QtCore.Qt.AlignBottom)
+
+        self.yAxis = QtChart.QValueAxis()
+        self.yAxis.setTickCount(2)
+        self.yAxis.setMinorTickCount(2)
+        self.yAxis.setLabelFormat("%.2g Ohm")
+        self.chart.addAxis(self.yAxis, QtCore.Qt.AlignLeft)
+
+        self.series = QtChart.QScatterSeries()
+        self.series.setName("R")
+        self.series.setMarkerSize(3)
+        self.series.setBorderColor(QtGui.QColor('red'))
+        self.series.setColor(QtGui.QColor('red'))
+
+        self.chart.addSeries(self.series)
+        self.series.attachAxis(self.xAxis)
+        self.series.attachAxis(self.yAxis)
+
+        self.qt.setMinimumSize(160, 60)
+
+        self.view = QtChart.QChartView(self.chart)
+        self.qt.layout().setContentsMargins(0, 0, 0, 0)
+        self.qt.layout().addWidget(self.view)
+
+    def get_y_limits(self):
+        limits = []
+        for point in self.series.pointsVector():
+            limits.append(point.y())
+        return limits
+
+    def clear(self):
+        self.series.clear()
+
+    def append(self, x, y):
+        if self.series.count() > self.max_points:
+            self.series.remove(0)
+        self.series.append(QtCore.QPointF(x, y))
+        self.xAxis.setRange(x - 0.050, x + 0.050)
+        limits = self.get_y_limits()
+        if limits:
+            self.yAxis.setRange(min(limits), max(limits))
+
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
     process = None
@@ -567,6 +631,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         )
         self._lcr_prim_text = ui.Text(readonly=True)
         self._lcr_sec_text = ui.Text(readonly=True)
+        self._lcr_chart = LCRChart()
         self._lcr_groupbox = ui.GroupBox(
             title="Contact Quality (LCR)",
             checkable=True,
@@ -581,7 +646,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                     ui.Label("Rp"),
                     self._lcr_sec_text
                 ),
-                ui.Spacer()
+                self._lcr_chart
             )
         )
         self.probecard_light_button = ToggleButton(
@@ -800,21 +865,21 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                             title="Step Width",
                             layout=self.step_width_buttons
                         ),
+                        self._lcr_groupbox,
                         ui.Column(
-                            self._lcr_groupbox,
+                            ui.GroupBox(
+                                title="Lights",
+                                layout=ui.Column(
+                                    self.probecard_light_button,
+                                    self.microscope_light_button,
+                                    self.box_light_button,
+                                    ui.Spacer()
+                                )
+                            ),
                             self._dodge_groupbox,
                             stretch=(1, 0)
                         ),
-                        ui.GroupBox(
-                            title="Lights",
-                            layout=ui.Column(
-                                self.probecard_light_button,
-                                self.microscope_light_button,
-                                self.box_light_button,
-                                ui.Spacer()
-                            )
-                        ),
-                        stretch=(0, 1)
+                        stretch=(0, 0, 1, 0)
                     ),
                     ui.Tabs(
                         ui.Tab(
@@ -1271,7 +1336,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_lcr_toggled(self, state):
         self._lcr_prim_text.enabled = state
         self._lcr_sec_text.enabled = state
+        self._lcr_chart.enabled = state
         if state:
+            self._lcr_chart.clear()
             self.lcr_process.update_interval = self.lcr_update_interval
             self.lcr_process.matrix_channels = self.lcr_matrix_channels
             self.lcr_process.start()
@@ -1288,6 +1355,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_lcr_reading(self, prim, sec):
         self._lcr_prim_text.value = format_metric(prim, unit='F')
         self._lcr_sec_text.value = format_metric(sec, unit='Ohm')
+        _, _, z = self.current_position
+        self._lcr_chart.append(z, sec)
 
 class SwitchLabel(ui.Label):
 
