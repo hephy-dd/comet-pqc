@@ -6,6 +6,7 @@ import random
 
 from PyQt5 import QtCore
 from PyQt5 import QtGui
+from PyQt5 import QtWidgets
 from PyQt5 import QtChart
 
 import comet
@@ -512,58 +513,90 @@ class LCRChart(ui.Widget):
 
     def __init__(self):
         super().__init__()
-        self.chart = QtChart.QChart()
-        self.chart.legend().hide()
-        self.chart.layout().setContentsMargins(0, 0, 0, 0)
-        self.chart.setBackgroundRoundness(0)
-        self.chart.setBackgroundVisible(False)
-        self.chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
+        self._chart = QtChart.QChart()
+        self._chart.legend().hide()
+        self._chart.layout().setContentsMargins(0, 0, 0, 0)
+        self._chart.setBackgroundRoundness(0)
+        self._chart.setBackgroundVisible(False)
+        self._chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
 
-        self.xAxis = QtChart.QValueAxis()
-        self.xAxis.setTickCount(3)
-        self.xAxis.setMinorTickCount(4)
-        self.xAxis.setLabelFormat("%.3f mm")
-        self.chart.addAxis(self.xAxis, QtCore.Qt.AlignBottom)
+        self._xAxis = QtChart.QValueAxis()
+        self._xAxis.setTickCount(3)
+        self._xAxis.setMinorTickCount(4)
+        self._xAxis.setLabelFormat("%.3f mm")
+        self._chart.addAxis(self._xAxis, QtCore.Qt.AlignBottom)
 
-        self.yAxis = QtChart.QValueAxis()
-        self.yAxis.setTickCount(2)
-        self.yAxis.setMinorTickCount(2)
-        self.yAxis.setLabelFormat("%.2g Ohm")
-        self.chart.addAxis(self.yAxis, QtCore.Qt.AlignLeft)
+        self._yAxis = QtChart.QValueAxis()
+        self._yAxis.setTickCount(2)
+        self._yAxis.setMinorTickCount(3)
+        self._yAxis.setLabelFormat("%.2g Ohm")
+        self._chart.addAxis(self._yAxis, QtCore.Qt.AlignLeft)
 
-        self.series = QtChart.QScatterSeries()
-        self.series.setName("R")
-        self.series.setMarkerSize(3)
-        self.series.setBorderColor(QtGui.QColor('red'))
-        self.series.setColor(QtGui.QColor('red'))
+        self._line = QtChart.QLineSeries()
+        self._line.setColor(QtGui.QColor('magenta'))
 
-        self.chart.addSeries(self.series)
-        self.series.attachAxis(self.xAxis)
-        self.series.attachAxis(self.yAxis)
+        self._chart.addSeries(self._line)
+        self._line.attachAxis(self._xAxis)
+        self._line.attachAxis(self._yAxis)
+
+        self._series = QtChart.QScatterSeries()
+        self._series.setName("R")
+        self._series.setMarkerSize(3)
+        self._series.setBorderColor(QtGui.QColor('red'))
+        self._series.setColor(QtGui.QColor('red'))
+
+        self._chart.addSeries(self._series)
+        self._series.attachAxis(self._xAxis)
+        self._series.attachAxis(self._yAxis)
+
+        self._marker = QtChart.QScatterSeries()
+        self._marker.setMarkerSize(9)
+        self._marker.setBorderColor(QtGui.QColor('red'))
+        self._marker.setColor(QtGui.QColor('red'))
+
+        self._chart.addSeries(self._marker)
+        self._marker.attachAxis(self._xAxis)
+        self._marker.attachAxis(self._yAxis)
 
         self.qt.setMinimumSize(160, 60)
 
-        self.view = QtChart.QChartView(self.chart)
+        self._view = QtChart.QChartView(self._chart)
         self.qt.layout().setContentsMargins(0, 0, 0, 0)
-        self.qt.layout().addWidget(self.view)
+        self.qt.layout().addWidget(self._view)
 
     def get_y_limits(self):
         limits = []
-        for point in self.series.pointsVector():
+        for point in self._series.pointsVector():
             limits.append(point.y())
         return limits
 
     def clear(self):
-        self.series.clear()
+        self._series.clear()
 
     def append(self, x, y):
-        if self.series.count() > self.max_points:
-            self.series.remove(0)
-        self.series.append(QtCore.QPointF(x, y))
-        self.xAxis.setRange(x - 0.050, x + 0.050)
+        if self._series.count() > self.max_points:
+            self._series.remove(0)
+        self._series.append(QtCore.QPointF(x, y))
+        self.set_limits(x, y)
+        self.set_line(x, y)
+        self.set_marker(x, y)
+
+    def set_limits(self, x, y):
+        self._xAxis.setRange(x - 0.050, x + 0.050)
         limits = self.get_y_limits()
         if limits:
-            self.yAxis.setRange(min(limits), max(limits))
+            self._yAxis.setRange(min(limits), max(limits))
+            self._yAxis.applyNiceNumbers()
+            self._yAxis.setTickCount(2)
+
+    def set_line(self, x, y):
+        self._line.clear()
+        self._line.append(x, self._yAxis.min())
+        self._line.append(x, self._yAxis.max())
+
+    def set_marker(self, x, y):
+        self._marker.clear()
+        self._marker.append(x, y)
 
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
