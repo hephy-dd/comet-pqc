@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2021-08-03
+### Added
+- Probe card contact quality graph (#161).
+
 ## [0.37.0] - 2021-07-26
 ### Added
 - Table re-contact overdrive (#158).
