@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.38.0
+
+### Added
+- Probe card contact quality graph.
+
 ## 0.37.0
 
 ### Added
