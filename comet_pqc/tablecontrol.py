@@ -577,11 +577,9 @@ class LCRChart(ui.Widget):
         if self._series.count() > self.max_points:
             self._series.remove(0)
         self._series.append(QtCore.QPointF(x, y))
-        self.set_limits(x, y)
-        self.set_line(x, y)
         self.set_marker(x, y)
 
-    def set_limits(self, x, y):
+    def set_limits(self, x):
         self._xAxis.setRange(x - 0.050, x + 0.050)
         limits = self.get_y_limits()
         if limits:
@@ -589,7 +587,7 @@ class LCRChart(ui.Widget):
             self._yAxis.applyNiceNumbers()
             self._yAxis.setTickCount(2)
 
-    def set_line(self, x, y):
+    def set_line(self, x):
         self._line.clear()
         self._line.append(x, self._yAxis.min())
         self._line.append(x, self._yAxis.max())
@@ -1102,6 +1100,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self._position_widget.update_position(position)
         self.update_limits()
         self.update_control_buttons()
+        self._lcr_chart.set_limits(position.z)
+        self._lcr_chart.set_line(position.z)
 
     def reset_caldone(self):
         self._calibration_widget.reset_calibration()
