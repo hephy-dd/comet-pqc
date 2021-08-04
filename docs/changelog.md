@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.38.1
+
+### Fixed
+- Minor contact quality graph issue.
+
 ## 0.38.0
 
 ### Added
