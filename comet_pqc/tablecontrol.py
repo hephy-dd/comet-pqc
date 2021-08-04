@@ -1392,6 +1392,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         _, _, z = self.current_position
         if math.isfinite(z) and math.isfinite(sec):
             self._lcr_chart.append(z, sec)
+            self._lcr_chart.set_line(z)
 
 class SwitchLabel(ui.Label):
 
