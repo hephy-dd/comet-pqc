@@ -1100,8 +1100,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self._position_widget.update_position(position)
         self.update_limits()
         self.update_control_buttons()
-        self._lcr_chart.set_limits(position.z)
-        self._lcr_chart.set_line(position.z)
+        if math.isfinite(position.z):
+            self._lcr_chart.set_limits(position.z)
+            self._lcr_chart.set_line(position.z)
 
     def reset_caldone(self):
         self._calibration_widget.reset_calibration()
@@ -1389,7 +1390,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self._lcr_prim_text.value = format_metric(prim, unit='F')
         self._lcr_sec_text.value = format_metric(sec, unit='Ohm')
         _, _, z = self.current_position
-        self._lcr_chart.append(z, sec)
+        if math.isfinite(z) and math.isfinite(sec):
+            self._lcr_chart.append(z, sec)
+            self._lcr_chart.set_line(z)
 
 class SwitchLabel(ui.Label):
 
