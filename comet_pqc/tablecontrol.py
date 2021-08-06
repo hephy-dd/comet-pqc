@@ -1391,7 +1391,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self._lcr_sec_text.value = format_metric(sec, unit='Ohm')
         _, _, z = self.current_position
         if math.isfinite(z) and math.isfinite(sec):
-            self._lcr_chart.append(z, sec)
+            # Append only absolute Rp readings
+            self._lcr_chart.append(z, abs(sec))
             self._lcr_chart.set_line(z)
 
 class SwitchLabel(ui.Label):
