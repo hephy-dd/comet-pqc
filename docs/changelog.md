@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.38.2
+
+### Fixed
+- Show absolute Rp in quality graph.
+
 ## 0.38.1
 
 ### Fixed

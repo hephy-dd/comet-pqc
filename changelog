@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.2] - 2021-08-06
+### Fixed
+- Show absolute Rp in quality graph (#161).
+
 ## [0.38.1] - 2021-08-04
 ### Fixed
 - Minor contact quality graph issue (#161).
