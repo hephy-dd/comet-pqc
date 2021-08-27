@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.38.3
+
+### Fixed
+- Another issue with linear ramp for small ranges.
+
 ## 0.38.2
 
 ### Fixed
