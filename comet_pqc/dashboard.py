@@ -1145,6 +1145,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         t = time.time()
         # Note: occasional crashes due to `NaN` timestamp.
         if not math.isfinite(t):
+            logger.error("invalid timestamp: %s", t)
             t = 0
         self.environment_tab.append_data(t, pc_data)
 
