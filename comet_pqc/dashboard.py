@@ -1,7 +1,9 @@
-import logging
-import os
-import webbrowser
 import json
+import logging
+import math
+import os
+import time
+import webbrowser
 
 from qutie import Timer
 
@@ -1140,7 +1142,11 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.environment_control_widget.update_probecard_camera_state(pc_data.relay_states.probecard_camera)
         self.environment_control_widget.update_pid_control_state(pc_data.pid_status)
         self.environment_tab.enabled = True
-        self.environment_tab.update_data(pc_data)
+        t = time.time()
+        # Note: occasional crashes due to `NaN` timestamp.
+        if not math.isfinite(t):
+            t = 0
+        self.environment_tab.append_data(t, pc_data)
 
     @handle_exception
     def sync_table_controls(self):

@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.38.4
+
+### Fixed
+- Crashes due to invalid time values.
+
+# Changelog
+{: .no_toc }
+
 ## 0.38.3
 
 ### Fixed

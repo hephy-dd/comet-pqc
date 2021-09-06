@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.4] - 2021-09-06
+### Fixed
+- Crashes due to invalid time values (#168).
+
 ## [0.38.3] - 2021-08-27
 ### Fixed
 - Another issue with linear ramp for small ranges (#157).
@@ -275,7 +279,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.36.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.38.4...HEAD
+[0.38.4]: https://github.com/hephy-dd/comet-pqc/compare/0.38.3...0.38.4
+[0.38.3]: https://github.com/hephy-dd/comet-pqc/compare/0.38.2...0.38.3
+[0.38.2]: https://github.com/hephy-dd/comet-pqc/compare/0.38.1...0.38.2
+[0.38.1]: https://github.com/hephy-dd/comet-pqc/compare/0.38.0...0.38.1
+[0.38.0]: https://github.com/hephy-dd/comet-pqc/compare/0.37.0...0.38.0
+[0.37.0]: https://github.com/hephy-dd/comet-pqc/compare/0.36.0...0.37.0
 [0.36.0]: https://github.com/hephy-dd/comet-pqc/compare/0.35.0...0.36.0
 [0.35.0]: https://github.com/hephy-dd/comet-pqc/compare/0.34.0...0.35.0
 [0.34.0]: https://github.com/hephy-dd/comet-pqc/compare/0.32.2...0.34.0

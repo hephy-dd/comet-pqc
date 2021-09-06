@@ -48,6 +48,9 @@ class LogItem(ui.TreeItem):
 
     @classmethod
     def format_time(cls, seconds):
+        # Note: occasional crashes due to `NaN` timestamp.
+        if not math.isfinite(seconds):
+            seconds = 0
         dt = datetime.datetime.fromtimestamp(seconds)
         return dt.strftime('%Y-%m-%d %H:%M:%S')
 
