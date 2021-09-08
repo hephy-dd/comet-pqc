@@ -1,8 +1,11 @@
 import math
+import logging
 
 from comet import ui
 
 __all__ = ['EnvironmentTab']
+
+logger = logging.getLogger(__name__)
 
 class EnvironmentTab(ui.Tab):
 
@@ -78,7 +81,12 @@ class EnvironmentTab(ui.Tab):
         self.plot.series.get("box_temperature").replace(self.box_temperature_series)
         self.plot.series.get("chuck_temperature").replace(self.chuck_temperature_series)
         self.plot.series.get("box_humidity").replace(self.box_humidity_series)
-        if self.plot.zoomed:
-            self.plot.update("x")
-        else:
-            self.plot.fit()
+        # Suppress invalid float crashes
+        try:
+            if self.plot.zoomed:
+                self.plot.update("x")
+            else:
+                self.plot.fit()
+        except Exception as exc:
+            logger.error("failed to resize plot.")
+            logger.exception(exc)
