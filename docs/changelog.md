@@ -7,6 +7,17 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.39.0
+
+### Added
+- Reset contact quality graph on X/Y movements option.
+
+### Changed
+- Moved table dodge input to dialog options.
+
+### Fixed
+- Crashes caused by environment plot.
+
 ## 0.38.4
 
 ### Fixed
