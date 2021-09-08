@@ -28,6 +28,15 @@ from qutie.qutie import Qt
 
 import logging
 
+DEFAULT_STEP_UP_DELAY = 0.
+DEFAULT_STEP_UP_MULTIPLY = 2
+DEFAULT_LCR_UPDATE_INTERVAL = .100
+DEFAULT_MATRIX_CHANNELS = [
+    '3H01', '2B04', '1B03', '1B12', '2B06', '2B07', '2B08', '2B09',
+    '2B10', '2B11', '1H04', '1H05', '1H06', '1H07', '1H08', '1H09',
+    '1H10', '1H11', '2H12', '2H05', '1A01'
+]
+
 logger = logging.getLogger(__name__)
 
 def safe_z_position(z):
@@ -811,6 +820,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                 stretch=(0, 0, 1)
             )
         )
+        self._lcr_reset_on_move_checkbox = ui.CheckBox(
+            text="Reset graph on X/Y move"
+        )
+        self._contact_quality_groupbox = ui.GroupBox(
+            title="Contact Quality (LCR)",
+            layout=ui.Row(
+                self._lcr_reset_on_move_checkbox,
+                ui.Spacer(),
+                stretch=(0, 1)
+            )
+        )
         self._step_up_delay_number = ui.Number(
             minimum=0,
             maximum=1000,
@@ -906,9 +926,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                                     self.box_light_button,
                                     ui.Spacer()
                                 )
-                            ),
-                            self._dodge_groupbox,
-                            stretch=(1, 0)
+                            )
                         ),
                         stretch=(0, 0, 1, 0)
                     ),
@@ -942,7 +960,12 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                         ui.Tab(
                             title="Options",
                             layout=ui.Column(
-                                self._interval_groupbox,
+                                ui.Row(
+                                    self._interval_groupbox,
+                                    self._dodge_groupbox,
+                                    self._contact_quality_groupbox,
+                                    stretch=(0, 0, 1)
+                                ),
                                 self._step_up_groubox,
                                 self._lcr_options_groupbox,
                                 ui.Spacer(),
@@ -1047,6 +1070,14 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     @dodge_height.setter
     def dodge_height(self, value):
         self._dodge_height_number.value = (value * comet.ureg('mm')).to('um').m
+
+    @property
+    def lcr_reset_on_move(self):
+        return self._lcr_reset_on_move_checkbox.checked
+
+    @lcr_reset_on_move.setter
+    def lcr_reset_on_move(self, value):
+        self._lcr_reset_on_move_checkbox.checked = value
 
     @property
     def step_up_delay(self):
@@ -1162,6 +1193,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.step_up_button.enabled = z_enabled and (self.step_width <= step_up_limit) # TODO
 
     def relative_move_xy(self, x, y):
+        # Dodge on X/Y movements.
         if self.dodge_enabled:
             dodge_height = self.dodge_height
             current_position = self.current_position
@@ -1170,7 +1202,13 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             vector = [(0, 0, -dodge_height), (x, y, 0), (0, 0, +dodge_height)]
         else:
             vector = [(x, y, 0)]
+        # Clear contact quality graph on X/Y movements.
+        if self.lcr_reset_on_move:
+            self._lcr_chart.clear()
         self.process.relative_move_vector(vector)
+        # Clear contact quality graph on X/Y movements.
+        if self.lcr_reset_on_move:
+            self._lcr_chart.clear()
 
     def on_add_x(self):
         self.lock()
@@ -1264,6 +1302,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         # Update to safe Z position
         position = Position(position.x, position.y, safe_z_position(position.z))
         self.lock()
+        # Clear contact quality graph on X/Y movements.
+        self._lcr_chart.clear()
         self.stop_button.enabled = True
         self.process.safe_absolute_move(position.x, position.y, position.z)
 
@@ -1299,20 +1339,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.x_hard_limit_label.value = x
         self.y_hard_limit_label.value = y
         self.z_hard_limit_label.value = z
-        self.step_up_delay = self.settings.get('tablecontrol_step_up_delay') or 0
-        self.step_up_multiply = self.settings.get('tablecontrol_step_up_multiply') or 2
-        self.lcr_update_interval = self.settings.get('tablecontrol_lcr_update_delay') or .100
-        matrix_channels = self.settings.get('tablecontrol_lcr_matrix_channels') or [
-            '3H01', '2B04', '1B03', '1B12', '2B06', '2B07', '2B08', '2B09',
-            '2B10', '2B11', '1H04', '1H05', '1H06', '1H07', '1H08', '1H09',
-            '1H10', '1H11', '2H12', '2H05', '1A01'
-        ]
+        self.step_up_delay = self.settings.get('tablecontrol_step_up_delay', DEFAULT_STEP_UP_DELAY)
+        self.step_up_multiply = self.settings.get('tablecontrol_step_up_multiply', DEFAULT_STEP_UP_MULTIPLY)
+        self.lcr_update_interval = self.settings.get('tablecontrol_lcr_update_delay', DEFAULT_LCR_UPDATE_INTERVAL)
+        matrix_channels = self.settings.get('tablecontrol_lcr_matrix_channels') or DEFAULT_MATRIX_CHANNELS
         self.lcr_matrix_channels = matrix_channels
         self.lcr_process.update_interval = self.lcr_update_interval
         self.lcr_process.matrix_channels = self.lcr_matrix_channels
         self.update_interval = settings.table_control_update_interval
         self.dodge_enabled = settings.table_control_dodge_enabled
         self.dodge_height = settings.table_control_dodge_height
+        self.lcr_reset_on_move = self.settings.get('tablecontrol_lcr_reset_on_move', True)
 
     def store_settings(self):
         self.settings['tablecontrol_dialog_size'] = self.width, self.height
@@ -1323,6 +1360,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         settings.table_control_update_interval = self.update_interval
         settings.table_control_dodge_enabled = self.dodge_enabled
         settings.table_control_dodge_height = self.dodge_height
+        self.settings['tablecontrol_lcr_reset_on_move'] = self.lcr_reset_on_move
 
     def lock(self):
         self.control_layout.enabled = False
