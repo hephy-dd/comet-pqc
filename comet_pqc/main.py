@@ -27,6 +27,8 @@ from .preferences import TableTab
 from .preferences import WebAPITab
 from .preferences import OptionsTab
 
+from .settings import settings
+
 CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
 GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
 
@@ -162,6 +164,13 @@ def main():
         failed=on_show_error
     ))
 
+    # Z-Limit notice
+    temporary_z_limit_label = ui.Label(
+        text="Temporary Probecard Z-Limit applied. "
+             "Revert after finishing current measurements.",
+        stylesheet="QLabel{background: yellow; padding: 4px; border-radius: 4px;}",
+        visible=False
+    )
 
     # Dashboard
 
@@ -175,7 +184,11 @@ def main():
 
     # Layout
 
-    app.layout = dashboard
+    app.layout = ui.Column(
+        temporary_z_limit_label,
+        dashboard,
+        stretch=(0, 1)
+    )
 
     # Restore window size
     app.width, app.height = app.settings.get('window_size', (1420, 920))
@@ -192,6 +205,11 @@ def main():
 
     # Extend preferences
     table_tab = TableTab()
+    temporary_z_limit_label.visible = settings.table_temporary_z_limit
+    def toggle_temporary_z_limit(enabled):
+        logger.info("Temporary Z-Limit enabled: %s", enabled)
+        temporary_z_limit_label.visible = enabled
+    table_tab.temporary_z_limit_changed = toggle_temporary_z_limit
     app.window.preferences_dialog.tab_widget.append(table_tab)
     app.window.preferences_dialog.table_tab = table_tab
     webapi_tab = WebAPITab()

@@ -93,6 +93,14 @@ class Settings(SettingsMixin):
         }
 
     @property
+    def table_temporary_z_limit(self) -> bool:
+        return self.settings.get('table_temporary_z_limit') or False
+
+    @table_temporary_z_limit.setter
+    def table_temporary_z_limit(self, value: bool) -> None:
+        self.settings['table_temporary_z_limit'] = bool(value)
+
+    @property
     def table_joystick_maximum_limits(self):
         default = 0.0, 0.0, 0.0
         try:
