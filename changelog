@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.40.0] - 2021-10-12
 ### Added
 - Temporary Z-limit notice (#172).
+- Quick edit samples dialog (#174).
 
 ## [0.39.0] - 2021-09-08
 ### Added

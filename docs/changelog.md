@@ -11,6 +11,7 @@ nav_order: 10
 
 ### Added
 - Temporary Z-limit notice.
+- Quick edit samples dialog.
 
 ## 0.39.0
 
