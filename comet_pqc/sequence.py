@@ -20,9 +20,25 @@ from .settings import settings
 from .utils import from_table_unit
 from .utils import to_table_unit
 
+from .view.quickedit import QuickEditDialog
+
 __all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
 
 logger = logging.getLogger(__name__)
+
+def load_all_sequences(settings):
+    configs = []
+    for name, filename in list_configs(SEQUENCE_DIR):
+        configs.append((name, filename, True))
+    for filename in list(set(settings.get('custom_sequences') or [])):
+        if os.path.exists(filename):
+            try:
+                sequence = load_sequence(filename)
+            except:
+                pass
+            else:
+                configs.append((sequence.name, filename, False))
+    return configs
 
 class StartSequenceDialog(ui.Dialog, SettingsMixin):
     """Start sequence dialog."""
@@ -207,20 +223,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
     def load_settings_sequences(self):
         """Load all built-in and custom sequences from settings."""
         self._sequence_tree.clear()
-        def load_all_sequences():
-            configs = []
-            for name, filename in list_configs(SEQUENCE_DIR):
-                configs.append((name, filename, True))
-            for filename in list(set(self.settings.get('custom_sequences') or [])):
-                if os.path.exists(filename):
-                    try:
-                        sequence = load_sequence(filename)
-                    except:
-                        pass
-                    else:
-                        configs.append((sequence.name, filename, False))
-            return configs
-        for name, filename, builtin in load_all_sequences():
+        for name, filename, builtin in load_all_sequences(self.settings):
             try:
                 sequence = load_sequence(filename)
                 item = self._sequence_tree.append([sequence.name, '(built-in)' if builtin else filename])
@@ -647,3 +650,47 @@ class MeasurementTreeItem(SequenceTreeItem):
         super().reset()
         self.series.clear()
         self.analysis.clear()
+
+
+class EditSamplesDialog:
+    """Quick edit all samples at once dialog."""
+
+    def __init__(self, sequence_tree, sequences):
+        self.sequence_tree = sequence_tree
+        self.sequences = sequences
+
+    def _populate_dialog(self, dialog):
+        for sample_item in self.sequence_tree:
+            item = dialog.addItem()
+            item.setEnabled(sample_item.enabled)
+            item.setPrefix(sample_item.name_prefix)
+            item.setInfix(sample_item.name_infix)
+            item.setSuffix(sample_item.name_suffix)
+            item.setType(sample_item.sample_type)
+            item.setPosition(sample_item.sample_position)
+            for name, filename, builtin in self.sequences:
+                item.addSequence(name)
+            if sample_item.sequence is not None:
+                item.setCurrentSequence(sample_item.sequence.name)
+            item.setProperty('sample_item', sample_item)
+
+    def _update_samples(self, dialog):
+        for item in dialog.items():
+            sample_item = item.property('sample_item')
+            sample_item.enabled = item.isEnabled()
+            sample_item.name_prefix = item.prefix()
+            sample_item.name_infix = item.infix()
+            sample_item.name_suffix = item.suffix()
+            sample_item.sample_type = item.type()
+            sample_item.sample_position = item.position()
+            for name, filename, builtin in self.sequences:
+                if item.currentSequence() == name:
+                    sequence = load_sequence(filename)
+                    sample_item.load_sequence(sequence)
+
+    def run(self):
+        dialog = QuickEditDialog()
+        self._populate_dialog(dialog)
+        dialog.exec()
+        if dialog.result() == dialog.Accepted:
+            self._update_samples(dialog)

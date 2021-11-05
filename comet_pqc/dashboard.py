@@ -28,7 +28,7 @@ from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
 from .tablecontrol import TableControlDialog, safe_z_position
-from .sequence import StartSequenceDialog
+from .sequence import StartSequenceDialog, EditSamplesDialog, load_all_sequences
 
 from .tabs import EnvironmentTab
 from .tabs import MeasurementTab
@@ -48,7 +48,8 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
 
     config_version = 1
 
-    def __init__(self, *, tree_selected, tree_double_clicked, start_all, start, stop, reset_sequence_state):
+    def __init__(self, *, tree_selected, tree_double_clicked, start_all, start,
+                 stop, reset_sequence_state, edit_sequence):
         super().__init__()
         self.current_path = user_home()
         self.title = "Sequence"
@@ -110,6 +111,12 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             clicked=reset_sequence_state
         )
 
+        self._edit_button = ui.Button(
+            text="Edit",
+            tool_tip="Quick edit properties of sequence items.",
+            clicked=edit_sequence
+        )
+
         self._reload_config_button = ui.ToolButton(
             icon=make_path('assets', 'icons', 'reload.svg'),
             tool_tip="Reload sequence configurations from file.",
@@ -146,6 +153,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                 self._start_button,
                 self._stop_button,
                 self._reset_button,
+                self._edit_button,
                 self._reload_config_button,
                 self._add_sample_button,
                 self._remove_sample_button,
@@ -528,7 +536,8 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             start_all=self.on_start_all,
             start=self.on_start,
             stop=self.on_stop,
-            reset_sequence_state=self.on_reset_sequence_state
+            reset_sequence_state=self.on_reset_sequence_state,
+            edit_sequence=self.on_edit_sequence
         )
         self.sequence_tree = self.sequence_widget._sequence_tree
         self.start_sample_action = self.sequence_widget._start_sample_action
@@ -987,6 +996,13 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
             panel = self.panels.get(current_item.type)
             panel.visible = True
             panel.mount(current_item)
+
+    @handle_exception
+    def on_edit_sequence(self):
+        sequences = load_all_sequences(self.settings)
+        dialog = EditSamplesDialog(self.sequence_tree, sequences)
+        dialog.run()
+        self.on_tree_selected(self.sequence_tree.current)
 
     # Measurement control
 
