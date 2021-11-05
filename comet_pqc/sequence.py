@@ -690,6 +690,7 @@ class EditSamplesDialog:
 
     def run(self):
         dialog = QuickEditDialog()
+        dialog.resize(800, 320)
         self._populate_dialog(dialog)
         dialog.exec()
         if dialog.result() == dialog.Accepted:

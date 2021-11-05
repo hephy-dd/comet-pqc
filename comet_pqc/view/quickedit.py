@@ -106,17 +106,17 @@ class QuickEditDialog(QtWidgets.QDialog):
         self._items: List[QuickEditItem] = []
 
         self._scrollAreaLayout = QtWidgets.QGridLayout()
-        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Name"), 0, 1, 1, 3)
+        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Name"), 0, 2)
         self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Type"), 0, 4)
         self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Position"), 0, 5)
         self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Sequence"), 0, 6)
         self._scrollAreaLayout.setColumnStretch(0, 0)
-        self._scrollAreaLayout.setColumnStretch(1, 1)
-        self._scrollAreaLayout.setColumnStretch(2, 2)
-        self._scrollAreaLayout.setColumnStretch(3, 1)
+        self._scrollAreaLayout.setColumnStretch(1, 2)
+        self._scrollAreaLayout.setColumnStretch(2, 3)
+        self._scrollAreaLayout.setColumnStretch(3, 2)
         self._scrollAreaLayout.setColumnStretch(4, 1)
         self._scrollAreaLayout.setColumnStretch(5, 1)
-        self._scrollAreaLayout.setColumnStretch(6, 2)
+        self._scrollAreaLayout.setColumnStretch(6, 1)
 
         self._scrollAreaWidget = QtWidgets.QWidget()
 

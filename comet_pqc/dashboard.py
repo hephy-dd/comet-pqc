@@ -112,6 +112,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         )
 
         self._edit_button = ui.Button(
+            width=52,
             text="Edit",
             tool_tip="Quick edit properties of sequence items.",
             clicked=edit_sequence
