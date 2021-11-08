@@ -1,8 +1,6 @@
 import logging
 import sys
 
-from PyQt5 import QtWidgets
-
 import analysis_pqc
 
 import comet
@@ -42,14 +40,6 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self._setup_resources()
         self._setup_processes()
 
-        # Z-Limit notice
-        self.temporary_z_limit_label = ui.Label(
-            text="Temporary Probecard Z-Limit applied. "
-                 "Revert after finishing current measurements.",
-            stylesheet="QLabel{background: yellow; padding: 4px; border-radius: 4px;}",
-            visible=False
-        )
-
         # Dashboard
         self.dashboard = Dashboard(
             message_changed=self.on_message,
@@ -73,11 +63,8 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
         # Extend preferences
         table_tab = TableTab()
-        self.temporary_z_limit_label.visible = settings.table_temporary_z_limit
-        def toggle_temporary_z_limit(enabled):
-            logger.info("Temporary Z-Limit enabled: %s", enabled)
-            self.temporary_z_limit_label.visible = enabled
-        table_tab.temporary_z_limit_changed = toggle_temporary_z_limit
+        self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
+        table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
         self.window.preferences_dialog.tab_widget.append(table_tab)
         self.window.preferences_dialog.table_tab = table_tab
         webapi_tab = WebAPITab()
@@ -95,11 +82,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.window.progress_bar.width = 600
 
         # Layout
-        self.app.layout = ui.Column(
-            self.temporary_z_limit_label,
-            self.dashboard,
-            stretch=(0, 1)
-        )
+        self.app.layout = self.dashboard
 
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
@@ -204,7 +187,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
     def on_show_error(self, exc, tb):
         self.app.message = "Exception occured!"
         self.app.progress = None
-        logging.error(tb)
+        logger.exception(exc)
         ui.show_exception(exc, tb)
 
     def on_message(self, message):

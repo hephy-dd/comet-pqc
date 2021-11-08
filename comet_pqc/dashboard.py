@@ -514,7 +514,7 @@ class EnvironmentControlWidget(ui.GroupBox):
     def update_pid_control_state(self, state):
         self._pid_control_button.checked = state
 
-class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
+class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     environment_poll_interval = 1.0
 
@@ -525,12 +525,16 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     def __init__(self, message_changed=None, progress_changed=None, **kwargs):
         super().__init__()
-        # Properties
-        self.collapsible = False
         # Callbacks
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         # Layout
+        self.temporary_z_limit_label = ui.Label(
+            text="Temporary Probecard Z-Limit applied. "
+                 "Revert after finishing current measurements.",
+            stylesheet="QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}",
+            visible=False
+        )
         self.sequence_widget = SequenceWidget(
             tree_selected=self.on_tree_selected,
             tree_double_clicked=self.on_tree_double_clicked,
@@ -629,9 +633,15 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
         # Layout
 
-        self.append(self.control_widget)
-        self.append(self.tab_widget)
-        self.stretch = 4, 9
+        self.splitter = ui.Splitter()
+        self.splitter.append(self.control_widget)
+        self.splitter.append(self.tab_widget)
+        self.splitter.stretch = 4, 9
+        self.splitter.collapsible = False
+
+        self.append(self.temporary_z_limit_label)
+        self.append(self.splitter)
+        self.stretch = 0, 1
 
         # Setup process callbacks
 
@@ -664,7 +674,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def load_settings(self):
-        self.sizes = self.settings.get("dashboard_sizes") or (300, 500)
+        self.splitter.sizes = self.settings.get("dashboard_sizes") or (300, 500)
         self.sequence_widget.load_settings()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
@@ -674,7 +684,7 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def store_settings(self):
-        self.settings["dashboard_sizes"] = self.sizes
+        self.settings["dashboard_sizes"] = self.splitter.sizes
         self.sequence_widget.store_settings()
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
@@ -766,6 +776,10 @@ class Dashboard(ui.Splitter, ProcessMixin, SettingsMixin):
         self.operator_groupbox.enabled = True
         self.measurement_tab.unlock()
         self.status_tab.unlock()
+
+    def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
+        logger.info("Temporary Z-Limit enabled: %s", enabled)
+        self.temporary_z_limit_label.visible = enabled
 
     # Sequence control
 
