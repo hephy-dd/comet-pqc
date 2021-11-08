@@ -16,11 +16,11 @@ from .components import PositionsComboBox
 from .components import OperatorWidget
 from .components import WorkingDirectoryWidget
 
+from .quickedit import QuickEditDialog
+
 from .settings import settings
 from .utils import from_table_unit
 from .utils import to_table_unit
-
-from .view.quickedit import QuickEditDialog
 
 __all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
 
