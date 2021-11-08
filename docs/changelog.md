@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.40.0
+
+### Added
+- Temporary Z-limit notice.
+- Quick edit samples dialog.
+
 ## 0.39.0
 
 ### Added
