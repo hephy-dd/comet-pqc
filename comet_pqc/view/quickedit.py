@@ -12,29 +12,31 @@ class QuickEditItem(QtCore.QObject):
         super().__init__(parent)
 
         self._enabledCheckBox = QtWidgets.QCheckBox()
+        self._enabledCheckBox.setToolTip(self.tr("Enable sample"))
 
         self._prefixLineEdit = QtWidgets.QLineEdit()
         self._prefixLineEdit.setClearButtonEnabled(True)
-        self._prefixLineEdit.setToolTip("Sample name prefix")
+        self._prefixLineEdit.setToolTip(self.tr("Sample name prefix"))
 
         self._infixLineEdit = QtWidgets.QLineEdit()
         self._infixLineEdit.setClearButtonEnabled(True)
-        self._infixLineEdit.setToolTip("Sample name infix")
+        self._infixLineEdit.setToolTip(self.tr("Sample name infix"))
 
         self._suffixLineEdit = QtWidgets.QLineEdit()
         self._suffixLineEdit.setClearButtonEnabled(True)
-        self._suffixLineEdit.setToolTip("Sample name suffix")
+        self._suffixLineEdit.setToolTip(self.tr("Sample name suffix"))
 
         self._typeLineEdit = QtWidgets.QLineEdit()
         self._typeLineEdit.setClearButtonEnabled(True)
-        self._typeLineEdit.setToolTip("Sample type")
+        self._typeLineEdit.setToolTip(self.tr("Sample type"))
 
         self._positionLineEdit = QtWidgets.QLineEdit()
         self._positionLineEdit.setClearButtonEnabled(True)
-        self._positionLineEdit.setToolTip("Sample position")
+        self._positionLineEdit.setToolTip(self.tr("Sample position"))
 
         self._sequenceComboBox = QtWidgets.QComboBox()
-        self._sequenceComboBox.setToolTip("Select sample sequence")
+        self._sequenceComboBox.setMaximumWidth(128)
+        self._sequenceComboBox.setToolTip(self.tr("Select sample sequence"))
 
         self._widgets: List[QtWidgets.QWidget] = [
             self._enabledCheckBox,
@@ -98,31 +100,35 @@ class QuickEditItem(QtCore.QObject):
 
 class QuickEditDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
-        self.setWindowTitle("Quick Edit Samples")
-        self.resize(320, 240)
+        self.setWindowTitle(self.tr("Quick Edit Samples"))
 
         self._items: List[QuickEditItem] = []
 
-        self._scrollAreaLayout = QtWidgets.QGridLayout()
-        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Name"), 0, 2)
-        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Type"), 0, 4)
-        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Position"), 0, 5)
-        self._scrollAreaLayout.addWidget(QtWidgets.QLabel("Sequence"), 0, 6)
-        self._scrollAreaLayout.setColumnStretch(0, 0)
-        self._scrollAreaLayout.setColumnStretch(1, 2)
-        self._scrollAreaLayout.setColumnStretch(2, 3)
-        self._scrollAreaLayout.setColumnStretch(3, 2)
-        self._scrollAreaLayout.setColumnStretch(4, 1)
-        self._scrollAreaLayout.setColumnStretch(5, 1)
-        self._scrollAreaLayout.setColumnStretch(6, 1)
+        self._nameLabel = QtWidgets.QLabel()
+        self._nameLabel.setText(self.tr("Name"))
+
+        self._typeLabel = QtWidgets.QLabel()
+        self._typeLabel.setText(self.tr("Type"))
+
+        self._postitionLabel = QtWidgets.QLabel()
+        self._postitionLabel.setText(self.tr("Position"))
+
+        self._sequenceLabel = QtWidgets.QLabel()
+        self._sequenceLabel.setText(self.tr("Sequence"))
+
+        self._gridLayout = QtWidgets.QGridLayout()
+        self._gridLayout.addWidget(self._nameLabel, 0, 2)
+        self._gridLayout.addWidget(self._typeLabel, 0, 4)
+        self._gridLayout.addWidget(self._postitionLabel, 0, 5)
+        self._gridLayout.addWidget(self._sequenceLabel, 0, 6)
 
         self._scrollAreaWidget = QtWidgets.QWidget()
 
-        layout2 = QtWidgets.QVBoxLayout(self._scrollAreaWidget)
-        layout2.addLayout(self._scrollAreaLayout)
-        layout2.addStretch()
+        self._gridWrapperLayout = QtWidgets.QVBoxLayout(self._scrollAreaWidget)
+        self._gridWrapperLayout.addLayout(self._gridLayout)
+        self._gridWrapperLayout.addStretch()
 
         self._scrollArea = QtWidgets.QScrollArea()
         self._scrollArea.setWidgetResizable(True)
@@ -140,9 +146,9 @@ class QuickEditDialog(QtWidgets.QDialog):
 
     def addItem(self) -> QuickEditItem:
         item = QuickEditItem(self)
-        row = self._scrollAreaLayout.rowCount()
+        row = self._gridLayout.rowCount()
         for column, widget in enumerate(item.widgets()):
-            self._scrollAreaLayout.addWidget(widget, row, column)
+            self._gridLayout.addWidget(widget, row, column)
         self._items.append(item)
         return item
 
