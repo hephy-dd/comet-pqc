@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.1] - 2021-11-09
+### Fixed
+- Locked open/save sequence tool buttons (#176).
+
 ## [0.40.0] - 2021-10-12
 ### Added
 - Temporary Z-limit notice (#172).
@@ -292,7 +296,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.38.4...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.40.1...HEAD
+[0.40.1]: https://github.com/hephy-dd/comet-pqc/compare/0.40.0...0.40.1
+[0.40.0]: https://github.com/hephy-dd/comet-pqc/compare/0.39.0...0.40.0
+[0.39.0]: https://github.com/hephy-dd/comet-pqc/compare/0.38.4...0.39.0
 [0.38.4]: https://github.com/hephy-dd/comet-pqc/compare/0.38.3...0.38.4
 [0.38.3]: https://github.com/hephy-dd/comet-pqc/compare/0.38.2...0.38.3
 [0.38.2]: https://github.com/hephy-dd/comet-pqc/compare/0.38.1...0.38.2

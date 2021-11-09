@@ -204,6 +204,8 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._reload_config_button.enabled = True
         self._add_sample_button.enabled = True
         self._remove_sample_button.enabled = True
+        self._save_button.enabled = True
+        self._open_button.enabled = True
         self._sequence_tree.unlock()
 
     def stop(self):
