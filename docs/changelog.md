@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.40.1
+
+### Fixed
+- Locked open/save sequence tool buttons.
+- Unlocked quick edit tool button.
+
 ## 0.40.0
 
 ### Added
