@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.40.1] - 2021-11-09
 ### Fixed
 - Locked open/save sequence tool buttons (#176).
+- Unlocked quick edit tool button (#177).
 
 ## [0.40.0] - 2021-10-12
 ### Added

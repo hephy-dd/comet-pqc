@@ -11,6 +11,7 @@ nav_order: 10
 
 ### Fixed
 - Locked open/save sequence tool buttons.
+- Unlocked quick edit tool button.
 
 ## 0.40.0
 

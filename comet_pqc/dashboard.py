@@ -112,7 +112,6 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         )
 
         self._edit_button = ui.Button(
-            width=52,
             text="Edit",
             tool_tip="Quick edit properties of sequence items.",
             clicked=edit_sequence
@@ -189,6 +188,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._start_button.enabled = False
         self._stop_button.enabled = True
         self._reset_button.enabled = False
+        self._edit_button.enabled = False
         self._reload_config_button.enabled = False
         self._add_sample_button.enabled = False
         self._remove_sample_button.enabled = False
@@ -201,6 +201,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._start_button.enabled = True
         self._stop_button.enabled = False
         self._reset_button.enabled = True
+        self._edit_button.enabled = True
         self._reload_config_button.enabled = True
         self._add_sample_button.enabled = True
         self._remove_sample_button.enabled = True
@@ -931,13 +932,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     def _on_start(self, context, move_to_contact=False, move_to_after_position=None):
         # Create output directory
+        self.panels.store()
+        self.panels.unmount()
+        self.panels.clear_readings()
+        self.panels.hide()
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
         self.lock_controls()
-        self.panels.store()
-        self.panels.unmount()
-        self.panels.clear_readings()
         measure = self.measure_process
         measure.context = context
         measure.set("table_position", self.table_position())
