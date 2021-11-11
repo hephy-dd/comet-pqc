@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.41.0] - 2021-11-11
+### Added
+- Added support for Keithley 2470 instruments (#173).
+### Changed
+- Migrated to analysis-pqc version 0.3.1 (#179).
 
 ## [0.40.1] - 2021-11-09
 ### Fixed

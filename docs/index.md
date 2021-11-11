@@ -14,15 +14,16 @@ Process Quality Control for CMS tracker
 
 ### Required instruments
 
-|Instrument                       |Role |
-|:--------------------------------|:----|
-|Keithley 707B Switching Matrix   |Matrix |
-|Keysight E4980A LCR Meter        |LCR Meter |
-|Keithley 6517B Electrometer      |ELM |
-|Keithley 2410 Source Meter       |HV Source, V Source |
-|Keithley 2657A Source Meter      |V Source, HV Source |
-|Corvus TT positioning controller |Table |
-|HEPHY Environment Box            |Environment |
+|Instrument                            |Role |
+|:-------------------------------------|:----|
+|Keithley 707B Switching Matrix        |Matrix |
+|Keysight E4980A LCR Meter             |LCR Meter |
+|Keithley 6517B Electrometer           |ELM |
+|Keithley 2410 Source Meter            |HV Source, V Source |
+|Keithley 2470 Source Meter (optional) |HV Source, V Source |
+|Keithley 2657A Source Meter           |V Source, HV Source |
+|Corvus TT positioning controller      |Table |
+|HEPHY Environment Box                 |Environment |
 
 ### Setup schematic
 

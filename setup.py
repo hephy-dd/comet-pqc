@@ -8,7 +8,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'comet @ git+https://github.com/hephy-dd/comet.git@0.13.1',
-        'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.2.0',
+        'analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.3.1',
         'pyyaml',
         'jsonschema',
         'bottle==0.12.*',

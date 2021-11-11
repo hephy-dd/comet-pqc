@@ -64,10 +64,10 @@ a data series dictionary.
     "measurement_type": "iv_ramp",
     "measurement_tags": ["spam", "cheese"],
     "table_position": [0, 0, 0],
-    "start_timestamp": "2020-09-17T10:32:14",
+    "start_timestamp": "2021-11-11T10:32:14",
     "operator": "Monty",
-    "pqc_version": "0.24.3",
-    "analysis_pqc_version": "0.2.0",
+    "pqc_version": "0.41.0",
+    "analysis_pqc_version": "0.3.1",
     ...
   },
   "series_units": {
@@ -130,10 +130,10 @@ measurement_name: Diode IV
 measurement_type: iv_ramp
 measurement_tags: spam, cheese
 table_position: (0, 0, 0)
-start_timestamp: 2020-09-17T10:32:14
+start_timestamp: 2021-11-11T10:32:14
 operator: Monty
-pqc_version: 0.24.3
-analysis_pqc_version: 0.2.0
+pqc_version: 0.41.0
+analysis_pqc_version: 0.3.1
 ...
 timestamp[s]	voltage[V]	current[A]
 3.315091E-02	0.000000E+00	3.741383E-04
