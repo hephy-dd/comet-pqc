@@ -33,14 +33,14 @@ Process Quality Control for CMS tracker
 Install from GitHub using pip
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.40.1
+pip install git+https://github.com/hephy-dd/comet-pqc.git@0.41.0
 ```
 
 ### Setup
 
 When running for the first time make sure to configure the VISA resource settings according to the individual setup by using `Edit` &rarr; `Preferences`.
 
-Select the correct SMU instrument models (K2410, K2657A) for V source and HV source in the preferences.
+Select the correct SMU instrument models (K2410, K2470, K2657A) for V source and HV source in the preferences.
 
 ### Safety
 

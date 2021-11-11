@@ -20,8 +20,8 @@ class OptionsTab(PreferencesTab):
         self._export_json_checkbox = ui.CheckBox("Write JSON data (*.json)")
         self._export_txt_checkbox = ui.CheckBox("Write plain text data (*.txt)")
         self._write_logfiles_checkbox = ui.CheckBox("Write measurement log files (*.log)")
-        self._vsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
-        self._hvsrc_instrument_combobox = ui.ComboBox(["K2410", "K2657A"])
+        self._vsrc_instrument_combobox = ui.ComboBox(["K2410", "K2470", "K2657A"])
+        self._hvsrc_instrument_combobox = ui.ComboBox(["K2410", "K2470", "K2657A"])
         self._retry_measurement_number = ui.Number(
             minimum=0,
             suffix="x",

@@ -4,6 +4,7 @@ from .utils import from_table_unit, to_table_unit
 from .position import Position
 
 from .instruments.k2410 import K2410Instrument
+from .instruments.k2470 import K2470Instrument
 from .instruments.k2657a import K2657AInstrument
 
 __all__ = ['settings']
@@ -210,6 +211,7 @@ class Settings(SettingsMixin):
         vsrc_instrument = self.settings.get('vsrc_instrument') or 'K2657A'
         return {
             'K2410': K2410Instrument,
+            'K2470': K2470Instrument,
             'K2657A': K2657AInstrument,
         }.get(vsrc_instrument)
 
@@ -218,6 +220,7 @@ class Settings(SettingsMixin):
         hvsrc_instrument = self.settings.get('hvsrc_instrument') or 'K2410'
         return {
             'K2410': K2410Instrument,
+            'K2470': K2470Instrument,
             'K2657A': K2657AInstrument,
         }.get(hvsrc_instrument)
 

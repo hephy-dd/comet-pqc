@@ -935,7 +935,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.panels.store()
         self.panels.unmount()
         self.panels.clear_readings()
-        self.panels.hide()
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
