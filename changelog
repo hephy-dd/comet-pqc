@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.0] - 2021-11-11
+### Added
+- Added support for Keithley 2470 instruments (#173).
+### Changed
+- Migrated to analysis-pqc version 0.3.1 (#179).
+
 ## [0.40.1] - 2021-11-09
 ### Fixed
 - Locked open/save sequence tool buttons (#176).
@@ -297,7 +303,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.40.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.41.0...HEAD
+[0.41.0]: https://github.com/hephy-dd/comet-pqc/compare/0.41.1...0.41.0
 [0.40.1]: https://github.com/hephy-dd/comet-pqc/compare/0.40.0...0.40.1
 [0.40.0]: https://github.com/hephy-dd/comet-pqc/compare/0.39.0...0.40.0
 [0.39.0]: https://github.com/hephy-dd/comet-pqc/compare/0.38.4...0.39.0

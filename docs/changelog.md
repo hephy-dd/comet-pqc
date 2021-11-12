@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.41.0
+
+### Added
+- Added support for Keithley 2470 instruments.
+
+### Changed
+- Migrated to analysis-pqc version 0.3.1.
+
 ## 0.40.1
 
 ### Fixed
