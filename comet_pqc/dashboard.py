@@ -1079,18 +1079,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 dialog.update_microscope_light(pc_data.relay_states.microscope_light)
                 dialog.update_box_light(pc_data.relay_states.box_light)
             dialog.update_lights_enabled(True)
-            def probecard_light_toggled(state):
-                with self.environ_process as environ:
-                    environ.set_probecard_light(state)
-            def microscope_light_toggled(state):
-                with self.environ_process as environ:
-                    environ.set_microscope_light(state)
-            def box_light_toggled(state):
-                with self.environ_process as environ:
-                    environ.set_box_light(state)
-            dialog.probecard_light_toggled = probecard_light_toggled
-            dialog.microscope_light_toggled = microscope_light_toggled
-            dialog.box_light_toggled = box_light_toggled
+            dialog.probecard_light_toggled = self.on_probecard_light_toggled
+            dialog.microscope_light_toggled = self.on_microscope_light_toggled
+            dialog.box_light_toggled = self.on_box_light_toggled
         dialog.run()
         self.contact_quality_process.stop()
         self.contact_quality_process.join()
