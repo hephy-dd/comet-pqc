@@ -66,7 +66,7 @@ a data series dictionary.
     "table_position": [0, 0, 0],
     "start_timestamp": "2021-11-11T10:32:14",
     "operator": "Monty",
-    "pqc_version": "0.41.0",
+    "pqc_version": "0.41.1",
     "analysis_pqc_version": "0.3.1",
     ...
   },
@@ -132,7 +132,7 @@ measurement_tags: spam, cheese
 table_position: (0, 0, 0)
 start_timestamp: 2021-11-11T10:32:14
 operator: Monty
-pqc_version: 0.41.0
+pqc_version: 0.41.1
 analysis_pqc_version: 0.3.1
 ...
 timestamp[s]	voltage[V]	current[A]

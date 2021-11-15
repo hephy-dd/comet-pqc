@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.41.1
+
+### Fixed
+- Persistent size and column widths for quick edit dialog.
+
 ## 0.41.0
 
 ### Added
