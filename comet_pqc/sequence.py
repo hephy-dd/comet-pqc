@@ -652,7 +652,7 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.analysis.clear()
 
 
-class EditSamplesDialog:
+class EditSamplesDialog(SettingsMixin):
     """Quick edit all samples at once dialog."""
 
     def __init__(self, sequence_tree, sequences):
@@ -688,10 +688,19 @@ class EditSamplesDialog:
                     sequence = load_sequence(filename)
                     sample_item.load_sequence(sequence)
 
+    def load_settings(self, dialog):
+        width, height = self.settings.get('quick_edit_dialog_size', (800, 480))
+        dialog.resize(width, height)
+
+    def store_settings(self, dialog):
+        width, height = dialog.width(), dialog.height()
+        self.settings['quick_edit_dialog_size'] = width, height
+
     def run(self):
         dialog = QuickEditDialog()
-        dialog.resize(800, 320)
+        self.load_settings(dialog)
         self._populate_dialog(dialog)
         dialog.exec()
         if dialog.result() == dialog.Accepted:
             self._update_samples(dialog)
+        self.store_settings(dialog)
