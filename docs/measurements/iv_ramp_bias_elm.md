@@ -56,7 +56,7 @@ Type: `iv_ramp_bias_elm`
 |`elm_zero_correction`         |`bool`   |`false`  |Perform Electrometer zero correction. |
 |`elm_integration_rate`        |`int`    |`50`     |Electrometer integration rate (`50` or `60`). |
 |`elm_read_timeout`            |`second` |`60 s`   |Timeout for read operation. |
-|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `iv`, `gcd`, `fet`, `contact`, `meander`, `breakdown`. See also [Analysis Functions]({{ site.baseurl }}{% link analysis/index.md %}) page. |
 
 ## Data columns
 

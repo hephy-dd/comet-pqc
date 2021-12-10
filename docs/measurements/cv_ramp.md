@@ -44,7 +44,7 @@ Type: `cv_ramp`
 |`lcr_auto_level_control`      |`bool`   |`true`   | |
 |`lcr_open_correction_mode`    |`str`    |`single` | Possible values are: `single`, `multi`. |
 |`lcr_open_correction_channel` |`int`    |`0`      | Possible range from `0` to `127`. |
-|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `cv`, `mos`, `capacitor`. |
+|`analysis_functions`          |`list`   |`[]`     |List of applied analysis functions. Possible values are: `cv`, `mos`, `capacitor`. See also [Analysis Functions]({{ site.baseurl }}{% link analysis/index.md %}) page. |
 
 ## Data columns
 
