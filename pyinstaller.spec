@@ -2,21 +2,15 @@ import os
 import comet
 import comet_pqc
 
-# Application name
-name = 'comet-pqc'
-
-# Application organization
-organization = 'HEPHY'
-
-# Application version
+# Metadata
+name = "comet-pqc"
+organization = "HEPHY"
 version = comet_pqc.__version__
-
-# Application license
-license = 'GPLv3'
+license = "GPLv3"
 
 # Paths
 comet_root = os.path.join(os.path.dirname(comet.__file__))
-comet_icon = os.path.join(comet_root, 'assets', 'icons', 'comet.ico')
+comet_icon = os.path.join(comet_root, "assets", "icons", "comet.ico")
 
 # Windows version info template
 version_info = """
@@ -53,43 +47,42 @@ VSVersionInfo(
 
 # Pyinstaller entry point template
 entry_point = """
-import sys
 from comet_pqc import main
-if __name__ == '__main__':
-    sys.exit(main.main())
+if __name__ == "__main__":
+    main.main()
 """
 
 # Create pyinstaller entry point
-with open('entry_point.pyw', 'w') as f:
+with open("entry_point.pyw", "wt") as f:
     f.write(entry_point)
 
 # Create windows version info
-with open('version_info.txt', 'w') as f:
+with open("version_info.txt", "wt") as f:
     f.write(version_info.format(
         name=name,
         organization=organization,
-        version=version.split('.'),
+        version=version.split("."),
         license=license
     ))
 
-a = Analysis(['entry_point.pyw'],
+a = Analysis(["entry_point.pyw"],
     pathex=[
       os.getcwd()
     ],
     binaries=[],
     datas=[
-        (os.path.join(comet_root, 'assets', 'icons', '*.svg'), os.path.join('comet', 'assets', 'icons')),
-        (os.path.join(comet_root, 'assets', 'icons', '*.ico'), os.path.join('comet', 'assets', 'icons')),
-        (os.path.join('comet_pqc', 'assets', 'config', 'chuck', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'chuck')),
-        (os.path.join('comet_pqc', 'assets', 'config', 'sequence', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'sequence')),
-        (os.path.join('comet_pqc', 'assets', 'config', 'sample', '*.yaml'), os.path.join('comet_pqc', 'assets', 'config', 'sample')),
-        (os.path.join('comet_pqc', 'assets', 'schema', '*.yaml'), os.path.join('comet_pqc', 'assets', 'schema'))
+        (os.path.join(comet_root, "assets", "icons", "*.svg"), os.path.join("comet", "assets", "icons")),
+        (os.path.join(comet_root, "assets", "icons", "*.ico"), os.path.join("comet", "assets", "icons")),
+        (os.path.join("comet_pqc", "assets", "config", "chuck", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "chuck")),
+        (os.path.join("comet_pqc", "assets", "config", "sequence", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sequence")),
+        (os.path.join("comet_pqc", "assets", "config", "sample", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sample")),
+        (os.path.join("comet_pqc", "assets", "schema", "*.yaml"), os.path.join("comet_pqc", "assets", "schema"))
     ],
     hiddenimports=[
-        'pyvisa',
-        'pyvisa-py',
-        'pyvisa-sim',
-        'PyQt5.sip'
+        "pyvisa",
+        "pyvisa-py",
+        "pyvisa-sim",
+        "PyQt5.sip"
     ],
     hookspath=[],
     runtime_hooks=[],
@@ -99,11 +92,13 @@ a = Analysis(['entry_point.pyw'],
     cipher=None,
     noarchive=False
 )
+
 pyz = PYZ(
     a.pure,
     a.zipped_data,
     cipher=None
 )
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -112,7 +107,7 @@ exe = EXE(
     a.datas,
     [],
     name=name,
-    version='version_info.txt',
+    version="version_info.txt",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
