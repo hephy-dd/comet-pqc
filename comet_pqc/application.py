@@ -54,12 +54,12 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.app.window.contents_url = CONTENTS_URL
         self.app.window.github_url = GITHUB_URL
 
+        logger.info("PQC version %s", __version__)
+        logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
+
         self._setup_actions()
         self._setup_menus()
         self._setup_preferences()
-
-        logger.info("PQC version %s", __version__)
-        logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
