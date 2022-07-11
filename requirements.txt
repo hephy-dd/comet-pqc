@@ -3,4 +3,4 @@ analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.3.1
 PyYAML==6.0.*
 jsonschema==3.2.*
 bottle==0.12.*
-waitress==2.0.*
+waitress==2.1.*
