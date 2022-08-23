@@ -6,6 +6,7 @@ from functools import partial
 import analysis_pqc
 import comet
 
+from ..core.timer import Timer
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
 from ..utils import format_metric, std_mean_filter
@@ -414,10 +415,10 @@ class ElectrometerMixin(Mixin):
         # Initiate measurement
         logger.info("Initiate ELM measurement...")
         elm.resource.write(":INIT")
-        threshold = time.time() + timeout
+        t = Timer()
         interval = min(timeout, interval)
         logger.info("Poll ELM event status register...")
-        while time.time() < threshold:
+        while t.delta() < timeout:
             # Read event status
             if int(elm.resource.query("*ESR?")) & 0x1:
                 logger.info("Fetch ELM reading...")

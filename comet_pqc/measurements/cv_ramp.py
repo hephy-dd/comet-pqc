@@ -5,10 +5,10 @@ import time
 import comet
 import numpy as np
 
-from ..benchmark import Benchmark
 # from comet.driver.keysight import E4980A
+from ..core.benchmark import Benchmark
+from ..core.estimate import Estimate
 from ..driver import E4980A
-from ..estimate import Estimate
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate

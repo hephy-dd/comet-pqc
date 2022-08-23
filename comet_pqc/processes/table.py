@@ -11,7 +11,9 @@ from comet.driver.corvus import Venus1
 from comet.resource import ResourceMixin
 
 from comet_pqc.utils import from_table_unit, to_table_unit
+from comet_pqc.core.timer import Timer
 
+from ..core.request import Request
 from ..position import Position
 from ..settings import settings
 
@@ -101,30 +103,6 @@ class TableErrorHandler:
             raise TableCalibrationError("Table requires calibration.")
 
 
-class ResourceRequest:
-
-    def __init__(self, callback):
-        self.callback = callback
-        self.ready = threading.Event()
-        self.result = None
-        self.error = None
-
-    def __call__(self, context):
-        try:
-            self.result = self.callback(context)
-        except Exception as exc:
-            self.error = exc
-            raise
-        finally:
-            self.ready.set()
-
-    def get(self, timeout=None):
-        self.ready.wait(timeout)
-        if self.error is not None:
-            raise self.error
-        return self.result
-
-
 class TableProcess(comet.Process, ResourceMixin):
     """Table process base class."""
 
@@ -192,17 +170,17 @@ class AlternateTableProcess(TableProcess):
         self.calibration_finished = calibration_finished
         self.stopped = stopped
 
-    def async_request(self, target) -> ResourceRequest:
-        request = ResourceRequest(target)
+    def async_request(self, target) -> Request:
+        request = Request(target)
         self._queue.put_nowait(request)
         return request
 
-    def get_identification(self) -> ResourceRequest:
+    def get_identification(self) -> Request:
         def request(table):
             return table.identification
         return self.async_request(request)
 
-    def get_caldone(self) -> ResourceRequest:
+    def get_caldone(self) -> Request:
         def request(table):
             return table.x.caldone, table.y.caldone, table.z.caldone
         return self.async_request(request)
@@ -230,29 +208,29 @@ class AlternateTableProcess(TableProcess):
         self._cached_caldone = x, y, z
         return Position(x, y, z)
 
-    def status(self) -> ResourceRequest:
+    def status(self) -> Request:
         def request(table):
             self.emit("position_changed", self._get_position(table))
             self.emit("caldone_changed", self._get_caldone(table))
             self.emit("joystick_changed", table.joystick)
         return self.async_request(request)
 
-    def position(self) -> ResourceRequest:
+    def position(self) -> Request:
         def request(table):
             self.emit("position_changed", self._get_position(table))
         return self.async_request(request)
 
-    def caldone(self) -> ResourceRequest:
+    def caldone(self) -> Request:
         def request(table):
             self.emit("caldone_changed", self._get_caldone(table))
         return self.async_request(request)
 
-    def joystick(self) -> ResourceRequest:
+    def joystick(self) -> Request:
         def request(table):
             self.emit("joystick_changed", table.joystick)
         return self.async_request(request)
 
-    def enable_joystick(self, state) -> ResourceRequest:
+    def enable_joystick(self, state) -> Request:
         def request(table):
             if state:
                 x, y, z = settings.table_joystick_maximum_limits
@@ -269,7 +247,7 @@ class AlternateTableProcess(TableProcess):
             self.emit("joystick_changed", table.joystick)
         return self.async_request(request)
 
-    def relative_move(self, x, y, z) -> ResourceRequest:
+    def relative_move(self, x, y, z) -> Request:
         """Relative move table.
 
         Emits following events:
@@ -295,7 +273,7 @@ class AlternateTableProcess(TableProcess):
             self.emit("message_changed", "Ready")
         return self.async_request(request)
 
-    def relative_move_vector(self, vector, delay=0.0) -> ResourceRequest:
+    def relative_move_vector(self, vector, delay=0.0) -> Request:
         """Relative move table along a given vector.
 
         Emits following events:
@@ -325,7 +303,7 @@ class AlternateTableProcess(TableProcess):
             self.emit("message_changed", "Ready")
         return self.async_request(request)
 
-    def safe_absolute_move(self, x, y, z) -> ResourceRequest:
+    def safe_absolute_move(self, x, y, z) -> Request:
         """Safely move to absolute position while moving X/Y axis at zero Z.
          - move Z down to zero
          - move X and Y
@@ -435,7 +413,7 @@ class AlternateTableProcess(TableProcess):
             self.emit("absolute_move_finished")
         return self.async_request(request)
 
-    def calibrate_table(self) -> ResourceRequest:
+    def calibrate_table(self) -> Request:
         def request(table):
             self._stop_event.clear()
             self.emit("message_changed", "Calibrating...")
@@ -655,7 +633,7 @@ class AlternateTableProcess(TableProcess):
         return self.async_request(request)
 
     def event_loop(self, context):
-        t = time.time()
+        t = Timer()
         while self.running:
             with self._lock:
                 if self.enabled:
@@ -677,9 +655,9 @@ class AlternateTableProcess(TableProcess):
                             raise
                         finally:
                             self._queue.task_done()
-                    if time.time() > t + self.update_interval:
+                    if t.delta() > self.update_interval:
                         self.position()
                         self.caldone()
                         self.joystick()
-                        t = time.time()
+                        t.reset()
             time.sleep(self.throttle_interval)

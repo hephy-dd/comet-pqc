@@ -5,7 +5,7 @@ import time
 import comet
 import numpy as np
 
-from ..estimate import Estimate
+from ..core.estimate import Estimate
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate

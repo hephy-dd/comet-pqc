@@ -1,15 +1,14 @@
 import os
-import unittest
 
 from comet_pqc import config
 
 
-class ConfigTest(unittest.TestCase):
+class TestConfig:
 
     def test_dirs(self):
-        os.path.isdir(config.CHUCK_DIR)
-        os.path.isdir(config.SAMPLE_DIR)
-        os.path.isdir(config.SEQUENCE_DIR)
+        assert os.path.isdir(config.CHUCK_DIR)
+        assert os.path.isdir(config.SAMPLE_DIR)
+        assert os.path.isdir(config.SEQUENCE_DIR)
 
     def test_load_schema(self):
         config.load_schema("chuck")

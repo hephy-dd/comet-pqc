@@ -3,10 +3,14 @@ import queue
 import threading
 import time
 import traceback
+from typing import Any, Callable, Optional
 
 from comet.driver import Driver as DefaultDriver
 from comet.process import Process
 from comet.resource import ResourceMixin
+
+from ..core.request import Request
+from ..core.timer import Timer
 
 __all__ = ["ResourceProcess", "async_request"]
 
@@ -17,33 +21,6 @@ def async_request(method):
     def async_request(self, *args, **kwargs):
         self.async_request(lambda context: method(self, context, *args, **kwargs))
     return async_request
-
-
-class ResourceRequest:
-
-    def __init__(self, command):
-        self.command = command
-        self.ready = threading.Event()
-        self.result = None
-        self.error = None
-
-    def get(self, timeout=10.0):
-        t = time.time() + timeout
-        while not self.ready.is_set():
-            if t < time.time():
-                raise RuntimeError(f"Request timeout: {self.command}")
-        if self.error is not None:
-            raise self.error
-        return self.result
-
-    def __call__(self, context):
-        try:
-            self.result = self.command(context)
-        except Exception as exc:
-            self.error = exc
-            raise
-        finally:
-            self.ready.set()
 
 
 class ResourceProcess(Process, ResourceMixin):
@@ -73,14 +50,14 @@ class ResourceProcess(Process, ResourceMixin):
         with self._lock:
             if not self.enabled:
                 raise RuntimeError("service not enabled")
-            r = ResourceRequest(callback)
+            r = Request(callback)
             self._queue.put(r)
 
     def request(self, callback):
         with self._lock:
             if not self.enabled:
                 raise RuntimeError("service not enabled")
-            r = ResourceRequest(callback)
+            r = Request(callback)
             self._queue.put(r)
             return r.get()
 

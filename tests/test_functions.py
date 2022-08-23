@@ -1,9 +1,7 @@
-import unittest
-
 from comet_pqc import functions
 
 
-class FunctionsTest(unittest.TestCase):
+class TestFunctions:
 
     def assert_range(self, begin, end, step, ref):
         values = []
@@ -11,7 +9,7 @@ class FunctionsTest(unittest.TestCase):
             values.append(value)
             if len(values) > len(ref):
                 break
-        self.assertEqual(values, ref)
+        assert values == ref
 
     def test_range(self):
         self.assert_range(0, 0, 0, [])
