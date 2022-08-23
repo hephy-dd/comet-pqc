@@ -1,56 +1,53 @@
 import logging
-import time
 import math
-
+import time
 from functools import partial
 
-import comet
 import analysis_pqc
+import comet
 
-from .measurement import ComplianceError
-from .measurement import InstrumentError
 from ..instruments.k2657a import K2657AInstrument
-
 from ..settings import settings
-
-from ..utils import format_metric
-from ..utils import std_mean_filter
+from ..utils import format_metric, std_mean_filter
+from .measurement import ComplianceError, InstrumentError
 
 __all__ = [
-    'HVSourceMixin',
-    'VSourceMixin',
-    'ElectrometerMixin',
-    'LCRMixin',
-    'EnvironmentMixin',
-    'AnalysisMixin'
+    "HVSourceMixin",
+    "VSourceMixin",
+    "ElectrometerMixin",
+    "LCRMixin",
+    "EnvironmentMixin",
+    "AnalysisMixin"
 ]
 
 logger = logging.getLogger(__name__)
 
+
 class Mixin:
     """Base class for measurement mixins."""
+
 
 class HVSourceMixin(Mixin):
 
     def register_hvsource(self):
-        ##self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('hvsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('hvsrc_route_terminal', 'rear', values=('front', 'rear'))
-        self.register_parameter('hvsrc_filter_enable', False, type=bool)
-        self.register_parameter('hvsrc_filter_count', 10, type=int)
-        self.register_parameter('hvsrc_filter_type', 'repeat', values=('repeat', 'moving'))
-        self.register_parameter('hvsrc_source_voltage_autorange_enable', True, type=bool)
-        self.register_parameter('hvsrc_source_voltage_range', comet.ureg('20 V'), unit='V')
+        # self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
+        self.register_parameter("hvsrc_sense_mode", "local", values=("local", "remote"))
+        self.register_parameter("hvsrc_route_terminal", "rear", values=("front", "rear"))
+        self.register_parameter("hvsrc_filter_enable", False, type=bool)
+        self.register_parameter("hvsrc_filter_count", 10, type=int)
+        self.register_parameter("hvsrc_filter_type", "repeat", values=("repeat", "moving"))
+        self.register_parameter("hvsrc_source_voltage_autorange_enable", True, type=bool)
+        self.register_parameter("hvsrc_source_voltage_range", comet.ureg("20 V"), unit="V")
 
     def hvsrc_update_meta(self):
         """Update meta data parameters."""
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_route_terminal = self.get_parameter('hvsrc_route_terminal')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
-        hvsrc_source_voltage_autorange_enable = self.get_parameter('hvsrc_source_voltage_autorange_enable')
-        hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
+        hvsrc_sense_mode = self.get_parameter("hvsrc_sense_mode")
+        hvsrc_route_terminal = self.get_parameter("hvsrc_route_terminal")
+        hvsrc_filter_enable = self.get_parameter("hvsrc_filter_enable")
+        hvsrc_filter_count = self.get_parameter("hvsrc_filter_count")
+        hvsrc_filter_type = self.get_parameter("hvsrc_filter_type")
+        hvsrc_source_voltage_autorange_enable = self.get_parameter("hvsrc_source_voltage_autorange_enable")
+        hvsrc_source_voltage_range = self.get_parameter("hvsrc_source_voltage_range")
 
         self.set_meta("hvsrc_sense_mode", hvsrc_sense_mode)
         self.set_meta("hvsrc_route_terminal", hvsrc_route_terminal)
@@ -85,13 +82,13 @@ class HVSourceMixin(Mixin):
         hvsrc.clear()
 
     def hvsrc_setup(self, hvsrc):
-        hvsrc_route_terminal = self.get_parameter('hvsrc_route_terminal')
-        hvsrc_sense_mode = self.get_parameter('hvsrc_sense_mode')
-        hvsrc_filter_enable = self.get_parameter('hvsrc_filter_enable')
-        hvsrc_filter_count = self.get_parameter('hvsrc_filter_count')
-        hvsrc_filter_type = self.get_parameter('hvsrc_filter_type')
-        hvsrc_source_voltage_autorange_enable = self.get_parameter('hvsrc_source_voltage_autorange_enable')
-        hvsrc_source_voltage_range = self.get_parameter('hvsrc_source_voltage_range')
+        hvsrc_route_terminal = self.get_parameter("hvsrc_route_terminal")
+        hvsrc_sense_mode = self.get_parameter("hvsrc_sense_mode")
+        hvsrc_filter_enable = self.get_parameter("hvsrc_filter_enable")
+        hvsrc_filter_count = self.get_parameter("hvsrc_filter_count")
+        hvsrc_filter_type = self.get_parameter("hvsrc_filter_type")
+        hvsrc_source_voltage_autorange_enable = self.get_parameter("hvsrc_source_voltage_autorange_enable")
+        hvsrc_source_voltage_range = self.get_parameter("hvsrc_source_voltage_range")
 
         self.hvsrc_set_route_terminal(hvsrc, hvsrc_route_terminal)
         self.hvsrc_set_sense_mode(hvsrc, hvsrc_sense_mode)
@@ -122,13 +119,13 @@ class HVSourceMixin(Mixin):
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_route_terminal(self, hvsrc, route_terminals):
-        logger.info("HV Source set route terminals: '%s'", route_terminals)
+        logger.info("HV Source set route terminals: %r", route_terminals)
         value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
         hvsrc.set_terminal(value)
         self.hvsrc_check_error(hvsrc)
 
     def hvsrc_set_sense_mode(self, hvsrc, sense_mode):
-        logger.info("HV Source set sense mode: '%s'", sense_mode)
+        logger.info("HV Source set sense mode: %r", sense_mode)
         value = {"remote": "REMOTE", "local": "LOCAL"}[sense_mode]
         hvsrc.set_sense_mode(value)
         self.hvsrc_check_error(hvsrc)
@@ -198,27 +195,28 @@ class HVSourceMixin(Mixin):
         logger.info("HV Source current reading: %s", format_metric(current, "A"))
         return current
 
+
 class VSourceMixin(Mixin):
 
     def register_vsource(self):
-        ##self.register_parameter('vsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('vsrc_sense_mode', 'local', values=('local', 'remote'))
-        self.register_parameter('vsrc_route_terminal', 'rear', values=('front', 'rear'))
-        self.register_parameter('vsrc_filter_enable', False, type=bool)
-        self.register_parameter('vsrc_filter_count', 10, type=int)
-        self.register_parameter('vsrc_filter_type', 'repeat', values=('repeat', 'moving'))
-        self.register_parameter('vsrc_source_voltage_autorange_enable', True, type=bool)
-        self.register_parameter('vsrc_source_voltage_range', comet.ureg('20 V'), unit='V')
+        # self.register_parameter("vsrc_current_compliance", unit="A", required=True)
+        self.register_parameter("vsrc_sense_mode", "local", values=("local", "remote"))
+        self.register_parameter("vsrc_route_terminal", "rear", values=("front", "rear"))
+        self.register_parameter("vsrc_filter_enable", False, type=bool)
+        self.register_parameter("vsrc_filter_count", 10, type=int)
+        self.register_parameter("vsrc_filter_type", "repeat", values=("repeat", "moving"))
+        self.register_parameter("vsrc_source_voltage_autorange_enable", True, type=bool)
+        self.register_parameter("vsrc_source_voltage_range", comet.ureg("20 V"), unit="V")
 
     def vsrc_update_meta(self):
         """Update meta data parameters."""
-        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_route_terminal = self.get_parameter('vsrc_route_terminal')
-        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
-        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
-        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
-        vsrc_source_voltage_autorange_enable = self.get_parameter('vsrc_source_voltage_autorange_enable')
-        vsrc_source_voltage_range = self.get_parameter('vsrc_source_voltage_range')
+        vsrc_sense_mode = self.get_parameter("vsrc_sense_mode")
+        vsrc_route_terminal = self.get_parameter("vsrc_route_terminal")
+        vsrc_filter_enable = self.get_parameter("vsrc_filter_enable")
+        vsrc_filter_count = self.get_parameter("vsrc_filter_count")
+        vsrc_filter_type = self.get_parameter("vsrc_filter_type")
+        vsrc_source_voltage_autorange_enable = self.get_parameter("vsrc_source_voltage_autorange_enable")
+        vsrc_source_voltage_range = self.get_parameter("vsrc_source_voltage_range")
 
         self.set_meta("vsrc_sense_mode", vsrc_sense_mode)
         self.set_meta("vsrc_route_terminal", vsrc_route_terminal)
@@ -260,13 +258,13 @@ class VSourceMixin(Mixin):
         self.vsrc_check_error(vsrc)
 
     def vsrc_setup(self, vsrc):
-        vsrc_sense_mode = self.get_parameter('vsrc_sense_mode')
-        vsrc_route_terminal = self.get_parameter('vsrc_route_terminal')
-        vsrc_filter_enable = self.get_parameter('vsrc_filter_enable')
-        vsrc_filter_count = self.get_parameter('vsrc_filter_count')
-        vsrc_filter_type = self.get_parameter('vsrc_filter_type')
-        vsrc_source_voltage_autorange_enable = self.get_parameter('vsrc_source_voltage_autorange_enable')
-        vsrc_source_voltage_range = self.get_parameter('vsrc_source_voltage_range')
+        vsrc_sense_mode = self.get_parameter("vsrc_sense_mode")
+        vsrc_route_terminal = self.get_parameter("vsrc_route_terminal")
+        vsrc_filter_enable = self.get_parameter("vsrc_filter_enable")
+        vsrc_filter_count = self.get_parameter("vsrc_filter_count")
+        vsrc_filter_type = self.get_parameter("vsrc_filter_type")
+        vsrc_source_voltage_autorange_enable = self.get_parameter("vsrc_source_voltage_autorange_enable")
+        vsrc_source_voltage_range = self.get_parameter("vsrc_source_voltage_range")
 
         self.vsrc_set_sense_mode(vsrc, vsrc_sense_mode)
         self.vsrc_set_route_terminal(vsrc, vsrc_route_terminal)
@@ -280,7 +278,7 @@ class VSourceMixin(Mixin):
             self.vsrc_set_source_voltage_range(vsrc, vsrc_source_voltage_range)
 
     def vsrc_set_route_terminal(self, vsrc, route_terminals):
-        logger.info("V Source set route terminals: '%s'", route_terminals)
+        logger.info("V Source set route terminals: %r", route_terminals)
         value = {"front": "FRONT", "rear": "REAR"}[route_terminals]
         vsrc.set_terminal(value)
         self.vsrc_check_error(vsrc)
@@ -302,7 +300,7 @@ class VSourceMixin(Mixin):
         self.vsrc_check_error(vsrc)
 
     def vsrc_set_sense_mode(self, vsrc, sense_mode):
-        logger.info("V Source set sense mode: '%s'", sense_mode)
+        logger.info("V Source set sense mode: %r", sense_mode)
         value = {"remote": vsrc.SENSE_MODE_REMOTE, "local": vsrc.SENSE_MODE_LOCAL}[sense_mode]
         vsrc.set_sense_mode(value)
         self.vsrc_check_error(vsrc)
@@ -348,7 +346,7 @@ class VSourceMixin(Mixin):
     def vsrc_set_display(self, vsrc, value):
         if isinstance(vsrc, K2657AInstrument):
             logger.info("V Source set display: %s", value)
-            value = {'voltage': 'DCVOLTS', 'current': 'DCAMPS'}[value]
+            value = {"voltage": "DCVOLTS", "current": "DCAMPS"}[value]
             vsrc.context.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
             self.vsrc_check_error(vsrc)
 
@@ -372,10 +370,11 @@ class VSourceMixin(Mixin):
         logger.info("V Source voltage reading: %s", format_metric(voltage, "V"))
         return voltage
 
+
 class ElectrometerMixin(Mixin):
 
     def register_elm(self):
-        self.register_parameter('elm_read_timeout', comet.ureg('60 s'), unit='s')
+        self.register_parameter("elm_read_timeout", comet.ureg("60 s"), unit="s")
 
     def elm_update_meta(self):
         """Update meta data parameters."""
@@ -389,7 +388,7 @@ class ElectrometerMixin(Mixin):
             code, label = result.split(",", 1)
             code = int(code)
         except ValueError as exc:
-            raise RuntimeError(f"failed to read electrometer error state, device returned '{result}'") from exc
+            raise RuntimeError(f"Failed to read electrometer error state, device returned: {result!r}") from exc
         if code != 0:
             label = label.strip("\"")
             logger.error(f"Error {code}: {label}")
@@ -400,18 +399,18 @@ class ElectrometerMixin(Mixin):
         try:
             elm.resource.write(message)
         except Exception as exc:
-            raise RuntimeError(f"Failed to write to ELM: '{message}', {exc}") from exc
+            raise RuntimeError(f"Failed to write to ELM: {message!r}, {exc}") from exc
         try:
             elm.resource.query("*OPC?")
         except Exception as exc:
-            raise RuntimeError(f"Failed to read operation complete from ELM for message: '{message}', {exc}") from exc
+            raise RuntimeError(f"Failed to read operation complete from ELM for message: {message!r}, {exc}") from exc
         self.elm_check_error(elm)
 
     def elm_read(self, elm, timeout=60.0, interval=0.25):
         """Perform electrometer reading with timeout."""
         # Request operation complete
-        elm.resource.write('*CLS')
-        elm.resource.write('*OPC')
+        elm.resource.write("*CLS")
+        elm.resource.write("*OPC")
         # Initiate measurement
         logger.info("Initiate ELM measurement...")
         elm.resource.write(":INIT")
@@ -420,11 +419,11 @@ class ElectrometerMixin(Mixin):
         logger.info("Poll ELM event status register...")
         while time.time() < threshold:
             # Read event status
-            if int(elm.resource.query('*ESR?')) & 0x1:
+            if int(elm.resource.query("*ESR?")) & 0x1:
                 logger.info("Fetch ELM reading...")
                 try:
                     result = elm.resource.query(":FETCH?")
-                    return float(result.split(',')[0])
+                    return float(result.split(",")[0])
                 except Exception as exc:
                     raise RuntimeError(f"Failed to fetch ELM reading: {exc}") from exc
             time.sleep(interval)
@@ -437,34 +436,35 @@ class ElectrometerMixin(Mixin):
             raise RuntimeError(f"Failed to get zero check from ELM: {exc}") from exc
 
     def elm_set_zero_check(self, elm, enabled):
-        value = {False: 'OFF', True: 'ON'}.get(enabled)
+        value = {False: "OFF", True: "ON"}.get(enabled)
         try:
             self.elm_safe_write(elm, f":SYST:ZCH {value}")
         except Exception as exc:
             raise RuntimeError(f"Failed to set zero check to ELM: {exc}") from exc
 
+
 class LCRMixin(Mixin):
 
     def register_lcr(self):
-        self.register_parameter('lcr_soft_filter', True, type=bool)
-        self.register_parameter('lcr_amplitude', unit='V', required=True)
-        self.register_parameter('lcr_frequency', unit='Hz', required=True)
-        self.register_parameter('lcr_integration_time', 'medium', values=('short', 'medium', 'long'))
-        self.register_parameter('lcr_averaging_rate', 1, type=int)
-        self.register_parameter('lcr_auto_level_control', True, type=bool)
-        self.register_parameter('lcr_open_correction_mode', 'single', values=('single', 'multi'))
-        self.register_parameter('lcr_open_correction_channel', 0, type=int)
+        self.register_parameter("lcr_soft_filter", True, type=bool)
+        self.register_parameter("lcr_amplitude", unit="V", required=True)
+        self.register_parameter("lcr_frequency", unit="Hz", required=True)
+        self.register_parameter("lcr_integration_time", "medium", values=("short", "medium", "long"))
+        self.register_parameter("lcr_averaging_rate", 1, type=int)
+        self.register_parameter("lcr_auto_level_control", True, type=bool)
+        self.register_parameter("lcr_open_correction_mode", "single", values=("single", "multi"))
+        self.register_parameter("lcr_open_correction_channel", 0, type=int)
 
     def lcr_update_meta(self):
         """Update meta data parameters."""
-        lcr_amplitude = self.get_parameter('lcr_amplitude')
-        lcr_frequency = self.get_parameter('lcr_frequency')
-        lcr_integration_time = self.get_parameter('lcr_integration_time')
-        lcr_averaging_rate = self.get_parameter('lcr_averaging_rate')
-        lcr_auto_level_control = self.get_parameter('lcr_auto_level_control')
-        lcr_open_correction_mode = self.get_parameter('lcr_open_correction_mode')
-        lcr_open_correction_channel = self.get_parameter('lcr_open_correction_channel')
-        lcr_soft_filter = self.get_parameter('lcr_soft_filter')
+        lcr_amplitude = self.get_parameter("lcr_amplitude")
+        lcr_frequency = self.get_parameter("lcr_frequency")
+        lcr_integration_time = self.get_parameter("lcr_integration_time")
+        lcr_averaging_rate = self.get_parameter("lcr_averaging_rate")
+        lcr_auto_level_control = self.get_parameter("lcr_auto_level_control")
+        lcr_open_correction_mode = self.get_parameter("lcr_open_correction_mode")
+        lcr_open_correction_channel = self.get_parameter("lcr_open_correction_channel")
+        lcr_soft_filter = self.get_parameter("lcr_soft_filter")
 
         self.set_meta("lcr_amplitude", f"{lcr_amplitude:G} V")
         self.set_meta("lcr_frequency", f"{lcr_frequency:G} Hz")
@@ -499,13 +499,13 @@ class LCRMixin(Mixin):
         self.lcr_check_error(lcr)
 
     def lcr_setup(self, lcr):
-        lcr_amplitude = self.get_parameter('lcr_amplitude')
-        lcr_frequency = self.get_parameter('lcr_frequency')
-        lcr_integration_time = self.get_parameter('lcr_integration_time')
-        lcr_averaging_rate = self.get_parameter('lcr_averaging_rate')
-        lcr_auto_level_control = self.get_parameter('lcr_auto_level_control')
-        lcr_open_correction_mode = self.get_parameter('lcr_open_correction_mode')
-        lcr_open_correction_channel = self.get_parameter('lcr_open_correction_channel')
+        lcr_amplitude = self.get_parameter("lcr_amplitude")
+        lcr_frequency = self.get_parameter("lcr_frequency")
+        lcr_integration_time = self.get_parameter("lcr_integration_time")
+        lcr_averaging_rate = self.get_parameter("lcr_averaging_rate")
+        lcr_auto_level_control = self.get_parameter("lcr_auto_level_control")
+        lcr_open_correction_mode = self.get_parameter("lcr_open_correction_mode")
+        lcr_open_correction_channel = self.get_parameter("lcr_open_correction_channel")
 
         self.lcr_safe_write(lcr, f":AMPL:ALC {lcr_auto_level_control:d}")
         self.lcr_safe_write(lcr, f":VOLT {lcr_amplitude:E}V")
@@ -566,6 +566,7 @@ class LCRMixin(Mixin):
         lcr.bias.state = enabled
         self.lcr_check_error(lcr)
 
+
 class EnvironmentMixin(Mixin):
 
     def register_environment(self):
@@ -575,9 +576,9 @@ class EnvironmentMixin(Mixin):
         """Update meta data parameters."""
 
     def environment_clear(self):
-        self.environment_temperature_box = float('nan')
-        self.environment_temperature_chuck = float('nan')
-        self.environment_humidity_box = float('nan')
+        self.environment_temperature_box = float("nan")
+        self.environment_temperature_chuck = float("nan")
+        self.environment_humidity_box = float("nan")
 
     def environment_update(self):
         self.environment_clear()
@@ -590,35 +591,39 @@ class EnvironmentMixin(Mixin):
             logger.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logger.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
-        self.process.emit("state", dict(
-            env_chuck_temperature=self.environment_temperature_chuck,
-            env_box_temperature=self.environment_temperature_box,
-            env_box_humidity=self.environment_humidity_box
-        ))
+        self.process.emit("state", {
+            "env_chuck_temperature": self.environment_temperature_chuck,
+            "env_box_temperature": self.environment_temperature_box,
+            "env_box_humidity": self.environment_humidity_box
+        })
 
-class AnalysisError(Exception): pass
+
+class AnalysisError(Exception):
+
+    ...
+
 
 class AnalysisFunction:
 
-    prefix = 'analyse_'
+    prefix = "analyse_"
 
     def __init__(self, config):
         # Auto convert from string
         if isinstance(config, str):
-            config = {'type': config}
-        if 'type' not in config:
+            config = {"type": config}
+        if "type" not in config:
             raise KeyError("Missing analysis key: type")
-        self.type = config.get('type')
-        self.parameters = config.get('parameters', {})
-        self.limits = config.get('limits', {})
+        self.type = config.get("type")
+        self.parameters = config.get("parameters", {})
+        self.limits = config.get("limits", {})
 
     def __call__(self, **kwargs):
-        f = analysis_pqc.__dict__.get(f'{self.prefix}{self.type}')
+        f = analysis_pqc.__dict__.get(f"{self.prefix}{self.type}")
         if not callable(f):
             raise KeyError(f"No such analysis function: {self.type}")
-        logger.info("Running analysis function '%s'...", self.type)
+        logger.info("Running analysis function %r...", self.type)
         r = f(**kwargs)
-        logger.info("Running analysis function '%s'... done.", self.type)
+        logger.info("Running analysis function %r... done.", self.type)
         return r
 
     def verify(self, result):
@@ -626,27 +631,28 @@ class AnalysisFunction:
             value = result._asdict().get(key)
             if isinstance(value, (int, float)):
                 if math.isnan(value):
-                    raise AnalysisError(f"Out of range '{key}' for {self.type}: {value}")
-                minimum = limit.get('minimum')
+                    raise AnalysisError(f"Out of range {key!r} for {self.type}: {value}")
+                minimum = limit.get("minimum")
                 if isinstance(minimum, (int, float)):
                     if value < float(minimum):
-                        raise AnalysisError(f"Out of range '{key}' for {self.type}: {value} < {minimum}")
-                maximum = limit.get('maximum')
+                        raise AnalysisError(f"Out of range {key!r} for {self.type}: {value} < {minimum}")
+                maximum = limit.get("maximum")
                 if isinstance(maximum, (int, float)):
                     if value > float(maximum):
-                        raise AnalysisError(f"Out of range '{key}' for {self.type}: {value} > {maximum}")
+                        raise AnalysisError(f"Out of range {key!r} for {self.type}: {value} > {maximum}")
             else:
                 logger.warning("No such limit: %s for %s", key, self.type)
+
 
 class AnalysisMixin(Mixin):
 
     def register_analysis(self):
-        self.register_parameter('analysis_functions', [], type=list)
+        self.register_parameter("analysis_functions", [], type=list)
 
     def analysis_functions(self):
         """Return analysis functions."""
         functions = []
-        for config in self.get_parameter('analysis_functions'):
+        for config in self.get_parameter("analysis_functions"):
             functions.append(AnalysisFunction(config))
         return functions
 
@@ -667,7 +673,7 @@ class AnalysisMixin(Mixin):
             key, values = type(r).__name__, r._asdict()
             self.set_analysis(key, values)
             self.process.emit("append_analysis", key, values)
-            if 'x_fit' in r._asdict():
+            if "x_fit" in r._asdict():
                 for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
                     self.process.emit("reading", "xfit", x, y)
                 self.process.emit("update")

@@ -1,44 +1,43 @@
 import copy
+import logging
 import math
 import os
-import logging
 
+import yaml
+from analysis_pqc import STATUS_PASSED
 from comet import ui
 from comet.settings import SettingsMixin
 from qutie.qutie import QtCore
-import yaml
 
-from analysis_pqc import STATUS_PASSED
-
-from .config import load_sequence, list_configs, SEQUENCE_DIR
-
-from .components import PositionsComboBox
-from .components import OperatorWidget
-from .components import WorkingDirectoryWidget
-
+from .components import (
+    OperatorWidget,
+    PositionsComboBox,
+    WorkingDirectoryWidget,
+)
+from .config import SEQUENCE_DIR, list_configs, load_sequence
 from .quickedit import QuickEditDialog
-
 from .settings import settings
-from .utils import from_table_unit
-from .utils import to_table_unit
+from .utils import from_table_unit, to_table_unit
 
-__all__ = ['StartSequenceDialog', 'SequenceManager', 'SequenceTree']
+__all__ = ["StartSequenceDialog", "SequenceManager", "SequenceTree"]
 
 logger = logging.getLogger(__name__)
+
 
 def load_all_sequences(settings):
     configs = []
     for name, filename in list_configs(SEQUENCE_DIR):
         configs.append((name, filename, True))
-    for filename in list(set(settings.get('custom_sequences') or [])):
+    for filename in list(set(settings.get("custom_sequences") or [])):
         if os.path.exists(filename):
             try:
                 sequence = load_sequence(filename)
-            except:
-                pass
+            except Exception:
+                ...
             else:
                 configs.append((sequence.name, filename, False))
     return configs
+
 
 class StartSequenceDialog(ui.Dialog, SettingsMixin):
     """Start sequence dialog."""
@@ -102,15 +101,15 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
     # Settings
 
     def load_settings(self):
-        self._contact_checkbox.checked = bool(self.settings.get('move_to_contact') or False)
-        self._position_checkbox.checked = bool(self.settings.get('move_on_success') or False)
+        self._contact_checkbox.checked = bool(self.settings.get("move_to_contact") or False)
+        self._position_checkbox.checked = bool(self.settings.get("move_on_success") or False)
         self._positions_combobox.load_settings()
         self._operator_combobox.load_settings()
         self._output_combobox.load_settings()
 
     def store_settings(self):
-        self.settings['move_to_contact'] = self._contact_checkbox.checked
-        self.settings['move_on_success'] = self._position_checkbox.checked
+        self.settings["move_to_contact"] = self._contact_checkbox.checked
+        self.settings["move_on_success"] = self._position_checkbox.checked
         self._positions_combobox.store_settings()
         self._operator_combobox.store_settings()
         self._output_combobox.store_settings()
@@ -142,9 +141,10 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
         if isinstance(context, SamplesItem):
             return "<b>Are you sure to start all enabled sequences for all enabled samples?</b>"
         elif isinstance(context, SampleTreeItem):
-            return f"<b>Are you sure to start all enabled sequences for '{context.name}'?</b>"
+            return f"<b>Are you sure to start all enabled sequences for {context.name!r}?</b>"
         elif isinstance(context, ContactTreeItem):
-            return f"<b>Are you sure to start sequence '{context.name}'?</b>"
+            return f"<b>Are you sure to start sequence {context.name!r}?</b>"
+
 
 class SequenceManager(ui.Dialog, SettingsMixin):
     """Dialog for managing custom sequence configuration files."""
@@ -217,7 +217,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     def load_settings_dialog_size(self):
         """Load dialog size from settings."""
-        width, height = self.settings.get('sequence_manager_dialog_size') or (640, 480)
+        width, height = self.settings.get("sequence_manager_dialog_size") or (640, 480)
         self.resize(width, height)
 
     def load_settings_sequences(self):
@@ -226,13 +226,12 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         for name, filename, builtin in load_all_sequences(self.settings):
             try:
                 sequence = load_sequence(filename)
-                item = self._sequence_tree.append([sequence.name, '(built-in)' if builtin else filename])
+                item = self._sequence_tree.append([sequence.name, "(built-in)" if builtin else filename])
                 item.sequence = sequence
                 item.sequence.builtin = builtin
                 item.qt.setToolTip(1, filename)
             except Exception as exc:
                 logger.error("failed to load sequence: %s", filename)
-                pass
         self._sequence_tree.fit()
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
@@ -243,7 +242,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     def store_settings_dialog_size(self):
         """Store dialog size to settings."""
-        self.settings['sequence_manager_dialog_size'] = self.width, self.height
+        self.settings["sequence_manager_dialog_size"] = self.width, self.height
 
     def store_settings_sequences(self):
         """Store custom sequences to settings."""
@@ -251,7 +250,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         for item in self._sequence_tree:
             if not item.sequence.builtin:
                 sequences.append(item.sequence.filename)
-        self.settings['custom_sequences'] = list(set(sequences))
+        self.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
 
@@ -306,10 +305,11 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         if item and not item.sequence.builtin:
             if ui.show_question(
                 title="Remove Sequence",
-                text=f"Do yo want to remove sequence '{item.sequence.name}'?"
+                text=f"Do yo want to remove sequence {item.sequence.name!r}?"
             ):
                 self._sequence_tree.remove(item)
                 self._remove_button.enabled = len(self._sequence_tree)
+
 
 class SequenceTree(ui.Tree):
     """Sequence tree containing sample, contact and measurement items."""
@@ -336,6 +336,7 @@ class SequenceTree(ui.Tree):
         for contact in self:
             contact.reset()
 
+
 class SamplesItem:
     """Virtual item holding multiple samples to be executed."""
 
@@ -349,6 +350,7 @@ class SamplesItem:
     def extend(self, iterable):
         for item in iterable:
             self.append(item)
+
 
 class SequenceTreeItem(ui.TreeItem):
 
@@ -436,6 +438,7 @@ class SequenceTreeItem(ui.TreeItem):
         for child in self.children:
             child.reset()
 
+
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
@@ -462,7 +465,7 @@ class SampleTreeItem(SequenceTreeItem):
 
     @property
     def name(self):
-        return ''.join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
+        return "".join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
 
     @property
     def name_prefix(self):
@@ -532,14 +535,14 @@ class SampleTreeItem(SequenceTreeItem):
         if filename and os.path.exists(filename):
             sequence = load_sequence(filename)
             self.load_sequence(sequence)
-        default_position = float('nan'), float('nan'), float('nan')
+        default_position = float("nan"), float("nan"), float("nan")
         for contact_position in kwargs.get("sample_contacts") or []:
             for contact in self.children:
                 if contact.id == contact_position.get("id"):
                     try:
                         x, y, z = tuple(map(from_table_unit, contact_position.get("position")))
-                    except:
-                        pass
+                    except Exception:
+                        ...
                     else:
                         contact.position = x, y, z
                     finally:
@@ -569,7 +572,7 @@ class SampleTreeItem(SequenceTreeItem):
 
     def update_name(self):
         tokens = self.name, self.sample_type
-        self[0].value = '/'.join((token for token in tokens if token))
+        self[0].value = "/".join((token for token in tokens if token))
 
     def reset_positions(self):
         for contact_item in self.children:
@@ -590,6 +593,7 @@ class SampleTreeItem(SequenceTreeItem):
         for contact_item in self.children:
             if contact_item.id in contact_positions:
                 contact_item.position = contact_positions.get(contact_item.id)
+
 
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""
@@ -618,7 +622,7 @@ class ContactTreeItem(SequenceTreeItem):
     def position(self, position):
         x, y, z = position
         self.__position = x, y, z
-        self[1].value = {False: '', True: 'OK'}.get(self.has_position)
+        self[1].value = {False: "", True: "OK"}.get(self.has_position)
 
     @property
     def has_position(self):
@@ -627,7 +631,8 @@ class ContactTreeItem(SequenceTreeItem):
     # Methods
 
     def reset_position(self):
-        self.position = float('nan'), float('nan'), float('nan')
+        self.position = float("nan"), float("nan"), float("nan")
+
 
 class MeasurementTreeItem(SequenceTreeItem):
     """Measurement item of sequence tree."""
@@ -672,11 +677,11 @@ class EditSamplesDialog(SettingsMixin):
                 item.addSequence(name)
             if sample_item.sequence is not None:
                 item.setCurrentSequence(sample_item.sequence.name)
-            item.setProperty('sample_item', sample_item)
+            item.setProperty("sample_item", sample_item)
 
     def _update_samples(self, dialog):
         for item in dialog.items():
-            sample_item = item.property('sample_item')
+            sample_item = item.property("sample_item")
             sample_item.enabled = item.isEnabled()
             sample_item.name_prefix = item.prefix()
             sample_item.name_infix = item.infix()
@@ -689,12 +694,12 @@ class EditSamplesDialog(SettingsMixin):
                     sample_item.load_sequence(sequence)
 
     def load_settings(self, dialog):
-        width, height = self.settings.get('quick_edit_dialog_size', (800, 480))
+        width, height = self.settings.get("quick_edit_dialog_size", (800, 480))
         dialog.resize(width, height)
 
     def store_settings(self, dialog):
         width, height = dialog.width(), dialog.height()
-        self.settings['quick_edit_dialog_size'] = width, height
+        self.settings["quick_edit_dialog_size"] = width, height
 
     def run(self):
         dialog = QuickEditDialog()

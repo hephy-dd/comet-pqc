@@ -1,8 +1,8 @@
 import math
-import os
 import unittest
 
 from comet_pqc.position import Position
+
 
 class PositionTest(unittest.TestCase):
 
@@ -25,7 +25,7 @@ class PositionTest(unittest.TestCase):
         p1 = Position(1.2, -2.3, 3.4)
         p2 = Position(2.3, 3.4, 5.5)
         p3 = p1 + p2
-        ref = Position(p1.x+p2.x, p1.y+p2.y, p1.z+p2.z)
+        ref = Position(p1.x + p2.x, p1.y + p2.y, p1.z + p2.z)
         self.assertEqual(ref, p1 + p2)
         self.assertEqual(ref, p3)
         self.assertEqual(p3, p1 + p2)
@@ -48,7 +48,7 @@ class PositionTest(unittest.TestCase):
         self.assertFalse(p2 == p3)
         self.assertTrue(p2 != p3)
 
-    def test_le(self):
+    def test_lt(self):
         p1 = Position(1.2, 2.3, 3.4)
         p2 = Position(2.3, 3.4, 5.5)
         self.assertTrue(p1 < p2)
@@ -59,7 +59,3 @@ class PositionTest(unittest.TestCase):
         p2 = Position(2.3, 3.4, 5.5)
         self.assertTrue(p1 <= p2)
         self.assertFalse(p1 >= p2)
-
-
-if __name__ == '__main__':
-    unittest.main()

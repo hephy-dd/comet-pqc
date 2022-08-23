@@ -1,35 +1,34 @@
 import math
 
-__all__ = [
-    'Position'
-]
+__all__ = ["Position"]
+
 
 class Position:
     """Three-dimensional Cartesian coordinate."""
 
-    def __init__(self, x=None, y=None, z=None):
-        self._x = float('nan') if x is None else float(x)
-        self._y = float('nan') if y is None else float(y)
-        self._z = float('nan') if z is None else float(z)
+    def __init__(self, x: float = None, y: float = None, z: float = None):
+        self._x: float = math.nan if x is None else float(x)
+        self._y: float = math.nan if y is None else float(y)
+        self._z: float = math.nan if z is None else float(z)
 
     @property
-    def x(self):
+    def x(self) -> float:
         return self._x
 
     @property
-    def y(self):
+    def y(self) -> float:
         return self._y
 
     @property
-    def z(self):
+    def z(self) -> float:
         return self._z
 
     @property
-    def is_valid(self):
+    def is_valid(self) -> bool:
         return all((not math.isnan(value) for value in self))
 
-    def asdict(self):
-        return dict(x=self.x, y=self.y, z=self.z)
+    def asdict(self) -> dict:
+        return {"x": self.x, "y": self.y, "z": self.z}
 
     def __iter__(self):
         return iter((self.x, self.y, self.z))

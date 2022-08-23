@@ -2,15 +2,16 @@ import unittest
 
 from comet_pqc import functions
 
+
 class FunctionsTest(unittest.TestCase):
 
     def assert_range(self, begin, end, step, ref):
-        l = []
+        values = []
         for value in functions.LinearRange(begin, end, step):
-            l.append(value)
-            if len(l) > len(ref):
+            values.append(value)
+            if len(values) > len(ref):
                 break
-        self.assertEqual(l, ref)
+        self.assertEqual(values, ref)
 
     def test_range(self):
         self.assert_range(0, 0, 0, [])
@@ -26,22 +27,22 @@ class FunctionsTest(unittest.TestCase):
         self.assert_range(0, 0, 1, [])
         self.assert_range(0, 1, 2, [])
         self.assert_range(0, 1, 1, [0, 1])
-        self.assert_range(1, 0, 1, [1, 0]) # auto step
+        self.assert_range(1, 0, 1, [1, 0])  # auto step
         self.assert_range(1, 1, 1, [])
 
         self.assert_range(0, 0, 1, [])
-        self.assert_range(0, -1, 1, [0, -1]) # auto step
+        self.assert_range(0, -1, 1, [0, -1])  # auto step
         self.assert_range(-1, 0, 1, [-1, 0])
         self.assert_range(-1, -1, 1, [])
 
         self.assert_range(0, 0, -1, [])
-        self.assert_range(0, 1, -1, [0, 1]) # auto step
+        self.assert_range(0, 1, -1, [0, 1])  # auto step
         self.assert_range(1, 0, -1, [1, 0])
         self.assert_range(1, 1, -1, [])
 
         self.assert_range(0, 0, -1, [])
         self.assert_range(0, -1, -1, [0, -1])
-        self.assert_range(-1, 0, -1, [-1, 0]) # auto step
+        self.assert_range(-1, 0, -1, [-1, 0])  # auto step
         self.assert_range(-1, -1, -1, [])
 
         self.assert_range(0, 0, 0, [])
@@ -56,27 +57,27 @@ class FunctionsTest(unittest.TestCase):
 
         self.assert_range(0, 0, 2.5, [])
         self.assert_range(0, 5, 2.5, [0, 2.5, 5])
-        self.assert_range(5, 0, 2.5, [5, 2.5, 0]) # auto step
+        self.assert_range(5, 0, 2.5, [5, 2.5, 0])  # auto step
         self.assert_range(5, 5, 2.5, [])
 
         self.assert_range(0, 0, 2.5, [])
-        self.assert_range(0, -5, 2.5, [0, -2.5, -5]) # auto step
+        self.assert_range(0, -5, 2.5, [0, -2.5, -5])  # auto step
         self.assert_range(-5, 0, 2.5, [-5, -2.5, 0])
         self.assert_range(-5, -5, 2.5, [])
 
         self.assert_range(0, 0, -2.5, [])
-        self.assert_range(0, 5, -2.5, [0, 2.5, 5]) # auto step
+        self.assert_range(0, 5, -2.5, [0, 2.5, 5])  # auto step
         self.assert_range(5, 0, -2.5, [5, 2.5, 0])
         self.assert_range(5, 5, -2.5, [])
 
         self.assert_range(0, 0, -2.5, [])
         self.assert_range(0, -5, -2.5, [0, -2.5, -5])
-        self.assert_range(-5, 0, -2.5, [-5, -2.5, 0]) # auto step
+        self.assert_range(-5, 0, -2.5, [-5, -2.5, 0])  # auto step
         self.assert_range(-5, -5, -2.5, [])
 
-        self.assert_range(-2.5, 2.5, -2.5, [-2.5, 0, 2.5]) # auto step
+        self.assert_range(-2.5, 2.5, -2.5, [-2.5, 0, 2.5])  # auto step
         self.assert_range(-2.5, 2.5, 2.5, [-2.5, 0, 2.5])
-        self.assert_range(2.5, -2.5, 2.5, [2.5, 0, -2.5]) # auto step
+        self.assert_range(2.5, -2.5, 2.5, [2.5, 0, -2.5])  # auto step
         self.assert_range(2.5, -2.5, -2.5, [2.5, 0, -2.5])
 
         self.assert_range(0, 1e-5, 2e-6, [0, 2e-6, 4e-6, 6e-6, 8e-6, 1e-5])

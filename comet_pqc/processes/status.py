@@ -1,7 +1,10 @@
 import comet
-from comet.resource import ResourceMixin, ResourceError
-from comet.process import ProcessMixin
 from comet.driver.keithley import K707B
+from comet.process import ProcessMixin
+from comet.resource import ResourceError, ResourceMixin
+
+__all__ = ["StatusProcess"]
+
 
 class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     """Reload instruments status."""
@@ -20,9 +23,9 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 model = matrix.identification
                 self.set("matrix_model", model)
                 channels = matrix.channel.getclose()
-                self.set("matrix_channels", ','.join(channels))
+                self.set("matrix_channels", ",".join(channels))
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_hvsrc(self):
         self.set("hvsrc_model", "")
@@ -31,7 +34,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 model = hvsrc_res.query("*IDN?")
                 self.set("hvsrc_model", model)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_vsrc(self):
         self.set("vsrc_model", "")
@@ -40,7 +43,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 model = vsrc_res.query("*IDN?")
                 self.set("vsrc_model", model)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_lcr(self):
         self.set("lcr_model", "")
@@ -49,7 +52,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 model = lcr_res.query("*IDN?")
                 self.set("lcr_model", model)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_elm(self):
         self.set("elm_model", "")
@@ -58,7 +61,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 model = elm_res.query("*IDN?")
                 self.set("elm_model", model)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_table(self):
         self.set("table_model", "")
@@ -71,12 +74,12 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
             caldone = table_process.get_caldone().get(timeout=5.0)
             self.set("table_model", model)
             if caldone == (3, 3, 3):
-                state = f"CALIBRATED"
+                state = "CALIBRATED"
             else:
-                state = f"NOT CALIBRATED"
+                state = "NOT CALIBRATED"
             self.set("table_state", state)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def read_environ(self):
         self.set("env_model", "")
@@ -90,7 +93,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
                 pc_data = environment.pc_data()
                 self.set("env_pc_data", pc_data)
         except (ResourceError, OSError):
-            pass
+            ...
 
     def run(self):
         self.emit("message", "Reading Matrix...")

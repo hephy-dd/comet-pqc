@@ -1,30 +1,24 @@
 import logging
-import sys
 
 import analysis_pqc
-
 import comet
 from comet import ui
 
 from . import __version__
-
-from .processes import ContactQualityProcess
-from .processes import EnvironmentProcess
-from .processes import StatusProcess
-from .processes import AlternateTableProcess
-from .processes import MeasureProcess
-from .processes import WebAPIProcess
-
 from .dashboard import Dashboard
-
-from .preferences import TableTab
-from .preferences import WebAPITab
-from .preferences import OptionsTab
-
+from .preferences import OptionsTab, TableTab, WebAPITab
+from .processes import (
+    AlternateTableProcess,
+    ContactQualityProcess,
+    EnvironmentProcess,
+    MeasureProcess,
+    StatusProcess,
+    WebAPIProcess,
+)
 from .settings import settings
 
-CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
-GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
+CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
+GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +58,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
             resource_name="TCPIP::10.0.0.2::5025::SOCKET",
-            encoding='latin1',
+            encoding="latin1",
             read_termination="\n",
             write_termination="\n"
         ))
@@ -76,7 +70,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         ))
         self.resources.add("vsrc", comet.Resource(
             resource_name="TCPIP::10.0.0.3::5025::SOCKET",
-            encoding='latin1',
+            encoding="latin1",
             read_termination="\n",
             write_termination="\n"
         ))
@@ -157,9 +151,9 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
     def load_settings(self):
         # Restore window size
-        self.app.width, self.app.height = self.settings.get('window_size', (1420, 920))
+        self.app.width, self.app.height = self.settings.get("window_size", (1420, 920))
         # HACK: resize preferences dialog for HiDPI
-        dialog_size = self.settings.get('preferences_dialog_size', (640, 480))
+        dialog_size = self.settings.get("preferences_dialog_size", (640, 480))
         self.app.window.preferences_dialog.resize(*dialog_size)
         # Load configurations
         self.dashboard.load_settings()
@@ -167,9 +161,9 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
     def store_settings(self):
         self.dashboard.store_settings()
         # Store window size
-        self.settings['window_size'] = self.app.width, self.app.height
+        self.settings["window_size"] = self.app.width, self.app.height
         dialog_size = self.app.window.preferences_dialog.size
-        self.settings['preferences_dialog_size'] = dialog_size
+        self.settings["preferences_dialog_size"] = dialog_size
 
     def event_loop(self):
         # Sync environment controls

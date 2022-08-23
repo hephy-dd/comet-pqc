@@ -2,26 +2,26 @@ import contextlib
 import logging
 import time
 
-import numpy as np
-
 import comet
+import numpy as np
 from comet.driver.keithley import K6517B
 
-from ..utils import format_metric
-from ..estimate import Estimate
 from ..benchmark import Benchmark
-
+from ..estimate import Estimate
+from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-
-from .mixins import HVSourceMixin
-from .mixins import ElectrometerMixin
-from .mixins import EnvironmentMixin
-from .mixins import AnalysisMixin
+from .mixins import (
+    AnalysisMixin,
+    ElectrometerMixin,
+    EnvironmentMixin,
+    HVSourceMixin,
+)
 
 __all__ = ["IVRampElmMeasurement"]
 
 logger = logging.getLogger(__name__)
+
 
 class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp with electrometer measurement.
@@ -39,27 +39,27 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.register_parameter('voltage_start', unit='V', required=True)
-        self.register_parameter('voltage_stop', unit='V', required=True)
-        self.register_parameter('voltage_step', unit='V', required=True)
-        self.register_parameter('waiting_time', 1.0, unit='s')
-        self.register_parameter('voltage_step_before', comet.ureg('0 V'), unit='V')
-        self.register_parameter('waiting_time_before', comet.ureg('100 ms'), unit='s')
-        self.register_parameter('voltage_step_after', comet.ureg('0 V'), unit='V')
-        self.register_parameter('waiting_time_after', comet.ureg('100 ms'), unit='s')
-        self.register_parameter('waiting_time_start', comet.ureg('0 s'), unit='s')
-        self.register_parameter('waiting_time_end', comet.ureg('0 s'), unit='s')
-        self.register_parameter('hvsrc_current_compliance', unit='A', required=True)
-        self.register_parameter('hvsrc_accept_compliance', False, type=bool)
-        self.register_parameter('elm_filter_enable', False, type=bool)
-        self.register_parameter('elm_filter_count', 10, type=int)
-        self.register_parameter('elm_filter_type', 'repeat')
-        self.register_parameter('elm_zero_correction', False, type=bool)
-        self.register_parameter('elm_integration_rate', 50, type=int)
-        self.register_parameter('elm_current_range', comet.ureg('20 pA'), unit='A')
-        self.register_parameter('elm_current_autorange_enable', False, type=bool)
-        self.register_parameter('elm_current_autorange_minimum', comet.ureg('20 pA'), unit='A')
-        self.register_parameter('elm_current_autorange_maximum', comet.ureg('20 mA'), unit='A')
+        self.register_parameter("voltage_start", unit="V", required=True)
+        self.register_parameter("voltage_stop", unit="V", required=True)
+        self.register_parameter("voltage_step", unit="V", required=True)
+        self.register_parameter("waiting_time", 1.0, unit="s")
+        self.register_parameter("voltage_step_before", comet.ureg("0 V"), unit="V")
+        self.register_parameter("waiting_time_before", comet.ureg("100 ms"), unit="s")
+        self.register_parameter("voltage_step_after", comet.ureg("0 V"), unit="V")
+        self.register_parameter("waiting_time_after", comet.ureg("100 ms"), unit="s")
+        self.register_parameter("waiting_time_start", comet.ureg("0 s"), unit="s")
+        self.register_parameter("waiting_time_end", comet.ureg("0 s"), unit="s")
+        self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
+        self.register_parameter("hvsrc_accept_compliance", False, type=bool)
+        self.register_parameter("elm_filter_enable", False, type=bool)
+        self.register_parameter("elm_filter_count", 10, type=int)
+        self.register_parameter("elm_filter_type", "repeat")
+        self.register_parameter("elm_zero_correction", False, type=bool)
+        self.register_parameter("elm_integration_rate", 50, type=int)
+        self.register_parameter("elm_current_range", comet.ureg("20 pA"), unit="A")
+        self.register_parameter("elm_current_autorange_enable", False, type=bool)
+        self.register_parameter("elm_current_autorange_minimum", comet.ureg("20 pA"), unit="A")
+        self.register_parameter("elm_current_autorange_maximum", comet.ureg("20 mA"), unit="A")
         self.register_hvsource()
         self.register_elm()
         self.register_environment()
@@ -69,28 +69,28 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.process.emit("progress", 0, 5)
 
         # Parameters
-        voltage_start = self.get_parameter('voltage_start')
-        voltage_stop = self.get_parameter('voltage_stop')
-        voltage_step = self.get_parameter('voltage_step')
-        waiting_time = self.get_parameter('waiting_time')
-        voltage_step_before = self.get_parameter('voltage_step_before') or self.get_parameter('voltage_step')
-        waiting_time_before = self.get_parameter('waiting_time_before')
-        voltage_step_after = self.get_parameter('voltage_step_after') or self.get_parameter('voltage_step')
-        waiting_time_after = self.get_parameter('waiting_time_after')
-        waiting_time_start = self.get_parameter('waiting_time_start')
-        waiting_time_end = self.get_parameter('waiting_time_end')
-        hvsrc_current_compliance = self.get_parameter('hvsrc_current_compliance')
-        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
-        elm_filter_enable = self.get_parameter('elm_filter_enable')
-        elm_filter_count = self.get_parameter('elm_filter_count')
-        elm_filter_type = self.get_parameter('elm_filter_type')
-        elm_zero_correction = self.get_parameter('elm_zero_correction')
-        elm_integration_rate = self.get_parameter('elm_integration_rate')
-        elm_current_range = self.get_parameter('elm_current_range')
-        elm_current_autorange_enable = self.get_parameter('elm_current_autorange_enable')
-        elm_current_autorange_minimum = self.get_parameter('elm_current_autorange_minimum')
-        elm_current_autorange_maximum = self.get_parameter('elm_current_autorange_maximum')
-        elm_read_timeout = self.get_parameter('elm_read_timeout')
+        voltage_start = self.get_parameter("voltage_start")
+        voltage_stop = self.get_parameter("voltage_stop")
+        voltage_step = self.get_parameter("voltage_step")
+        waiting_time = self.get_parameter("waiting_time")
+        voltage_step_before = self.get_parameter("voltage_step_before") or self.get_parameter("voltage_step")
+        waiting_time_before = self.get_parameter("waiting_time_before")
+        voltage_step_after = self.get_parameter("voltage_step_after") or self.get_parameter("voltage_step")
+        waiting_time_after = self.get_parameter("waiting_time_after")
+        waiting_time_start = self.get_parameter("waiting_time_start")
+        waiting_time_end = self.get_parameter("waiting_time_end")
+        hvsrc_current_compliance = self.get_parameter("hvsrc_current_compliance")
+        hvsrc_accept_compliance = self.get_parameter("hvsrc_accept_compliance")
+        elm_filter_enable = self.get_parameter("elm_filter_enable")
+        elm_filter_count = self.get_parameter("elm_filter_count")
+        elm_filter_type = self.get_parameter("elm_filter_type")
+        elm_zero_correction = self.get_parameter("elm_zero_correction")
+        elm_integration_rate = self.get_parameter("elm_integration_rate")
+        elm_current_range = self.get_parameter("elm_current_range")
+        elm_current_autorange_enable = self.get_parameter("elm_current_autorange_enable")
+        elm_current_autorange_minimum = self.get_parameter("elm_current_autorange_minimum")
+        elm_current_autorange_maximum = self.get_parameter("elm_current_autorange_maximum")
+        elm_read_timeout = self.get_parameter("elm_read_timeout")
 
         # Extend meta data
         self.set_meta("voltage_start", f"{voltage_start:G} V")
@@ -111,11 +111,11 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.set_meta("elm_filter_type", elm_filter_type)
         self.set_meta("elm_zero_correction", elm_zero_correction)
         self.set_meta("elm_integration_rate", elm_integration_rate)
-        self.set_meta("elm_current_range", format(elm_current_range, 'G'))
+        self.set_meta("elm_current_range", format(elm_current_range, "G"))
         self.set_meta("elm_current_autorange_enable", elm_current_autorange_enable)
-        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, 'G'))
-        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, 'G'))
-        self.set_meta("elm_read_timeout", format(elm_read_timeout, 'G'))
+        self.set_meta("elm_current_autorange_minimum", format(elm_current_autorange_minimum, "G"))
+        self.set_meta("elm_current_autorange_maximum", format(elm_current_autorange_maximum, "G"))
+        self.set_meta("elm_read_timeout", format(elm_read_timeout, "G"))
         self.elm_update_meta()
         self.environment_update_meta()
 
@@ -141,12 +141,12 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.hvsrc_setup(hvsrc)
         self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
 
-        self.process.emit("state", dict(
-            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
-            hvsrc_current=None,
-            hvsrc_output=self.hvsrc_get_output_state(hvsrc),
-            elm_current=None
-        ))
+        self.process.emit("state", {
+            "hvsrc_voltage": self.hvsrc_get_voltage_level(hvsrc),
+            "hvsrc_current": None,
+            "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
+            "elm_current": None,
+        })
 
         self.process.emit("progress", 1, 5)
 
@@ -156,9 +156,9 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
         time.sleep(.100)
 
-        self.process.emit("state", dict(
-            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
-        ))
+        self.process.emit("state", {
+            "hvsrc_output": self.hvsrc_get_output_state(hvsrc)
+        })
 
         self.process.emit("progress", 2, 5)
 
@@ -182,7 +182,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.elm_safe_write(elm, f":SENS:CURR:NPLC {nplc:02f}")
 
         self.elm_set_zero_check(elm, True)
-        assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
+        assert self.elm_get_zero_check(elm) is True, "failed to enable zero check"
 
         self.elm_safe_write(elm, ":SENS:FUNC 'CURR'") # note the quotes!
         assert elm.resource.query(":SENS:FUNC?") == '"CURR:DC"', "failed to set sense function to current"
@@ -196,7 +196,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.elm_safe_write(elm, f":SENS:CURR:RANG:AUTO:ULIM {elm_current_autorange_maximum:E}")
 
         self.elm_set_zero_check(elm, False)
-        assert self.elm_get_zero_check(elm) == False, "failed to disable zero check"
+        assert self.elm_get_zero_check(elm) is False, "failed to disable zero check"
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
@@ -204,9 +204,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
             self.process.emit("message", f"{voltage:.3f} V")
             self.hvsrc_set_voltage_level(hvsrc, voltage)
-            self.process.emit("state", dict(
-                hvsrc_voltage=voltage,
-            ))
+            self.process.emit("state", {"hvsrc_voltage": voltage})
 
             time.sleep(waiting_time_before)
 
@@ -223,12 +221,12 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
     def measure(self, hvsrc, elm):
         # Parameters
-        voltage_start = self.get_parameter('voltage_start')
-        voltage_stop = self.get_parameter('voltage_stop')
-        voltage_step = self.get_parameter('voltage_step')
-        waiting_time = self.get_parameter('waiting_time')
-        hvsrc_accept_compliance = self.get_parameter('hvsrc_accept_compliance')
-        elm_read_timeout = self.get_parameter('elm_read_timeout')
+        voltage_start = self.get_parameter("voltage_start")
+        voltage_stop = self.get_parameter("voltage_stop")
+        voltage_step = self.get_parameter("voltage_step")
+        waiting_time = self.get_parameter("waiting_time")
+        hvsrc_accept_compliance = self.get_parameter("hvsrc_accept_compliance")
+        elm_read_timeout = self.get_parameter("elm_read_timeout")
 
         if not self.process.running:
             return
@@ -283,11 +281,11 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
                 self.process.emit("reading", "elm", abs(voltage) if ramp.step < 0 else voltage, elm_reading)
 
                 self.process.emit("update")
-                self.process.emit("state", dict(
-                    hvsrc_voltage=voltage,
-                    hvsrc_current=hvsrc_reading,
-                    elm_current=elm_reading
-                ))
+                self.process.emit("state", {
+                    "hvsrc_voltage": voltage,
+                    "hvsrc_current": hvsrc_reading,
+                    "elm_current": elm_reading,
+                })
 
                 # Append series data
                 self.append_series(
@@ -321,28 +319,28 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
     def analyze(self, **kwargs):
         self.process.emit("progress", 0, 1)
 
-        i = np.array(self.get_series('current_elm'))
-        v = np.array(self.get_series('voltage'))
+        i = np.array(self.get_series("current_elm"))
+        v = np.array(self.get_series("voltage"))
         self.analysis_iv(i, v)
 
         self.process.emit("progress", 1, 1)
 
     def finalize(self, hvsrc, elm):
         self.process.emit("progress", 0, 2)
-        voltage_step_after = self.get_parameter('voltage_step_after') or self.get_parameter('voltage_step')
-        waiting_time_after = self.get_parameter('waiting_time_after')
-        waiting_time_end = self.get_parameter('waiting_time_end')
+        voltage_step_after = self.get_parameter("voltage_step_after") or self.get_parameter("voltage_step")
+        waiting_time_after = self.get_parameter("waiting_time_after")
+        waiting_time_end = self.get_parameter("waiting_time_end")
 
         try:
             self.elm_set_zero_check(elm, True)
-            assert self.elm_get_zero_check(elm) == True, "failed to enable zero check"
+            assert self.elm_get_zero_check(elm) is True, "failed to enable zero check"
         finally:
             self.process.emit("message", "Ramp to zero...")
             self.process.emit("progress", 1, 2)
-            self.process.emit("state", dict(
-                hvsrc_current=None,
-                elm_current=None
-            ))
+            self.process.emit("state", {
+                "hvsrc_current": None,
+                "elm_current": None,
+            })
 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
@@ -350,9 +348,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
             for voltage in comet.Range(voltage, 0, voltage_step_after):
                 self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
-                self.process.emit("state", dict(
-                    hvsrc_voltage=voltage,
-                ))
+                self.process.emit("state", {"hvsrc_voltage": voltage})
                 time.sleep(waiting_time_after)
 
             # Waiting time after ramp down.
@@ -360,12 +356,12 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
 
             self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
-            self.process.emit("state", dict(
-                hvsrc_output=self.hvsrc_get_output_state(hvsrc),
-                env_chuck_temperature=None,
-                env_box_temperature=None,
-                env_box_humidity=None
-            ))
+            self.process.emit("state", {
+                "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
+                "env_chuck_temperature": None,
+                "env_box_temperature": None,
+                "env_box_humidity": None,
+            })
 
             self.process.emit("progress", 2, 2)
 

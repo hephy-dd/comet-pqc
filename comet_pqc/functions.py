@@ -3,7 +3,7 @@
 from decimal import Context, Decimal
 from typing import Generator
 
-__all__ = ['LinearRange']
+__all__ = ["LinearRange"]
 
 ctx: Context = Context(prec=4)
 
@@ -23,9 +23,9 @@ class LinearRange:
     """
 
     __slots__ = (
-        'begin',
-        'end',
-        'step'
+        "begin",
+        "end",
+        "step"
     )
 
     def __init__(self, begin: float, end: float, step: float):
@@ -59,7 +59,7 @@ class LinearRange:
         step = abs(step) if ascending else -abs(step)
         count: int = len(self)
         if count:
-            value: Decimal = ctx.create_decimal('NaN')
+            value: Decimal = ctx.create_decimal("NaN")
             for i in range(count + 1):
                 value = begin + (i * step)
                 # Mangle value not to exceed valid range.

@@ -1,5 +1,6 @@
 import time
 
+
 class Benchmark:
     """Bench mark context manager."""
 

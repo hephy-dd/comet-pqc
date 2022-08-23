@@ -2,11 +2,10 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import HVSourceMixin
-from .mixins import LCRMixin
-from .mixins import EnvironmentMixin
+from .mixins import EnvironmentMixin, HVSourceMixin, LCRMixin
 
 __all__ = ["FrequencyScanPanel"]
+
 
 class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
     """Frequency scan with log10 steps."""
@@ -72,8 +71,8 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
             stretch=(1, 1, 1)
         )
 
-        fahrad = comet.ureg('F')
-        volt = comet.ureg('V')
+        fahrad = comet.ureg("F")
+        volt = comet.ureg("V")
 
-        self.series_transform['lcr'] = lambda x, y: ((x * volt).to('V').m, (y * fahrad).to('pF').m)
-        self.series_transform['xfit'] = self.series_transform.get('lcr')
+        self.series_transform["lcr"] = lambda x, y: ((x * volt).to("V").m, (y * fahrad).to("pF").m)
+        self.series_transform["xfit"] = self.series_transform.get("lcr")

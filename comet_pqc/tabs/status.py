@@ -1,6 +1,7 @@
 from comet import ui
 
-__all__ = ['StatusTab']
+__all__ = ["StatusTab"]
+
 
 class StatusTab(ui.Tab):
 
@@ -20,7 +21,7 @@ class StatusTab(ui.Tab):
         self.table_state_text = ui.Text(readonly=True)
         self.env_model_text = ui.Text(readonly=True)
         self.reload_status_button = ui.Button("&Reload", clicked=self.on_reload)
-        self.layout=ui.Column(
+        self.layout = ui.Column(
             ui.GroupBox(
                 title="Matrix",
                 layout=ui.Column(

@@ -5,44 +5,42 @@ import os
 import time
 import webbrowser
 
-from qutie import Timer
-
 import comet
 from comet import ui
-
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
+from qutie import Timer
 
 from . import config
-
-from .sequence import SequenceTree
-from .sequence import SamplesItem
-from .sequence import SampleTreeItem
-from .sequence import ContactTreeItem
-from .sequence import MeasurementTreeItem
-
-from .components import ToggleButton
-from .components import PositionWidget
-from .components import CalibrationWidget
-from .components import OperatorWidget
-from .components import WorkingDirectoryWidget
-
-from .tablecontrol import TableControlDialog, safe_z_position
-from .sequence import StartSequenceDialog, EditSamplesDialog, load_all_sequences
-
-from .tabs import EnvironmentTab
-from .tabs import MeasurementTab
-from .tabs import StatusTab
-from .tabs import SummaryTab
-from .logwindow import LogWidget
+from .components import (
+    CalibrationWidget,
+    OperatorWidget,
+    PositionWidget,
+    ToggleButton,
+    WorkingDirectoryWidget,
+)
 from .formatter import CSVFormatter
-from .settings import settings
-from .utils import user_home, make_path, handle_exception, caldone_valid
+from .logwindow import LogWidget
 from .position import Position
+from .sequence import (
+    ContactTreeItem,
+    EditSamplesDialog,
+    MeasurementTreeItem,
+    SamplesItem,
+    SampleTreeItem,
+    SequenceTree,
+    StartSequenceDialog,
+    load_all_sequences,
+)
+from .settings import settings
+from .tablecontrol import TableControlDialog, safe_z_position
+from .tabs import EnvironmentTab, MeasurementTab, StatusTab, SummaryTab
+from .utils import caldone_valid, handle_exception, make_path, user_home
 
 logger = logging.getLogger(__name__)
 
 SUMMARY_FILENAME = "summary.csv"
+
 
 class SequenceWidget(ui.GroupBox, SettingsMixin):
 
@@ -118,31 +116,31 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         )
 
         self._reload_config_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'reload.svg'),
+            icon=make_path("assets", "icons", "reload.svg"),
             tool_tip="Reload sequence configurations from file.",
             clicked=self.on_reload_config_clicked
         )
 
         self._add_sample_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'add.svg'),
+            icon=make_path("assets", "icons", "add.svg"),
             tool_tip="Add new sample sequence.",
             clicked=self.on_add_sample_clicked
         )
 
         self._remove_sample_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'delete.svg'),
+            icon=make_path("assets", "icons", "delete.svg"),
             tool_tip="Remove current sample sequence.",
             clicked=self.on_remove_sample_clicked
         )
 
         self._open_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'document_open.svg'),
+            icon=make_path("assets", "icons", "document_open.svg"),
             tool_tip="Open sequence tree from file.",
             clicked=self.on_open_clicked
         )
 
         self._save_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'document_save.svg'),
+            icon=make_path("assets", "icons", "document_save.svg"),
             tool_tip="Save sequence tree to file.",
             clicked=self.on_save_clicked
         )
@@ -243,7 +241,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         if item in self._sequence_tree:
             if ui.show_question(
                 title="Remove Sample",
-                text=f"Do you want to remove '{item.name}'?"
+                text=f"Do you want to remove {item.name!r}?"
             ):
                 self._sequence_tree.remove(item)
 
@@ -256,7 +254,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                 data = json.load(f)
                 logger.info("Reading sequence... done.")
             self.current_path = os.path.dirname(filename)
-            version = data.get('version')
+            version = data.get("version")
             if version is None:
                 raise RuntimeError(f"Missing version information in sequence: {filename}")
             elif isinstance(version, int):
@@ -264,7 +262,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                     raise RuntimeError(f"Invalid version in sequence: {filename}")
             else:
                 raise RuntimeError(f"Invalid version information in sequence: {filename}")
-            samples = data.get('sequence') or []
+            samples = data.get("sequence") or []
             self._sequence_tree.clear()
             for kwargs in samples:
                 item = SampleTreeItem()
@@ -284,20 +282,21 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         if filename:
             samples = [sample.to_settings() for sample in self._sequence_tree]
             data = {
-                'version': self.config_version,
-                'sequence': samples
+                "version": self.config_version,
+                "sequence": samples
             }
             # Auto filename extension
-            if os.path.splitext(filename)[-1] not in ['.json']:
-                filename = f'{filename}.json'
+            if os.path.splitext(filename)[-1] not in [".json"]:
+                filename = f"{filename}.json"
                 if os.path.exists(filename):
                     if not ui.show_question(f"Do you want to overwrite existing file {filename}?"):
                         return
-            with open(filename, 'w') as f:
+            with open(filename, "w") as f:
                 logger.info("Writing sequence... %s", filename)
                 json.dump(data, f)
                 logger.info("Writing sequence... done.")
             self.current_path = os.path.dirname(filename)
+
 
 class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
 
@@ -364,6 +363,7 @@ class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
         use_table = self.settings.get("use_table") or False
         self.checked = use_table
         self._joystick_limits = settings.table_joystick_maximum_limits
+
 
 class EnvironmentControlWidget(ui.GroupBox):
 
@@ -516,6 +516,7 @@ class EnvironmentControlWidget(ui.GroupBox):
 
     def update_pid_control_state(self, state):
         self._pid_control_button.checked = state
+
 
 class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
@@ -830,8 +831,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if self.use_table():
             self.lock_controls()
             x, y, z = contact.position
-            self.table_process.message_changed = lambda message: self.emit('message_changed', message)
-            self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
+            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -841,8 +842,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             self.lock_controls()
             x, y, z = contact.position
             z = safe_z_position(z)
-            self.table_process.message_changed = lambda message: self.emit('message_changed', message)
-            self.table_process.progress_changed = lambda a, b: self.emit('progress_changed', a, b)
+            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
+            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -889,7 +890,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             contact_item = current_item.contact
             if not ui.show_question(
                 title="Run Measurement",
-                text=f"Are you sure to run measurement '{current_item.name}' for '{contact_item.name}'?"
+                text=f"Are you sure to run measurement {current_item.name!r} for {contact_item.name!r}?"
             ): return
             self._on_start(current_item)
         elif isinstance(current_item, ContactTreeItem):
@@ -956,7 +957,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         def show_measurement(item):
             item.selectable = True
             item.series.clear()
-            item[0].color = 'blue'
+            item[0].color = "blue"
             self.sequence_tree.scroll_to(item)
             self.panels.unmount()
             self.panels.hide()
@@ -1207,7 +1208,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)
-            with open(filename, 'a') as f:
+            with open(filename, "a") as f:
                 header = self.summary_tab.header()
                 writer = CSVFormatter(f)
                 for key in header:

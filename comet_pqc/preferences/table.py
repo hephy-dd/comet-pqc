@@ -1,14 +1,11 @@
-from qutie.qutie import QtCore
-from qutie.qutie import QtWidgets
-
 from comet import ui
 from comet.ui.preferences import PreferencesTab
+from qutie.qutie import QtCore, QtWidgets
 
 from ..settings import settings
-from ..utils import from_table_unit
-from ..utils import to_table_unit
+from ..utils import from_table_unit, to_table_unit
 
-__all__ = ['TableTab']
+__all__ = ["TableTab"]
 
 
 class TableStepDialog(ui.Dialog):
@@ -51,7 +48,7 @@ class TableStepDialog(ui.Dialog):
 
     @step_color.setter
     def step_color(self, value):
-        self._step_color_text.value = value or ''
+        self._step_color_text.value = value or ""
 
 
 class ItemDelegate(QtWidgets.QItemDelegate):
@@ -287,7 +284,7 @@ class TableTab(PreferencesTab):
     def on_remove_step_clicked(self):
         item = self._steps_tree.current
         if item:
-            if ui.show_question(f"Do you want to remove step size '{item[0].value}'?"):
+            if ui.show_question(f"Do you want to remove step size {item[0].value!r}?"):
                 self._steps_tree.remove(item)
                 if not len(self._steps_tree):
                     self._edit_step_button.enabled = False
@@ -295,16 +292,16 @@ class TableTab(PreferencesTab):
                 self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
     def on_z_limit_movement_changed(self, value):
-        pass
+        ...
 
     def load(self):
-        table_step_sizes = self.settings.get('table_step_sizes') or []
+        table_step_sizes = self.settings.get("table_step_sizes") or []
         self._steps_tree.clear()
         for item in table_step_sizes:
             self._steps_tree.append(TableStepItem(
-                step_size=from_table_unit(item.get('step_size')),
-                z_limit=from_table_unit(item.get('z_limit')),
-                step_color=format(item.get('step_color'))
+                step_size=from_table_unit(item.get("step_size")),
+                z_limit=from_table_unit(item.get("z_limit")),
+                step_color=format(item.get("step_color"))
             ))
         self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
         self._z_limit_movement_number.value = settings.table_z_limit
@@ -320,19 +317,19 @@ class TableTab(PreferencesTab):
         self._joystick_limit_x_maximum_number.value = x
         self._joystick_limit_y_maximum_number.value = y
         self._joystick_limit_z_maximum_number.value = z
-        table_contact_delay = self.settings.get('table_contact_delay') or 0
+        table_contact_delay = self.settings.get("table_contact_delay") or 0
         self._probecard_contact_delay_number.value = table_contact_delay
         self._recontact_overdrive_number.value = settings.retry_contact_overdrive
 
     def store(self):
         table_step_sizes = []
         for item in self._steps_tree:
-            table_step_sizes.append(dict(
-                step_size=to_table_unit(item.step_size),
-                z_limit=to_table_unit(item.z_limit),
-                step_color=format(item.step_color)
-            ))
-        self.settings['table_step_sizes'] = table_step_sizes
+            table_step_sizes.append({
+                "step_size": to_table_unit(item.step_size),
+                "z_limit": to_table_unit(item.z_limit),
+                "step_color": format(item.step_color),
+            })
+        self.settings["table_step_sizes"] = table_step_sizes
         settings.table_z_limit = self._z_limit_movement_number.value
         # Probecard limits
         settings.table_probecard_maximum_limits = [
@@ -342,7 +339,7 @@ class TableTab(PreferencesTab):
         ]
         temporary_z_limit = self._probecard_limit_z_maximum_checkbox.checked
         settings.table_temporary_z_limit = temporary_z_limit
-        self.emit('temporary_z_limit_changed', temporary_z_limit)
+        self.emit("temporary_z_limit_changed", temporary_z_limit)
         # Joystick limits
         settings.table_joystick_maximum_limits = [
             self._joystick_limit_x_maximum_number.value,
@@ -350,5 +347,5 @@ class TableTab(PreferencesTab):
             self._joystick_limit_z_maximum_number.value
         ]
         table_contact_delay = self._probecard_contact_delay_number.value
-        self.settings['table_contact_delay'] = table_contact_delay
+        self.settings["table_contact_delay"] = table_contact_delay
         settings.retry_contact_overdrive = self._recontact_overdrive_number.value

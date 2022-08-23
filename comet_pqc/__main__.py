@@ -2,35 +2,31 @@ import argparse
 import logging
 import os
 import sys
-
-from logging import Formatter
-from logging import StreamHandler
+from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
 
 from . import __version__
+from .application import Application
+from .settings import settings
 from .utils import user_home
 
-from .application import Application
-
-from .settings import settings
-
-CONTENTS_URL: str = 'https://hephy-dd.github.io/comet-pqc/'
-GITHUB_URL: str = 'https://github.com/hephy-dd/comet-pqc/'
+CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
+GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', action='store_true', help="show debug messages")
-    parser.add_argument('--logfile', metavar="<file>", default=LOG_FILENAME, help="write to custom logfile")
+    parser.add_argument("--debug", action="store_true", help="show debug messages")
+    parser.add_argument("--logfile", metavar="<file>", default=LOG_FILENAME, help="write to custom logfile")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args()
 
 
 def add_stream_handler(logger: logging.Logger) -> None:
     formatter = Formatter(
-        "%(asctime)s::%(name)s::%(levelname)s::%(message)s",
-        "%Y-%m-%dT%H:%M:%S"
+        fmt="%(asctime)s::%(name)s::%(levelname)s::%(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S"
     )
     handler = StreamHandler()
     handler.setFormatter(formatter)
@@ -72,5 +68,5 @@ def main() -> None:
     app.store_settings()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -3,20 +3,22 @@ import datetime
 from comet import ui
 from comet.settings import SettingsMixin
 
-__all__ = ['SummaryTab']
+__all__ = ["SummaryTab"]
+
 
 class SummaryTab(ui.Tab):
 
     def __init__(self):
         super().__init__(title="Summary")
         self.summary_tree = SummaryTree()
-        self.layout=self.summary_tree
+        self.layout = self.summary_tree
 
     def header(self):
         return self.summary_tree.header_items
 
     def append_result(self, *args):
         return self.summary_tree.append_result(*args)
+
 
 class SummaryTreeItem(ui.TreeItem):
 
@@ -35,6 +37,7 @@ class SummaryTreeItem(ui.TreeItem):
             self[5].color = "green"
         else:
             self[5].color = "red"
+
 
 class SummaryTree(ui.Tree, SettingsMixin):
 

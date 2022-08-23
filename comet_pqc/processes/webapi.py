@@ -1,22 +1,24 @@
-import logging
 import json
+import logging
 
+import analysis_pqc
 import bottle
 import comet
-import analysis_pqc
 from waitress.server import TcpWSGIServer
 
 from .. import __version__
 
-__all__ = ['WebAPIProcess']
+__all__ = ["WebAPIProcess"]
 
 logger = logging.getLogger(__name__)
+
 
 def metric(value, unit):
     """Return metric dictionary."""
     if value is None:
         return None
-    return {'value': value, 'unit': unit}
+    return {"value": value, "unit": unit}
+
 
 class WSGIServer(TcpWSGIServer):
 
@@ -35,16 +37,18 @@ class WSGIServer(TcpWSGIServer):
         self.task_dispatcher.shutdown()
         return True
 
+
 class JSONErrorBottle(bottle.Bottle):
     """Custom bollte application with default JSON error handling."""
 
     def default_error_handler(self, res):
-        bottle.response.content_type = 'application/json'
-        return json.dumps(dict(error=res.body, status_code=res.status_code))
+        bottle.response.content_type = "application/json"
+        return json.dumps({"error": res.body, "status_code": res.status_code})
+
 
 class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
-    host = 'localhost'
+    host = "localhost"
     port = 9000
     enabled = False
     server = None
@@ -56,9 +60,9 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             server.shutdown()
 
     def run(self):
-        self.enabled = self.settings.get('webapi_enabled') or type(self).enabled
-        self.host = self.settings.get('webapi_host') or type(self).host
-        self.port = int(self.settings.get('webapi_port') or type(self).port)
+        self.enabled = self.settings.get("webapi_enabled") or type(self).enabled
+        self.host = self.settings.get("webapi_host") or type(self).host
+        self.port = int(self.settings.get("webapi_port") or type(self).port)
 
         if not self.enabled:
             return
@@ -69,27 +73,27 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         # Fix Cross-Origin Request Blocked error on client side
         def apply_cors():
-            bottle.response.headers['Access-Control-Allow-Origin'] = '*'
-        app.add_hook('after_request', apply_cors)
+            bottle.response.headers["Access-Control-Allow-Origin"] = "*"
+        app.add_hook("after_request", apply_cors)
 
-        @app.route('/')
+        @app.route("/")
         def index():
             return {
-                'pqc_version': __version__,
-                'comet_version': comet.__version__,
-                'analyze_pqc_version': analysis_pqc.__version__,
+                "pqc_version": __version__,
+                "comet_version": comet.__version__,
+                "analyze_pqc_version": analysis_pqc.__version__,
             }
 
-        @app.route('/table')
+        @app.route("/table")
         def table():
             enabled = self._table_enabled()
             position = self._table_position()
             contact_quality = self._contact_quality()
             return {
-                'table': {
-                    'enabled': enabled,
-                    'position': position,
-                    'contact_quality': contact_quality
+                "table": {
+                    "enabled": enabled,
+                    "position": position,
+                    "contact_quality": contact_quality
                 }
             }
 
@@ -100,29 +104,29 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
         logger.info("stopped serving webapi")
 
     def _table_enabled(self):
-        table_process = self.processes.get('table')
+        table_process = self.processes.get("table")
         if table_process:
             return table_process.enabled
         return False
 
     def _table_position(self):
         x, y, z = None, None, None
-        table_process = self.processes.get('table')
+        table_process = self.processes.get("table")
         if table_process and table_process.running:
             if table_process.enabled:
                 x, y, z = table_process.get_cached_position()
         return {
-            'x': metric(x, 'mm'),
-            'y': metric(y, 'mm'),
-            'z': metric(z, 'mm')
+            "x": metric(x, "mm"),
+            "y": metric(y, "mm"),
+            "z": metric(z, "mm")
         }
 
     def _contact_quality(self):
         cp, rp = None, None
-        contact_quality_process = self.processes.get('contact_quality')
+        contact_quality_process = self.processes.get("contact_quality")
         if contact_quality_process and contact_quality_process.running:
             cp, rp = contact_quality_process.cached_reading()
         return {
-            'cp': metric(cp, 'F'),
-            'rp': metric(rp, 'Ohm')
+            "cp": metric(cp, "F"),
+            "rp": metric(rp, "Ohm")
         }

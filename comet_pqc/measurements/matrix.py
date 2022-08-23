@@ -1,11 +1,13 @@
 import logging
 
 from comet.driver.keithley import K707B
+
 from .measurement import Measurement
 
 __all__ = ["MatrixMeasurement"]
 
 logger = logging.getLogger(__name__)
+
 
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
@@ -14,15 +16,15 @@ class MatrixMeasurement(Measurement):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.register_parameter('matrix_enable', True, type=bool)
-        self.register_parameter('matrix_channels', [], type=list)
+        self.register_parameter("matrix_enable", True, type=bool)
+        self.register_parameter("matrix_channels", [], type=list)
 
     def before_initialize(self, **kwargs):
         """Setup matrix switch."""
         super().before_initialize(**kwargs)
-        matrix_enable = self.get_parameter('matrix_enable')
+        matrix_enable = self.get_parameter("matrix_enable")
         if matrix_enable:
-            matrix_channels = self.get_parameter('matrix_channels')
+            matrix_channels = self.get_parameter("matrix_channels")
             logger.info("Matrix close channels: %s", matrix_channels)
             try:
                 with self.resources.get("matrix") as matrix_res:
@@ -41,7 +43,7 @@ class MatrixMeasurement(Measurement):
 
     def after_finalize(self, **kwargs):
         """Reset marix switch to a save state."""
-        matrix_enable = self.get_parameter('matrix_enable')
+        matrix_enable = self.get_parameter("matrix_enable")
         if matrix_enable:
             try:
                 with self.resources.get("matrix") as matrix_res:

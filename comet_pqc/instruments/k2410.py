@@ -1,9 +1,10 @@
 from typing import Tuple
 
-from .smu import SMUInstrument
 from comet.driver.keithley import K2410
 
-__all__ = ['K2410Instrument']
+from .smu import SMUInstrument
+
+__all__ = ["K2410Instrument"]
 
 
 class K2410Instrument(SMUInstrument):
@@ -30,29 +31,28 @@ class K2410Instrument(SMUInstrument):
         return {
             True: self.OUTPUT_ON,
             False: self.OUTPUT_OFF
-        }.get(value)
+        }[value]
 
     def set_output(self, value: str) -> None:
-        value = {
+        self.context.output = {
             self.OUTPUT_ON: True,
             self.OUTPUT_OFF: False
-        }.get(value)
-        self.context.output = value
+        }[value]
 
     # Source function
 
     def get_source_function(self) -> str:
         value = self.context.source.function.mode
         return {
-            'VOLTAGE': self.SOURCE_FUNCTION_VOLTAGE,
-            'CURRENT': self.SOURCE_FUNCTION_CURRENT
-        }.get(value)
+            "VOLTAGE": self.SOURCE_FUNCTION_VOLTAGE,
+            "CURRENT": self.SOURCE_FUNCTION_CURRENT
+        }[value]
 
     def set_source_function(self, value: str) -> None:
         value = {
-            self.SOURCE_FUNCTION_VOLTAGE: 'VOLTAGE',
-            self.SOURCE_FUNCTION_CURRENT: 'CURRENT'
-        }.get(value)
+            self.SOURCE_FUNCTION_VOLTAGE: "VOLTAGE",
+            self.SOURCE_FUNCTION_CURRENT: "CURRENT"
+        }[value]
         self.context.source.function.mode = value
 
     # Source voltage
@@ -108,15 +108,15 @@ class K2410Instrument(SMUInstrument):
     def get_sense_mode(self) -> str:
         value = self.context.system.rsense
         return {
-            'ON': self.SENSE_MODE_REMOTE,
-            'OFF': self.SENSE_MODE_LOCAL
-        }.get(value)
+            "ON": self.SENSE_MODE_REMOTE,
+            "OFF": self.SENSE_MODE_LOCAL
+        }[value]
 
     def set_sense_mode(self, value: str) -> None:
         value = {
-            self.SENSE_MODE_REMOTE: 'ON',
-            self.SENSE_MODE_LOCAL: 'OFF'
-        }.get(value)
+            self.SENSE_MODE_REMOTE: "ON",
+            self.SENSE_MODE_LOCAL: "OFF"
+        }[value]
         self.context.system.rsense = value
 
     # Compliance tripped
@@ -163,15 +163,15 @@ class K2410Instrument(SMUInstrument):
     def get_filter_type(self) -> str:
         value = self.context.sense.average.tcontrol
         return {
-            'REPEAT': self.FILTER_TYPE_REPEAT,
-            'MOVING': self.FILTER_TYPE_MOVING
-        }.get(value)
+            "REPEAT": self.FILTER_TYPE_REPEAT,
+            "MOVING": self.FILTER_TYPE_MOVING
+        }[value]
 
     def set_filter_type(self, value: str) -> None:
         value = {
-            self.FILTER_TYPE_REPEAT: 'REPEAT',
-            self.FILTER_TYPE_MOVING: 'MOVING'
-        }.get(value)
+            self.FILTER_TYPE_REPEAT: "REPEAT",
+            self.FILTER_TYPE_MOVING: "MOVING"
+        }[value]
         self.context.sense.average.tcontrol = value
 
     # Terminal
@@ -179,21 +179,21 @@ class K2410Instrument(SMUInstrument):
     def get_terminal(self) -> str:
         value = self.context.route.terminals
         return {
-            'FRONT': self.TERMINAL_FRONT,
-            'REAR': self.TERMINAL_REAR
-        }.get(value)
+            "FRONT": self.TERMINAL_FRONT,
+            "REAR": self.TERMINAL_REAR
+        }[value]
 
     def set_terminal(self, value: str) -> None:
         value = {
-            self.TERMINAL_FRONT: 'FRONT',
-            self.TERMINAL_REAR: 'REAR'
-        }.get(value)
+            self.TERMINAL_FRONT: "FRONT",
+            self.TERMINAL_REAR: "REAR"
+        }[value]
         self.context.route.terminals = value
 
     # Reading
 
     def read_current(self) -> float:
-        self.context.format.elements = ['CURRENT']
+        self.context.format.elements = ["CURRENT"]
         self.context.resource.write(":SENS:FUNC:CONC ON")
         self.context.resource.query("*OPC?")
         self.context.resource.write(":SENS:FUNC:ON 'CURR'")
@@ -201,7 +201,7 @@ class K2410Instrument(SMUInstrument):
         return self.context.read()[0]
 
     def read_voltage(self) -> float:
-        self.context.format.elements = ['VOLTAGE']
+        self.context.format.elements = ["VOLTAGE"]
         self.context.resource.write(":SENS:FUNC:CONC ON")
         self.context.resource.query("*OPC?")
         self.context.resource.write(":SENS:FUNC:ON 'VOLT'")

@@ -1,9 +1,8 @@
 from typing import List
 
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
-__all__ = ['QuickEditDialog']
+__all__ = ["QuickEditDialog"]
 
 
 class QuickEditItem(QtCore.QObject):

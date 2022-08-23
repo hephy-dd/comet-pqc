@@ -2,10 +2,10 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import VSourceMixin
-from .mixins import EnvironmentMixin
+from .mixins import EnvironmentMixin, VSourceMixin
 
 __all__ = ["IVRamp4WirePanel"]
+
 
 class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
     """Panel for 4 wire IV ramp measurements."""
@@ -68,11 +68,11 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
-        ampere = comet.ureg('A')
-        volt = comet.ureg('V')
+        ampere = comet.ureg("A")
+        volt = comet.ureg("V")
 
-        self.series_transform['vsrc'] = lambda x, y: ((x * ampere).to('uA').m, (y * volt).to('V').m)
-        self.series_transform['xfit'] = self.series_transform.get('vsrc')
+        self.series_transform["vsrc"] = lambda x, y: ((x * ampere).to("uA").m, (y * volt).to("V").m)
+        self.series_transform["xfit"] = self.series_transform.get("vsrc")
 
     def mount(self, measurement):
         super().mount(measurement)

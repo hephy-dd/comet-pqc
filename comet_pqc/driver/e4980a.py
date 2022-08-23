@@ -1,9 +1,10 @@
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 from comet.driver import Driver, Property
-from comet.driver.iec60488 import IEC60488, opc_wait, lock
+from comet.driver.iec60488 import IEC60488, lock
 
-__all__ = ['E4980A']
+__all__ = ["E4980A"]
+
 
 class Bias(Driver):
 
@@ -11,12 +12,12 @@ class Bias(Driver):
 
         @property
         def level(self) -> float:
-            return float(self.resource.query(':BIAS:CURR:LEV?'))
+            return float(self.resource.query(":BIAS:CURR:LEV?"))
 
         @level.setter
-        @opc_wait
         def level(self, value: float):
-            self.resource.write(f':BIAS:CURR:LEV {value:E}')
+            self.resource.write(f":BIAS:CURR:LEV {value:E}")
+            self.resource.query("*OPC?")
 
     class Polarity(Driver):
 
@@ -24,13 +25,13 @@ class Bias(Driver):
 
             @property
             def level(self) -> float:
-                return float(self.resource.query(':BIAS:POL:CURR:LEV?'))
+                return float(self.resource.query(":BIAS:POL:CURR:LEV?"))
 
         class Voltage(Driver):
 
             @property
             def level(self) -> float:
-                return float(self.resource.query(':BIAS:POL:VOLT:LEV?'))
+                return float(self.resource.query(":BIAS:POL:VOLT:LEV?"))
 
         def __init__(self, resource):
             super().__init__(resource)
@@ -40,35 +41,35 @@ class Bias(Driver):
         @Property(values={False: 0, True: 1})
         def auto(self) -> int:
             """Returns True if automatic polarity control is enabled."""
-            return int(self.resource.query(':BIAS:POL:AUTO?'))
+            return int(self.resource.query(":BIAS:POL:AUTO?"))
 
         @auto.setter
-        @opc_wait
         def auto(self, value: int):
-            self.resource.write(f':BIAS:POL:AUTO {value:d}')
+            self.resource.write(f":BIAS:POL:AUTO {value:d}")
+            self.resource.query("*OPC?")
 
     class Range(Driver):
 
         @Property(values={False: 0, True: 1})
         def auto(self) -> int:
             """Returns True if DC bias range is set to AUTO."""
-            return int(self.resource.query(':BIAS:RANG:AUTO?'))
+            return int(self.resource.query(":BIAS:RANG:AUTO?"))
 
         @auto.setter
-        @opc_wait
         def auto(self, value: int):
-            self.resource.write(f':BIAS:RANG:AUTO {value:d}')
+            self.resource.write(f":BIAS:RANG:AUTO {value:d}")
+            self.resource.query("*OPC?")
 
     class Voltage(Driver):
 
         @property
         def level(self) -> float:
-            return float(self.resource.query(':BIAS:VOLT:LEV?'))
+            return float(self.resource.query(":BIAS:VOLT:LEV?"))
 
         @level.setter
-        @opc_wait
         def level(self, value: float):
-            self.resource.write(f':BIAS:VOLT:LEV {value:E}')
+            self.resource.write(f":BIAS:VOLT:LEV {value:E}")
+            self.resource.query("*OPC?")
 
     def __init__(self, resource):
         super().__init__(resource)
@@ -80,42 +81,44 @@ class Bias(Driver):
     @Property(values={False: 0, True: 1})
     def state(self) -> int:
         """Returns True if bias output enabled."""
-        return int(self.resource.query(':BIAS:STAT?'))
+        return int(self.resource.query(":BIAS:STAT?"))
 
     @state.setter
-    @opc_wait
     def state(self, value: int):
-        self.resource.write(f':BIAS:STAT {value:d}')
+        self.resource.write(f":BIAS:STAT {value:d}")
+        self.resource.query("*OPC?")
+
 
 class Display(Driver):
 
     def __init__(self, resource):
         super().__init__(resource)
 
-    @opc_wait
     def cclear(self):
         """Clears messages from the display."""
-        self.resource.write(':DISP:CCL')
+        self.resource.write(":DISP:CCL")
+        self.resource.query("*OPC?")
 
     @Property(values={False: 0, True: 1})
     def enable(self) -> int:
         """Enable display updates."""
-        return int(self.resource.query(':DISP:ENAB?'))
+        return int(self.resource.query(":DISP:ENAB?"))
 
     @enable.setter
-    @opc_wait
     def enable(self, value: int):
-        self.resource.write(f':DISP:ENAB {value:d}')
+        self.resource.write(f":DISP:ENAB {value:d}")
+        self.resource.query("*OPC?")
 
     @property
     def line(self) -> str:
         """Display message line, limited to 30 ASCII characters."""
-        return self.resource.query(':DISP:LINE?')
+        return self.resource.query(":DISP:LINE?")
 
     @line.setter
-    @opc_wait
     def line(self, value: str):
-        self.resource.write(f':DISP:LINE {value[:30]}')
+        self.resource.write(f":DISP:LINE {value[:30]}")
+        self.resource.query("*OPC?")
+
 
 class Fetch(Driver):
 
@@ -124,32 +127,32 @@ class Fetch(Driver):
         @lock
         def corrected(self) -> Tuple[float]:
             """Return tuple with two corrected values."""
-            result = self.resource.query(':FETC:IMP:CORR?')
-            return tuple(map(float, result.split(',')))
+            result = self.resource.query(":FETC:IMP:CORR?")
+            return tuple(map(float, result.split(",")))
 
         @lock
         def formatted(self) -> Tuple[float]:
             """Return tuple with three values."""
-            result = self.resource.query(':FETC:IMP:FORM?')
-            return tuple(map(float, result.split(',')))
+            result = self.resource.query(":FETC:IMP:FORM?")
+            return tuple(map(float, result.split(",")))
 
     class SMonitor(Driver):
 
         @property
         def iac(self) -> float:
-            return float(self.resource.query(':FETC:SMON:IAC?'))
+            return float(self.resource.query(":FETC:SMON:IAC?"))
 
         @property
         def idc(self) -> float:
-            return float(self.resource.query(':FETC:SMON:IDC?'))
+            return float(self.resource.query(":FETC:SMON:IDC?"))
 
         @property
         def vac(self) -> float:
-            return float(self.resource.query(':FETC:SMON:VAC?'))
+            return float(self.resource.query(":FETC:SMON:VAC?"))
 
         @property
         def vdc(self) -> float:
-            return float(self.resource.query(':FETC:SMON:VDC?'))
+            return float(self.resource.query(":FETC:SMON:VDC?"))
 
     def __init__(self, resource):
         super().__init__(resource)
@@ -159,20 +162,22 @@ class Fetch(Driver):
     @lock
     def __call__(self) -> Tuple[float]:
         """Return tuple with three values."""
-        result = self.resource.query(':FETC?')
-        return tuple(map(float, result.split(',')))
+        result = self.resource.query(":FETC?")
+        return tuple(map(float, result.split(",")))
+
 
 class Frequency(Driver):
 
     @property
     def cw(self) -> float:
         """Frequency for measurement."""
-        return float(self.resource.query(':FREQ:CW?'))
+        return float(self.resource.query(":FREQ:CW?"))
 
     @cw.setter
-    @opc_wait
     def cw(self, value: float):
-        self.resource.write(f':FREQ:CW {value:d}')
+        self.resource.write(f":FREQ:CW {value:d}")
+        self.resource.query("*OPC?")
+
 
 class System(Driver):
 
@@ -180,12 +185,12 @@ class System(Driver):
 
         @Property(values={False: 0, True: 1})
         def state(self) -> int:
-            return int(self.resource.query(':SYST:BEEP:STAT?'))
+            return int(self.resource.query(":SYST:BEEP:STAT?"))
 
         @state.setter
-        @opc_wait
         def state(self, value: int):
-            self.resource.write(f':SYST:BEEP:STAT {value:d}')
+            self.resource.write(f":SYST:BEEP:STAT {value:d}")
+            self.resource.query("*OPC?")
 
     @property
     def error(self) -> Tuple[int, str]:
@@ -193,12 +198,13 @@ class System(Driver):
         >>> system.error
         (0, "No error")
         """
-        result = self.resource.query(':SYST:ERR?').split(',')
-        return int(result[0]), result[1].strip().strip('"')
+        result = self.resource.query(":SYST:ERR?").split(",")
+        return int(result[0]), result[1].strip().strip("\"")
 
     def __init__(self, resource):
         super().__init__(resource)
         self.beeper = self.Beeper(resource)
+
 
 class E4980A(IEC60488):
     """Keysignt E4980A Precision LCR Meter."""

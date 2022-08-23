@@ -1,13 +1,13 @@
 from comet import ui
 from comet.settings import SettingsMixin
 
-from .panel import BasicPanel
 from .. import config
-from ..utils import make_path
-from ..utils import handle_exception
 from ..sequence import SequenceManager
+from ..utils import handle_exception, make_path
+from .panel import BasicPanel
 
 __all__ = ["SamplePanel"]
+
 
 class SamplePanel(BasicPanel, SettingsMixin):
 
@@ -56,12 +56,12 @@ class SamplePanel(BasicPanel, SettingsMixin):
             editing_finished=self.on_sample_comment_edited
         )
         self._reload_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'reload.svg'),
+            icon=make_path("assets", "icons", "reload.svg"),
             tool_tip="Reload sequence configuration from file.",
             clicked=self.on_reload_clicked
         )
         self._sequence_manager_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'gear.svg'),
+            icon=make_path("assets", "icons", "gear.svg"),
             tool_tip="Open sequence manager",
             clicked=self.on_sequence_manager_clicked
         )

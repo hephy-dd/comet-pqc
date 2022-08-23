@@ -3,24 +3,29 @@ import os
 
 from comet import ui
 from comet.settings import SettingsMixin
-
-from .settings import settings
-from .position import Position
-from .utils import user_home, make_path, create_icon
-from .utils import format_table_unit
-from .utils import getcal, getrm
-
 from qutie.qutie import Qt
 
+from .position import Position
+from .settings import settings
+from .utils import (
+    create_icon,
+    format_table_unit,
+    getcal,
+    getrm,
+    make_path,
+    user_home,
+)
+
 __all__ = [
-    'ToggleButton',
-    'PositionLabel',
-    'CalibrationLabel',
-    'CalibrationWidget',
-    'DirectoryWidget',
-    'OperatorComboBox',
-    'PositionsComboBox'
+    "ToggleButton",
+    "PositionLabel",
+    "CalibrationLabel",
+    "CalibrationWidget",
+    "DirectoryWidget",
+    "OperatorComboBox",
+    "PositionsComboBox"
 ]
+
 
 class ToggleButton(ui.Button):
     """Colored checkable button."""
@@ -33,6 +38,7 @@ class ToggleButton(ui.Button):
 
     def on_toggle_color(self, state):
         self.icon = self.icons[state]
+
 
 class PositionLabel(ui.Label):
 
@@ -49,9 +55,10 @@ class PositionLabel(ui.Label):
     def value(self, value):
         self.__value = value
         if value is None:
-            self.text = format(float('nan'))
+            self.text = format(float("nan"))
         else:
             self.text = format_table_unit(value)
+
 
 class PositionWidget(ui.GroupBox):
 
@@ -92,6 +99,7 @@ class PositionWidget(ui.GroupBox):
         self._pos_y_label.value = position.y
         self._pos_z_label.value = position.z
 
+
 class CalibrationLabel(ui.Label):
 
     def __init__(self, prefix, value=None):
@@ -105,12 +113,13 @@ class CalibrationLabel(ui.Label):
 
     @value.setter
     def value(self, value):
-        self._value = value or float('nan')
+        self._value = value or float("nan")
         self.text = f"{self.prefix} {self._value}"
         if math.isnan(self._value) or not self._value:
             self.qt.setStyleSheet("QLabel:enabled{color:red}")
         else:
             self.qt.setStyleSheet("QLabel:enabled{color:green}")
+
 
 class CalibrationWidget(ui.GroupBox):
 
@@ -168,6 +177,7 @@ class CalibrationWidget(ui.GroupBox):
         self._rm_y_label.value = getrm(position.y)
         self._rm_z_label.value = getrm(position.z)
 
+
 class DirectoryWidget(ui.Row):
 
     def __init__(self, *args, **kwargs):
@@ -179,12 +189,12 @@ class DirectoryWidget(ui.Row):
         )
         self.location_combo_box.duplicates_enabled = False
         self.select_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'search.svg'),
+            icon=make_path("assets", "icons", "search.svg"),
             tool_tip="Select a directory.",
             clicked=self.on_select_clicked
         )
         self.remove_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'delete.svg'),
+            icon=make_path("assets", "icons", "delete.svg"),
             tool_tip="Remove directory from list.",
             clicked=self.on_remove_clicked
         )
@@ -241,7 +251,7 @@ class DirectoryWidget(ui.Row):
             if index >= 0:
                 if ui.show_question(
                     title="Remove directory",
-                    text=f"Do you want to remove directory '{self.location_combo_box.qt.currentText()}' from the list?"
+                    text=f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
                 ):
                     self.location_combo_box.qt.removeItem(index)
 
@@ -254,6 +264,7 @@ class DirectoryWidget(ui.Row):
         if current_text:
             self.location_combo_box.qt.insertItem(0, current_text)
             self.location_combo_box.qt.setCurrentIndex(0)
+
 
 class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
 
@@ -271,6 +282,7 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
         self.update_locations()
         settings.output_path = self.locations
         settings.current_output_path = self.location_combo_box.current
+
 
 class OperatorComboBox(ui.ComboBox, SettingsMixin):
 
@@ -291,18 +303,19 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
             operators.append(self.qt.itemText(index))
         settings.operators = operators
 
+
 class OperatorWidget(ui.Row, SettingsMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.operator_combo_box = OperatorComboBox()
         self.add_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'add.svg'),
+            icon=make_path("assets", "icons", "add.svg"),
             tool_tip="Add new operator.",
             clicked=self.on_add_clicked
         )
         self.remove_button = ui.ToolButton(
-            icon=make_path('assets', 'icons', 'delete.svg'),
+            icon=make_path("assets", "icons", "delete.svg"),
             tool_tip="Remove current operator from list.",
             clicked=self.on_remove_clicked
         )
@@ -326,7 +339,7 @@ class OperatorWidget(ui.Row, SettingsMixin):
         if index >= 0:
             if ui.show_question(
                 title="Remove operator",
-                text=f"Do you want to remove operator '{self.operator_combo_box.qt.currentText()}' from the list?"
+                text=f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
             ):
                 self.operator_combo_box.qt.removeItem(index)
 
@@ -336,7 +349,6 @@ class OperatorWidget(ui.Row, SettingsMixin):
     def store_settings(self):
         self.operator_combo_box.store_settings()
 
-# Table components
 
 class PositionsComboBox(ui.ComboBox, SettingsMixin):
 
@@ -344,10 +356,10 @@ class PositionsComboBox(ui.ComboBox, SettingsMixin):
         self.clear()
         for position in settings.table_positions:
             self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
-        index = self.settings.get('current_table_position') or 0
+        index = self.settings.get("current_table_position") or 0
         if 0 <= index < len(self):
             self.current = self[index]
 
     def store_settings(self):
         index = self.index(self.current or 0)
-        self.settings['current_table_position'] = index
+        self.settings["current_table_position"] = index

@@ -1,36 +1,37 @@
 import logging
 import math
+import os
 import time
 import traceback
-import os
-
-import pyvisa
 
 import comet
-from comet.resource import ResourceMixin, ResourceError
-from comet.process import ProcessMixin
+import pyvisa
 from comet.driver.keithley import K707B
+from comet.process import ProcessMixin
+from comet.resource import ResourceError, ResourceMixin
 
-from ..measurements.measurement import ComplianceError
 from ..measurements import measurement_factory
+from ..measurements.measurement import ComplianceError
 from ..measurements.mixins import AnalysisError
+from ..sequence import (
+    ContactTreeItem,
+    MeasurementTreeItem,
+    SamplesItem,
+    SampleTreeItem,
+)
 from ..settings import settings
 from ..utils import format_metric
 
-from ..sequence import MeasurementTreeItem
-from ..sequence import ContactTreeItem
-from ..sequence import SampleTreeItem
-from ..sequence import SamplesItem
-
-__all__ = ['MeasureProcess']
+__all__ = ["MeasureProcess"]
 
 logger = logging.getLogger(__name__)
+
 
 class LogFileHandler:
     """Context manager for log files."""
 
-    Format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
-    DateFormat = '%Y-%m-%dT%H:%M:%S'
+    Format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s"
+    DateFormat = "%Y-%m-%dT%H:%M:%S"
 
     def __init__(self, filename=None):
         self.__filename = filename
@@ -61,11 +62,12 @@ class LogFileHandler:
             self.__logger.removeHandler(self.__handler)
         return False
 
+
 class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
-    def create_filename(self, measurement, suffix=''):
+    def create_filename(self, measurement, suffix=""):
         filename = comet.safe_filename(f"{measurement.basename}{suffix}")
-        return os.path.join(self.get('output_dir'), measurement.sample_name, filename)
+        return os.path.join(self.get("output_dir"), measurement.sample_name, filename)
 
     def safe_initialize_hvsrc(self, resource):
         context = settings.hvsrc_instrument(resource)
@@ -160,6 +162,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         except Exception:
             logger.error("unable to connect with environment box (test LED OFF)")
 
+
 class MeasureProcess(BaseProcess):
     """Measure process executing a samples, contacts and measurements."""
 
@@ -189,11 +192,13 @@ class MeasureProcess(BaseProcess):
             logger.info("Safe move table to %s", position)
             self.emit("message", "Moving table...")
             self.set("movement_finished", False)
+
             def absolute_move_finished():
                 table_process.absolute_move_finished = None
                 self.set("table_position", table_process.get_cached_position())
                 self.set("movement_finished", True)
                 self.emit("message", "Moving table... done.")
+
             table_process.absolute_move_finished = absolute_move_finished
             table_process.safe_absolute_move(*position)
             while not self.get("movement_finished"):
@@ -238,12 +243,12 @@ class MeasureProcess(BaseProcess):
             tags=tags
         )
         measurement.measurement_item = measurement_item
-        log_filename = self.create_filename(measurement, suffix='.log') if write_logfiles else None
-        plot_filename = self.create_filename(measurement, suffix='.png')
+        log_filename = self.create_filename(measurement, suffix=".log") if write_logfiles else None
+        plot_filename = self.create_filename(measurement, suffix=".png")
         state = measurement_item.ActiveState
         self.emit(self.measurement_reset, measurement_item)
         self.emit(self.measurement_state, measurement_item, state)
-        self.emit('show_measurement', measurement_item)
+        self.emit("show_measurement", measurement_item)
         with LogFileHandler(log_filename):
             try:
                 measurement.run()
@@ -264,7 +269,7 @@ class MeasureProcess(BaseProcess):
                 self.emit("message", "Process... analysis failed.")
                 state = measurement_item.AnalysisErrorState
                 raise
-            except Exception as e:
+            except Exception:
                 self.emit("message", "Process... failed.")
                 state = measurement_item.ErrorState
                 raise
@@ -277,13 +282,13 @@ class MeasureProcess(BaseProcess):
             finally:
                 self.emit(self.measurement_state, measurement_item, state)
                 self.emit("save_to_image", measurement_item, plot_filename)
-                self.emit('push_summary', measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
+                self.emit("push_summary", measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
                 if self.get("serialize_json"):
-                    with open(self.create_filename(measurement, suffix='.json'), 'w') as fp:
+                    with open(self.create_filename(measurement, suffix=".json"), "w") as fp:
                         measurement.serialize_json(fp)
                 if self.get("serialize_txt"):
                     # See https://docs.python.org/3/library/csv.html#csv.DictWriter
-                    with open(self.create_filename(measurement, suffix='.txt'), 'w', newline='') as fp:
+                    with open(self.create_filename(measurement, suffix=".txt"), "w", newline="") as fp:
                         measurement.serialize_txt(fp)
 
     def process_contact(self, contact_item):
@@ -317,10 +322,9 @@ class MeasureProcess(BaseProcess):
                     contact_delay_step = contact_delay / 25.
                     contact_delay_steps = int(math.ceil(contact_delay / contact_delay_step))
                     for step in range(contact_delay_steps):
-                        self.emit("message", f"Applying contact delay of {format_metric(contact_delay, unit='s', decimals=1)}...")
+                        self.emit("message", "Applying contact delay of {}...".format(format_metric(contact_delay, unit="s", decimals=1)))
                         self.emit("progress", step + 1, contact_delay_steps)
                         time.sleep(contact_delay_step)
-            table_position = self.get("table_position")
             # Auto retry measurement
             for retry_measurement in range(retry_measurement_count + 1):
                 self.emit(self.measurement_state, contact_item, contact_item.ProcessingState)
@@ -348,7 +352,7 @@ class MeasureProcess(BaseProcess):
                 self.emit(self.measurement_state, measurement_item, measurement_item.StoppedState)
                 break
             if prev_measurement_item:
-                self.emit('hide_measurement', prev_measurement_item)
+                self.emit("hide_measurement", prev_measurement_item)
             try:
                 self.process_measurement(measurement_item)
             except Exception as exc:
@@ -360,7 +364,7 @@ class MeasureProcess(BaseProcess):
                     failed_measurements.append(measurement_item)
             prev_measurement_item = measurement_item
         if prev_measurement_item:
-            self.emit('hide_measurement', prev_measurement_item)
+            self.emit("hide_measurement", prev_measurement_item)
         return failed_measurements
 
     def process_sample(self, sample_item):

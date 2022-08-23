@@ -1,15 +1,14 @@
 import datetime
 import logging
 import math
-import threading
 import os
-
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+import threading
 
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
-__all__ = ['LogWidget']
+__all__ = ["LogWidget"]
+
 
 class LogHandler(logging.Handler):
 
@@ -18,7 +17,8 @@ class LogHandler(logging.Handler):
         self.context = context
 
     def emit(self, record):
-        self.context.emit('message', record)
+        self.context.emit("message", record)
+
 
 class LogItem(ui.TreeItem):
 
@@ -52,10 +52,11 @@ class LogItem(ui.TreeItem):
         if not math.isfinite(seconds):
             seconds = 0
         dt = datetime.datetime.fromtimestamp(seconds)
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     def __str__(self):
         return "\t".join((self[self.TimeColumn].value, self[self.LevelColumn].value, self[self.MessageColumn].value))
+
 
 class LogWidget(ui.Tree):
 
@@ -104,14 +105,14 @@ class LogWidget(ui.Tree):
     def add_logger(self, logger):
         """Add logger to log window.
 
-        >>> window.add_logger(logging.getLogger('root'))
+        >>> window.add_logger(logging.getLogger("root"))
         """
         logger.addHandler(self.handler)
 
     def remove_logger(self, logger):
         """Remove logger from log window.
 
-        >>> window.remove_logger(logging.getLogger('root'))
+        >>> window.remove_logger(logging.getLogger("root"))
         """
         logger.removeHandler(self.handler)
 

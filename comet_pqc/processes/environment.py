@@ -1,9 +1,13 @@
 import logging
 
 from comet.driver.hephy import EnvironmentBox
+
 from .resource import ResourceProcess, async_request
 
+__all__ = ["EnvironmentProcess"]
+
 logger = logging.getLogger(__name__)
+
 
 class EnvironmentProcess(ResourceProcess):
 
@@ -16,7 +20,7 @@ class EnvironmentProcess(ResourceProcess):
     @async_request
     def request_pc_data(self, context):
         pc_data = context.pc_data
-        self.emit('pc_data_updated', pc_data)
+        self.emit("pc_data_updated", pc_data)
 
     def pc_data(self):
         def request(context):
@@ -45,6 +49,7 @@ class EnvironmentProcess(ResourceProcess):
 
     def discharge(self):
         logger.info("Discharge Decoupling Box...")
+
         def request(context):
             context.discharge()
         return self.request(request)

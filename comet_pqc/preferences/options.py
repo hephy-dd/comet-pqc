@@ -1,12 +1,10 @@
-from qutie.qutie import QtCore
-from qutie.qutie import QtWidgets
-
 from comet import ui
 from comet.ui.preferences import PreferencesTab
+from qutie.qutie import QtCore, QtWidgets
 
 from ..settings import settings
 
-__all__ = ['OptionsTab']
+__all__ = ["OptionsTab"]
 
 
 class OptionsTab(PreferencesTab):

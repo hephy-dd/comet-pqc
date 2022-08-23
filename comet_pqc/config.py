@@ -2,54 +2,58 @@ import copy
 import glob
 import os
 import re
-
-import jsonschema
-import yaml
-import pint.errors
+from typing import Any, Dict, Iterable, List, Tuple
 
 import comet
+import jsonschema
+import pint.errors
+import yaml
 
-from .utils import make_path
 from .position import Position
+from .utils import make_path
 
 __all__ = [
-    'load_config',
-    'load_chuck',
-    'load_sample',
-    'load_sequence',
-    'list_configs'
+    "load_config",
+    "load_chuck",
+    "load_sample",
+    "load_sequence",
+    "list_configs"
 ]
 
-ASSETS_DIR = make_path('assets')
-SCHEMA_DIR = os.path.join(ASSETS_DIR, 'schema')
-CONFIG_DIR = os.path.join(ASSETS_DIR, 'config')
-CHUCK_DIR = os.path.join(CONFIG_DIR, 'chuck')
-SAMPLE_DIR = os.path.join(CONFIG_DIR, 'sample')
-SEQUENCE_DIR = os.path.join(CONFIG_DIR, 'sequence')
+ASSETS_DIR: str = make_path("assets")
+SCHEMA_DIR: str = os.path.join(ASSETS_DIR, "schema")
+CONFIG_DIR: str = os.path.join(ASSETS_DIR, "config")
+CHUCK_DIR: str = os.path.join(CONFIG_DIR, "chuck")
+SAMPLE_DIR: str = os.path.join(CONFIG_DIR, "sample")
+SEQUENCE_DIR: str = os.path.join(CONFIG_DIR, "sequence")
 
-def make_id(name):
+
+def make_id(name: str) -> str:
     """Construct a mixed case ID string without special characters from name.
 
-    >>> make_id('Nobody, expects THE (spanish) inquisition!')
+    >>> make_id("Nobody, expects THE (spanish) inquisition!")
     'Nobody_expects_THE_spanish_inquisition_'
     """
-    return re.sub(r'[^\w\-]+', '_', name.strip()).strip('_')
+    return re.sub(r"[^\w\-]+", "_", name.strip()).strip("_")
 
-def load_schema(name):
+
+def load_schema(name: str) -> dict:
     """Loads a YAML validation schema from the schema directory.
 
     >>> load_schema("sample")
     {...}
     """
-    with open(os.path.join(SCHEMA_DIR, f'{name}.yaml')) as f:
+    with open(os.path.join(SCHEMA_DIR, f"{name}.yaml")) as f:
         return yaml.safe_load(f.read())
 
-def validate_config(data, schema):
+
+def validate_config(data: dict, schema: str) -> None:
     """Validate config data using schema name."""
     schema_data = load_schema(schema)
     jsonschema.validate(data, schema_data)
 
-def load_config(filename, schema=None):
+
+def load_config(filename: str, schema: str = None) -> dict:
     """Loads a YAML configuration file and optionally validates the content
     using the provided schema.
 
@@ -62,32 +66,36 @@ def load_config(filename, schema=None):
         validate_config(config_data, schema)
     return config_data
 
-def load_chuck(filename):
+
+def load_chuck(filename: str) -> "Chuck":
     """Returns a chuck configuration object, provided for convenience.
 
     >>> load_chuck("chuck.yaml")
     <Chuck ...>
     """
-    return Chuck(**load_config(filename, schema='chuck'), filename=filename)
+    return Chuck(**load_config(filename, schema="chuck"), filename=filename)
 
-def load_sample(filename):
+
+def load_sample(filename: str) -> "Sample":
     """Returns a sample configuration object, provided for convenience.
 
     >>> load_chuck("sample.yaml")
     <Sample ...>
     """
-    return Sample(**load_config(filename, schema='sample'), filename=filename)
+    return Sample(**load_config(filename, schema="sample"), filename=filename)
 
-def load_sequence(filename):
+
+def load_sequence(filename: str) -> "Sequence":
     """Returns a measurement sequence configuration object, provided for
     convenience.
 
     >>> load_sequence("sequence.yaml")
     <Sequence ...>
     """
-    return Sequence(**load_config(filename, schema='sequence'), filename=filename)
+    return Sequence(**load_config(filename, schema="sequence"), filename=filename)
 
-def list_configs(directory):
+
+def list_configs(directory: str) -> List[Tuple[str, str]]:
     """Retruns list of located configuration files as tuples containing
     configuration name and filename.
 
@@ -95,110 +103,117 @@ def list_configs(directory):
     [('Default HMW N', 'config/sample/default_hmw_n.yaml')]
     """
     items = []
-    for filename in glob.glob(os.path.join(directory, '*.yaml')):
+    for filename in glob.glob(os.path.join(directory, "*.yaml")):
         data = load_config(filename)
-        items.append((data.get('name'), filename))
+        items.append((data.get("name", ""), filename))
     return items
+
 
 class Chuck:
     """Chuck configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", positions=None, filename=None):
-        self.id = id
-        self.name = name
-        self.enabled = enabled
-        self.description = description
-        self.positions = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions or []))
-        self.filename = filename
+    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, positions: List = None, filename: str = None) -> None:
+        self.id: str = id
+        self.name: str = name
+        self.enabled: bool = enabled
+        self.description: str = description or ""
+        self.positions: List = list(map(lambda kwargs: ChuckSamplePosition(**kwargs), positions or []))
+        self.filename: str = filename or ""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
+
 
 class ChuckSamplePosition:
     """Chuck sample position."""
 
-    def __init__(self, id, name, pos, enabled=True, description=""):
-        self.id = id
-        self.name = name
-        self.pos = Position(**pos)
-        self.enabled = enabled
-        self.description = description
+    def __init__(self, id: str, name: str, pos, enabled: bool = True, description: str = None):
+        self.id: str = id
+        self.name: str = name
+        self.pos: Position = Position(**pos)
+        self.enabled: bool = enabled
+        self.description: str = description or ""
+
 
 class Sample:
     """Silicon sample."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=None, filename=None):
-        self.id = id
-        self.name = name
-        self.enabled = enabled
-        self.description = description
-        self.contacts = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
-        self.filename = filename
+    def __init__(self, id: str, name: str, enabled=True, description="", contacts=None, filename=None):
+        self.id: str = id
+        self.name: str = name
+        self.enabled: bool = enabled
+        self.description: str = description
+        self.contacts: List = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
+        self.filename: str = filename or ""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
+
 
 class SampleContact:
     """Sample contact geometry."""
 
-    def __init__(self, id, name, pos, type=None, enabled=True, description=""):
-        self.id = id
-        self.name = name
-        self.type = type
-        self.enabled = enabled
-        self.pos = Position(**pos)
-        self.description = description
+    def __init__(self, id: str, name: str, pos, type: str = None, enabled: bool = True, description: str = None):
+        self.id: str = id
+        self.name: str = name
+        self.type: str = type or ""
+        self.enabled: bool = enabled
+        self.pos: Position = Position(**pos)
+        self.description: str = description or ""
+
 
 class Sequence:
     """Sequence configuration."""
 
-    def __init__(self, id, name, enabled=True, description="", contacts=None, filename=None):
-        self.id = id
-        self.name = name
-        self.enabled = enabled
-        self.description = description
-        self.contacts = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
-        self.filename = filename
+    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, contacts: List = None, filename: str = None):
+        self.id: str = id
+        self.name: str = name
+        self.enabled: bool = enabled
+        self.description: str = description or ""
+        self.contacts: List = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
+        self.filename: str = filename or ""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable:
         return iter(self.contacts)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.contacts)
+
 
 class SequenceContact:
     """Sequence contact point."""
 
-    def __init__(self, name, contact_id, id=None, enabled=True, description="", measurements=None):
-        self.id = id or make_id(name)
-        self.name = name
-        self.contact_id = contact_id
-        self.enabled = enabled
-        self.description = description
-        self.measurements = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements or []))
+    def __init__(self, name: str, contact_id: str, id: str = None, enabled: bool = True, description: str = None, measurements: List = None):
+        self.id: str = id or make_id(name)
+        self.name: str = name
+        self.contact_id: str = contact_id
+        self.enabled: bool = enabled
+        self.description: str = description or ""
+        self.measurements: List = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements or []))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable:
         return iter(self.measurements)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.measurements)
+
 
 class SequenceMeasurement:
     """Sequence measurement configuration."""
 
     key_ignorelist = ["matrix_enable", "matrix_channels", "analyze_function"]
 
-    def __init__(self, name, type, id=None, enabled=True, tags=None, description="", parameters=None):
-        self.id = id or make_id(name)
-        self.name = name
-        self.type = type
-        self.enabled = enabled
-        self.tags = list(map(format, tags or []))
-        self.description = description
-        self.parameters = {}
+    def __init__(self, name: str, type: str, id: str = None, enabled: bool = True, tags: List = None, description: str = None, parameters: Dict = None):
+        self.id: str = id or make_id(name)
+        self.name: str = name
+        self.type: str = type
+        self.enabled: bool = enabled
+        self.tags: List = list(map(format, tags or []))
+        self.description: str = description or ""
+        self.parameters: Dict = {}
         for key, value in (parameters or {}).items():
             if key not in self.key_ignorelist:
                 if isinstance(value, str):
@@ -211,7 +226,7 @@ class SequenceMeasurement:
         self.default_parameters = copy.deepcopy(self.parameters)
 
     @classmethod
-    def to_quantity(cls, value):
+    def to_quantity(cls, value: Any) -> Any:
         """Auto convert to quantity for Pint units."""
         try:
             return comet.ureg(value)

@@ -1,24 +1,23 @@
 import datetime
-import logging
-import time
 import json
+import logging
 import math
+import time
 import uuid
 
-import numpy as np
-
 import analysis_pqc
-
 import comet
-from comet.resource import ResourceMixin
+import numpy as np
 from comet.process import ProcessMixin
+from comet.resource import ResourceMixin
 
 from .. import __version__
 from ..formatter import PQCFormatter
 
-__all__ = ['Measurement']
+__all__ = ["Measurement"]
 
 logger = logging.getLogger(__name__)
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -26,11 +25,14 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
+
 class ComplianceError(ValueError):
     """Compliance tripped error."""
 
+
 class InstrumentError(RuntimeError):
     """Generic instrument error."""
+
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""
@@ -39,20 +41,22 @@ def format_estimate(est):
     average = datetime.timedelta(seconds=round(est.average.total_seconds()))
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
+
 def annotate_step(name):
     def annotate_step(method):
         def annotate_step(self, *args, **kwargs):
-            logger.info(f"%s %s...", name, self.type)
+            logger.info("%s %s...", name, self.type)
             try:
                 method(self, *args, **kwargs)
             except Exception as exc:
                 logger.error(exc)
-                logger.error(f"%s %s... failed.", name, self.type)
+                logger.error("%s %s... failed.", name, self.type)
                 raise
             else:
-                logger.info(f"%s %s... done.", name, self.type)
+                logger.info("%s %s... done.", name, self.type)
         return annotate_step
     return annotate_step
+
 
 class ParameterType:
 
@@ -64,10 +68,11 @@ class ParameterType:
         self.type = type
         self.required = required
 
+
 class Measurement(ResourceMixin, ProcessMixin):
     """Base measurement class."""
 
-    type = NotImplemented
+    type: str = ""
 
     measurement_item = None # HACK
 
@@ -198,8 +203,8 @@ class Measurement(ResourceMixin, ProcessMixin):
         fmt = PQCFormatter(fp)
         # Write meta data
         for key, value in meta.items():
-            if key == 'measurement_tags':
-                value = ', '.join([tag for tag in value if tag])
+            if key == "measurement_tags":
+                value = ", ".join([tag for tag in value if tag])
             fmt.write_meta(key, value)
         # Create columns
         columns = list(series.keys())
@@ -258,25 +263,25 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("analysis_pqc_version", analysis_pqc.__version__)
 
     def initialize(self, **kwargs):
-        pass
+        ...
 
     def after_initialize(self, **kwargs):
-        pass
+        ...
 
     def measure(self, **kwargs):
-        pass
+        ...
 
     def before_finalize(self, **kwargs):
-        pass
+        ...
 
     def finalize(self, **kwargs):
-        pass
+        ...
 
     def after_finalize(self, **kwargs):
-        pass
+        ...
 
     def analyze(self, **kwargs):
-        pass
+        ...
 
     def run(self, **kwargs):
         """Run measurement."""
