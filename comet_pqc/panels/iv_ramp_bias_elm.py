@@ -114,7 +114,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
                 for x, y in points:
-                    self.plot.series.get(name).append(x, y)
+                    self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
 
     def append_reading(self, name, x, y):

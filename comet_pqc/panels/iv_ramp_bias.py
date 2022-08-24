@@ -93,7 +93,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
 
-        self.series_transform["vsrc"] = lambda x, y: ((x * ampere).to("uA").m, (y * volt).to("V").m)
+        self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
         self.series_transform["xfit"] = self.series_transform.get("vsrc")
 
     def mount(self, measurement):

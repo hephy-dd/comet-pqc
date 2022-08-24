@@ -464,7 +464,7 @@ class EnvironmentMixin:
 
         def handler(state):
             if "env_chuck_temperature" in state:
-                value = state.get("env_chuck_temperature",)
+                value = state.get("env_chuck_temperature")
                 self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
             if "env_box_temperature" in state:
                 value = state.get("env_box_temperature")
