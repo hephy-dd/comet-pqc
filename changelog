@@ -6,9 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.42.0] - 2022-07-11
+## [0.42.0] - 2022-08-24
 ### Added
 - Command line arguments for debug mode and custom logfile.
+
+### Changed
+- Code formatting for improved compliance with PEP8.
+- Migrated unittest to pytest.
+
+### Fixed
+- Issues with slow environment box responses (#).
 
 ## [0.41.1] - 2021-11-15
 ### Fixed
@@ -17,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.41.0] - 2021-11-11
 ### Added
 - Added support for Keithley 2470 instruments (#173).
+
 ### Changed
 - Migrated to analysis-pqc version 0.3.1 (#179).
 
@@ -33,8 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.0] - 2021-09-08
 ### Added
 - Reset contact quality graph on X/Y movements option (#166).
+
 ### Changed
 - Moved table dodge input to dialog options (#167).
+
 ### Fixed
 - Crashes caused by environment plot (#170).
 
@@ -90,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Writing to a rotating main log file (#141).
 - Tags for measurement configuration and output data (#143).
+
 ### Changed
 - Migrated to analysis-pqc version 0.2.0 (#140).
 
@@ -103,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accept compliance measurement options (#132).
 - Limits for analysis results (#133).
 - Step up function for table control (#135).
+
 ### Changed
 - Optimized measurement waiting time (#134).
 - Enable matrix at default (#136).
@@ -117,12 +129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restricted limits for joystick use (#123).
 - Show points in plot line series (#124).
 - Disable table controls if not calibrated (#125).
+
 ### Changed
 - Move position assignment into edit dialog (#126).
 
 ## [0.29.2] - 2021-02-23
 ### Changed
 - Migration to comet 0.13.1 (#121).
+
 ### Fixed
 - Prevent table collision while calibrating (#119).
 - Collapse sequence tree items (#120).
@@ -147,9 +161,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.27.0] - 2021-01-05
 ### Added
-- Start sequence dialog (#74)
+- Start sequence dialog (#74).
+
 ### Fixed
-- Table error 1004 issue (#53)
+- Table error 1004 issue (#53).
 
 ## [0.26.0] - 2020-10-28
 ### Added
@@ -169,6 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Laser sensor state in table control dialog (#71).
 - Improved logging and exception forwarding (#96).
+
 ### Fixed
 - Persistent dialog size for HiDPI monitors (#97).
 
@@ -187,12 +203,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CV ramp measurement using only LCR (#79).
 - HV source range parameter (#80).
 - Analyze measurement data using `analysis-pqc` (#83).
+
 ### Fixed
 - Sequence double click issue while running (#81).
 
 ## [0.24.3] - 2020-10-07
 ### Added
 - Software version to measurement meta data (#89).
+
 ### Fixed
 - Missing package data in setup.py (#90)
 
@@ -203,8 +221,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.24.1] - 2020-09-28
 ### Added
 - Table position to measurement meta data (#86).
+
 ### Fixed
 - Newline issue with CSV writer (#85).
+
 ### Removed
 - Laser sensor state from table control dialog (#71).
 
@@ -254,6 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.21.0] - 2020-08-10
 ### Added
 - Configuration attribute `id` for connections and measurements (#36).
+
 ### Changed
 - Measurement data filename schema (#45).
 - Keeping previous measurement states when running a sequence (#46).
@@ -269,10 +290,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment process (#12).
 - Additional measurement states (#35).
 - Reset sequence tree on sample name changes (#37).
+
 ### Changed
 - Environment access using a process.
 - Resized dialogs for table HiDPI screens (#32).
 - Simplified output directory structure (#39).
+
 ### Fixed
 - Sequence execution (#3)
 - Timeouts while reading from electrometer (#40).
@@ -304,9 +327,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Table move dialog and process.
 - Metric widget for numeric unit inputs.
 - Property `passed` to Estimate class.
+
 ### Changed
 - Moved config and schema to assets directory.
 - Updated default matrix channel configurations.
+
 ### Fixed
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).

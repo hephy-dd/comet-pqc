@@ -9,7 +9,6 @@ import comet
 from comet import ui
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
-from qutie import Timer
 
 from . import config
 from .components import (
@@ -520,8 +519,6 @@ class EnvironmentControlWidget(ui.GroupBox):
 
 class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
-    environment_poll_interval = 1.0
-
     sample_count = 4
 
     message_changed = None
@@ -669,10 +666,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.contact_quality_process = self.processes.get("contact_quality")
 
         # Experimental
-
-        # Install timer to update environment controls
-        self.environment_timer = Timer(timeout=self.sync_environment_controls)
-        self.environment_timer.start(self.environment_poll_interval)
 
         self.close_event = self.on_stop
 

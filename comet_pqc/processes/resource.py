@@ -27,7 +27,9 @@ class ResourceProcess(Process, ResourceMixin):
 
     Driver = DefaultDriver
 
-    throttle_time = 0.001
+    throttle_time: float = 0.001
+
+    update_monitoring_interval: float = 1.0
 
     def __init__(self, name: str, enabled: bool = True, **kwargs):
         super().__init__(**kwargs)
@@ -50,22 +52,19 @@ class ResourceProcess(Process, ResourceMixin):
         with self._lock:
             if not self.enabled:
                 raise RuntimeError("service not enabled")
-            r = Request(callback)
-            self._queue.put(r)
+            request = Request(callback)
+            self._queue.put_nowait(request)
+            return request
 
-    def request(self, callback):
-        with self._lock:
-            if not self.enabled:
-                raise RuntimeError("service not enabled")
-            r = Request(callback)
-            self._queue.put(r)
-            return r.get()
+    def update_monitoring(self):
+        ...
 
     def serve(self):
         logger.info("start serving %s", self.name)
         try:
             with self.resources.get(self.name) as resource:
                 driver = type(self).Driver(resource)
+                t = Timer()
                 while True:
                     if not self.running:
                         break
@@ -80,6 +79,10 @@ class ResourceProcess(Process, ResourceMixin):
                             request(driver)
                         finally:
                             self._queue.task_done()
+                    # Update monitoring in periodic intervals
+                    if t.delta() >= self.update_monitoring_interval:
+                        self.update_monitoring()
+                        t.reset()
         finally:
             logger.info("stopped serving %s", self.name)
 
