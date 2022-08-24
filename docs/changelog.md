@@ -7,6 +7,19 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.42.0
+
+### Added
+- Command line arguments for debug mode and custom logfile.
+
+### Changed
+- Code formatting for improved compliance with PEP8.
+- Migrated unittest to pytest.
+
+### Fixed
+- Plot axis not scaled to when inspecting measurement.
+- Issues with slow environment box responses.
+
 ## 0.41.1
 
 ### Fixed
