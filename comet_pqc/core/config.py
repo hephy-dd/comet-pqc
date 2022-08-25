@@ -43,7 +43,7 @@ def load_schema(name: str) -> dict:
     >>> load_schema("sample")
     {...}
     """
-    with open(os.path.join(SCHEMA_DIR, f"{name}.yaml")) as f:
+    with open(os.path.join(SCHEMA_DIR, f"{name}.yaml"), "rt") as f:
         return yaml.safe_load(f.read())
 
 
@@ -60,7 +60,7 @@ def load_config(filename: str, schema: str = None) -> dict:
     >>> load_config("sample.yaml", schema="sample")
     {...}
     """
-    with open(filename) as f:
+    with open(filename, "rt") as f:
         config_data = yaml.safe_load(f.read())
     if schema is not None:
         validate_config(config_data, schema)

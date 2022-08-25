@@ -4,7 +4,6 @@ import math
 import os
 
 import yaml
-from analysis_pqc import STATUS_PASSED
 from comet import ui
 from comet.settings import SettingsMixin
 from qutie.qutie import QtCore
@@ -14,7 +13,7 @@ from .components import (
     PositionsComboBox,
     WorkingDirectoryWidget,
 )
-from .config import SEQUENCE_DIR, list_configs, load_sequence
+from .core.config import SEQUENCE_DIR, list_configs, load_sequence
 from .quickedit import QuickEditDialog
 from .settings import settings
 from .utils import from_table_unit, to_table_unit

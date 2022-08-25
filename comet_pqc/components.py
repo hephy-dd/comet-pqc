@@ -3,17 +3,16 @@ import os
 
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qutie import Qt
+from PyQt5 import QtCore
 
-from .position import Position
+from .core.position import Position
+from .core.utils import make_path, user_home
 from .settings import settings
 from .utils import (
     create_icon,
     format_table_unit,
     getcal,
     getrm,
-    make_path,
-    user_home,
 )
 
 __all__ = [
@@ -45,7 +44,7 @@ class PositionLabel(ui.Label):
     def __init__(self, value=None):
         super().__init__()
         self.value = value
-        self.qt.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.qt.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
     @property
     def value(self):

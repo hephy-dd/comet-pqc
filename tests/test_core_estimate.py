@@ -1,14 +1,14 @@
 from comet_pqc.core.estimate import Estimate
 
 
-class TestEstimate:
+class TestCoreEstimate:
 
     def test_estimate_progress(self):
-        e = Estimate(42)
-        assert e.count == 42
-        assert e.passed == 0
-        assert e.progress == (0, 42)
-        for i in range(1, 43):
-            e.advance()
-            assert e.passed == i
-            assert e.progress == (i, 42)
+        est = Estimate(42)
+        assert est.count == 42
+        assert est.passed == 0
+        assert est.progress == (0, 42)
+        for i in range(est.count + 1):
+            est.advance()
+            assert est.passed == i + 1
+            assert est.progress == (i + 1, 42)

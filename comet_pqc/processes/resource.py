@@ -2,8 +2,7 @@ import logging
 import queue
 import threading
 import time
-import traceback
-from typing import Any, Callable, Optional
+# import traceback
 
 from comet.driver import Driver as DefaultDriver
 from comet.process import Process
@@ -93,6 +92,6 @@ class ResourceProcess(Process, ResourceMixin):
                     self.serve()
                 except Exception as exc:
                     logger.error("%s: %s", type(self).__name__, exc)
-                    #tb = traceback.format_exc()
-                    #self.emit("failed", exc, tb)
+                    # tb = traceback.format_exc()
+                    # self.emit("failed", exc, tb)
             time.sleep(self.throttle_time)

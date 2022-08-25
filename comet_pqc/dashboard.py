@@ -6,11 +6,10 @@ import time
 import webbrowser
 
 import comet
-from comet import ui
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
+from comet import ui
 
-from . import config
 from .components import (
     CalibrationWidget,
     OperatorWidget,
@@ -18,9 +17,11 @@ from .components import (
     ToggleButton,
     WorkingDirectoryWidget,
 )
-from .formatter import CSVFormatter
+from .core import config
+from .core.position import Position
+from .core.formatter import CSVFormatter
+from .core.utils import make_path, user_home
 from .logwindow import LogWidget
-from .position import Position
 from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
@@ -34,7 +35,7 @@ from .sequence import (
 from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
 from .tabs import EnvironmentTab, MeasurementTab, StatusTab, SummaryTab
-from .utils import caldone_valid, handle_exception, make_path, user_home
+from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
 
@@ -1201,14 +1202,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)
-            with open(filename, "a") as f:
+            with open(filename, "a") as fp:
                 header = self.summary_tab.header()
-                writer = CSVFormatter(f)
+                fmt = CSVFormatter(fp)
                 for key in header:
-                    writer.add_column(key)
+                    fmt.add_column(key)
                 if not has_header:
-                    writer.write_header()
-                writer.write_row({header[i]: item[i].value for i in range(len(header))})
+                    fmt.write_header()
+                fmt.write_row({header[i]: item[i].value for i in range(len(header))})
 
     def on_github(self):
         webbrowser.open(comet.app().window.github_url)

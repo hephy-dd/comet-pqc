@@ -14,7 +14,7 @@ from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.core.timer import Timer
 
 from ..core.request import Request
-from ..position import Position
+from ..core.position import Position
 from ..settings import settings
 
 __all__ = ["TableProcess"]

@@ -1,13 +1,12 @@
-import contextlib
 import logging
 import time
 
 import comet
 import numpy as np
-from comet.driver.keithley import K6517B
 
 from ..core.benchmark import Benchmark
 from ..core.estimate import Estimate
+from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -36,6 +35,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
     """
 
     type = "iv_ramp_elm"
+
+    required_instruments = ["hvsrc", "elm"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -201,7 +202,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
-        for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
+        for voltage in LinearRange(voltage, voltage_start, voltage_step_before):
             self.process.emit("message", f"{voltage:.3f} V")
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -238,8 +239,8 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         elm.resource.query("*OPC?")
         self.elm_check_error(elm)
 
-        ramp = comet.Range(voltage, voltage_stop, voltage_step)
-        est = Estimate(ramp.count)
+        ramp = LinearRange(voltage, voltage_stop, voltage_step)
+        est = Estimate(len(ramp))
         self.process.emit("progress", *est.progress)
 
         t0 = time.time()
@@ -345,7 +346,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
             logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
-            for voltage in comet.Range(voltage, 0, voltage_step_after):
+            for voltage in LinearRange(voltage, 0, voltage_step_after):
                 self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
                 self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -364,10 +365,3 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
             })
 
             self.process.emit("progress", 2, 2)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
-                elm=K6517B(es.enter_context(self.resources.get("elm")))
-            )

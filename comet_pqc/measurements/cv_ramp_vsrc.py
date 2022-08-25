@@ -1,14 +1,12 @@
-import contextlib
 import logging
 import time
 
 import comet
 import numpy as np
 
-# from comet.driver.keysight import E4980A
 from ..core.benchmark import Benchmark
 from ..core.estimate import Estimate
-from ..driver import E4980A
+from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -23,6 +21,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
     """CV ramp measurement."""
 
     type = "cv_ramp_vsrc"
+
+    required_instruments = ["vsrc", "lcr"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,9 +55,9 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.process.emit("state", {"vsrc_output": vsrc_output_state})
         if vsrc_output_state:
             vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
-            ramp = comet.Range(vsrc_voltage_level, 0, bias_voltage_step_after)
+            ramp = LinearRange(vsrc_voltage_level, 0, bias_voltage_step_after)
             for step, voltage in enumerate(ramp):
-                self.process.emit("progress", step + 1, ramp.count)
+                self.process.emit("progress", step + 1, len(ramp))
                 self.vsrc_set_voltage_level(vsrc, voltage)
                 self.process.emit("state", {"vsrc_voltage": voltage})
                 time.sleep(waiting_time_after)
@@ -152,7 +152,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 
         logger.info("V Source ramp to start voltage: from %E V to %E V with step %E V", vsrc_voltage_level, bias_voltage_start, bias_voltage_step_before)
-        for voltage in comet.Range(vsrc_voltage_level, bias_voltage_start, bias_voltage_step_before):
+        for voltage in LinearRange(vsrc_voltage_level, bias_voltage_start, bias_voltage_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.vsrc_set_voltage_level(vsrc, voltage)
             time.sleep(waiting_time_before)
@@ -185,8 +185,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
 
-        ramp = comet.Range(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
-        est = Estimate(ramp.count)
+        ramp = LinearRange(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
+        est = Estimate(len(ramp))
         self.process.emit("progress", *est.progress)
 
         t0 = time.time()
@@ -304,10 +304,3 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         })
 
         self.process.emit("progress", 2, 2)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc"))),
-                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
-            )

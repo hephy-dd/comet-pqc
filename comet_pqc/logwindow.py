@@ -4,8 +4,8 @@ import math
 import os
 import threading
 
-from comet import ui
 from PyQt5 import QtCore, QtWidgets
+from comet import ui
 
 __all__ = ["LogWidget"]
 

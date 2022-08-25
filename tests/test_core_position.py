@@ -1,9 +1,9 @@
 import math
 
-from comet_pqc.position import Position
+from comet_pqc.core.position import Position
 
 
-class TestPosition:
+class TestCorePosition:
 
     def test_empty(self):
         p = Position()

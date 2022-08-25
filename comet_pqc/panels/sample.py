@@ -1,7 +1,7 @@
 from comet import ui
 from comet.settings import SettingsMixin
 
-from .. import config
+from ..core import config
 from ..sequence import SequenceManager
 from ..utils import handle_exception, make_path
 from .panel import BasicPanel

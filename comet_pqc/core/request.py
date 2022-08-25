@@ -1,7 +1,7 @@
 import threading
 from typing import Any, Callable, Optional
 
-__all__ = ["Request", "RequestTimeout"]
+__all__ = ["RequestTimeout", "Request"]
 
 
 class RequestTimeout(Exception):

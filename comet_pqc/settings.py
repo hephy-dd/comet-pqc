@@ -3,7 +3,7 @@ from comet.settings import SettingsMixin
 from .instruments.k2410 import K2410Instrument
 from .instruments.k2470 import K2470Instrument
 from .instruments.k2657a import K2657AInstrument
-from .position import Position
+from .core.position import Position
 from .utils import from_table_unit, to_table_unit
 
 __all__ = ["settings"]
@@ -30,9 +30,9 @@ def safe_float(value, default=0):
 
 class TablePosition(Position):
 
-    def __init__(self, name, x, y, z, comment=None):
+    def __init__(self, name: str, x, y, z, comment=None):
         super().__init__(x, y, z)
-        self.name = name
+        self.name: str = name
         self.comment = comment
 
     def __str__(self):

@@ -1,20 +1,18 @@
 import logging
 import math
-import os
 import traceback
 from typing import Callable, Iterable, Union
 
-import numpy as np
-from comet import ui, ureg
-from qutie.qutie import QtCore, QtGui
+from comet import ui
+from comet import ureg
+from PyQt5 import QtCore, QtGui
+
+from .core.utils import make_path
 
 __all__ = [
-    "PACKAGE_PATH",
     "make_path",
-    "user_home",
     "format_metric",
     "format_switch",
-    "std_mean_filter",
     "stitch_pixmaps",
     "create_icon",
     "handle_exception",
@@ -24,27 +22,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
-PACKAGE_PATH: str = os.path.abspath(os.path.dirname(__file__))
-"""Absolute path to package directory."""
-
-
-def make_path(*args) -> str:
-    """Construct an absolute path relative to package path.
-
-    >>> make_path("assets", "sample.txt")
-    '/usr/local/lib/python/comet_pqc/assets/sample.txt'
-    """
-    return os.path.join(PACKAGE_PATH, *args)
-
-
-def user_home() -> str:
-    """Return absolute path of user home directory.
-
-    >>> user_home()
-    '/home/user'
-    """
-    return os.path.expanduser("~")
 
 
 def format_metric(value: float, unit: str, decimals: int = 3) -> str:
@@ -102,21 +79,6 @@ def from_table_unit(value: float) -> float:
 def to_table_unit(value: float) -> float:
     """Convert millimeters to table unit (micron)."""
     return round((value * ureg("mm")).to("um").m, 0)
-
-
-def std_mean_filter(values, threshold: float) -> bool:
-    """Return True if standard deviation (sample) / mean < threshold.
-
-    >>> std_mean_filter([0.250, 0.249], threshold=0.005)
-    True
-    """
-    mean = np.mean(values)
-    # Sample standard deviation with ddof=1 (not population standard deviation)
-    # http://stackoverflow.com/questions/34050491/ddg#34050706
-    # https://www.sharpsightlabs.com/blog/numpy-standard-deviation/
-    sample_std_dev = np.std(values, ddof=1)
-    ratio = sample_std_dev / mean
-    return ratio < threshold
 
 
 def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> QtGui.QPixmap:

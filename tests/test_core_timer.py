@@ -3,7 +3,7 @@ import time
 from comet_pqc.core.timer import Timer
 
 
-class TestTimer:
+class TestCoreTimer:
 
     def test_timer(self):
         t = Timer()

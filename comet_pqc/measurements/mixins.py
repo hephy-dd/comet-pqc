@@ -1,15 +1,17 @@
 import logging
 import math
 import time
-from functools import partial
 
 import analysis_pqc
 import comet
+from comet.driver.keithley import K6517B
 
+from ..core.filters import std_mean_filter
 from ..core.timer import Timer
+from ..driver import E4980A
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
-from ..utils import format_metric, std_mean_filter
+from ..utils import format_metric
 from .measurement import ComplianceError, InstrumentError
 
 __all__ = [
@@ -380,6 +382,10 @@ class ElectrometerMixin(Mixin):
     def elm_update_meta(self):
         """Update meta data parameters."""
 
+    def elm_create(self, resource):
+        """Return ELM instrument instance."""
+        return K6517B(resource)  # TODO
+
     def elm_check_error(self, elm):
         try:
             result = elm.resource.query(":SYST:ERR?")
@@ -475,6 +481,10 @@ class LCRMixin(Mixin):
         self.set_meta("lcr_open_correction_mode", lcr_open_correction_mode)
         self.set_meta("lcr_open_correction_channel", lcr_open_correction_channel)
         self.set_meta("lcr_soft_filter", lcr_soft_filter)
+
+    def lcr_create(self, resource):
+        """Return LCR instrument instance."""
+        return E4980A(resource)  # TODO
 
     def lcr_check_error(self, device):
         """Test for error."""

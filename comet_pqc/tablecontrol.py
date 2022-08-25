@@ -2,16 +2,11 @@
 
 import logging
 import math
-import random
-import time
 
 import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
-from PyQt5 import QtChart, QtCore, QtGui, QtWidgets
-from qutie.qutie import Qt
-
-from comet_pqc.utils import format_metric
+from PyQt5 import QtCore, QtGui, QtChart
 
 from .components import (
     CalibrationWidget,
@@ -19,9 +14,9 @@ from .components import (
     PositionWidget,
     ToggleButton,
 )
-from .position import Position
+from .core.position import Position
 from .settings import TablePosition, settings
-from .utils import caldone_valid, format_switch, handle_exception, make_path
+from .utils import format_metric, caldone_valid, format_switch, handle_exception
 
 DEFAULT_STEP_UP_DELAY = 0.
 DEFAULT_STEP_UP_MULTIPLY = 2
@@ -34,6 +29,7 @@ DEFAULT_MATRIX_CHANNELS = [
 
 logger = logging.getLogger(__name__)
 
+
 def safe_z_position(z):
     z_limit = settings.table_z_limit
     if z > z_limit:
@@ -44,6 +40,7 @@ def safe_z_position(z):
         z = z_limit
     return z
 
+
 class LinearTransform:
     """Linear transformation of n coordinates between two points."""
 
@@ -52,6 +49,7 @@ class LinearTransform:
         diff_y = (a[1] - b[1]) / n
         diff_z = (a[2] - b[2]) / n
         return [(a[0] - diff_x * i, a[1] - diff_y * i, a[2] - diff_z * i) for i in range(n + 1)]
+
 
 class TableSampleItem(ui.TreeItem):
 
@@ -93,12 +91,13 @@ class TableSampleItem(ui.TreeItem):
             for i, position in enumerate(tr.calculate(first, last, count - 1)):
                 self.children[i].position = position
 
+
 class TableContactItem(ui.TreeItem):
 
     def __init__(self, contact_item):
         super().__init__()
         for i in range(2, 5):
-            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
+            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.contact_item = contact_item
         self.name = contact_item.name
         self.position = contact_item.position
@@ -132,6 +131,7 @@ class TableContactItem(ui.TreeItem):
 
     def reset_position(self):
         self.__position = float("nan"), float("nan"), float("nan")
+
 
 class TableContactsWidget(ui.Row):
 
@@ -251,12 +251,13 @@ class TableContactsWidget(ui.Row):
         self.update_button_states()
         self.reset_all_button.enabled = True
 
+
 class TablePositionItem(ui.TreeItem):
 
     def __init__(self, name, x, y, z, comment=None):
         super().__init__()
         for i in range(1, 4):
-            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
+            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.name = name
         self.position = x, y, z
         self.comment = comment or ""
@@ -288,6 +289,7 @@ class TablePositionItem(ui.TreeItem):
     @comment.setter
     def comment(self, value):
         self[4].value = value
+
 
 class PositionDialog(ui.Dialog):
 
@@ -368,6 +370,7 @@ class PositionDialog(ui.Dialog):
             self.position = x, y, z
             self.layout.enabled = True
         self.emit(self.position_picked, callback)
+
 
 class TablePositionsWidget(ui.Row, SettingsMixin):
 
@@ -511,6 +514,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
                 x, y ,z = item.position
                 self.emit(self.absolute_move, Position(x, y, z))
 
+
 class LCRChart(ui.Widget):
 
     max_points = 1000
@@ -599,6 +603,7 @@ class LCRChart(ui.Widget):
     def set_marker(self, x, y):
         self._marker.clear()
         self._marker.append(x, y)
+
 
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
@@ -1428,6 +1433,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self._lcr_chart.append(z, abs(sec))
             self._lcr_chart.set_line(z)
 
+
 class SwitchLabel(ui.Label):
 
     def __init__(self, value=None):
@@ -1448,11 +1454,13 @@ class SwitchLabel(ui.Label):
             self.text = format_switch(value)
             self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
 
+
 class KeypadSpacer(ui.Spacer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.qt.setFixedSize(30, 30)
+
 
 class KeypadButton(ui.Button):
 

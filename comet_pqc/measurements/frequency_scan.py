@@ -1,7 +1,4 @@
-import contextlib
 import logging
-
-from comet.driver.keysight import E4980A
 
 from .matrix import MatrixMeasurement
 from .mixins import AnalysisMixin, EnvironmentMixin, HVSourceMixin, LCRMixin
@@ -15,6 +12,8 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
     """Frequency scan."""
 
     type = "frequency_scan"
+
+    required_instruments = ["hvsrc", "lcr"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,10 +43,3 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
         self.process.emit("progress", 1, 1)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
-                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
-            )

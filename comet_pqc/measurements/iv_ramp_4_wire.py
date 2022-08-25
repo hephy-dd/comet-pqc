@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 
@@ -6,7 +5,7 @@ import comet
 import numpy as np
 
 from ..core.estimate import Estimate
-from ..functions import LinearRange
+from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -30,6 +29,8 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
     """
 
     type = "iv_ramp_4_wire"
+
+    required_instruments = ["vsrc"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,7 +139,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         current = self.vsrc_get_current_level(vsrc)
 
         logger.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step_before)
-        for current in comet.Range(current, current_start, current_step_before):
+        for current in LinearRange(current, current_start, current_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
             time.sleep(waiting_time_before)
@@ -239,7 +240,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         current = self.vsrc_get_current_level(vsrc)
 
         logger.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step_after)
-        for current in comet.Range(current, 0, current_step_after):
+        for current in LinearRange(current, 0, current_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
             self.process.emit("state", {"vsrc_current": current})
@@ -259,9 +260,3 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         })
 
         self.process.emit("progress", 2, 2)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc")))
-            )

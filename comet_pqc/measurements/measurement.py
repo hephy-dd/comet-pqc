@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import json
 import logging
@@ -12,7 +13,7 @@ from comet.process import ProcessMixin
 from comet.resource import ResourceMixin
 
 from .. import __version__
-from ..formatter import PQCFormatter
+from ..core.formatter import PQCFormatter
 
 __all__ = ["Measurement"]
 
@@ -74,6 +75,8 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     type: str = ""
 
+    required_instruments = []
+
     measurement_item = None # HACK
 
     KEY_META = "meta"
@@ -95,13 +98,13 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.tags = tags
         self.registered_parameters = {}
         self.uuid = format(uuid.uuid4())
-        self.__timestamp = timestamp or time.time()
-        self.__data = {}
+        self._timestamp = timestamp or time.time()
+        self._data = {}
 
     @property
     def timestamp(self):
         """Returns start timestamp in seconds."""
-        return self.__timestamp
+        return self._timestamp
 
     @property
     def timestamp_iso(self):
@@ -122,7 +125,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     @property
     def data(self):
         """Measurement data property."""
-        return self.__data
+        return self._data
 
     def register_parameter(self, key, default=None, *, values=None, unit=None, type=None,
                            required=False):
@@ -283,12 +286,8 @@ class Measurement(ResourceMixin, ProcessMixin):
     def analyze(self, **kwargs):
         ...
 
-    def run(self, **kwargs):
-        """Run measurement."""
-        self.__run(**kwargs)
-
     @annotate_step("Initialize")
-    def __initialize(self, **kwargs):
+    def _initialize(self, **kwargs):
         self.process.emit("message", "Initialize...")
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
@@ -296,13 +295,13 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.process.emit("message", "Initialize... done.")
 
     @annotate_step("Measure")
-    def __measure(self, **kwargs):
+    def _measure(self, **kwargs):
         self.process.emit("message", "Measure...")
         self.measure(**kwargs)
         self.process.emit("message", "Measure... done.")
 
     @annotate_step("Finalize")
-    def __finalize(self, **kwargs):
+    def _finalize(self, **kwargs):
         self.process.emit("message", "Finalize...")
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
@@ -310,22 +309,28 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.process.emit("message", "Finalize... done.")
 
     @annotate_step("Analyze")
-    def __analyze(self, **kwargs):
+    def _analyze(self, **kwargs):
         self.process.emit("message", "Analyze...")
         self.analyze(**kwargs)
         self.process.emit("message", "Analyze... done.")
 
-    def __run(self, **kwargs):
+    def run(self):
         """Run measurement.
 
         If initialize, measure or analyze fails, finalize is executed before
         raising any exception.
         """
-        try:
-            self.__initialize(**kwargs)
-            self.__measure(**kwargs)
-        finally:
+        with contextlib.ExitStack() as es:
+            kwargs = {}
+            for key in type(self).required_instruments:
+                create = getattr(self, f"{key}_create")
+                resource = self.resources.get(key)
+                kwargs.update({key: create(es.enter_context(resource))})
             try:
-                self.__finalize(**kwargs)
+                self._initialize(**kwargs)
+                self._measure(**kwargs)
             finally:
-                self.__analyze(**kwargs)
+                try:
+                    self._finalize(**kwargs)
+                finally:
+                    self._analyze(**kwargs)

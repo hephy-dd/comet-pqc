@@ -1,10 +1,9 @@
 import math
 
-import comet
 from comet import ui
 
 from ..components import PositionWidget
-from ..position import Position
+from ..core.position import Position
 from .panel import BasicPanel
 
 __all__ = ["ContactPanel"]

@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 
@@ -6,6 +5,7 @@ import comet
 import numpy as np
 
 from ..core.estimate import Estimate
+from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -25,6 +25,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
     """Bias IV ramp measurement."""
 
     type = "iv_ramp_bias"
+
+    required_instruments = ["hvsrc", "vsrc"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -155,7 +157,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         voltage = self.vsrc_get_voltage_level(vsrc)
 
         logger.info("V Source ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, voltage_step_before)
-        for voltage in comet.Range(voltage, bias_voltage, voltage_step_before):
+        for voltage in LinearRange(voltage, bias_voltage, voltage_step_before):
             self.process.emit("message", "Ramp to bias... {}".format(format_metric(voltage, "V")))
             self.vsrc_set_voltage_level(vsrc, voltage)
             self.process.emit("state", {"vsrc_voltage": voltage})
@@ -171,7 +173,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
-        for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
+        for voltage in LinearRange(voltage, voltage_start, voltage_step_before):
             self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -206,8 +208,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        ramp = comet.Range(voltage, voltage_stop, voltage_step)
-        est = Estimate(ramp.count)
+        ramp = LinearRange(voltage, voltage_stop, voltage_step)
+        est = Estimate(len(ramp))
         self.process.emit("progress", *est.progress)
 
         t0 = time.time()
@@ -295,7 +297,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
-        for voltage in comet.Range(voltage, 0, voltage_step_after):
+        for voltage in LinearRange(voltage, 0, voltage_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -304,7 +306,7 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         bias_voltage = self.vsrc_get_voltage_level(vsrc)
 
         logger.info("V Source ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, voltage_step_after)
-        for voltage in comet.Range(bias_voltage, 0, voltage_step_after):
+        for voltage in LinearRange(bias_voltage, 0, voltage_step_after):
             self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
             self.vsrc_set_voltage_level(vsrc, voltage)
             self.process.emit("state", {"vsrc_voltage": voltage})
@@ -329,10 +331,3 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         })
 
         self.process.emit("progress", 2, 2)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
-                vsrc=self.vsrc_create(es.enter_context(self.resources.get("vsrc")))
-            )

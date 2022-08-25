@@ -1,14 +1,11 @@
 import argparse
 import logging
 import os
-import sys
 from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
 
 from . import __version__
 from .application import Application
-from .settings import settings
-from .utils import user_home
 
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
 GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"

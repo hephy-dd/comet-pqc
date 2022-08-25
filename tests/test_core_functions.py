@@ -1,7 +1,7 @@
-from comet_pqc import functions
+from comet_pqc.core import functions
 
 
-class TestFunctions:
+class TestCoreFunctions:
 
     def assert_range(self, begin, end, step, ref):
         values = []

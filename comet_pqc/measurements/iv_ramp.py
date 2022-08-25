@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 
@@ -6,6 +5,7 @@ import comet
 import numpy as np
 
 from ..core.estimate import Estimate
+from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
@@ -29,6 +29,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
     """
 
     type = "iv_ramp"
+
+    required_instruments = ["hvsrc"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,7 +130,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
             logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
-            for voltage in comet.Range(voltage, voltage_start, voltage_step_before):
+            for voltage in LinearRange(voltage, voltage_start, voltage_step_before):
                 self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
                 time.sleep(waiting_time_before)
@@ -164,8 +166,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         t0 = time.time()
 
-        ramp = comet.Range(voltage, voltage_stop, voltage_step)
-        est = Estimate(ramp.count)
+        ramp = LinearRange(voltage, voltage_stop, voltage_step)
+        est = Estimate(len(ramp))
         self.process.emit("progress", *est.progress)
 
         logger.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
@@ -236,7 +238,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         })
 
         logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
-        for voltage in comet.Range(voltage, 0, voltage_step_after):
+        for voltage in LinearRange(voltage, 0, voltage_step_after):
             self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -253,9 +255,3 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         })
 
         self.process.emit("progress", 5, 5)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc")))
-            )

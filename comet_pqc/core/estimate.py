@@ -3,11 +3,12 @@
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
-__all__ = ['Estimate']
+__all__ = ["Estimate"]
 
 
 class Estimate:
-    """Estiamte remaining time.
+    """Estimate remaining time.
+
     >>> e = Estimate(42)
     >>> for i in range(42):
     ...     heavy_operation()

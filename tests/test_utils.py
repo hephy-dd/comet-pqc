@@ -1,18 +1,7 @@
-import os
-
 from comet_pqc import utils
 
 
 class TestUtils:
-
-    def test_package_path(self):
-        root_path = os.path.dirname(os.path.dirname(__file__))
-        package_path = os.path.join(root_path, "comet_pqc")
-        assert package_path == utils.PACKAGE_PATH
-
-    def test_make_path(self):
-        filename = os.path.join(utils.PACKAGE_PATH, "assets", "sample.txt")
-        assert filename == utils.make_path("assets", "sample.txt")
 
     def test_format_metric(self):
         assert "4.20 YA" == utils.format_metric(4.2e24, "A", decimals=2)
@@ -55,7 +44,3 @@ class TestUtils:
     def test_to_table_unit(self):
         assert 1000.0 == utils.to_table_unit(1)
         assert 420.0 == utils.to_table_unit(.42)
-
-    def test_std_mean_filter(self):
-        assert utils.std_mean_filter([0.250, 0.249], threshold=0.005)
-        assert not utils.std_mean_filter([0.250, 0.224], threshold=0.005)

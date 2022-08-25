@@ -1,9 +1,9 @@
 import os
 
-from comet_pqc import config
+from comet_pqc.core import config
 
 
-class TestConfig:
+class TestCoreConfig:
 
     def test_dirs(self):
         assert os.path.isdir(config.CHUCK_DIR)
