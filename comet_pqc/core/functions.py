@@ -5,7 +5,7 @@ from typing import Generator
 
 __all__ = ["LinearRange"]
 
-ctx: Context = Context(prec=4)
+ctx: Context = Context(prec=24)
 
 
 class LinearRange:
@@ -45,8 +45,13 @@ class LinearRange:
         return abs(float(end - begin))
 
     def __len__(self) -> int:
+        begin: Decimal = ctx.create_decimal(self.begin)
+        end: Decimal = ctx.create_decimal(self.end)
         step: Decimal = ctx.create_decimal(self.step)
-        distance: Decimal = ctx.create_decimal(self.distance)
+        distance: Decimal = abs(end - begin)
+        # Limit step to distance
+        if abs(step) > distance:
+            step = distance
         if step:
             return int(abs(round(distance / step)))
         return 0
@@ -55,6 +60,10 @@ class LinearRange:
         begin: Decimal = ctx.create_decimal(self.begin)
         end: Decimal = ctx.create_decimal(self.end)
         step: Decimal = ctx.create_decimal(self.step)
+        distance: Decimal = abs(end - begin)
+        # Limit step to distance
+        if abs(step) > distance:
+            step = distance
         ascending: bool = begin < end
         step = abs(step) if ascending else -abs(step)
         count: int = len(self)
