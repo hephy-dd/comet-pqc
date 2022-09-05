@@ -29,7 +29,8 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.app = comet.Application("comet-pqc")
         self.app.version = __version__
         self.app.title = f"PQC {__version__}"
-        self.app.about = f"COMET application for PQC measurements, version {__version__}."
+        self.app.about = f"Application for PQC measurements, version {__version__}."
+        self.app.qt.setApplicationDisplayName(f"PQC {__version__}")  # Overwrite application title
 
         self._setup_resources()
         self._setup_processes()
@@ -129,6 +130,8 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             text="&GitHub",
             triggered=self.dashboard.on_github
         )
+        self.app.window.about_qt_action.triggered = self.dashboard.on_about_qt
+        self.app.window.about_action.triggered = self.dashboard.on_about
 
     def _setup_menus(self):
         self.app.window.file_menu.insert(-1, ui.Action(separator=True))

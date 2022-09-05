@@ -5,6 +5,8 @@ import os
 import time
 import webbrowser
 
+from PyQt5 import QtWidgets
+
 import comet
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
@@ -39,6 +41,10 @@ from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
 
+APP_TITLE = "PQC"
+APP_COPY = "Copyright &copy; 2020-2022 HEPHY"
+APP_LICENSE = "This software is licensed under the GNU General Public License v3.0"
+APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 SUMMARY_FILENAME = "summary.csv"
 
 
@@ -1213,3 +1219,10 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     def on_github(self):
         webbrowser.open(comet.app().window.github_url)
+
+    def on_about_qt(self) -> None:
+        QtWidgets.QMessageBox.aboutQt(self.qt, "About Qt")
+
+    def on_about(self) -> None:
+        version = comet.app().version
+        QtWidgets.QMessageBox.about(self.qt, "About", f"<h1>{APP_TITLE}</h1><p>Version {version}</p><p>{APP_DECRIPTION}</p><p>{APP_COPY}</p><p>{APP_LICENSE}</p>")

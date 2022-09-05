@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Command line arguments for debug mode and custom logfile.
 
+### Fixed
+- Plot axis not scaled to when inspecting measurement (#183).
+- Issues with slow environment box responses (#184)
+
 ### Changed
 - Code formatting for improved compliance with PEP8.
 - Migrated unittest to pytest.

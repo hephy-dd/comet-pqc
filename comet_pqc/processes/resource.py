@@ -79,7 +79,7 @@ class ResourceProcess(Process, ResourceMixin):
                         finally:
                             self._queue.task_done()
                     # Update monitoring in periodic intervals
-                    if t.delta() >= self.update_monitoring_interval:
+                    if t.delta() >= type(self).update_monitoring_interval:
                         self.update_monitoring()
                         t.reset()
         finally:
