@@ -1,10 +1,10 @@
-# COMET PQC
+# PQC
 
 PQC sensor measurements
 
 ## Overview
 
-This COMET application provides PQC sensor measurements.
+This application provides PQC sensor measurements.
 
 ### Required instruments
 

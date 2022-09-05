@@ -41,10 +41,6 @@ from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
 
-APP_TITLE = "PQC"
-APP_COPY = "Copyright &copy; 2020-2022 HEPHY"
-APP_LICENSE = "This software is licensed under the GNU General Public License v3.0"
-APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 SUMMARY_FILENAME = "summary.csv"
 
 
@@ -528,12 +524,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     sample_count = 4
 
+    lock_state_changed = None
     message_changed = None
     progress_changed = None
 
-    def __init__(self, message_changed=None, progress_changed=None, **kwargs):
+    def __init__(self, lock_state_changed=None, message_changed=None, progress_changed=None, **kwargs):
         super().__init__()
         # Callbacks
+        self.lock_state_changed = lock_state_changed
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         # Layout
@@ -770,6 +768,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.operator_groupbox.enabled = False
         self.measurement_tab.lock()
         self.status_tab.lock()
+        self.lock_state_changed(True)
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
@@ -780,6 +779,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.operator_groupbox.enabled = True
         self.measurement_tab.unlock()
         self.status_tab.unlock()
+        self.lock_state_changed(False)
 
     def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
         logger.info("Temporary Z-Limit enabled: %s", enabled)
@@ -1216,13 +1216,3 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 if not has_header:
                     fmt.write_header()
                 fmt.write_row({header[i]: item[i].value for i in range(len(header))})
-
-    def on_github(self):
-        webbrowser.open(comet.app().window.github_url)
-
-    def on_about_qt(self) -> None:
-        QtWidgets.QMessageBox.aboutQt(self.qt, "About Qt")
-
-    def on_about(self) -> None:
-        version = comet.app().version
-        QtWidgets.QMessageBox.about(self.qt, "About", f"<h1>{APP_TITLE}</h1><p>Version {version}</p><p>{APP_DECRIPTION}</p><p>{APP_COPY}</p><p>{APP_LICENSE}</p>")

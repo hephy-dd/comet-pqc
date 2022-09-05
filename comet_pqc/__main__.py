@@ -7,8 +7,6 @@ from logging.handlers import RotatingFileHandler
 from . import __version__
 from .application import Application
 
-CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
-GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 
 
