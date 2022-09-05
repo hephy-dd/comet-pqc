@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg4152"
+   height="64"
+   width="64">
+  <defs
+     id="defs4154" />
+  <metadata
+     id="metadata4157">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1">
+    <rect
+       y="0"
+       x="0"
+       height="64"
+       width="64"
+       id="rect4708"
+       style="opacity:1;fill:#2c5aa0;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+    <path
+       id="path4810"
+       d="M 64 0 L 13.076172 0 C 4.2513131 14.923407 -0.79750638 32.372604 7.875 48.498047 C 18.031487 67.382766 42.895854 63.241201 64 55.082031 L 64 0 z "
+       style="fill:#3771c8;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path4807"
+       d="M 64,0 24.522372,0 C 12.432457,14.544903 1.8852867,31.554988 10.425781,48.214844 19.077113,65.090909 43.930287,56.435926 64,44.683061 Z"
+       style="fill:#87aade;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path4804"
+       d="M 64,0 38.56463,0 C 21.673854,16.112103 5.0500409,36.388529 13.546875,48.779297 23.037354,62.619079 45.077094,46.580536 64,31.480646 Z"
+       style="fill:#afc6e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <ellipse
+       transform="matrix(0.97745229,-0.21115639,-0.3032721,0.952904,0,0)"
+       ry="14.141051"
+       rx="14.492173"
+       cy="48.642731"
+       cx="45.455963"
+       id="path4706"
+       style="opacity:1;fill:#d0e4ff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+  </g>
+</svg>
