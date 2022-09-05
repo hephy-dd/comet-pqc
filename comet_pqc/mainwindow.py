@@ -2,7 +2,7 @@ import webbrowser
 
 from PyQt5 import QtCore, QtWidgets
 
-from comet import ProcessMixin
+from comet import ui, ProcessMixin
 from comet.ui.preferences import PreferencesDialog
 
 from .preferences import OptionsTab, TableTab, WebAPITab
