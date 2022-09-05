@@ -31,7 +31,7 @@ class LinearRange:
     def __init__(self, begin: float, end: float, step: float):
         self.begin: float = begin
         self.end: float = end
-        self.step: float = step
+        self.step: float = -abs(step) if begin > end else abs(step)
 
     @property
     def distance(self) -> float:
