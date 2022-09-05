@@ -1,12 +1,7 @@
-from qutie.qutie import QtCore
-from qutie.qutie import QtWidgets
-
 from comet import ui
 from comet.ui.preferences import PreferencesTab
 
-from ..settings import settings
-
-__all__ = ['WebAPITab']
+__all__ = ["WebAPITab"]
 
 
 class WebAPITab(PreferencesTab):
@@ -25,8 +20,8 @@ class WebAPITab(PreferencesTab):
         )
         self.layout = ui.Column(
             ui.GroupBox(
-                    title="JSON API",
-                    layout=ui.Column(
+                title="JSON API",
+                layout=ui.Column(
                     self._enabled_checkbox,
                     ui.Row(
                         ui.Column(
@@ -56,15 +51,15 @@ class WebAPITab(PreferencesTab):
         return int(self._port_number.value)
 
     def load(self):
-        enabled = self.settings.get('webapi_enabled') or False
+        enabled = self.settings.get("webapi_enabled") or False
         self._enabled_checkbox.checked = enabled
-        host = self.settings.get('webapi_host') or '0.0.0.0'
+        host = self.settings.get("webapi_host") or "0.0.0.0"
         self._host_text.value = host
-        port = int(self.settings.get('webapi_port') or 9000)
+        port = int(self.settings.get("webapi_port") or 9000)
         self._port_number.value = port
 
     def store(self):
         enabled = self._enabled_checkbox.checked
-        self.settings['webapi_enabled'] = enabled
-        self.settings['webapi_host'] = self.hostname
-        self.settings['webapi_port'] = self.port
+        self.settings["webapi_enabled"] = enabled
+        self.settings["webapi_host"] = self.hostname
+        self.settings["webapi_port"] = self.port

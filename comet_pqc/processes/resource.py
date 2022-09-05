@@ -2,107 +2,86 @@ import logging
 import queue
 import threading
 import time
-import traceback
+# import traceback
 
 from comet.driver import Driver as DefaultDriver
 from comet.process import Process
 from comet.resource import ResourceMixin
 
-__all__ = ['ResourceProcess', 'async_request']
+from ..core.request import Request
+from ..core.timer import Timer
+
+__all__ = ["ResourceProcess", "async_request"]
 
 logger = logging.getLogger(__name__)
+
 
 def async_request(method):
     def async_request(self, *args, **kwargs):
         self.async_request(lambda context: method(self, context, *args, **kwargs))
     return async_request
 
-class ResourceRequest:
-
-    def __init__(self, command):
-        self.command = command
-        self.result = None
-        self.error = None
-        self.ready = threading.Event()
-
-    def get(self, timeout=10.0):
-        t = time.time() + timeout
-        while not self.ready.is_set():
-            if t < time.time():
-                raise RuntimeError(f"Request timeout: {self.command}")
-        if self.error is not None:
-            raise self.error
-        return self.result
-
-    def dispatch(self, context):
-        try:
-            self.result = self.command(context)
-        except Exception as exc:
-            self.error = exc
-            raise
-        finally:
-            self.ready.set()
 
 class ResourceProcess(Process, ResourceMixin):
 
     Driver = DefaultDriver
 
-    throttle_time = 0.001
+    throttle_time: float = 0.001
 
-    def __init__(self, name, enabled=True, **kwargs):
+    update_monitoring_interval: float = 1.0
+
+    def __init__(self, name: str, enabled: bool = True, **kwargs):
         super().__init__(**kwargs)
-        self.name = name
-        self.enabled = enabled
-        self.__failed_retries = 0
-        self.__queue = queue.Queue()
-        self.__lock = threading.RLock()
-        self.__context_lock = threading.RLock()
+        self.name: str = name
+        self.enabled: bool = enabled
+        self._failed_retries: int = 0
+        self._queue: queue.Queue = queue.Queue()
+        self._lock = threading.RLock()
+        self._context_lock = threading.RLock()
 
     def __enter__(self):
-        self.__context_lock.acquire()
+        self._context_lock.acquire()
         return self
 
     def __exit__(self, *exc):
-        self.__context_lock.release()
+        self._context_lock.release()
         return False
 
-    @property
-    def enabled(self):
-        return self.__enabled
-
-    @enabled.setter
-    def enabled(self, value):
-        self.__enabled = value
-
     def async_request(self, callback):
-        with self.__lock:
+        with self._lock:
             if not self.enabled:
                 raise RuntimeError("service not enabled")
-            r = ResourceRequest(callback)
-            self.__queue.put(r)
+            request = Request(callback)
+            self._queue.put_nowait(request)
+            return request
 
-    def request(self, callback):
-        with self.__lock:
-            if not self.enabled:
-                raise RuntimeError("service not enabled")
-            r = ResourceRequest(callback)
-            self.__queue.put(r)
-            return r.get()
+    def update_monitoring(self):
+        ...
 
     def serve(self):
         logger.info("start serving %s", self.name)
         try:
             with self.resources.get(self.name) as resource:
                 driver = type(self).Driver(resource)
+                t = Timer()
                 while True:
                     if not self.running:
                         break
                     if not self.enabled:
                         break
-                    if not self.__queue.empty():
-                        r = self.__queue.get()
-                        r.dispatch(driver)
-                    time.sleep(self.throttle_time)
+                    try:
+                        request = self._queue.get(timeout=self.throttle_time)
+                    except queue.Empty:
+                        ...
+                    else:
+                        try:
+                            request(driver)
+                        finally:
+                            self._queue.task_done()
+                    # Update monitoring in periodic intervals
+                    if t.delta() >= type(self).update_monitoring_interval:
+                        self.update_monitoring()
+                        t.reset()
         finally:
             logger.info("stopped serving %s", self.name)
 
@@ -113,6 +92,6 @@ class ResourceProcess(Process, ResourceMixin):
                     self.serve()
                 except Exception as exc:
                     logger.error("%s: %s", type(self).__name__, exc)
-                    #tb = traceback.format_exc()
-                    #self.emit('failed', exc, tb)
+                    # tb = traceback.format_exc()
+                    # self.emit("failed", exc, tb)
             time.sleep(self.throttle_time)

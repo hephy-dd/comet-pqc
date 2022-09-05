@@ -1,10 +1,10 @@
-# COMET PQC
+# PQC
 
 PQC sensor measurements
 
 ## Overview
 
-This COMET application provides PQC sensor measurements.
+This application provides PQC sensor measurements.
 
 ### Required instruments
 
@@ -28,7 +28,12 @@ This COMET application provides PQC sensor measurements.
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.41.1
+pip install git+https://github.com/hephy-dd/comet-pqc.git@<version>
+```
+
+## Run
+
+```bash
 comet-pqc
 ```
 

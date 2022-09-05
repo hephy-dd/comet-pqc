@@ -1,18 +1,21 @@
 from comet import ui
 
-from ..panels import SamplePanel
-from ..panels import ContactPanel
-from ..panels import IVRampPanel
-from ..panels import IVRampElmPanel
-from ..panels import IVRampBiasPanel
-from ..panels import IVRampBiasElmPanel
-from ..panels import IVRamp4WirePanel
-from ..panels import CVRampPanel
-from ..panels import CVRampHVPanel
-from ..panels import CVRampAltPanel
-from ..panels import FrequencyScanPanel
+from ..panels import (
+    ContactPanel,
+    CVRampAltPanel,
+    CVRampHVPanel,
+    CVRampPanel,
+    FrequencyScanPanel,
+    IVRamp4WirePanel,
+    IVRampBiasElmPanel,
+    IVRampBiasPanel,
+    IVRampElmPanel,
+    IVRampPanel,
+    SamplePanel,
+)
 
-__all__ = ['MeasurementTab']
+__all__ = ["MeasurementTab"]
+
 
 class MeasurementTab(ui.Tab):
 
@@ -45,7 +48,8 @@ class MeasurementTab(ui.Tab):
         self.measure_controls.enabled = True
 
     def on_measure_restore(self):
-        self.emit('restore')
+        self.emit("restore")
+
 
 class PanelStack(ui.Row):
     """Stack of measurement panels."""

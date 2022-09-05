@@ -1,9 +1,10 @@
 from typing import Tuple
 
-from .smu import SMUInstrument
 from comet.driver.keithley import K2657A
 
-__all__ = ['K2657AInstrument']
+from .smu import SMUInstrument
+
+__all__ = ["K2657AInstrument"]
 
 
 class K2657AInstrument(SMUInstrument):
@@ -30,15 +31,15 @@ class K2657AInstrument(SMUInstrument):
     def get_output(self) -> str:
         value = self.context.source.output
         return {
-            'ON': self.OUTPUT_ON,
-            'OFF': self.OUTPUT_OFF
-        }.get(value)
+            "ON": self.OUTPUT_ON,
+            "OFF": self.OUTPUT_OFF
+        }[value]
 
     def set_output(self, value: str) -> None:
         value = {
-            self.OUTPUT_ON: 'ON',
-            self.OUTPUT_OFF: 'OFF'
-        }.get(value)
+            self.OUTPUT_ON: "ON",
+            self.OUTPUT_OFF: "OFF"
+        }[value]
         self.context.source.output = value
 
     # Source function
@@ -46,15 +47,15 @@ class K2657AInstrument(SMUInstrument):
     def get_source_function(self) -> str:
         value = self.context.source.func
         return {
-            'DCVOLTS': self.SOURCE_FUNCTION_VOLTAGE,
-            'DCAMPS': self.SOURCE_FUNCTION_CURRENT
-        }.get(value)
+            "DCVOLTS": self.SOURCE_FUNCTION_VOLTAGE,
+            "DCAMPS": self.SOURCE_FUNCTION_CURRENT
+        }[value]
 
     def set_source_function(self, value: str) -> None:
         value = {
-            self.SOURCE_FUNCTION_VOLTAGE: 'DCVOLTS',
-            self.SOURCE_FUNCTION_CURRENT: 'DCAMPS'
-        }.get(value)
+            self.SOURCE_FUNCTION_VOLTAGE: "DCVOLTS",
+            self.SOURCE_FUNCTION_CURRENT: "DCAMPS"
+        }[value]
         self.context.source.func = value
 
     # Source voltage
@@ -110,15 +111,15 @@ class K2657AInstrument(SMUInstrument):
     def get_sense_mode(self) -> str:
         value = self.context.sense
         return {
-            'REMOTE': self.SENSE_MODE_REMOTE,
-            'LOCAL': self.SENSE_MODE_LOCAL
-        }.get(value)
+            "REMOTE": self.SENSE_MODE_REMOTE,
+            "LOCAL": self.SENSE_MODE_LOCAL
+        }[value]
 
     def set_sense_mode(self, value: str) -> None:
         value = {
-            self.SENSE_MODE_REMOTE: 'REMOTE',
-            self.SENSE_MODE_LOCAL: 'LOCAL'
-        }.get(value)
+            self.SENSE_MODE_REMOTE: "REMOTE",
+            self.SENSE_MODE_LOCAL: "LOCAL"
+        }[value]
         self.context.sense = value
 
     # Compliance tripped
@@ -163,15 +164,15 @@ class K2657AInstrument(SMUInstrument):
     def get_filter_type(self) -> str:
         value = self.context.sense.average.tcontrol
         return {
-            'REPEAT': self.FILTER_TYPE_REPEAT,
-            'MOVING': self.FILTER_TYPE_MOVING
-        }.get(value)
+            "REPEAT": self.FILTER_TYPE_REPEAT,
+            "MOVING": self.FILTER_TYPE_MOVING
+        }[value]
 
     def set_filter_type(self, value: str) -> None:
         value = {
-            self.FILTER_TYPE_REPEAT: 'REPEAT',
-            self.FILTER_TYPE_MOVING: 'MOVING'
-        }.get(value)
+            self.FILTER_TYPE_REPEAT: "REPEAT",
+            self.FILTER_TYPE_MOVING: "MOVING"
+        }[value]
         self.context.measure.filter.type = value
 
     # Terminal
@@ -184,7 +185,7 @@ class K2657AInstrument(SMUInstrument):
         return self.TERMINAL_FRONT
 
     def set_terminal(self, value: str) -> None:
-        pass
+        ...
 
     # Reading
 

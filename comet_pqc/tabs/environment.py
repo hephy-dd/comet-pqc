@@ -1,11 +1,12 @@
-import math
 import logging
+import math
 
 from comet import ui
 
-__all__ = ['EnvironmentTab']
+__all__ = ["EnvironmentTab"]
 
 logger = logging.getLogger(__name__)
+
 
 class EnvironmentTab(ui.Tab):
 

@@ -2,10 +2,10 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import HVSourceMixin
-from .mixins import EnvironmentMixin
+from .mixins import EnvironmentMixin, HVSourceMixin
 
 __all__ = ["IVRampPanel"]
+
 
 class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
     """Panel for IV ramp measurements."""
@@ -31,7 +31,7 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
 
-        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
         self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
@@ -70,11 +70,11 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
-        ampere = comet.ureg('A')
-        volt = comet.ureg('V')
+        ampere = comet.ureg("A")
+        volt = comet.ureg("V")
 
-        self.series_transform['hvsrc'] = lambda x, y: ((x * volt).to('V').m, (y * ampere).to('uA').m)
-        self.series_transform['xfit'] = self.series_transform.get('hvsrc')
+        self.series_transform["hvsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("hvsrc")
 
     def mount(self, measurement):
         super().mount(measurement)

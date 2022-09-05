@@ -2,11 +2,10 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import VSourceMixin
-from .mixins import LCRMixin
-from .mixins import EnvironmentMixin
+from .mixins import EnvironmentMixin, LCRMixin, VSourceMixin
 
 __all__ = ["CVRampHVPanel"]
+
 
 class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
     """Panel for CV ramp measurements."""
@@ -91,10 +90,10 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
             stretch=(1, 1, 1)
         )
 
-        fahrad = comet.ureg('F')
-        volt = comet.ureg('V')
+        fahrad = comet.ureg("F")
+        volt = comet.ureg("V")
 
-        self.series_transform['lcr'] = lambda x, y: ((x * volt).to('V').m, (y * fahrad).to('pF').m)
+        self.series_transform["lcr"] = lambda x, y: ((x * volt).to("V").m, (y * fahrad).to("pF").m)
 
     def mount(self, measurement):
         super().mount(measurement)

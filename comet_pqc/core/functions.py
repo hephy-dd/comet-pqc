@@ -3,9 +3,9 @@
 from decimal import Context, Decimal
 from typing import Generator
 
-__all__ = ['LinearRange']
+__all__ = ["LinearRange"]
 
-ctx: Context = Context(prec=4)
+ctx: Context = Context(prec=24)
 
 
 class LinearRange:
@@ -23,15 +23,15 @@ class LinearRange:
     """
 
     __slots__ = (
-        'begin',
-        'end',
-        'step'
+        "begin",
+        "end",
+        "step"
     )
 
     def __init__(self, begin: float, end: float, step: float):
         self.begin: float = begin
         self.end: float = end
-        self.step: float = step
+        self.step: float = -abs(step) if begin > end else abs(step)
 
     @property
     def distance(self) -> float:
@@ -45,8 +45,13 @@ class LinearRange:
         return abs(float(end - begin))
 
     def __len__(self) -> int:
+        begin: Decimal = ctx.create_decimal(self.begin)
+        end: Decimal = ctx.create_decimal(self.end)
         step: Decimal = ctx.create_decimal(self.step)
-        distance: Decimal = ctx.create_decimal(self.distance)
+        distance: Decimal = abs(end - begin)
+        # Limit step to distance
+        if abs(step) > distance:
+            step = distance
         if step:
             return int(abs(round(distance / step)))
         return 0
@@ -55,11 +60,15 @@ class LinearRange:
         begin: Decimal = ctx.create_decimal(self.begin)
         end: Decimal = ctx.create_decimal(self.end)
         step: Decimal = ctx.create_decimal(self.step)
+        distance: Decimal = abs(end - begin)
+        # Limit step to distance
+        if abs(step) > distance:
+            step = distance
         ascending: bool = begin < end
         step = abs(step) if ascending else -abs(step)
         count: int = len(self)
         if count:
-            value: Decimal = ctx.create_decimal('NaN')
+            value: Decimal = ctx.create_decimal("NaN")
             for i in range(count + 1):
                 value = begin + (i * step)
                 # Mangle value not to exceed valid range.

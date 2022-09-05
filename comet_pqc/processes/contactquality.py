@@ -6,7 +6,10 @@ from comet.driver.keithley import K707B
 
 from ..driver.e4980a import E4980A
 
+__all__ = ["ContactQualityProcess"]
+
 logger = logging.getLogger(__name__)
+
 
 class LCRInstrument:
 
@@ -45,6 +48,7 @@ class LCRInstrument:
         prim, sec = self.context.fetch()[:2]
         return prim, sec
 
+
 class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
     def __init__(self, update_interval=.250, matrix_channels=None, reading=None, **kwargs):
@@ -65,7 +69,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
                 closed_channels = matrix.channel.getclose()
                 if sorted(closed_channels) != sorted(channels):
                     raise RuntimeError("Matrix mismatch in closed channels")
-                logger.info("Matrix: closed channels: %s", ', '.join(closed_channels))
+                logger.info("Matrix: closed channels: %s", ", ".join(closed_channels))
         except Exception as exc:
             raise RuntimeError(f"Failed to close matrix channels {channels}, {exc.args}") from exc
 
@@ -73,7 +77,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = K707B(matrix_res)
-                matrix.channel.open() # open all
+                matrix.channel.open()  # open all
             logger.info("Matrix: opened all channels")
         except Exception as exc:
             raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc

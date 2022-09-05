@@ -1,47 +1,37 @@
 import argparse
 import logging
 import os
-import sys
-
-from logging import Formatter
-from logging import StreamHandler
+from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
 
-import comet
-
 from . import __version__
-from .utils import user_home
-
 from .application import Application
 
-from .settings import settings
-
-CONTENTS_URL = 'https://hephy-dd.github.io/comet-pqc/'
-GITHUB_URL = 'https://github.com/hephy-dd/comet-pqc/'
-
-logger = logging.getLogger(__name__)
+LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="show debug messages")
+    parser.add_argument("--logfile", metavar="<file>", default=LOG_FILENAME, help="write to custom logfile")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args()
 
 
-def configure_logging():
-    logger = logging.getLogger()
-    # Stream handler
-    stream_formatter = Formatter(
-        fmt='%(levelname)s:%(name)s:%(message)s'
+def add_stream_handler(logger: logging.Logger) -> None:
+    formatter = Formatter(
+        fmt="%(asctime)s::%(name)s::%(levelname)s::%(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S"
     )
-    stream_handler = StreamHandler()
-    stream_handler.setFormatter(stream_formatter)
-    logger.addHandler(stream_handler)
-    # Rotating file handler
-    filename = os.path.join(user_home(), 'comet-pqc.log')
-    file_formatter = Formatter(
-        fmt='%(asctime)s:%(name)s:%(levelname)s:%(message)s',
-        datefmt='%Y-%m-%dT%H:%M:%S'
+    handler = StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+
+def add_rotating_file_handle(logger: logging.Logger, filename: str) -> None:
+    file_formatter = logging.Formatter(
+        fmt="%(asctime)s:%(name)s:%(levelname)s:%(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S"
     )
     file_handler = RotatingFileHandler(
         filename=filename,
@@ -50,13 +40,22 @@ def configure_logging():
     )
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
-    logger.setLevel(logging.INFO)
 
 
-def main():
+def configure_logger(logger: logging.Logger, debug: bool = False, filename: str = None) -> None:
+    level = logging.DEBUG if debug else logging.INFO
+    logger.setLevel(level)
+
+    add_stream_handler(logger)
+
+    if filename:
+        add_rotating_file_handle(logger, filename)
+
+
+def main() -> None:
     args = parse_args()
 
-    configure_logging()
+    configure_logger(logging.getLogger(), debug=args.debug, filename=args.logfile)
 
     app = Application()
     app.load_settings()
@@ -64,5 +63,5 @@ def main():
     app.store_settings()
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

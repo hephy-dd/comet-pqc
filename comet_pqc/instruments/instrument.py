@@ -1,6 +1,6 @@
 from abc import ABC
 
-__all__ = ['Instrument']
+__all__ = ["Instrument"]
 
 
 class Instrument(ABC):

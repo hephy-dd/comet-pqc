@@ -1,17 +1,17 @@
 from comet import ui
 
-from ..utils import format_metric
-from ..utils import format_switch
+from ..utils import format_metric, format_switch
 
 __all__ = [
-    'HVSourceMixin',
-    'VSourceMixin',
-    'ElectrometerMixin',
-    'LCRMixin',
-    'EnvironmentMixin'
+    "HVSourceMixin",
+    "VSourceMixin",
+    "ElectrometerMixin",
+    "LCRMixin",
+    "EnvironmentMixin"
 ]
 
 NO_VALUE = "---"
+
 
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
@@ -115,17 +115,18 @@ class HVSourceMixin:
         ))
 
         def handler(state):
-            if 'hvsrc_voltage' in state:
-                value = state.get('hvsrc_voltage')
+            if "hvsrc_voltage" in state:
+                value = state.get("hvsrc_voltage")
                 self.status_hvsrc_voltage.value = format_metric(value, "V")
-            if 'hvsrc_current' in state:
-                value = state.get('hvsrc_current')
+            if "hvsrc_current" in state:
+                value = state.get("hvsrc_current")
                 self.status_hvsrc_current.value = format_metric(value, "A")
-            if 'hvsrc_output' in state:
-                value = state.get('hvsrc_output')
+            if "hvsrc_output" in state:
+                value = state.get("hvsrc_output")
                 self.status_hvsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
+
 
 class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
@@ -208,17 +209,18 @@ class VSourceMixin:
         ))
 
         def handler(state):
-            if 'vsrc_voltage' in state:
-                value = state.get('vsrc_voltage')
+            if "vsrc_voltage" in state:
+                value = state.get("vsrc_voltage")
                 self.status_vsrc_voltage.value = format_metric(value, "V")
-            if 'vsrc_current' in state:
-                value = state.get('vsrc_current')
+            if "vsrc_current" in state:
+                value = state.get("vsrc_current")
                 self.status_vsrc_current.value = format_metric(value, "A")
-            if 'vsrc_output' in state:
-                value = state.get('vsrc_output')
+            if "vsrc_output" in state:
+                value = state.get("vsrc_output")
                 self.status_vsrc_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
+
 
 class ElectrometerMixin:
     """Mixin class providing default controls and status for Electrometer."""
@@ -244,10 +246,10 @@ class ElectrometerMixin:
             self.elm_current_autorange_minimum.enabled = enabled
             self.elm_current_autorange_maximum.enabled = enabled
 
-        self.elm_current_range = ui.Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_current_range = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
         self.elm_current_autorange_enable = ui.CheckBox(text="Enable", changed=toggle_elm_current_autorange)
-        self.elm_current_autorange_minimum = ui.Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
-        self.elm_current_autorange_maximum = ui.Metric(minimum=0, decimals=3, prefixes='munp', unit="A")
+        self.elm_current_autorange_minimum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
+        self.elm_current_autorange_maximum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
 
         toggle_elm_filter(False)
         toggle_elm_current_autorange(False)
@@ -329,10 +331,11 @@ class ElectrometerMixin:
         ))
 
         def handler(state):
-            if 'elm_current' in state:
-                value = state.get('elm_current')
+            if "elm_current" in state:
+                value = state.get("elm_current")
                 self.status_elm_current.value = format_metric(value, "A")
         self.state_handlers.append(handler)
+
 
 class LCRMixin:
     """Mixin class providing default controls and status for LCR Meter."""
@@ -414,17 +417,18 @@ class LCRMixin:
         ))
 
         def handler(state):
-            if 'lcr_voltage' in state:
-                value = state.get('lcr_voltage')
+            if "lcr_voltage" in state:
+                value = state.get("lcr_voltage")
                 self.status_lcr_voltage.value = format_metric(value, "V")
-            if 'lcr_current' in state:
-                value = state.get('lcr_current')
+            if "lcr_current" in state:
+                value = state.get("lcr_current")
                 self.status_lcr_current.value = format_metric(value, "A")
-            if 'lcr_output' in state:
-                value = state.get('lcr_output')
+            if "lcr_output" in state:
+                value = state.get("lcr_output")
                 self.status_lcr_output.value = format_switch(value, default=NO_VALUE)
 
         self.state_handlers.append(handler)
+
 
 class EnvironmentMixin:
     """Mixin class providing default controls and status for Environment box."""
@@ -459,14 +463,14 @@ class EnvironmentMixin:
         ))
 
         def handler(state):
-            if 'env_chuck_temperature' in state:
-                value = state.get('env_chuck_temperature',)
+            if "env_chuck_temperature" in state:
+                value = state.get("env_chuck_temperature")
                 self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
-            if 'env_box_temperature' in state:
-                value = state.get('env_box_temperature')
+            if "env_box_temperature" in state:
+                value = state.get("env_box_temperature")
                 self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
-            if 'env_box_humidity' in state:
-                value = state.get('env_box_humidity')
+            if "env_box_humidity" in state:
+                value = state.get("env_box_humidity")
                 self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
 
         self.state_handlers.append(handler)

@@ -1,34 +1,34 @@
-from PyQt5 import QtCore
-
 import comet
 from comet import ui
+from PyQt5 import QtCore
 
 from ..utils import stitch_pixmaps
 
-__all__ = ['PanelStub', 'BasicPanel', 'Panel']
+__all__ = ["PanelStub", "BasicPanel", "Panel"]
+
 
 class PanelStub(ui.Widget):
 
-    type = None
+    type: str = ""
 
     @property
     def context(self):
         return self.__context
 
     def store(self):
-        pass
+        ...
 
     def restore(self):
-        pass
+        ...
 
     def clear_readings(self):
-        pass
+        ...
 
     def lock(self):
-        pass
+        ...
 
     def unlock(self):
-        pass
+        ...
 
     def mount(self, context):
         self.unmount()
@@ -36,6 +36,7 @@ class PanelStub(ui.Widget):
 
     def unmount(self):
         self.__context = None
+
 
 class BasicPanel(PanelStub, comet.SettingsMixin):
 
@@ -56,6 +57,7 @@ class BasicPanel(PanelStub, comet.SettingsMixin):
         self.title_label.text = ""
         self.description_label.text = ""
         super().unmount()
+
 
 class Panel(BasicPanel):
     """Base class for measurement panels."""
@@ -202,10 +204,10 @@ class Panel(BasicPanel):
             handler(state)
 
     def append_reading(self, name, x, y):
-        pass
+        ...
 
     def update_readings(self):
-        pass
+        ...
 
     def clear_readings(self):
         self.analysis_tree.clear()

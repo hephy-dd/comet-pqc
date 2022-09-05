@@ -5,7 +5,7 @@ nav_order: 1
 permalink: /
 ---
 
-# COMET PQC
+# PQC
 
 Process Quality Control for CMS tracker
 {: .fs-6 .fw-300 }
@@ -31,10 +31,16 @@ Process Quality Control for CMS tracker
 
 ### Install
 
-Install from GitHub using pip
+Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@0.41.1
+pip install git+https://github.com/hephy-dd/comet-pqc.git@<version>
+```
+
+### Run
+
+```bash
+comet-pqc
 ```
 
 ### Setup

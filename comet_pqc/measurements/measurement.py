@@ -1,24 +1,24 @@
+import contextlib
 import datetime
-import logging
-import time
 import json
+import logging
 import math
+import time
 import uuid
 
-import numpy as np
-
 import analysis_pqc
-
 import comet
-from comet.resource import ResourceMixin
+import numpy as np
 from comet.process import ProcessMixin
+from comet.resource import ResourceMixin
 
 from .. import __version__
-from ..formatter import PQCFormatter
+from ..core.formatter import PQCFormatter
 
-__all__ = ['Measurement']
+__all__ = ["Measurement"]
 
 logger = logging.getLogger(__name__)
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -26,11 +26,14 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
+
 class ComplianceError(ValueError):
     """Compliance tripped error."""
 
+
 class InstrumentError(RuntimeError):
     """Generic instrument error."""
+
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""
@@ -39,20 +42,22 @@ def format_estimate(est):
     average = datetime.timedelta(seconds=round(est.average.total_seconds()))
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
+
 def annotate_step(name):
     def annotate_step(method):
         def annotate_step(self, *args, **kwargs):
-            logger.info(f"%s %s...", name, self.type)
+            logger.info("%s %s...", name, self.type)
             try:
                 method(self, *args, **kwargs)
             except Exception as exc:
                 logger.error(exc)
-                logger.error(f"%s %s... failed.", name, self.type)
+                logger.error("%s %s... failed.", name, self.type)
                 raise
             else:
-                logger.info(f"%s %s... done.", name, self.type)
+                logger.info("%s %s... done.", name, self.type)
         return annotate_step
     return annotate_step
+
 
 class ParameterType:
 
@@ -64,10 +69,13 @@ class ParameterType:
         self.type = type
         self.required = required
 
+
 class Measurement(ResourceMixin, ProcessMixin):
     """Base measurement class."""
 
-    type = NotImplemented
+    type: str = ""
+
+    required_instruments = []
 
     measurement_item = None # HACK
 
@@ -90,13 +98,13 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.tags = tags
         self.registered_parameters = {}
         self.uuid = format(uuid.uuid4())
-        self.__timestamp = timestamp or time.time()
-        self.__data = {}
+        self._timestamp = timestamp or time.time()
+        self._data = {}
 
     @property
     def timestamp(self):
         """Returns start timestamp in seconds."""
-        return self.__timestamp
+        return self._timestamp
 
     @property
     def timestamp_iso(self):
@@ -117,7 +125,7 @@ class Measurement(ResourceMixin, ProcessMixin):
     @property
     def data(self):
         """Measurement data property."""
-        return self.__data
+        return self._data
 
     def register_parameter(self, key, default=None, *, values=None, unit=None, type=None,
                            required=False):
@@ -198,8 +206,8 @@ class Measurement(ResourceMixin, ProcessMixin):
         fmt = PQCFormatter(fp)
         # Write meta data
         for key, value in meta.items():
-            if key == 'measurement_tags':
-                value = ', '.join([tag for tag in value if tag])
+            if key == "measurement_tags":
+                value = ", ".join([tag for tag in value if tag])
             fmt.write_meta(key, value)
         # Create columns
         columns = list(series.keys())
@@ -258,32 +266,28 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("analysis_pqc_version", analysis_pqc.__version__)
 
     def initialize(self, **kwargs):
-        pass
+        ...
 
     def after_initialize(self, **kwargs):
-        pass
+        ...
 
     def measure(self, **kwargs):
-        pass
+        ...
 
     def before_finalize(self, **kwargs):
-        pass
+        ...
 
     def finalize(self, **kwargs):
-        pass
+        ...
 
     def after_finalize(self, **kwargs):
-        pass
+        ...
 
     def analyze(self, **kwargs):
-        pass
-
-    def run(self, **kwargs):
-        """Run measurement."""
-        self.__run(**kwargs)
+        ...
 
     @annotate_step("Initialize")
-    def __initialize(self, **kwargs):
+    def _initialize(self, **kwargs):
         self.process.emit("message", "Initialize...")
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
@@ -291,13 +295,13 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.process.emit("message", "Initialize... done.")
 
     @annotate_step("Measure")
-    def __measure(self, **kwargs):
+    def _measure(self, **kwargs):
         self.process.emit("message", "Measure...")
         self.measure(**kwargs)
         self.process.emit("message", "Measure... done.")
 
     @annotate_step("Finalize")
-    def __finalize(self, **kwargs):
+    def _finalize(self, **kwargs):
         self.process.emit("message", "Finalize...")
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
@@ -305,22 +309,28 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.process.emit("message", "Finalize... done.")
 
     @annotate_step("Analyze")
-    def __analyze(self, **kwargs):
+    def _analyze(self, **kwargs):
         self.process.emit("message", "Analyze...")
         self.analyze(**kwargs)
         self.process.emit("message", "Analyze... done.")
 
-    def __run(self, **kwargs):
+    def run(self):
         """Run measurement.
 
         If initialize, measure or analyze fails, finalize is executed before
         raising any exception.
         """
-        try:
-            self.__initialize(**kwargs)
-            self.__measure(**kwargs)
-        finally:
+        with contextlib.ExitStack() as es:
+            kwargs = {}
+            for key in type(self).required_instruments:
+                create = getattr(self, f"{key}_create")
+                resource = self.resources.get(key)
+                kwargs.update({key: create(es.enter_context(resource))})
             try:
-                self.__finalize(**kwargs)
+                self._initialize(**kwargs)
+                self._measure(**kwargs)
             finally:
-                self.__analyze(**kwargs)
+                try:
+                    self._finalize(**kwargs)
+                finally:
+                    self._analyze(**kwargs)

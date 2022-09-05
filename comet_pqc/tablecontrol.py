@@ -1,43 +1,34 @@
 """Table control widgets and dialogs."""
 
+import logging
 import math
-import time
-import random
-
-from PyQt5 import QtCore
-from PyQt5 import QtGui
-from PyQt5 import QtWidgets
-from PyQt5 import QtChart
 
 import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
+from PyQt5 import QtCore, QtGui, QtChart
 
-from comet_pqc.utils import format_metric
-
-from .components import PositionLabel
-from .components import PositionWidget
-from .components import CalibrationWidget
-from .components import ToggleButton
-from .settings import settings, TablePosition
-from .utils import format_switch, caldone_valid, make_path
-from .utils import handle_exception
-from .position import Position
-
-from qutie.qutie import Qt
-
-import logging
+from .components import (
+    CalibrationWidget,
+    PositionLabel,
+    PositionWidget,
+    ToggleButton,
+)
+from .core.position import Position
+from .settings import TablePosition, settings
+from .utils import format_metric, caldone_valid, format_switch, handle_exception
 
 DEFAULT_STEP_UP_DELAY = 0.
 DEFAULT_STEP_UP_MULTIPLY = 2
 DEFAULT_LCR_UPDATE_INTERVAL = .100
 DEFAULT_MATRIX_CHANNELS = [
-    '3H01', '2B04', '1B03', '1B12', '2B06', '2B07', '2B08', '2B09',
-    '2B10', '2B11', '1H04', '1H05', '1H06', '1H07', '1H08', '1H09',
-    '1H10', '1H11', '2H12', '2H05', '1A01'
+    "3H01", "2B04", "1B03", "1B12", "2B06", "2B07", "2B08", "2B09",
+    "2B10", "2B11", "1H04", "1H05", "1H06", "1H07", "1H08", "1H09",
+    "1H10", "1H11", "2H12", "2H05", "1A01"
 ]
 
 logger = logging.getLogger(__name__)
+
 
 def safe_z_position(z):
     z_limit = settings.table_z_limit
@@ -49,6 +40,7 @@ def safe_z_position(z):
         z = z_limit
     return z
 
+
 class LinearTransform:
     """Linear transformation of n coordinates between two points."""
 
@@ -58,12 +50,13 @@ class LinearTransform:
         diff_z = (a[2] - b[2]) / n
         return [(a[0] - diff_x * i, a[1] - diff_y * i, a[2] - diff_z * i) for i in range(n + 1)]
 
+
 class TableSampleItem(ui.TreeItem):
 
     def __init__(self, sample_item):
         super().__init__()
         self.sample_item = sample_item
-        self.name = '/'.join([item for item in (sample_item.name, sample_item.sample_type) if item])
+        self.name = "/".join([item for item in (sample_item.name, sample_item.sample_type) if item])
         self.position = sample_item.sample_position
         for contact_item in sample_item.children:
             self.append(TableContactItem(contact_item))
@@ -98,12 +91,13 @@ class TableSampleItem(ui.TreeItem):
             for i, position in enumerate(tr.calculate(first, last, count - 1)):
                 self.children[i].position = position
 
+
 class TableContactItem(ui.TreeItem):
 
     def __init__(self, contact_item):
         super().__init__()
         for i in range(2, 5):
-            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
+            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.contact_item = contact_item
         self.name = contact_item.name
         self.position = contact_item.position
@@ -124,9 +118,9 @@ class TableContactItem(ui.TreeItem):
     def position(self, value):
         x, y, z = value
         self.__position = x, y, z
-        self[2].value = format(x, '.3f') if x is not None else None
-        self[3].value = format(y, '.3f') if y is not None else None
-        self[4].value = format(z, '.3f') if z is not None else None
+        self[2].value = format(x, ".3f") if x is not None else None
+        self[3].value = format(y, ".3f") if y is not None else None
+        self[4].value = format(z, ".3f") if z is not None else None
 
     @property
     def has_position(self):
@@ -136,7 +130,8 @@ class TableContactItem(ui.TreeItem):
         self.contact_item.position = self.position
 
     def reset_position(self):
-        self.__position = float('nan'), float('nan'), float('nan')
+        self.__position = float("nan"), float("nan"), float("nan")
+
 
 class TableContactsWidget(ui.Row):
 
@@ -212,14 +207,14 @@ class TableContactsWidget(ui.Row):
     def on_reset(self):
         item = self.contacts_tree.current
         if isinstance(item, TableContactItem):
-            item.position = float('nan'), float('nan'), float('nan')
+            item.position = float("nan"), float("nan"), float("nan")
             self.contacts_tree.fit()
 
     def on_reset_all(self):
         if ui.show_question("Do you want to reset all contact positions?"):
             for sample_item in self.contacts_tree:
                 for contact_item in sample_item.children:
-                    contact_item.position = float('nan'), float('nan'), float('nan')
+                    contact_item.position = float("nan"), float("nan"), float("nan")
             self.contacts_tree.fit()
 
     def on_move(self):
@@ -256,15 +251,16 @@ class TableContactsWidget(ui.Row):
         self.update_button_states()
         self.reset_all_button.enabled = True
 
+
 class TablePositionItem(ui.TreeItem):
 
     def __init__(self, name, x, y, z, comment=None):
         super().__init__()
         for i in range(1, 4):
-            self[i].qt.setTextAlignment(i, Qt.AlignTrailing|Qt.AlignVCenter)
+            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.name = name
         self.position = x, y, z
-        self.comment = comment or ''
+        self.comment = comment or ""
 
     @property
     def name(self):
@@ -282,9 +278,9 @@ class TablePositionItem(ui.TreeItem):
     def position(self, value):
         x, y, z = value
         self.__position = x, y, z
-        self[1].value = format(x, '.3f')
-        self[2].value = format(y, '.3f')
-        self[3].value = format(z, '.3f')
+        self[1].value = format(x, ".3f")
+        self[2].value = format(y, ".3f")
+        self[3].value = format(z, ".3f")
 
     @property
     def comment(self):
@@ -293,6 +289,7 @@ class TablePositionItem(ui.TreeItem):
     @comment.setter
     def comment(self, value):
         self[4].value = value
+
 
 class PositionDialog(ui.Dialog):
 
@@ -373,6 +370,7 @@ class PositionDialog(ui.Dialog):
             self.position = x, y, z
             self.layout.enabled = True
         self.emit(self.position_picked, callback)
+
 
 class TablePositionsWidget(ui.Row, SettingsMixin):
 
@@ -502,7 +500,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_remove_position(self):
         item = self.positions_tree.current
         if item:
-            if ui.show_question(f"Do you want to remove position '{item.name}'?"):
+            if ui.show_question(f"Do you want to remove position {item.name!r}?"):
                 self.positions_tree.remove(item)
                 if not len(self.positions_tree):
                     self.edit_button.enabled = False
@@ -512,9 +510,10 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_move(self):
         item = self.positions_tree.current
         if item:
-            if ui.show_question(f"Do you want to move table to position '{item.name}'?"):
+            if ui.show_question(f"Do you want to move table to position {item.name!r}?"):
                 x, y ,z = item.position
                 self.emit(self.absolute_move, Position(x, y, z))
+
 
 class LCRChart(ui.Widget):
 
@@ -542,7 +541,7 @@ class LCRChart(ui.Widget):
         self._chart.addAxis(self._yAxis, QtCore.Qt.AlignLeft)
 
         self._line = QtChart.QLineSeries()
-        self._line.setColor(QtGui.QColor('magenta'))
+        self._line.setColor(QtGui.QColor("magenta"))
 
         self._chart.addSeries(self._line)
         self._line.attachAxis(self._xAxis)
@@ -551,8 +550,8 @@ class LCRChart(ui.Widget):
         self._series = QtChart.QScatterSeries()
         self._series.setName("R")
         self._series.setMarkerSize(3)
-        self._series.setBorderColor(QtGui.QColor('red'))
-        self._series.setColor(QtGui.QColor('red'))
+        self._series.setBorderColor(QtGui.QColor("red"))
+        self._series.setColor(QtGui.QColor("red"))
 
         self._chart.addSeries(self._series)
         self._series.attachAxis(self._xAxis)
@@ -560,8 +559,8 @@ class LCRChart(ui.Widget):
 
         self._marker = QtChart.QScatterSeries()
         self._marker.setMarkerSize(9)
-        self._marker.setBorderColor(QtGui.QColor('red'))
-        self._marker.setColor(QtGui.QColor('red'))
+        self._marker.setBorderColor(QtGui.QColor("red"))
+        self._marker.setColor(QtGui.QColor("red"))
 
         self._chart.addSeries(self._marker)
         self._marker.attachAxis(self._xAxis)
@@ -604,6 +603,7 @@ class LCRChart(ui.Widget):
     def set_marker(self, x, y):
         self._marker.clear()
         self._marker.append(x, y)
+
 
 class TableControlDialog(ui.Dialog, SettingsMixin):
 
@@ -716,9 +716,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         # Create movement radio buttons
         self.step_width_buttons = ui.Column()
         for item in self.load_table_step_sizes():
-            step_size = item.get('step_size') * comet.ureg('um')
-            step_color = item.get('step_color')
-            step_size_label = format_metric(step_size.to('m').m, 'm', decimals=1)
+            step_size = item.get("step_size") * comet.ureg("um")
+            step_color = item.get("step_color")
+            step_size_label = format_metric(step_size.to("m").m, "m", decimals=1)
             button = ui.RadioButton(
                 text=step_size_label,
                 tool_tip=f"Move in {step_size_label} steps.",
@@ -726,7 +726,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
                 checked=len(self.step_width_buttons) == 0,
                 toggled=self.on_step_toggled
             )
-            button.movement_width = step_size.to('mm').m
+            button.movement_width = step_size.to("mm").m
             button.movement_color = step_color
             self.step_width_buttons.append(button)
         self.control_layout = ui.Column(
@@ -1065,11 +1065,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     @property
     def dodge_height(self):
-        return (self._dodge_height_number.value * comet.ureg('um')).to('mm').m
+        return (self._dodge_height_number.value * comet.ureg("um")).to("mm").m
 
     @dodge_height.setter
     def dodge_height(self, value):
-        self._dodge_height_number.value = (value * comet.ureg('mm')).to('um').m
+        self._dodge_height_number.value = (value * comet.ureg("mm")).to("um").m
 
     @property
     def lcr_reset_on_move(self):
@@ -1082,11 +1082,11 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     @property
     def step_up_delay(self):
         """Return step up delay in seconds."""
-        return (self._step_up_delay_number.value * comet.ureg('ms')).to('s').m
+        return (self._step_up_delay_number.value * comet.ureg("ms")).to("s").m
 
     @step_up_delay.setter
     def step_up_delay(self, value):
-        self._step_up_delay_number.value = (value * comet.ureg('s')).to('ms').m
+        self._step_up_delay_number.value = (value * comet.ureg("s")).to("ms").m
 
     @property
     def step_up_multiply(self):
@@ -1100,17 +1100,17 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     @property
     def lcr_update_interval(self):
         """LCR update interval in seconds."""
-        return (self._lcr_update_interval_number.value * comet.ureg('ms')).to('s').m
+        return (self._lcr_update_interval_number.value * comet.ureg("ms")).to("s").m
 
     @lcr_update_interval.setter
     def lcr_update_interval(self, value):
-        self._lcr_update_interval_number.value = (value * comet.ureg('s')).to('ms').m
+        self._lcr_update_interval_number.value = (value * comet.ureg("s")).to("ms").m
 
     @property
     def lcr_matrix_channels(self):
         """Matrix channels used for LCR readings."""
         tokens = []
-        for token in self._lcr_matrix_channels_text.value.split(','):
+        for token in self._lcr_matrix_channels_text.value.split(","):
             token = token.strip()
             if token:
                 tokens.append(token)
@@ -1118,7 +1118,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
 
     @lcr_matrix_channels.setter
     def lcr_matrix_channels(self, value):
-        self._lcr_matrix_channels_text.value = ', '.join([token for token in value])
+        self._lcr_matrix_channels_text.value = ", ".join([token for token in value])
 
     def load_table_step_sizes(self):
         return self.settings.get("table_step_sizes") or self.default_steps
@@ -1189,7 +1189,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             else:
                 z_enabled = self.step_width <= self.maximum_z_step_size
         self.add_z_button.enabled = z_enabled
-        step_up_limit = comet.ureg('10.0 um').to('mm').m
+        step_up_limit = comet.ureg("10.0 um").to("mm").m
         self.step_up_button.enabled = z_enabled and (self.step_width <= step_up_limit) # TODO
 
     def relative_move_xy(self, x, y):
@@ -1330,7 +1330,7 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.contacts_widget.update_samples()
 
     def load_settings(self):
-        width, height = self.settings.get('tablecontrol_dialog_size', (640, 480))
+        width, height = self.settings.get("tablecontrol_dialog_size", (640, 480))
         self.resize(width, height)
         self.positions_widget.load_settings()
         self.z_limit = settings.table_z_limit
@@ -1339,28 +1339,28 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.x_hard_limit_label.value = x
         self.y_hard_limit_label.value = y
         self.z_hard_limit_label.value = z
-        self.step_up_delay = self.settings.get('tablecontrol_step_up_delay', DEFAULT_STEP_UP_DELAY)
-        self.step_up_multiply = self.settings.get('tablecontrol_step_up_multiply', DEFAULT_STEP_UP_MULTIPLY)
-        self.lcr_update_interval = self.settings.get('tablecontrol_lcr_update_delay', DEFAULT_LCR_UPDATE_INTERVAL)
-        matrix_channels = self.settings.get('tablecontrol_lcr_matrix_channels') or DEFAULT_MATRIX_CHANNELS
+        self.step_up_delay = self.settings.get("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY)
+        self.step_up_multiply = self.settings.get("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY)
+        self.lcr_update_interval = self.settings.get("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL)
+        matrix_channels = self.settings.get("tablecontrol_lcr_matrix_channels") or DEFAULT_MATRIX_CHANNELS
         self.lcr_matrix_channels = matrix_channels
         self.lcr_process.update_interval = self.lcr_update_interval
         self.lcr_process.matrix_channels = self.lcr_matrix_channels
         self.update_interval = settings.table_control_update_interval
         self.dodge_enabled = settings.table_control_dodge_enabled
         self.dodge_height = settings.table_control_dodge_height
-        self.lcr_reset_on_move = self.settings.get('tablecontrol_lcr_reset_on_move', True)
+        self.lcr_reset_on_move = self.settings.get("tablecontrol_lcr_reset_on_move", True)
 
     def store_settings(self):
-        self.settings['tablecontrol_dialog_size'] = self.width, self.height
-        self.settings['tablecontrol_step_up_multiply'] = self.step_up_multiply
-        self.settings['tablecontrol_lcr_update_delay'] = self.lcr_update_interval
-        self.settings['tablecontrol_lcr_matrix_channels'] = self.lcr_matrix_channels
+        self.settings["tablecontrol_dialog_size"] = self.width, self.height
+        self.settings["tablecontrol_step_up_multiply"] = self.step_up_multiply
+        self.settings["tablecontrol_lcr_update_delay"] = self.lcr_update_interval
+        self.settings["tablecontrol_lcr_matrix_channels"] = self.lcr_matrix_channels
         self.positions_widget.store_settings()
         settings.table_control_update_interval = self.update_interval
         settings.table_control_dodge_enabled = self.dodge_enabled
         settings.table_control_dodge_height = self.dodge_height
-        self.settings['tablecontrol_lcr_reset_on_move'] = self.lcr_reset_on_move
+        self.settings["tablecontrol_lcr_reset_on_move"] = self.lcr_reset_on_move
 
     def lock(self):
         self.control_layout.enabled = False
@@ -1418,20 +1418,21 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             self.lcr_process.stop()
 
     def on_lcr_finished(self):
-        pass
+        ...
 
     def on_lcr_failed(self, *args):
         self._lcr_prim_text.value = "ERROR"
         self._lcr_sec_text.value = "ERROR"
 
     def on_lcr_reading(self, prim, sec):
-        self._lcr_prim_text.value = format_metric(prim, unit='F')
-        self._lcr_sec_text.value = format_metric(sec, unit='Ohm')
+        self._lcr_prim_text.value = format_metric(prim, unit="F")
+        self._lcr_sec_text.value = format_metric(sec, unit="Ohm")
         _, _, z = self.current_position
         if math.isfinite(z) and math.isfinite(sec):
             # Append only absolute Rp readings
             self._lcr_chart.append(z, abs(sec))
             self._lcr_chart.set_line(z)
+
 
 class SwitchLabel(ui.Label):
 
@@ -1447,17 +1448,19 @@ class SwitchLabel(ui.Label):
     def value(self, value):
         self.__value = value
         if value is None:
-            self.text = float('nan')
+            self.text = float("nan")
             self.qt.setStyleSheet("")
         else:
             self.text = format_switch(value)
             self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
+
 
 class KeypadSpacer(ui.Spacer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.qt.setFixedSize(30, 30)
+
 
 class KeypadButton(ui.Button):
 

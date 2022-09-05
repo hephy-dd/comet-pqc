@@ -2,12 +2,15 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import HVSourceMixin
-from .mixins import VSourceMixin
-from .mixins import ElectrometerMixin
-from .mixins import EnvironmentMixin
+from .mixins import (
+    ElectrometerMixin,
+    EnvironmentMixin,
+    HVSourceMixin,
+    VSourceMixin,
+)
 
 __all__ = ["IVRampBiasElmPanel"]
+
 
 class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
@@ -93,11 +96,11 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
             stretch=(1, 1, 1)
         )
 
-        ampere = comet.ureg('A')
-        volt = comet.ureg('V')
+        ampere = comet.ureg("A")
+        volt = comet.ureg("V")
 
-        self.series_transform['elm'] = lambda x, y: ((x * volt).to('V').m, (y * ampere).to('uA').m)
-        self.series_transform['xfit'] = self.series_transform.get('elm')
+        self.series_transform["elm"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("elm")
 
     def mount(self, measurement):
         super().mount(measurement)
@@ -111,7 +114,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
                 for x, y in points:
-                    self.plot.series.get(name).append(x, y)
+                    self.plot.series.get(name).append(*tr(x, y))
         self.update_readings()
 
     def append_reading(self, name, x, y):

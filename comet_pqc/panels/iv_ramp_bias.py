@@ -2,11 +2,10 @@ import comet
 from comet import ui
 
 from .matrix import MatrixPanel
-from .mixins import HVSourceMixin
-from .mixins import VSourceMixin
-from .mixins import EnvironmentMixin
+from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
 
 __all__ = ["IVRampBiasPanel"]
+
 
 class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
@@ -35,9 +34,9 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
         self.bias_mode = ui.ComboBox(["constant", "offset"])
 
-        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
         self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
-        self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes='mun', unit="A")
+        self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
         self.vsrc_accept_compliance = ui.CheckBox("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
@@ -91,11 +90,11 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
             stretch=(1, 1, 1)
         )
 
-        ampere = comet.ureg('A')
-        volt = comet.ureg('V')
+        ampere = comet.ureg("A")
+        volt = comet.ureg("V")
 
-        self.series_transform['vsrc'] = lambda x, y: ((x * ampere).to('uA').m, (y * volt).to('V').m)
-        self.series_transform['xfit'] = self.series_transform.get('vsrc')
+        self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("vsrc")
 
     def mount(self, measurement):
         super().mount(measurement)

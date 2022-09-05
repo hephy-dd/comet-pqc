@@ -1,6 +1,7 @@
 include README.md
 include LICENSE
-
+include requirements.txt
+include tox.ini
 include pyinstaller.spec
 recursive-include tests *.py
 

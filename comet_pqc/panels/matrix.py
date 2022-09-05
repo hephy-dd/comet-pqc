@@ -1,16 +1,18 @@
 from comet import ui
 from comet.resource import ResourceMixin
-from comet.driver.keithley import K707B
 
 from .panel import Panel
 
 __all__ = ["MatrixPanel"]
 
+
 def encode_matrix(values):
     return ", ".join(map(format, values))
 
+
 def decode_matrix(value):
     return list(map(str.strip, value.split(",")))
+
 
 class MatrixChannelsText(ui.Text):
     """Overloaded text input to handle matrix channel list."""
@@ -25,6 +27,7 @@ class MatrixChannelsText(ui.Text):
     @value.setter
     def value(self, value):
         self.qt.setText(encode_matrix(value or []))
+
 
 class MatrixPanel(Panel, ResourceMixin):
     """Base class for matrix switching panels."""
@@ -60,15 +63,3 @@ class MatrixPanel(Panel, ResourceMixin):
                 stretch=(0, 1)
             )
         ))
-
-    # def load_matrix_channels(self):
-    #     """Load closed matrix channels for slot 1 from instrument."""
-    #     self.enabled = False
-    #     try:
-    #         with self.resources.get("matrix") as matrix_res:
-    #             matrix = K707B(matrix_res)
-    #             closed_channels = matrix.channel.getclose()
-    #         self.matrix_channels.value = closed_channels
-    #     except Exception as e:
-    #         ui.show_exception(e)
-    #     self.enabled = True

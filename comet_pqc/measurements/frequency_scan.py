@@ -1,22 +1,19 @@
 import logging
-import contextlib
-
-from comet.driver.keysight import E4980A
 
 from .matrix import MatrixMeasurement
-from .mixins import HVSourceMixin
-from .mixins import LCRMixin
-from .mixins import EnvironmentMixin
-from .mixins import AnalysisMixin
+from .mixins import AnalysisMixin, EnvironmentMixin, HVSourceMixin, LCRMixin
 
 __all__ = ["FrequencyScanMeasurement"]
 
 logger = logging.getLogger(__name__)
 
+
 class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """Frequency scan."""
 
     type = "frequency_scan"
+
+    required_instruments = ["hvsrc", "lcr"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,11 +25,11 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
     def initialize(self, hvsrc, lcr):
         self.process.emit("progress", 0, 2)
 
-        self.process.emit("state", dict(
-            hvsrc_voltage=self.hvsrc_get_voltage_level(hvsrc),
-            hvsrc_current=None,
-            hvsrc_output=self.hvsrc_get_output_state(hvsrc)
-        ))
+        self.process.emit("state", {
+            "hvsrc_voltage": self.hvsrc_get_voltage_level(hvsrc),
+            "hvsrc_current": None,
+            "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
+        })
 
         self.process.emit("progress", 2, 2)
 
@@ -46,10 +43,3 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
         self.process.emit("progress", 1, 1)
-
-    def run(self):
-        with contextlib.ExitStack() as es:
-            super().run(
-                hvsrc=self.hvsrc_create(es.enter_context(self.resources.get("hvsrc"))),
-                lcr=E4980A(es.enter_context(self.resources.get("lcr")))
-            )
