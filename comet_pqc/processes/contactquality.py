@@ -4,7 +4,7 @@ import time
 import comet
 from comet.driver.keithley import K707B
 
-from ..driver.e4980a import E4980A
+from ..settings import settings
 
 __all__ = ["ContactQualityProcess"]
 
@@ -13,26 +13,14 @@ logger = logging.getLogger(__name__)
 
 class LCRInstrument:
 
-    def __init__(self, resource):
-        self.context = E4980A(resource)
+    def __init__(self, lcr):
+        self.lcr = lcr
 
     def reset(self):
-        self.context.reset()
-        self.context.clear()
+        self.lcr.reset()
+        self.lcr.clear()
+        self.lcr.configure()
         self.check_error()
-        self.context.system.beeper.state = False
-        self.check_error()
-
-    def safe_write(self, message):
-        self.context.resource.write(message)
-        self.context.resource.query("*OPC?")
-        self.check_error()
-
-    def check_error(self):
-        """Test for error."""
-        code, message = self.context.system.error
-        if code:
-            raise RuntimeError(f"LCR Meter error {code}: {message}")
 
     def quick_setup_cp_rp(self):
         self.safe_write(":FUNC:IMP:RANG:AUTO ON")
@@ -42,10 +30,19 @@ class LCRInstrument:
         self.safe_write(":TRIG:SOUR BUS")
         self.safe_write(":CORR:METH SING")
 
+    def safe_write(self, message):
+        self.lcr.context.resource.write(message)
+        self.lcr.context.resource.query("*OPC?")
+        self.check_error()
+
+    def check_error(self):
+        """Test for error."""
+        error = self.lcr.next_error()
+        if error is not None:
+            raise RuntimeError(f"LCR Meter error {error.code}: {error.message}")
+
     def acquire_reading(self):
-        """Return primary and secondary LCR reading."""
-        self.safe_write(":TRIG:IMM")
-        prim, sec = self.context.fetch()[:2]
+        prim, sec = self.lcr.acquire_reading()
         return prim, sec
 
 
@@ -84,7 +81,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
     def measure(self):
         with self.resources.get("lcr") as lcr_res:
-            lcr = LCRInstrument(lcr_res)
+            lcr = LCRInstrument(settings.lcr_instrument(lcr_res))
             lcr.reset()
             lcr.quick_setup_cp_rp()
             while self.running:

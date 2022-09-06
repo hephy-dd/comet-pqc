@@ -7,6 +7,8 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.43.0
+
 ## 0.42.0
 
 ### Added

@@ -51,7 +51,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.register_analysis()
 
     def initialize(self, vsrc):
-        self.process.emit("progress", 0, 5)
+        self.set_progress(0, 5)
 
         # Parameters
         current_start = self.get_parameter("current_start")
@@ -103,7 +103,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.register_series("temperature_chuck")
         self.register_series("humidity_box")
 
-        self.process.emit("state", {
+        self.update_state({
             "vsrc_voltage": self.vsrc_get_voltage_level(vsrc),
             "vsrc_current": self.vsrc_get_current_level(vsrc),
             "vsrc_output": self.vsrc_get_output_state(vsrc)
@@ -111,10 +111,10 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         # Initialize V Source
 
-        self.process.emit("progress", 1, 5)
+        self.set_progress(1, 5)
 
         self.vsrc_reset(vsrc)
-        self.process.emit("progress", 2, 5)
+        self.set_progress(2, 5)
 
         self.vsrc_setup(vsrc)
 
@@ -123,28 +123,28 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         self.vsrc_set_voltage_compliance(vsrc, vsrc_voltage_compliance)
 
-        self.process.emit("progress", 3, 5)
+        self.set_progress(3, 5)
 
         # Override display
         self.vsrc_set_display(vsrc, "voltage")
 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_ON)
         time.sleep(.100)
-        self.process.emit("state", {
+        self.update_state({
             "vsrc_output": self.vsrc_get_output_state(vsrc),
         })
 
-        self.process.emit("progress", 4, 5)
+        self.set_progress(4, 5)
 
         current = self.vsrc_get_current_level(vsrc)
 
         logger.info("V Source ramp to start current: from %E A to %E A with step %E A", current, current_start, current_step_before)
         for current in LinearRange(current, current_start, current_step_before):
-            self.process.emit("message", "Ramp to start... {}".format(format_metric(current, "A")))
+            self.set_message("Ramp to start... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
             time.sleep(waiting_time_before)
 
-            self.process.emit("state", {"vsrc_current": current})
+            self.update_state({"vsrc_current": current})
 
             # Compliance tripped?
             self.vsrc_check_compliance(vsrc)
@@ -155,7 +155,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         # Waiting time before measurement ramp.
         self.wait(waiting_time_start)
 
-        self.process.emit("progress", 5, 5)
+        self.set_progress(5, 5)
 
     def measure(self, vsrc):
         current_start = self.get_parameter("current_start")
@@ -172,7 +172,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         ramp = LinearRange(current, current_stop, current_step)
         est = Estimate(len(ramp))
-        self.process.emit("progress", *est.progress)
+        self.set_progress(*est.progress)
 
         t0 = time.time()
 
@@ -180,23 +180,23 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         for i, current in enumerate(ramp):
             self.vsrc_clear(vsrc)
             self.vsrc_set_current_level(vsrc, current)
-            self.process.emit("state", {"vsrc_current": current})
+            self.update_state({"vsrc_current": current})
 
             time.sleep(waiting_time)
             dt = time.time() - t0
 
             est.advance()
-            self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
-            self.process.emit("progress", *est.progress)
+            self.set_message("{} | V Source {}".format(format_estimate(est), format_metric(current, "A")))
+            self.set_progress(*est.progress)
 
             self.environment_update()
 
             # read V Source
             vsrc_reading = self.vsrc_read_voltage(vsrc)
-            self.process.emit("reading", "vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
+            self.append_reading("vsrc", abs(current) if ramp.step < 0 else current, vsrc_reading)
 
-            self.process.emit("update")
-            self.process.emit("state", {"vsrc_voltage": vsrc_reading})
+            self.update_plots()
+            self.update_state({"vsrc_voltage": vsrc_reading})
 
             # Append series data
             self.append_series(
@@ -220,18 +220,18 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
                 break
 
     def analyze(self, **kwargs):
-        self.process.emit("progress", 0, 1)
+        self.set_progress(0, 1)
 
         i = np.array(self.get_series("current"))
         v = np.array(self.get_series("voltage_vsrc"))
         self.analysis_iv(i, v)
 
-        self.process.emit("progress", 1, 1)
+        self.set_progress(1, 1)
 
     def finalize(self, vsrc):
-        self.process.emit("progress", 1, 2)
+        self.set_progress(1, 2)
 
-        self.process.emit("state", {"vsrc_voltage": None})
+        self.update_state({"vsrc_voltage": None})
 
         current_step_after = self.get_parameter("current_step_after") or self.get_parameter("current_step")
         waiting_time_after = self.get_parameter("waiting_time_after")
@@ -241,9 +241,9 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
 
         logger.info("V Source ramp to zero: from %E A to %E A with step %E A", current, 0, current_step_after)
         for current in LinearRange(current, 0, current_step_after):
-            self.process.emit("message", "Ramp to zero... {}".format(format_metric(current, "A")))
+            self.set_message("Ramp to zero... {}".format(format_metric(current, "A")))
             self.vsrc_set_current_level(vsrc, current)
-            self.process.emit("state", {"vsrc_current": current})
+            self.update_state({"vsrc_current": current})
             time.sleep(waiting_time_after)
 
         # Waiting time after ramp down.
@@ -252,11 +252,11 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
         self.vsrc_check_error(vsrc)
 
-        self.process.emit("state", {
+        self.update_state({
             "vsrc_output": self.vsrc_get_output_state(vsrc),
             "env_chuck_temperature": None,
             "env_box_temperature": None,
             "env_box_humidity": None,
         })
 
-        self.process.emit("progress", 2, 2)
+        self.set_progress(2, 2)

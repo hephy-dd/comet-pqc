@@ -5,7 +5,7 @@ import logging
 import math
 import time
 import uuid
-from typing import List
+from typing import Any, Dict, List
 
 import analysis_pqc
 import comet
@@ -32,32 +32,12 @@ class ComplianceError(ValueError):
     """Compliance tripped error."""
 
 
-class InstrumentError(RuntimeError):
-    """Generic instrument error."""
-
-
 def format_estimate(est):
     """Format estimation message without milliseconds."""
     elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
     remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
     average = datetime.timedelta(seconds=round(est.average.total_seconds()))
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
-
-
-def annotate_step(name):
-    def annotate_step(method):
-        def annotate_step(self, *args, **kwargs):
-            logger.info("%s %s...", name, self.type)
-            try:
-                method(self, *args, **kwargs)
-            except Exception as exc:
-                logger.error(exc)
-                logger.error("%s %s... failed.", name, self.type)
-                raise
-            else:
-                logger.info("%s %s... done.", name, self.type)
-        return annotate_step
-    return annotate_step
 
 
 class ParameterType:
@@ -169,6 +149,21 @@ class Measurement(ResourceMixin, ProcessMixin):
                 raise ValueError(f"invalid parameter value: {value}")
         return value
 
+    def update_state(self, items: Dict[str, Any]) -> None:
+        self.process.emit("state", items)
+
+    def update_plots(self) -> None:
+        self.process.emit("update")
+
+    def append_reading(self, name: str, x: float, y: float) -> None:
+        self.process.emit("reading", name, x, y)
+
+    def set_message(self, message: str) -> None:
+        self.process.emit("message", message)
+
+    def set_progress(self, value: int, maximum: int) -> None:
+        self.process.emit("progress", value, maximum)
+
     def set_meta(self, key, value):
         logger.info("Meta %s: %s", key, value)
         self.data.get(self.KEY_META)[key] = value
@@ -231,9 +226,9 @@ class Measurement(ResourceMixin, ProcessMixin):
         interval = abs(interval)
         steps = math.ceil(seconds / interval)
         remaining = seconds
-        self.process.emit("message", f"Waiting {seconds} s...")
+        self.set_message(f"Waiting {seconds} s...")
         for step in range(steps):
-            self.process.emit("progress", step + 1, steps)
+            self.set_progress(step + 1, steps)
             if remaining >= interval:
                 time.sleep(interval)
             else:
@@ -242,7 +237,7 @@ class Measurement(ResourceMixin, ProcessMixin):
             if not self.process.running:
                 return
         logger.info("Waiting %s s... done.", seconds)
-        self.process.emit("message", "")
+        self.set_message("")
 
     def before_initialize(self, **kwargs):
         self.validate_parameters()
@@ -287,51 +282,68 @@ class Measurement(ResourceMixin, ProcessMixin):
     def analyze(self, **kwargs):
         ...
 
-    @annotate_step("Initialize")
-    def _initialize(self, **kwargs):
-        self.process.emit("message", "Initialize...")
-        self.before_initialize(**kwargs)
-        self.initialize(**kwargs)
-        self.after_initialize(**kwargs)
-        self.process.emit("message", "Initialize... done.")
 
-    @annotate_step("Measure")
-    def _measure(self, **kwargs):
-        self.process.emit("message", "Measure...")
-        self.measure(**kwargs)
-        self.process.emit("message", "Measure... done.")
+class MeasurementRunner:
 
-    @annotate_step("Finalize")
-    def _finalize(self, **kwargs):
-        self.process.emit("message", "Finalize...")
-        self.before_finalize(**kwargs)
-        self.finalize(**kwargs)
-        self.after_finalize(**kwargs) # is not executed on error
-        self.process.emit("message", "Finalize... done.")
+    def __init__(self, measurement) -> None:
+        self.measurement = measurement
 
-    @annotate_step("Analyze")
-    def _analyze(self, **kwargs):
-        self.process.emit("message", "Analyze...")
-        self.analyze(**kwargs)
-        self.process.emit("message", "Analyze... done.")
+    def handle_state(self, name, methods):
+        def handle_state(kwargs):
+            logger.info("%s %s...", name, self.measurement.type)
+            try:
+                for method in methods:
+                    getattr(self.measurement, method)(**kwargs)
+            except Exception as exc:
+                logger.exception(exc)
+                logger.error("%s %s... failed.", name, self.measurement.type)
+                raise
+            else:
+                logger.info("%s %s... done.", name, self.measurement.type)
+        return handle_state
 
-    def run(self):
+    def initialize(self, kwargs):
+        self.handle_state("Initialize", [
+            "before_initialize",
+            "initialize",
+            "after_initialize",
+        ])(kwargs)
+
+    def measure(self, kwargs):
+        self.handle_state("Measure", [
+            "measure",
+        ])(kwargs)
+
+    def finalize(self, kwargs):
+        self.handle_state("Finalize", [
+            "before_finalize",
+            "finalize",
+            "after_finalize",  # is not executed on error
+        ])(kwargs)
+
+    def analyze(self, kwargs):
+        self.handle_state("Analyze", [
+            "analyze",
+        ])(kwargs)
+
+    def __call__(self):
         """Run measurement.
 
         If initialize, measure or analyze fails, finalize is executed before
         raising any exception.
         """
+        measurement = self.measurement
         with contextlib.ExitStack() as es:
             kwargs = {}
-            for key in type(self).required_instruments:
-                create = getattr(self, f"{key}_create")
-                resource = self.resources.get(key)
+            for key in type(measurement).required_instruments:
+                create = getattr(measurement, f"{key}_create")
+                resource = measurement.resources.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:
-                self._initialize(**kwargs)
-                self._measure(**kwargs)
+                self.initialize(kwargs)
+                self.measure(kwargs)
             finally:
                 try:
-                    self._finalize(**kwargs)
+                    self.finalize(kwargs)
                 finally:
-                    self._analyze(**kwargs)
+                    self.analyze(kwargs)

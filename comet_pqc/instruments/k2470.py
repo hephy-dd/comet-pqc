@@ -1,31 +1,34 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
-from comet.driver import Driver
-
-from .smu import SMUInstrument
+from .generic import SMUInstrument, InstrumentError
 
 __all__ = ["K2470Instrument"]
 
 
-class K2470Instrument(SMUInstrument):
+def parse_error(response: str) -> Tuple[int, str]:
+    code, message = response.split(",", 1)
+    return int(code), message.strip().strip("\"")
 
-    def __init__(self, context) -> None:
-        super().__init__(Driver(context))
+
+class K2470Instrument(SMUInstrument):
 
     def reset(self) -> None:
         self.context.resource.write("*RST")
         self.context.resource.query("*OPC?")
-        # TODO
-        if self.context.resource.query("*LANG?") != "SCPI":
-            raise RuntimeError("K2470 instrument not in SCPI mode!")
 
     def clear(self) -> None:
         self.context.resource.write("*CLS")
         self.context.resource.query("*OPC?")
 
-    def get_error(self) -> Tuple[int, str]:
-        code, message = self.context.resource.query(":SYST:ERR?").split(",", 1)
-        return int(code), message.strip().strip("\"")
+    def configure(self) -> None:
+        if self.context.resource.query("*LANG?") != "SCPI":
+            raise RuntimeError("K2470 instrument not in SCPI mode!")
+
+    def next_error(self) -> Optional[InstrumentError]:
+        code, message = parse_error(self.context.resource.query(":SYST:ERR?"))
+        if code:
+            return InstrumentError(code, message)
+        return None
 
     # Output
 

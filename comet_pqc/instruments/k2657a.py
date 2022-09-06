@@ -1,30 +1,30 @@
-from typing import Tuple
+from typing import Optional
 
 from comet.driver.keithley import K2657A
 
-from .smu import SMUInstrument
+from .generic import SMUInstrument, InstrumentError
 
 __all__ = ["K2657AInstrument"]
 
 
 class K2657AInstrument(SMUInstrument):
 
-    def __init__(self, context) -> None:
-        super().__init__(K2657A(context))
+    Driver = K2657A
 
     def reset(self) -> None:
         self.context.reset()
-        self.context.clear()
-        self.context.beeper.enable = False
 
     def clear(self) -> None:
         self.context.clear()
 
-    def get_error(self) -> Tuple[int, str]:
+    def configure(self) -> None:
+        self.context.beeper.enable = False
+
+    def next_error(self) -> Optional[InstrumentError]:
         if self.context.errorqueue.count:
             code, message = self.context.errorqueue.next()
-            return code, message
-        return 0, "no error"
+            return InstrumentError(code, message)
+        return None
 
     # Output
 
@@ -194,3 +194,10 @@ class K2657AInstrument(SMUInstrument):
 
     def read_voltage(self) -> float:
         return self.context.measure.v()
+
+    # Instrument specific
+
+    def set_display(self, function: str) -> None:
+        value = {"voltage": "DCVOLTS", "current": "DCAMPS"}[function]
+        self.context.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
+        self.context.resource.query("*OPC?")

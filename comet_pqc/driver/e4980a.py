@@ -198,8 +198,8 @@ class System(Driver):
         >>> system.error
         (0, "No error")
         """
-        result = self.resource.query(":SYST:ERR?").split(",")
-        return int(result[0]), result[1].strip().strip("\"")
+        code, message = self.resource.query(":SYST:ERR?").split(",", 1)
+        return int(code), message.strip().strip("\"")
 
     def __init__(self, resource):
         super().__init__(resource)

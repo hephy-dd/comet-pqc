@@ -140,7 +140,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             f"<p>Version {version}</p>",
             f"<p>{APP_DECRIPTION}</p>",
             f"<p>{APP_COPY}</p>",
-            f"<p>{APP_LICENSE}!!!!!</p>"
+            f"<p>{APP_LICENSE}</p>"
         ]))
 
     def showMessage(self, message: str) -> None:

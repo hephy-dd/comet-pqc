@@ -12,7 +12,7 @@ from ..driver import E4980A
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
 from ..utils import format_metric
-from .measurement import ComplianceError, InstrumentError
+from .measurement import ComplianceError
 
 __all__ = [
     "HVSourceMixin",
@@ -66,11 +66,10 @@ class HVSourceMixin(Mixin):
 
     def hvsrc_check_error(self, hvsrc):
         """Test for error."""
-        code, message = hvsrc.get_error()
-        if code != 0:
-            message = message.strip("\"")
-            logger.error(f"HV Source error {code}: {message}")
-            raise RuntimeError(f"HV Source error {code}: {message}")
+        error = hvsrc.next_error()
+        if error is not None:
+            logger.error(f"HV Source instrument error {error.code}: {error.message!r}")
+            raise RuntimeError(f"HV Source instrument error {error.code}: {error.message!r}")
 
     def hvsrc_check_compliance(self, hvsrc):
         """Test for compliance tripped."""
@@ -92,6 +91,9 @@ class HVSourceMixin(Mixin):
         hvsrc_filter_type = self.get_parameter("hvsrc_filter_type")
         hvsrc_source_voltage_autorange_enable = self.get_parameter("hvsrc_source_voltage_autorange_enable")
         hvsrc_source_voltage_range = self.get_parameter("hvsrc_source_voltage_range")
+
+        hvsrc.clear()
+        hvsrc.configure()
 
         self.hvsrc_set_route_terminal(hvsrc, hvsrc_route_terminal)
         self.hvsrc_set_sense_mode(hvsrc, hvsrc_sense_mode)
@@ -235,10 +237,10 @@ class VSourceMixin(Mixin):
 
     def vsrc_check_error(self, vsrc):
         """Test for error."""
-        code, message = vsrc.get_error()
-        if code != 0:
-            logger.error(f"V Source error {code}: {message}")
-            raise InstrumentError(f"V Source error {code}: {message}")
+        error = vsrc.next_error()
+        if error is not None:
+            logger.error(f"V Source instrument error {error.code}: {error.message!r}")
+            raise RuntimeError(f"V Source instrument error {error.code}: {error.message!r}")
 
     def vsrc_check_compliance(self, vsrc):
         """Test for compliance tripped."""
@@ -268,6 +270,9 @@ class VSourceMixin(Mixin):
         vsrc_filter_type = self.get_parameter("vsrc_filter_type")
         vsrc_source_voltage_autorange_enable = self.get_parameter("vsrc_source_voltage_autorange_enable")
         vsrc_source_voltage_range = self.get_parameter("vsrc_source_voltage_range")
+
+        vsrc.clear()
+        vsrc.configure()
 
         self.vsrc_set_sense_mode(vsrc, vsrc_sense_mode)
         self.vsrc_set_route_terminal(vsrc, vsrc_route_terminal)
@@ -346,11 +351,10 @@ class VSourceMixin(Mixin):
         vsrc.set_output(enabled)
         self.vsrc_check_error(vsrc)
 
-    def vsrc_set_display(self, vsrc, value):
-        if isinstance(vsrc, K2657AInstrument):
+    def vsrc_set_display(self, vsrc, value: str) -> None:
+        if hasattr(vsrc, "set_display"):
             logger.info("V Source set display: %s", value)
-            value = {"voltage": "DCVOLTS", "current": "DCAMPS"}[value]
-            vsrc.context.resource.write(f"display.smua.measure.func = display.MEASURE_{value}")
+            vsrc.set_display(value)
             self.vsrc_check_error(vsrc)
 
     def vsrc_set_source_voltage_autorange_enable(self, vsrc, enabled):
@@ -384,70 +388,58 @@ class ElectrometerMixin(Mixin):
 
     def elm_create(self, resource):
         """Return ELM instrument instance."""
-        return K6517B(resource)  # TODO
+        return settings.elm_instrument(resource)
+
+    def elm_reset(self, elm):
+        logger.info("Reset ELM...")
+        elm.reset()
+
+    def elm_clear(self, elm):
+        logger.info("Clear ELM...")
+        elm.clear()
 
     def elm_check_error(self, elm):
-        try:
-            result = elm.resource.query(":SYST:ERR?")
-        except Exception as exc:
-            raise RuntimeError(f"Failed to read error state from ELM: {exc}") from exc
-        try:
-            code, label = result.split(",", 1)
-            code = int(code)
-        except ValueError as exc:
-            raise RuntimeError(f"Failed to read electrometer error state, device returned: {result!r}") from exc
-        if code != 0:
-            label = label.strip("\"")
-            logger.error(f"Error {code}: {label}")
-            raise RuntimeError(f"Error {code}: {label}")
+        error = elm.next_error()
+        if error is not None:
+            logger.error(f"ELM instrument error {error.code}: {error.message!r}")
+            raise RuntimeError(f"ELM instrument error {error.code}: {error.message!r}")
 
-    def elm_safe_write(self, elm, message):
+    def elm_setup(self, elm):
+        ...
+
+    def elm_safe_write(self, elm, message: str) -> None:
         """Write, wait for operation complete, test for errors."""
+        logger.info(f"Safe write: {type(elm.context).__name__}: {message!r}")
         try:
-            elm.resource.write(message)
+            elm.context.resource.write(message)
+            elm.context.resource.query("*OPC?")
         except Exception as exc:
             raise RuntimeError(f"Failed to write to ELM: {message!r}, {exc}") from exc
-        try:
-            elm.resource.query("*OPC?")
-        except Exception as exc:
-            raise RuntimeError(f"Failed to read operation complete from ELM for message: {message!r}, {exc}") from exc
         self.elm_check_error(elm)
 
-    def elm_read(self, elm, timeout=60.0, interval=0.25):
+    def elm_read(self, elm, timeout=60.0, interval=0.25) -> float:
         """Perform electrometer reading with timeout."""
-        # Request operation complete
-        elm.resource.write("*CLS")
-        elm.resource.write("*OPC")
-        # Initiate measurement
-        logger.info("Initiate ELM measurement...")
-        elm.resource.write(":INIT")
-        t = Timer()
-        interval = min(timeout, interval)
-        logger.info("Poll ELM event status register...")
-        while t.delta() < timeout:
-            # Read event status
-            if int(elm.resource.query("*ESR?")) & 0x1:
-                logger.info("Fetch ELM reading...")
-                try:
-                    result = elm.resource.query(":FETCH?")
-                    return float(result.split(",")[0])
-                except Exception as exc:
-                    raise RuntimeError(f"Failed to fetch ELM reading: {exc}") from exc
-            time.sleep(interval)
-        raise RuntimeError(f"Electrometer reading timeout, exceeded {timeout:G} s")
-
-    def elm_get_zero_check(self, elm):
         try:
-            return bool(int(elm.resource.query(":SYST:ZCH?")))
+            return elm.acquire_reading(timeout, interval)
         except Exception as exc:
-            raise RuntimeError(f"Failed to get zero check from ELM: {exc}") from exc
+            raise RuntimeError(f"Failed to acquire reading from ELM: {exc}") from exc
 
-    def elm_set_zero_check(self, elm, enabled):
-        value = {False: "OFF", True: "ON"}.get(enabled)
+    def elm_set_sense_function(self, elm, function: str) -> None:
+        logger.info("Set ELM sense function: %r", function)
         try:
-            self.elm_safe_write(elm, f":SYST:ZCH {value}")
+            elm.set_sense_function(function)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to set ELM sense function: {exc}") from exc
+        self.elm_check_error(elm)
+        assert elm.get_sense_function() == "CURR:DC", "Failed to set sense function to current."
+
+    def elm_set_zero_check(self, elm, enabled: bool) -> None:
+        logger.info("Set ELM zero check: %r", enabled)
+        try:
+            elm.set_zero_check(enabled)
         except Exception as exc:
             raise RuntimeError(f"Failed to set zero check to ELM: {exc}") from exc
+        assert elm.get_zero_check() == enabled, "Failed to enable ELM zero check"
 
 
 class LCRMixin(Mixin):
@@ -484,30 +476,31 @@ class LCRMixin(Mixin):
 
     def lcr_create(self, resource):
         """Return LCR instrument instance."""
-        return E4980A(resource)  # TODO
+        return settings.lcr_instrument(resource)  # TODO
 
-    def lcr_check_error(self, device):
-        """Test for error."""
-        code, message = device.resource.query(":SYST:ERR?").split(",", 1)
-        code = int(code)
-        if code != 0:
-            message = message.strip("\"")
-            logger.error(f"LCR error {code}: {message}")
-            raise RuntimeError(f"LCR error {code}: {message}")
+    def lcr_check_error(self, lcr):
+        error = lcr.next_error()
+        if error is not None:
+            logger.error(f"LCR instrument error {error.code}: {error.message!r}")
+            raise RuntimeError(f"LCR instrument error {error.code}: {error.message!r}")
 
-    def lcr_safe_write(self, device, message):
+    def lcr_safe_write(self, lcr, message):
         """Write, wait for operation complete, test for error."""
-        logger.info(f"safe write: {device.__class__.__name__}: {message}")
-        device.resource.write(message)
-        device.resource.query("*OPC?")
-        self.lcr_check_error(device)
+        logger.info(f"safe write: {type(lcr.context).__name__}: {message!r}")
+        try:
+            lcr.context.resource.write(message)
+            lcr.context.resource.query("*OPC?")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to write to LCR: {exc}") from exc
+        self.lcr_check_error(lcr)
 
     def lcr_reset(self, lcr):
+        logger.info("Reset LCR...")
         lcr.reset()
+
+    def lcr_clear(self, lcr):
+        logger.info("Clear LCR...")
         lcr.clear()
-        self.lcr_check_error(lcr)
-        lcr.system.beeper.state = False
-        self.lcr_check_error(lcr)
 
     def lcr_setup(self, lcr):
         lcr_amplitude = self.get_parameter("lcr_amplitude")
@@ -517,6 +510,10 @@ class LCRMixin(Mixin):
         lcr_auto_level_control = self.get_parameter("lcr_auto_level_control")
         lcr_open_correction_mode = self.get_parameter("lcr_open_correction_mode")
         lcr_open_correction_channel = self.get_parameter("lcr_open_correction_channel")
+
+        logger.info("Configure LCR...")
+        lcr.configure()
+        self.lcr_check_error(lcr)
 
         self.lcr_safe_write(lcr, f":AMPL:ALC {lcr_auto_level_control:d}")
         self.lcr_safe_write(lcr, f":VOLT {lcr_amplitude:E}V")
@@ -533,8 +530,7 @@ class LCRMixin(Mixin):
 
     def lcr_acquire_reading(self, lcr):
         """Return primary and secondary LCR reading."""
-        self.lcr_safe_write(lcr, "TRIG:IMM")
-        prim, sec = lcr.fetch()[:2]
+        prim, sec = lcr.acquire_reading()
         logger.info("LCR Meter reading: %s-%s", prim, sec)
         return prim, sec
 
@@ -556,25 +552,25 @@ class LCRMixin(Mixin):
         logger.warning("maximum sample count reached: %d", maximum)
         return prim, sec
 
-    def lcr_get_bias_voltage_level(self, lcr):
-        return lcr.bias.voltage.level
+    def lcr_get_bias_voltage_level(self, lcr) -> float:
+        return lcr.get_bias_voltage_level()
 
-    def lcr_set_bias_voltage_level(self, lcr, voltage):
+    def lcr_set_bias_voltage_level(self, lcr, voltage: float) -> None:
         logger.info("LCR Meter set voltage level: %s", format_metric(voltage, "V"))
-        lcr.bias.voltage.level = voltage
+        lcr.set_bias_voltage_level(voltage)
         self.lcr_check_error(lcr)
 
-    def lcr_get_bias_polarity_current_level(self, lcr):
-        current = lcr.bias.polarity.current.level
+    def lcr_get_bias_polarity_current_level(self, lcr) -> float:
+        current = lcr.get_bias_polarity_current_level()
         logger.info("LCR Meter bias polarity current: %s", format_metric(current, "A"))
         return current
 
-    def lcr_get_bias_state(self, lcr):
-        return lcr.bias.state
+    def lcr_get_bias_state(self, lcr) -> bool:
+        return lcr.get_bias_state()
 
-    def lcr_set_bias_state(self, lcr, enabled):
+    def lcr_set_bias_state(self, lcr, enabled: bool) -> None:
         logger.info("LCR Meter set voltage output state: %s", enabled)
-        lcr.bias.state = enabled
+        lcr.set_bias_state(enabled)
         self.lcr_check_error(lcr)
 
 
@@ -602,7 +598,7 @@ class EnvironmentMixin(Mixin):
             logger.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logger.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
-        self.process.emit("state", {
+        self.update_state({
             "env_chuck_temperature": self.environment_temperature_chuck,
             "env_box_temperature": self.environment_temperature_box,
             "env_box_humidity": self.environment_humidity_box
@@ -686,7 +682,7 @@ class AnalysisMixin(Mixin):
             self.process.emit("append_analysis", key, values)
             if "x_fit" in r._asdict():
                 for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                    self.process.emit("reading", "xfit", x, y)
-                self.process.emit("update")
+                    self.append_reading("xfit", x, y)
+                self.update_plots()
         for f, r in results:
             f.verify(r)

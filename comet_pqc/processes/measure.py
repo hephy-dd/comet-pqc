@@ -11,7 +11,7 @@ from comet.process import ProcessMixin
 from comet.resource import ResourceError, ResourceMixin
 
 from ..measurements import measurement_factory
-from ..measurements.measurement import ComplianceError
+from ..measurements.measurement import ComplianceError, MeasurementRunner
 from ..measurements.mixins import AnalysisError
 from ..sequence import (
     ContactTreeItem,
@@ -251,7 +251,7 @@ class MeasureProcess(BaseProcess):
         self.emit("show_measurement", measurement_item)
         with LogFileHandler(log_filename):
             try:
-                measurement.run()
+                MeasurementRunner(measurement)()
             except ResourceError as e:
                 self.emit("message", "Process... failed.")
                 if isinstance(e.exc, pyvisa.errors.VisaIOError):

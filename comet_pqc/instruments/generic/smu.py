@@ -1,24 +1,12 @@
 from abc import abstractmethod
 from typing import Tuple
 
-from .instrument import Instrument
+from .instrument import Instrument, InstrumentError
 
 __all__ = ["SMUInstrument"]
 
 
 class SMUInstrument(Instrument):
-
-    @abstractmethod
-    def reset(self) -> None:
-        ...
-
-    @abstractmethod
-    def clear(self) -> None:
-        ...
-
-    @abstractmethod
-    def get_error(self) -> Tuple[int, str]:
-        ...
 
     # Output
 

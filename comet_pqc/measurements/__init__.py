@@ -13,7 +13,7 @@ def measurement_factory(key, *args, **kwargs):
     """Factory function to create a new measurement instance by type name.
 
     >>> meas = measurement_factory("iv_ramp")
-    >>> meas.run()
+    >>> meas()
     """
     for cls in globals().values():
         if hasattr(cls, "type"):

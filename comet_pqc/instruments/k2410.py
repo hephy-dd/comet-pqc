@@ -1,28 +1,30 @@
-from typing import Tuple
+from typing import Optional
 
 from comet.driver.keithley import K2410
 
-from .smu import SMUInstrument
+from .generic import SMUInstrument, InstrumentError
 
 __all__ = ["K2410Instrument"]
 
 
 class K2410Instrument(SMUInstrument):
 
-    def __init__(self, context) -> None:
-        super().__init__(K2410(context))
+    Driver = K2410
 
     def reset(self) -> None:
         self.context.reset()
-        self.context.clear()
-        self.context.system.beeper.status = False
 
     def clear(self) -> None:
         self.context.clear()
 
-    def get_error(self) -> Tuple[int, str]:
+    def configure(self) -> None:
+        self.context.system.beeper.status = False
+
+    def next_error(self) -> Optional[InstrumentError]:
         code, message = self.context.system.error
-        return code, message
+        if code:
+            return InstrumentError(code, message)
+        return None
 
     # Output
 

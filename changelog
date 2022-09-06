@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.0] - 2022-09-06
+### Added
+- Generic instrument drivers (#186).
+
 ## [0.42.0] - 2022-08-24
 ### Added
 - Command line arguments for debug mode and custom logfile.

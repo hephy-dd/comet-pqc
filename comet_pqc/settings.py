@@ -1,8 +1,6 @@
 from comet.settings import SettingsMixin
 
-from .instruments.k2410 import K2410Instrument
-from .instruments.k2470 import K2470Instrument
-from .instruments.k2657a import K2657AInstrument
+from .instruments import get_instrument
 from .core.position import Position
 from .utils import from_table_unit, to_table_unit
 
@@ -213,21 +211,31 @@ class Settings(SettingsMixin):
 
     @property
     def vsrc_instrument(self):
-        vsrc_instrument = self.settings.get("vsrc_instrument") or "K2657A"
-        return {
-            "K2410": K2410Instrument,
-            "K2470": K2470Instrument,
-            "K2657A": K2657AInstrument,
-        }.get(vsrc_instrument)
+        model = self.settings.get("vsrc_instrument") or "K2657A"
+        if model not in ["K2410", "K2470",  "K2657A"]:
+            raise KeyError(f"No such V Source instrument model: {model!r}")
+        return get_instrument(model)
 
     @property
     def hvsrc_instrument(self):
-        hvsrc_instrument = self.settings.get("hvsrc_instrument") or "K2410"
-        return {
-            "K2410": K2410Instrument,
-            "K2470": K2470Instrument,
-            "K2657A": K2657AInstrument,
-        }.get(hvsrc_instrument)
+        model = self.settings.get("hvsrc_instrument") or "K2410"
+        if model not in ["K2410", "K2470",  "K2657A"]:
+            raise KeyError(f"No such HV Source instrument model: {model!r}")
+        return get_instrument(model)
+
+    @property
+    def elm_instrument(self):
+        model = self.settings.get("elm_instrument") or "K6517B"
+        if model not in ["K6517B"]:
+            raise KeyError(f"No such ELM instrument model: {model!r}")
+        return get_instrument(model)
+
+    @property
+    def lcr_instrument(self):
+        model = self.settings.get("lcr_instrument") or "E4980A"
+        if model not in ["E4980A"]:
+            raise KeyError(f"No such LCR instrument model: {model!r}")
+        return get_instrument(model)
 
     @property
     def retry_measurement_count(self):
