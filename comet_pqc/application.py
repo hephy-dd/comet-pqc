@@ -1,15 +1,15 @@
 import logging
 import sys
 import signal
+from typing import Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 import analysis_pqc
 import comet
-from comet import ui
-from .mainwindow import MainWindow
 
 from . import __version__
-from .dashboard import Dashboard
+from .mainwindow import MainWindow
 from .processes import (
     AlternateTableProcess,
     ContactQualityProcess,
@@ -37,11 +37,9 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.app.setOrganizationDomain("hephy.at")
         self.app.setApplicationDisplayName(f"PQC {__version__}")
         self.app.setWindowIcon(QtGui.QIcon(make_path("assets", "icons", "pqc.ico")))
-        self.app.setProperty("contentsUrl", CONTENTS_URL)
-        self.app.setProperty("githubUrl", GITHUB_URL)
         self.app.lastWindowClosed.connect(self.app.quit)
 
-        # TODO
+        # TODO for SettingsMixin
         self.app.reflection = lambda: self.app
         self.app.name = self.app.applicationName()
         self.app.organization = self.app.organizationName()
@@ -49,26 +47,18 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self._setup_resources()
         self._setup_processes()
 
-        # Dashboard
-        self.dashboard = Dashboard(
-            lock_state_changed=self.on_lock_state_changed,
-            message_changed=self.on_message,
-            progress_changed=self.on_progress
-        )
-        self.central_widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(self.central_widget)
-        layout.addWidget(self.dashboard.qt)
-
-        # Initialize main window
         self.window = MainWindow()
-        self.window.setCentralWidget(self.central_widget)
+        self.window.setProperty("contentsUrl", CONTENTS_URL)
+        self.window.setProperty("githubUrl", GITHUB_URL)
+
+        self.dashboard = self.window.dashboard
+        self.dashboard.message_changed = self.on_message,
+        self.dashboard.progress_changed = self.on_progress
 
         self.preferences_dialog = self.window.preferences_dialog
 
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
-
-        self._setup_preferences()
 
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
@@ -139,10 +129,6 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             failed=self.on_show_error
         ))
 
-    def _setup_preferences(self):
-        self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
-        self.preferences_dialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
-
     def load_settings(self):
         # Restore window size
         width, height = self.settings.get("window_size", (1420, 920))
@@ -186,32 +172,29 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         timer.start(250)
 
         self.window.show()
-        self.window.raise_()
 
         try:
-            return self.app.exec_()
+            return self.app.exec()
         finally:
             # Stop processes
             self.processes.stop()
             self.processes.join()
 
     def on_show_error(self, exc, tb):
-        self.on_message("Exception occured!")
-        self.on_progress(None, None)
         logger.exception(exc)
-        ui.show_exception(exc, tb)
+        self.window.showMessage("Exception occured!")
+        self.window.hideProgress()
+        self.window.showException(exc, tb)
 
-    def on_lock_state_changed(self, state):
-        self.window.preferences_action.setEnabled(not state)
-
-    def on_message(self, message):
+    def on_message(self, message: Optional[str]) -> None:
         if message is None:
-            self.window.hide_message()
+            self.window.hideMessage()
         else:
-            self.window.show_message(message)
+            self.window.showMessage(message)
 
-    def on_progress(self, value, maximum):
+    def on_progress(self, value: int, maximum: int) -> None:
+        minimum = 0
         if value == maximum:
-            self.window.hide_progress()
+            self.window.hideProgress()
         else:
-            self.window.show_progress(value, maximum)
+            self.window.showProgress(minimum, maximum, value)

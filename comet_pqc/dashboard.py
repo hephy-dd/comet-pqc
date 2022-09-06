@@ -6,11 +6,11 @@ import time
 import webbrowser
 
 from PyQt5 import QtWidgets
+import qutie as ui
 
 import comet
 from comet.process import ProcessMixin
 from comet.settings import SettingsMixin
-from comet import ui
 
 from .components import (
     CalibrationWidget,

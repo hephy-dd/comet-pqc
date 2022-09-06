@@ -3,9 +3,10 @@ import math
 import traceback
 from typing import Callable, Iterable, Union
 
-from comet import ui
-from comet import ureg
 from PyQt5 import QtCore, QtGui
+import qutie as ui
+
+from comet import ureg
 
 from .core.utils import make_path
 
@@ -128,6 +129,10 @@ def handle_exception(func: Callable) -> Callable:
             logger.error(tb)
             ui.show_exception(exc, tb)
     return catch_exception_wrapper
+
+
+def show_exception(exc, tb):
+    ui.show_exception(exc, tb)
 
 
 def getcal(value: float) -> Union[int, float]:

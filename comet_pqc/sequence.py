@@ -3,10 +3,11 @@ import logging
 import math
 import os
 
+from PyQt5 import QtCore
+import qutie as ui
 import yaml
-from comet import ui
+
 from comet.settings import SettingsMixin
-from qutie.qutie import QtCore
 
 from .components import (
     OperatorWidget,
@@ -465,6 +466,10 @@ class SampleTreeItem(SequenceTreeItem):
     @property
     def name(self):
         return "".join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
+
+    @name.setter
+    def name(self, _):
+        raise AttributeError()
 
     @property
     def name_prefix(self):

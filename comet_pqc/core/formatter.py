@@ -49,7 +49,7 @@ class CSVFormatter(Formatter):
             raise ValueError(f"column name already exists: {name}")
         if format_spec is None:
             format_spec = ""
-        self._writer.fieldnames.append(name)
+        self._writer.fieldnames.append(name)  # type: ignore
         self._format_specs[name] = format_spec
 
     def write_header(self) -> None:

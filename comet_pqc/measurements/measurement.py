@@ -5,6 +5,7 @@ import logging
 import math
 import time
 import uuid
+from typing import List
 
 import analysis_pqc
 import comet
@@ -75,7 +76,7 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     type: str = ""
 
-    required_instruments = []
+    required_instruments: List[str] = []
 
     measurement_item = None # HACK
 
