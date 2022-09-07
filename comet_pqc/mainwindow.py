@@ -6,7 +6,8 @@ from comet import ProcessMixin
 from comet.ui.preferences import PreferencesDialog
 
 from .dashboard import Dashboard
-from .preferences import OptionsTab, TableTab, WebAPITab
+from .preferences import PreferencesDialog
+from .resources import ResourcesDialog
 from .settings import settings
 from .utils import show_exception
 
@@ -34,6 +35,10 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.preferencesAction.setText("Prefere&nces")
         self.preferencesAction.triggered.connect(self.showPreferences)
 
+        self.resourcesAction = QtWidgets.QAction(self)
+        self.resourcesAction.setText("&Resources")
+        self.resourcesAction.triggered.connect(self.showResources)
+
         self.contentsAction = QtWidgets.QAction(self)
         self.contentsAction.setText("&Contents")
         self.contentsAction.setShortcut("F1")
@@ -58,6 +63,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         self.editMenu = self.menuBar().addMenu("&Edit")
         self.editMenu.addAction(self.preferencesAction)
+        self.editMenu.addAction(self.resourcesAction)
 
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.contentsAction)
@@ -89,21 +95,9 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         # Dialogs
 
-        self.preferences_dialog = PreferencesDialog()
-        self.preferences_dialog.hide()
-
-        table_tab = TableTab()
-        table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
-        self.preferences_dialog.tab_widget.append(table_tab)
-        self.preferences_dialog.table_tab = table_tab
-
-        webapi_tab = WebAPITab()
-        self.preferences_dialog.tab_widget.append(webapi_tab)
-        self.preferences_dialog.webapi_tab = webapi_tab
-
-        options_tab = OptionsTab()
-        self.preferences_dialog.tab_widget.append(options_tab)
-        self.preferences_dialog.options_tab = options_tab
+        self.preferencesDialog = PreferencesDialog()
+        self.preferencesDialog.hide()
+        self.preferencesDialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
 
         # Events
 
@@ -113,10 +107,27 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
     def setLocked(self, state: bool) -> None:
         self.preferencesAction.setEnabled(not state)
+        self.resourcesAction.setEnabled(not state)
 
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
-        self.preferences_dialog.run()
+        try:
+            self.preferencesDialog.run()
+        except Exception as exc:
+            self.showException(exc)
+
+    def showResources(self) -> None:
+        """Show modal resources dialog."""
+        try:
+            dialog = ResourcesDialog(self)
+            dialog.readSettings()
+            dialog.setResources(settings.resources())
+            dialog.exec()
+            dialog.syncSettings()
+            if dialog.result() == dialog.Accepted:
+                settings.setResources(dialog.resources())
+        except Exception as exc:
+            self.showException(exc)
 
     def showContents(self) -> None:
         """Open local webbrowser with contents URL."""

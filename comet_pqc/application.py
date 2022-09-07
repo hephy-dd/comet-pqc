@@ -55,8 +55,6 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.dashboard.message_changed = self.on_message,
         self.dashboard.progress_changed = self.on_progress
 
-        self.preferences_dialog = self.window.preferences_dialog
-
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
@@ -135,7 +133,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.window.resize(width, height)
         # HACK: resize preferences dialog for HiDPI
         width, height = self.settings.get("preferences_dialog_size", (640, 480))
-        self.preferences_dialog.resize(width, height)
+        self.window.preferencesDialog.resize(width, height)
         # Load configurations
         self.dashboard.load_settings()
 
@@ -144,7 +142,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         # Store window size
         width, height = self.window.width(), self.window.height()
         self.settings["window_size"] = width, height
-        width, height = self.preferences_dialog.size
+        width, height = self.window.preferencesDialog.size
         self.settings["preferences_dialog_size"] = width, height
 
     def event_loop(self):

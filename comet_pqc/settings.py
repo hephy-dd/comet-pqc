@@ -1,3 +1,5 @@
+from typing import Any, Dict, List
+
 from comet.settings import SettingsMixin
 
 from .instruments import get_instrument
@@ -208,6 +210,59 @@ class Settings(SettingsMixin):
         if value in output_path:
             index = output_path.index(value)
         self.settings["current_output_path"] = index
+
+    def instrumentModels(self, name: str) -> List[str]:
+        return {
+            "matrix": ["K707B"],
+            "vsrc": ["K2410", "K2470", "K2657A"],
+            "hvsrc": ["K2410", "K2470", "K2657A"],
+            "lcr": ["E4980A"],
+            "elm": ["K6517B"],
+            "environ": ["EnvironmentBox"],
+            "table": ["Venus1"],
+        }[name]
+
+    def instrumentModel(self, name: str) -> str:
+        if name == "matrix":
+            return self.settings.get("matrix_instrument") or "K707B"
+        if name == "vsrc":
+            return self.settings.get("vsrc_instrument") or "K2657A"
+        if name == "hvsrc":
+            return self.settings.get("hvsrc_instrument") or "K2410"
+        if name == "lcr":
+            return self.settings.get("lcr_instrument") or "E4980A"
+        if name == "elm":
+            return self.settings.get("elm_instrument") or "K6517B"
+        if name == "environ":
+            return self.settings.get("environ_instrument") or "EnvironmentBox"
+        if name == "table":
+            return self.settings.get("table_instrument") or "Venus1"
+        raise ValueError(name)
+
+    def resources(self) -> Dict[str, Dict[str, Any]]:
+        resources_: Dict[str, Dict[str, Any]] = {}
+        for name, resource in self.settings.get("resources", {}).items():  # for compatibility
+            resources_.update({name: {
+                "models": self.instrumentModels(name),
+                "model": self.instrumentModel(name),
+                "address": resource.get("resource_name", ""),
+                "termination": resource.get("read_termination", "\r\n"),
+                "timeout": resource.get("timeout", 8000) / 1e3,
+            }})
+        return resources_
+
+    def setResources(self, resources: Dict[str, Dict[str, Any]]) -> None:
+        resources_: Dict[str, Dict[str, Any]] = {}
+        for name, resource in resources.items():  # for compatibility
+            resources_.update({name: {
+                "resource_name": resource.get("address", ""),
+                "read_termination": resource.get("termination", "\r\n"),
+                "write_termination": resource.get("termination", "\r\n"),
+                "visa_library": "@py",
+                "timeout": resource.get("timeout", 4.0) * 1e3,
+            }})
+            self.settings[f"{name}_instrument"] = resource.get("model", "")
+        self.settings["resources"] = resources_
 
     @property
     def vsrc_instrument(self):
