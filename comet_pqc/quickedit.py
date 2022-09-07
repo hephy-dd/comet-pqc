@@ -170,8 +170,6 @@ class QuickEditDialog(QtWidgets.QDialog):
 
         geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
         self.restoreGeometry(geometry)
-        state = settings.value("state", QtCore.QByteArray(), QtCore.QByteArray)
-        self.restoreState(state)
 
         settings.endGroup()
 
@@ -180,7 +178,6 @@ class QuickEditDialog(QtWidgets.QDialog):
         settings.beginGroup("QuickEditDialog")
 
         settings.setValue("geometry", self.saveGeometry())
-        settings.setValue("state", self.saveState())
 
         settings.endGroup()
 
