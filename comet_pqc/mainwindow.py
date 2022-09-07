@@ -3,7 +3,6 @@ import webbrowser
 from PyQt5 import QtCore, QtWidgets
 
 from comet import ProcessMixin
-from comet.ui.preferences import PreferencesDialog
 
 from .dashboard import Dashboard
 from .preferences import PreferencesDialog
@@ -93,17 +92,35 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         layout = QtWidgets.QVBoxLayout(widget)
         layout.addWidget(self.dashboard.qt)
 
-        # Dialogs
-
-        self.preferencesDialog = PreferencesDialog()
-        self.preferencesDialog.hide()
-        self.preferencesDialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
-
         # Events
 
         self.setLocked(False)
         self.hideMessage()
         self.hideProgress()
+
+    def readSettings(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup("MainWindow")
+
+        geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreGeometry(geometry)
+        state = settings.value("state", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreState(state)
+
+        settings.endGroup()
+
+        self.dashboard.load_settings()
+
+    def writeSettings(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup("MainWindow")
+
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("state", self.saveState())
+
+        settings.endGroup()
+
+        self.dashboard.store_settings()
 
     def setLocked(self, state: bool) -> None:
         self.preferencesAction.setEnabled(not state)
@@ -112,7 +129,13 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
         try:
-            self.preferencesDialog.run()
+            dialog = PreferencesDialog()
+            dialog.readSettings()
+            dialog.exec()
+            if dialog.result() == dialog.Accepted:
+                dialog.writeSettings()
+                # Update temp. Z limit message
+                self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
         except Exception as exc:
             self.showException(exc)
 
@@ -123,8 +146,8 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             dialog.readSettings()
             dialog.setResources(settings.resources())
             dialog.exec()
-            dialog.syncSettings()
             if dialog.result() == dialog.Accepted:
+                dialog.writeSettings()
                 settings.setResources(dialog.resources())
         except Exception as exc:
             self.showException(exc)

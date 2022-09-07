@@ -128,22 +128,10 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         ))
 
     def load_settings(self):
-        # Restore window size
-        width, height = self.settings.get("window_size", (1420, 920))
-        self.window.resize(width, height)
-        # HACK: resize preferences dialog for HiDPI
-        width, height = self.settings.get("preferences_dialog_size", (640, 480))
-        self.window.preferencesDialog.resize(width, height)
-        # Load configurations
-        self.dashboard.load_settings()
+        self.window.readSettings()
 
     def store_settings(self):
-        self.dashboard.store_settings()
-        # Store window size
-        width, height = self.window.width(), self.window.height()
-        self.settings["window_size"] = width, height
-        width, height = self.window.preferencesDialog.size
-        self.settings["preferences_dialog_size"] = width, height
+        self.window.writeSettings()
 
     def event_loop(self):
         # Sync environment controls

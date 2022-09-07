@@ -135,15 +135,19 @@ class ResourcesDialog(QtWidgets.QDialog):
         """Load dialog specific settings."""
         settings = QtCore.QSettings()
         settings.beginGroup("ResourcesDialog")
-        size = settings.value("size", QtCore.QSize(640, 480), QtCore.QSize)
-        self.resize(size)
+
+        geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreGeometry(geometry)
+
         settings.endGroup()
 
-    def syncSettings(self) -> None:
+    def writeSettings(self) -> None:
         """Syncronize dialog specific settings."""
         settings = QtCore.QSettings()
         settings.beginGroup("ResourcesDialog")
-        settings.setValue("size", self.size())
+
+        settings.setValue("geometry", self.saveGeometry())
+
         settings.endGroup()
 
     def models(self) -> List[str]:
