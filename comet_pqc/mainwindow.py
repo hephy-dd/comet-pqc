@@ -82,15 +82,23 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         # Dashboard
 
+        self.temporaryNoticeLabel = QtWidgets.QLabel(self)
+        self.temporaryNoticeLabel.setText(
+            "Temporary Probecard Z-Limit applied. "
+            "Revert after finishing current measurements."
+        )
+        self.temporaryNoticeLabel.setStyleSheet("QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}")
+        self.temporaryNoticeLabel.setVisible(settings.table_temporary_z_limit)
+
         self.dashboard = Dashboard(
             lock_state_changed = self.setLocked,
         )
-        self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout(widget)
-        layout.addWidget(self.dashboard.qt)
+        layout.addWidget(self.temporaryNoticeLabel, 0)
+        layout.addWidget(self.dashboard.qt, 1)
 
         # Events
 
@@ -135,7 +143,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             if dialog.result() == dialog.Accepted:
                 dialog.writeSettings()
                 # Update temp. Z limit message
-                self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
+                self.temporaryNoticeLabel.setVisible(settings.table_temporary_z_limit)
         except Exception as exc:
             self.showException(exc)
 

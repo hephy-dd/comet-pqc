@@ -535,12 +535,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.message_changed = message_changed
         self.progress_changed = progress_changed
         # Layout
-        self.temporary_z_limit_label = ui.Label(
-            text="Temporary Probecard Z-Limit applied. "
-                 "Revert after finishing current measurements.",
-            stylesheet="QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}",
-            visible=False
-        )
         self.sequence_widget = SequenceWidget(
             tree_selected=self.on_tree_selected,
             tree_double_clicked=self.on_tree_double_clicked,
@@ -645,7 +639,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.splitter.stretch = 4, 9
         self.splitter.collapsible = False
 
-        self.append(self.temporary_z_limit_label)
         self.append(self.splitter)
         self.stretch = 0, 1
 
@@ -780,10 +773,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.measurement_tab.unlock()
         self.status_tab.unlock()
         self.lock_state_changed(False)
-
-    def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
-        logger.info("Temporary Z-Limit enabled: %s", enabled)
-        self.temporary_z_limit_label.visible = enabled
 
     # Sequence control
 

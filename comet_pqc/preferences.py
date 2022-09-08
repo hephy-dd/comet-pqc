@@ -247,47 +247,71 @@ class OptionsWidget(QtWidgets.QWidget, SettingsMixin):
         settings.retry_contact_count = self.retryContactSpinBox.value()
 
 
-class TableStepDialog(ui.Dialog):
+class TableStepDialog(QtWidgets.QDialog):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._step_size_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._z_limit_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm", visible=False)
-        self._step_color_text = ui.Text()
-        self._button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
-        self.layout = ui.Column(
-            ui.Label("Size", tool_tip="Step size in millimeters"),
-            self._step_size_number,
-            ui.Label("Z-Limit", tool_tip="Z-Limit in millimeters", visible=False),
-            self._z_limit_number,
-            ui.Label("Color", tool_tip="Color code for step"),
-            self._step_color_text,
-            self._button_box
-        )
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
-    @property
-    def step_size(self):
-        return self._step_size_number.value
+        self.stepSizeLabel = QtWidgets.QLabel(self)
+        self.stepSizeLabel.setText("Size")
+        self.stepSizeLabel.setToolTip("Step size in millimeters")
 
-    @step_size.setter
-    def step_size(self, value):
-        self._step_size_number.value = value
+        self.stepSizeSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.stepSizeSpinBox.setRange(0, 1000)
+        self.stepSizeSpinBox.setValue(0)
+        self.stepSizeSpinBox.setDecimals(3)
+        self.stepSizeSpinBox.setSuffix(" mm")
 
-    @property
-    def z_limit(self):
-        return self._z_limit_number.value
+        self.zLimitLabel = QtWidgets.QLabel(self)
+        self.zLimitLabel.setText("Z-Limit")
+        self.zLimitLabel.setToolTip("Z-Limit in millimeters")
+        self.zLimitLabel.setVisible(False)
 
-    @z_limit.setter
-    def z_limit(self, value):
-        self._z_limit_number.value = value
+        self.zLimitSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.zLimitSpinBox.setRange(0, 1000)
+        self.zLimitSpinBox.setValue(0)
+        self.zLimitSpinBox.setDecimals(3)
+        self.zLimitSpinBox.setSuffix(" mm")
+        self.zLimitSpinBox.setVisible(False)
 
-    @property
-    def step_color(self):
-        return self._step_color_text.value
+        self.stepColorLabel = QtWidgets.QLabel(self)
+        self.stepColorLabel.setText("Color")
+        self.stepColorLabel.setToolTip("Color code for step")
 
-    @step_color.setter
-    def step_color(self, value):
-        self._step_color_text.value = value or ""
+        self.stepColorLineEdit = QtWidgets.QLineEdit(self)
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.stepSizeLabel)
+        layout.addWidget(self.stepSizeSpinBox)
+        layout.addWidget(self.zLimitLabel)
+        layout.addWidget(self.zLimitSpinBox)
+        layout.addWidget(self.stepColorLabel)
+        layout.addWidget(self.stepColorLineEdit)
+        layout.addWidget(self.buttonBox)
+
+    def stepSize(self) -> float:
+        return self.stepSizeSpinBox.value()
+
+    def setStepSize(self, value: float) -> None:
+        self.stepSizeSpinBox.setValue(value)
+
+    def zLimit(self) -> float:
+        return self.zLimitSpinBox.value()
+
+    def setZLimit(self, value: float) -> None:
+        self.zLimitSpinBox.setValue(value)
+
+    def stepColor(self) -> str:
+        return self.stepColorLineEdit.text()
+
+    def setStepColor(self, value: str):
+        self.stepColorLineEdit.setText(value or "")
 
 
 class ItemDelegate(QtWidgets.QItemDelegate):
@@ -296,41 +320,41 @@ class ItemDelegate(QtWidgets.QItemDelegate):
     Decimals = 3
 
     def drawDisplay(self, painter, option, rect, text):
-        text = format(float(text), f".{self.Decimals}f")
+        try:
+            text = f"{float(text):.{self.Decimals}f} mm"
+        except Exception:
+            ...
         super().drawDisplay(painter, option, rect, text)
 
 
-class TableStepItem(ui.TreeItem):
+class TableStepItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, step_size, z_limit, step_color=None):
+    def __init__(self, stepSize: float, zLimit: float, stepColor: str) -> None:
         super().__init__()
-        self.step_size = step_size
-        self.z_limit = z_limit
-        self.step_color = step_color
+        self.setStepSize(stepSize)
+        self.setZLimit(zLimit)
+        self.setStepColor(stepColor)
 
-    @property
-    def step_size(self):
-        return self[0].value
+    def stepSize(self):
+        return self.data(0, 0x2000)
 
-    @step_size.setter
-    def step_size(self, value):
-        self[0].value = float(value)
+    def setStepSize(self, value: float):
+        self.setData(0, 0x2000, value)
+        self.setText(0, format(value))
 
-    @property
-    def z_limit(self):
-        return self[1].value
+    def zLimit(self):
+        return self.data(1, 0x2000)
 
-    @z_limit.setter
-    def z_limit(self, value):
-        self[1].value = float(value)
+    def setZLimit(self, value: float):
+        self.setData(1, 0x2000, value)
+        self.setText(1, format(value))
 
-    @property
-    def step_color(self):
-        return self[2].value
+    def stepColor(self) -> str:
+        return self.data(2, 0x2000)
 
-    @step_color.setter
-    def step_color(self, value):
-        self[2].value = value
+    def setStepColor(self, value: str):
+        self.setData(2, 0x2000, value)
+        self.setText(2, format(value))
 
 
 class TableWidget(QtWidgets.QWidget, SettingsMixin):
@@ -339,56 +363,56 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
 
-        self._steps_tree = ui.Tree(
-            header=("Size", "Z-Limit", "Color"),
-            root_is_decorated=False
-        )
+        self.stepsTreeWidget = QtWidgets.QTreeWidget(self)
+        self.stepsTreeWidget.setHeaderLabels(["Size", "Z-Limit", "Color"])
+        self.stepsTreeWidget.setRootIsDecorated(False)
+
         # Hide Z-Limit column
-        self._steps_tree.qt.setColumnHidden(1, True)
-        self._steps_tree.selected = self.on_position_selected
-        self._steps_tree.double_clicked = self.on_steps_tree_double_clicked
-        self._steps_tree.qt.setItemDelegateForColumn(0, ItemDelegate(self._steps_tree.qt))
-        self._steps_tree.qt.setItemDelegateForColumn(1, ItemDelegate(self._steps_tree.qt))
-        self._add_step_button = ui.Button(
-            text="&Add",
-            tool_tip="Add table step",
-            clicked=self.on_add_step_clicked
-        )
-        self._edit_step_button = ui.Button(
-            text="&Edit",
-            tool_tip="Edit selected table step",
-            enabled=False,
-            clicked=self.on_edit_step_clicked
-        )
-        self._remove_step_button = ui.Button(
-            text="&Remove",
-            tool_tip="Remove selected table step",
-            enabled=False,
-            clicked=self.on_remove_step_clicked
-        )
+        self.stepsTreeWidget.setColumnHidden(1, True)
+        self.stepsTreeWidget.setItemDelegateForColumn(0, ItemDelegate(self.stepsTreeWidget))
+        self.stepsTreeWidget.setItemDelegateForColumn(1, ItemDelegate(self.stepsTreeWidget))
+        self.stepsTreeWidget.currentItemChanged.connect(self.updateStepButtons)
+        self.stepsTreeWidget.itemDoubleClicked.connect(self.stepDoubleClicked)
+
+        self.addStepButton = QtWidgets.QPushButton(self)
+        self.addStepButton.setText("&Add")
+        self.addStepButton.setToolTip("Add table step")
+        self.addStepButton.clicked.connect(self.addNewStep)
+
+        self.editStepButton = QtWidgets.QPushButton(self)
+        self.editStepButton.setText("&Edit")
+        self.editStepButton.setToolTip("Edit selected table step")
+        self.editStepButton.setEnabled(False)
+        self.editStepButton.clicked.connect(self.editCurrentStep)
+
+        self.removeStepButton = QtWidgets.QPushButton(self)
+        self.removeStepButton.setText("&Remove")
+        self.removeStepButton.setToolTip("Remove selected table step")
+        self.removeStepButton.setEnabled(False)
+        self.removeStepButton.clicked.connect(self.removeCurrentStep)
+
         self.zLimitMovementSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.zLimitMovementSpinBox.setRange(0, 128)
         self.zLimitMovementSpinBox.setDecimals(3)
         self.zLimitMovementSpinBox.setSuffix(" mm")
 
-        def create_number():
-            return ui.Number(
-                minimum=0,
-                maximum=1000.0,
-                decimals=3,
-                suffix="mm"
-            )
+        def createSpinBox(parent):
+            spinBox = QtWidgets.QDoubleSpinBox(parent)
+            spinBox.setRange(0, 1000)
+            spinBox.setDecimals(3)
+            spinBox.setSuffix(" mm")
+            return spinBox
 
-        self._probecard_limit_x_maximum_number = create_number()
-        self._probecard_limit_y_maximum_number = create_number()
-        self._probecard_limit_z_maximum_number = create_number()
-        self._probecard_limit_z_maximum_checkbox = ui.CheckBox(
-            text="Temporary Z-Limit",
-            tool_tip="Select to show temporary Z-Limit notice."
-        )
-        self._joystick_limit_x_maximum_number = create_number()
-        self._joystick_limit_y_maximum_number = create_number()
-        self._joystick_limit_z_maximum_number = create_number()
+        self.probecardLimitXSpinBox = createSpinBox(self)
+        self.probecardLimitYSpinBox = createSpinBox(self)
+        self.probecardLimitZSpinBox = createSpinBox(self)
+        self.probecardLimitZCheckBox = QtWidgets.QCheckBox(self)
+        self.probecardLimitZCheckBox.setText("Temporary Z-Limit")
+        self.probecardLimitZCheckBox.setToolTip("Select to show temporary Z-Limit notice.")
+
+        self.joystickLimitXSpinBox = createSpinBox(self)
+        self.joystickLimitYSpinBox = createSpinBox(self)
+        self.joystickLimitZSpinBox = createSpinBox(self)
 
         self.probecardContactDelaySpinBox = QtWidgets.QDoubleSpinBox(self)
         self.probecardContactDelaySpinBox.setRange(0, 3600)
@@ -402,188 +426,179 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
         self.recontactOverdriveNumberSpinBox.setSingleStep(0.001)
         self.recontactOverdriveNumberSpinBox.setSuffix(" mm")
 
-        self.stepsGroupBox = ui.GroupBox(
-            title="Control Steps (mm)",
-            layout=ui.Row(
-                self._steps_tree,
-                ui.Column(
-                    self._add_step_button,
-                    self._edit_step_button,
-                    self._remove_step_button,
-                    ui.Spacer()
-                ),
-                stretch=(1, 0)
-            )
-        )
+        self.stepsGroupBox = QtWidgets.QGroupBox(self)
+        self.stepsGroupBox.setTitle("Control Steps (mm)")
+
+        stepsLayout = QtWidgets.QGridLayout(self.stepsGroupBox)
+        stepsLayout.addWidget(self.stepsTreeWidget, 0, 0, 4, 1)
+        stepsLayout.addWidget(self.addStepButton, 0, 1)
+        stepsLayout.addWidget(self.editStepButton, 1, 1)
+        stepsLayout.addWidget(self.removeStepButton, 2, 1)
+        stepsLayout.setRowStretch(3, 1)
 
         self.zLimitGroupBox = QtWidgets.QGroupBox(self)
         self.zLimitGroupBox.setTitle("Movement Z-Limit")
 
-        zLimitLayout = QtWidgets.QVBoxLayout(self.zLimitGroupBox)
+        zLimitLayout = QtWidgets.QHBoxLayout(self.zLimitGroupBox)
         zLimitLayout.addWidget(self.zLimitMovementSpinBox)
+        zLimitLayout.addStretch()
 
-        self.probecardGroupBox = ui.GroupBox(
-            title="Probe Card Limts",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("X"),
-                    self._probecard_limit_x_maximum_number
-                ),
-                ui.Column(
-                    ui.Label("Y"),
-                    self._probecard_limit_y_maximum_number
-                ),
-                ui.Column(
-                    ui.Label("Z"),
-                    self._probecard_limit_z_maximum_number
-                ),
-                ui.Column(
-                    ui.Label(),
-                    ui.Label("Maximum"),
-                ),
-                ui.Spacer(),
-                ui.Column(
-                    ui.Label(),
-                    self._probecard_limit_z_maximum_checkbox,
-                )
-            )
-        )
+        self.probecardGroupBox = QtWidgets.QGroupBox(self)
+        self.probecardGroupBox.setTitle("Probe Card Limts")
 
-        self.joystickGropBox = ui.GroupBox(
-            title="Joystick Limits",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("X"),
-                    self._joystick_limit_x_maximum_number
-                ),
-                ui.Column(
-                    ui.Label("Y"),
-                    self._joystick_limit_y_maximum_number
-                ),
-                ui.Column(
-                    ui.Label("Z"),
-                    self._joystick_limit_z_maximum_number
-                ),
-                ui.Column(
-                    ui.Label(),
-                    ui.Label("Maximum"),
-                ),
-                ui.Spacer()
-            )
-        )
+        probecardLayout = QtWidgets.QGridLayout(self.probecardGroupBox)
+        probecardLayout.addWidget(QtWidgets.QLabel("X"), 0, 0)
+        probecardLayout.addWidget(self.probecardLimitXSpinBox, 1, 0)
+        probecardLayout.addWidget(QtWidgets.QLabel("Y"), 0, 1)
+        probecardLayout.addWidget(self.probecardLimitYSpinBox, 1, 1)
+        probecardLayout.addWidget(QtWidgets.QLabel("Z"), 0, 2)
+        probecardLayout.addWidget(self.probecardLimitZSpinBox, 1, 2)
+        probecardLayout.addWidget(QtWidgets.QLabel("Maximum"), 1, 3)
+        probecardLayout.setColumnStretch(3, 1)
+        probecardLayout.addWidget(self.probecardLimitZCheckBox, 1, 4)
+
+        self.joystickGroupBox = QtWidgets.QGroupBox(self)
+        self.joystickGroupBox.setTitle("Joystick Limits")
+
+        joystickLayout = QtWidgets.QGridLayout(self.joystickGroupBox)
+        joystickLayout.addWidget(QtWidgets.QLabel("X"), 0, 0)
+        joystickLayout.addWidget(self.joystickLimitXSpinBox, 1, 0)
+        joystickLayout.addWidget(QtWidgets.QLabel("Y"), 0, 1)
+        joystickLayout.addWidget(self.joystickLimitYSpinBox, 1, 1)
+        joystickLayout.addWidget(QtWidgets.QLabel("Z"), 0, 2)
+        joystickLayout.addWidget(self.joystickLimitZSpinBox, 1, 2)
+        joystickLayout.addWidget(QtWidgets.QLabel("Maximum"), 1, 3)
+        joystickLayout.setColumnStretch(3, 1)
 
         self.delayGroupBox = QtWidgets.QGroupBox(self)
         self.delayGroupBox.setTitle("Probecard Contact Delay")
 
         delayLayout = QtWidgets.QHBoxLayout(self.delayGroupBox)
         delayLayout.addWidget(self.probecardContactDelaySpinBox)
+        delayLayout.addStretch()
 
         self.overdriveGroupBox = QtWidgets.QGroupBox(self)
         self.overdriveGroupBox.setTitle("Re-Contact Z-Overdrive (1x)")
 
         overdriveLayout = QtWidgets.QHBoxLayout(self.overdriveGroupBox)
         overdriveLayout.addWidget(self.recontactOverdriveNumberSpinBox)
+        overdriveLayout.addStretch()
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.stepsGroupBox.qt, 0, 0, 1, 2)
+        layout.addWidget(self.stepsGroupBox, 0, 0, 1, 2)
         layout.addWidget(self.zLimitGroupBox, 1, 0, 1, 2)
-        layout.addWidget(self.probecardGroupBox.qt, 2, 0, 1, 2)
-        layout.addWidget(self.joystickGropBox.qt, 3, 0, 1, 2)
+        layout.addWidget(self.probecardGroupBox, 2, 0, 1, 2)
+        layout.addWidget(self.joystickGroupBox, 3, 0, 1, 2)
         layout.addWidget(self.delayGroupBox, 4, 0, 1, 1)
         layout.addWidget(self.overdriveGroupBox, 4, 1, 1, 1)
         layout.setRowStretch(0, 1)
 
-    def on_position_selected(self, item):
-        enabled = item is not None
-        self._edit_step_button.enabled = enabled
-        self._remove_step_button.enabled = enabled
+    def probecardLimits(self):
+        x = self.probecardLimitXSpinBox.value()
+        y = self.probecardLimitYSpinBox.value()
+        z = self.probecardLimitZSpinBox.value()
+        return x, y, z
 
-    def on_steps_tree_double_clicked(self, index, item):
-        self.on_edit_step_clicked()
+    def setProbecardLimits(self, x, y, z):
+        self.probecardLimitXSpinBox.setValue(x)
+        self.probecardLimitYSpinBox.setValue(y)
+        self.probecardLimitZSpinBox.setValue(z)
 
-    def on_add_step_clicked(self):
+    def joystickLimits(self):
+        x = self.joystickLimitXSpinBox.value()
+        y = self.joystickLimitYSpinBox.value()
+        z = self.joystickLimitZSpinBox.value()
+        return x, y, z
+
+    def setJoystickLimits(self, x, y, z):
+        self.joystickLimitXSpinBox.setValue(x)
+        self.joystickLimitYSpinBox.setValue(y)
+        self.joystickLimitZSpinBox.setValue(z)
+
+    def updateStepButtons(self, current, previous):
+        enabled = current is not None
+        self.editStepButton.setEnabled(enabled)
+        self.removeStepButton.setEnabled(enabled)
+
+    def stepDoubleClicked(self, item, column):
+        self.editCurrentStep()
+
+    def addNewStep(self):
         dialog = TableStepDialog()
-        if dialog.run():
-            step_size = dialog.step_size
-            z_limit = dialog.z_limit
-            step_color = dialog.step_color
-            self._steps_tree.append(TableStepItem(step_size, z_limit, step_color))
-            self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
+        dialog.exec()
+        if dialog.result() == dialog.Accepted:
+            self.stepsTreeWidget.addTopLevelItem(TableStepItem(
+                dialog.stepSize(),
+                dialog.zLimit(),
+                dialog.stepColor()
+            ))
+            self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
-    def on_edit_step_clicked(self):
-        item = self._steps_tree.current
-        if item:
+    def editCurrentStep(self):
+        item = self.stepsTreeWidget.currentItem()
+        if isinstance(item, TableStepItem):
             dialog = TableStepDialog()
-            dialog.step_size = item.step_size
-            dialog.z_limit = item.z_limit
-            dialog.step_color = item.step_color
-            if dialog.run():
-                item.step_size = dialog.step_size
-                item.z_limit = dialog.z_limit
-                item.step_color = dialog.step_color
-                self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
+            dialog.setStepSize(item.stepSize())
+            dialog.setZLimit(item.zLimit())
+            dialog.setStepColor(item.stepColor())
+            dialog.exec()
+            if dialog.result() == dialog.Accepted:
+                item.setStepSize(dialog.stepSize())
+                item.setZLimit(dialog.zLimit())
+                item.setStepColor(dialog.stepColor())
+                self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
-    def on_remove_step_clicked(self):
-        item = self._steps_tree.current
-        if item:
-            if ui.show_question(f"Do you want to remove step size {item[0].value!r}?"):
-                self._steps_tree.remove(item)
-                if not len(self._steps_tree):
-                    self._edit_step_button.enabled = False
-                    self._remove_step_button.enabled = False
-                self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
+    def removeCurrentStep(self):
+        item = self.stepsTreeWidget.currentItem()
+        if isinstance(item, TableStepItem):
+            if ui.show_question(f"Do you want to remove step size {item.stepSize()!r}?"):
+                index = self.stepsTreeWidget.indexOfTopLevelItem(item)
+                self.stepsTreeWidget.takeTopLevelItem(index)
+                if not self.stepsTreeWidget.topLevelItemCount():
+                    self.editStepButton.setEnabled(False)
+                    self.removeStepButton.setEnabled(False)
+                self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
     def readSettings(self):
         table_step_sizes = self.settings.get("table_step_sizes") or []
-        self._steps_tree.clear()
+        self.stepsTreeWidget.clear()
         for item in table_step_sizes:
-            self._steps_tree.append(TableStepItem(
-                step_size=from_table_unit(item.get("step_size")),
-                z_limit=from_table_unit(item.get("z_limit")),
-                step_color=format(item.get("step_color"))
+            self.stepsTreeWidget.addTopLevelItem(TableStepItem(
+                from_table_unit(item.get("step_size")),
+                from_table_unit(item.get("z_limit")),
+                format(item.get("step_color"))
             ))
-        self._steps_tree.qt.sortByColumn(0, QtCore.Qt.AscendingOrder)
+        self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
         self.zLimitMovementSpinBox.setValue(settings.table_z_limit)
         # Probecard limits
         x, y, z = settings.table_probecard_maximum_limits
-        self._probecard_limit_x_maximum_number.value = x
-        self._probecard_limit_y_maximum_number.value = y
-        self._probecard_limit_z_maximum_number.value = z
+        self.setProbecardLimits(x, y, z)
         temporary_z_limit = settings.table_temporary_z_limit
-        self._probecard_limit_z_maximum_checkbox.checked = temporary_z_limit
+        self.probecardLimitZCheckBox.setChecked(temporary_z_limit)
         # Joystick limits
         x, y, z = settings.table_joystick_maximum_limits
-        self._joystick_limit_x_maximum_number.value = x
-        self._joystick_limit_y_maximum_number.value = y
-        self._joystick_limit_z_maximum_number.value = z
+        self.setJoystickLimits(x, y, z)
         table_contact_delay = self.settings.get("table_contact_delay") or 0
         self.probecardContactDelaySpinBox.setValue(table_contact_delay)
         self.recontactOverdriveNumberSpinBox.setValue(settings.retry_contact_overdrive)
 
     def writeSettings(self):
         table_step_sizes = []
-        for item in self._steps_tree:
+        for index in range(self.stepsTreeWidget.topLevelItemCount()):
+            item = self.stepsTreeWidget.topLevelItem(index)
             table_step_sizes.append({
-                "step_size": to_table_unit(item.step_size),
-                "z_limit": to_table_unit(item.z_limit),
-                "step_color": format(item.step_color),
+                "step_size": to_table_unit(item.stepSize()),
+                "z_limit": to_table_unit(item.zLimit()),
+                "step_color": format(item.stepColor()),
             })
         self.settings["table_step_sizes"] = table_step_sizes
         settings.table_z_limit = self.zLimitMovementSpinBox.value()
         # Probecard limits
-        settings.table_probecard_maximum_limits = [
-            self._probecard_limit_x_maximum_number.value,
-            self._probecard_limit_y_maximum_number.value,
-            self._probecard_limit_z_maximum_number.value
-        ]
-        temporary_z_limit = self._probecard_limit_z_maximum_checkbox.checked
+        settings.table_probecard_maximum_limits = self.probecardLimits()
+        temporary_z_limit = self.probecardLimitZCheckBox.isChecked()
         settings.table_temporary_z_limit = temporary_z_limit
         # Joystick limits
-        settings.table_joystick_maximum_limits = [
-            self._joystick_limit_x_maximum_number.value,
-            self._joystick_limit_y_maximum_number.value,
-            self._joystick_limit_z_maximum_number.value
-        ]
+        settings.table_joystick_maximum_limits = self.joystickLimits()
         table_contact_delay = self.probecardContactDelaySpinBox.value()
         self.settings["table_contact_delay"] = table_contact_delay
         settings.retry_contact_overdrive = self.recontactOverdriveNumberSpinBox.value()

@@ -121,9 +121,8 @@ class TableProcess(comet.Process, ResourceMixin):
                     finally:
                         self.finalize(context)
             except Exception as exc:
-                tb = traceback.format_exc()
-                logger.error("%s: %s", type(self).__name__, tb)
-                logger.error("%s: %s", type(self).__name__, exc)
+                logger.exception(exc)
+                time.sleep(2)
         logger.info("stopped serving table")
 
     def initialize(self, context):
