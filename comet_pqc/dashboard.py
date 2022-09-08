@@ -5,7 +5,7 @@ import os
 import time
 import webbrowser
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 import qutie as ui
 
 import comet
@@ -23,7 +23,6 @@ from .core import config
 from .core.position import Position
 from .core.formatter import CSVFormatter
 from .core.utils import make_path, user_home
-from .logwindow import LogWidget
 from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
@@ -36,7 +35,11 @@ from .sequence import (
 )
 from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
-from .tabs import EnvironmentTab, MeasurementTab, StatusTab, SummaryTab
+from .tabs.measurement import MeasurementWidget
+from .tabs.environment import EnvironmentWidget
+from .tabs.summary import SummaryWidget
+from .tabs.loggingwidget import LoggingWidget
+from .tabs.status import StatusWidget
 from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
@@ -520,20 +523,16 @@ class EnvironmentControlWidget(ui.GroupBox):
         self._pid_control_button.checked = state
 
 
-class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
+class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     sample_count = 4
 
-    lock_state_changed = None
-    message_changed = None
-    progress_changed = None
+    lockStateChanged = QtCore.pyqtSignal(bool)
+    messageChanged = QtCore.pyqtSignal(str)
+    progressChanged = QtCore.pyqtSignal(int, int)
 
-    def __init__(self, lock_state_changed=None, message_changed=None, progress_changed=None, **kwargs):
-        super().__init__()
-        # Callbacks
-        self.lock_state_changed = lock_state_changed
-        self.message_changed = message_changed
-        self.progress_changed = progress_changed
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
         # Layout
         self.sequence_widget = SequenceWidget(
             tree_selected=self.on_tree_selected,
@@ -605,42 +604,44 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         # Tabs
 
-        self.measurement_tab = MeasurementTab(restore=self.on_measure_restore)
-        self.environment_tab = EnvironmentTab()
-        self.status_tab = StatusTab(reload=self.on_status_start)
-        self.summary_tab = SummaryTab()
+        self.measurementWidget = MeasurementWidget(self)
+        self.measurementWidget.restore.connect(self.on_measure_restore)
 
-        self.panels = self.measurement_tab.panels
-        self.panels.sample_changed = self.on_sample_changed
+        self.environmentWidget = EnvironmentWidget(self)
 
-        self.log_widget = LogWidget()
-        self.log_widget.add_logger(logging.getLogger())
+        self.statusWidget = StatusWidget(self)
+        self.statusWidget.reload.connect(self.on_status_start)
 
-        self.logging_tab = ui.Tab(
-            title="Logs",
-            layout=self.log_widget
-        )
+        self.summaryWidget = SummaryWidget(self)
+
+        self.panels = self.measurementWidget.panels
+        self.panels.sampleChanged.connect(self.on_sample_changed)
+
+        # Logging
+
+        self.loggingWidget = LoggingWidget(self)
+        self.loggingWidget.addLogger(logging.getLogger())
 
         # Tabs
 
-        self.tab_widget = ui.Tabs(
-            self.measurement_tab,
-            self.environment_tab,
-            self.status_tab,
-            self.logging_tab,
-            self.summary_tab
-        )
+        self.tabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget.addTab(self.measurementWidget, "Measurement")
+        self.tabWidget.addTab(self.environmentWidget, "Environment")
+        self.tabWidget.addTab(self.statusWidget, "Status")
+        self.tabWidget.addTab(self.loggingWidget, "Logging")
+        self.tabWidget.addTab(self.summaryWidget, "Summary")
 
         # Layout
 
-        self.splitter = ui.Splitter()
-        self.splitter.append(self.control_widget)
-        self.splitter.append(self.tab_widget)
-        self.splitter.stretch = 4, 9
-        self.splitter.collapsible = False
+        self.splitter = QtWidgets.QSplitter(self)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.addWidget(self.control_widget.qt)
+        self.splitter.addWidget(self.tabWidget)
+        self.splitter.setSizes([4, 9])
 
-        self.append(self.splitter)
-        self.stretch = 0, 1
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.splitter)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # Setup process callbacks
 
@@ -663,13 +664,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         self.contact_quality_process = self.processes.get("contact_quality")
 
-        # Experimental
-
-        self.close_event = self.on_stop
-
-    @handle_exception
-    def load_settings(self):
-        self.splitter.sizes = self.settings.get("dashboard_sizes") or (300, 500)
+    def readSettings(self):
+        sizes = self.settings.get("dashboard_sizes") or (300, 500)
+        self.splitter.setSizes(sizes)
         self.sequence_widget.load_settings()
         use_environ = self.settings.get("use_environ", False)
         self.environment_control_widget.checked = use_environ
@@ -677,9 +674,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.operator_widget.load_settings()
         self.output_widget.load_settings()
 
-    @handle_exception
-    def store_settings(self):
-        self.settings["dashboard_sizes"] = self.splitter.sizes
+    def writeSettings(self):
+        self.settings["dashboard_sizes"] = self.splitter.sizes()
         self.sequence_widget.store_settings()
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
@@ -759,9 +755,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.sequence_widget.lock()
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
-        self.measurement_tab.lock()
-        self.status_tab.lock()
-        self.lock_state_changed(True)
+        self.measurementWidget.setLocked(True)
+        self.statusWidget.setLocked(True)
+        self.lockStateChanged.emit(True)
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
@@ -770,9 +766,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.sequence_widget.unlock()
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
-        self.measurement_tab.unlock()
-        self.status_tab.unlock()
-        self.lock_state_changed(False)
+        self.measurementWidget.setLocked(False)
+        self.statusWidget.setLocked(False)
+        self.lockStateChanged.emit(False)
 
     # Sequence control
 
@@ -781,7 +777,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.panels.unmount()
         self.panels.clear_readings()
         self.panels.hide()
-        self.measurement_tab.measure_controls.visible = False
+        self.measurementWidget.controlsLayout.setVisible(False)
         self.start_sample_action.qt.setEnabled(False)
         self.start_contact_action.qt.setEnabled(False)
         self.start_measurement_action.qt.setEnabled(False)
@@ -802,10 +798,11 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             if panel:
                 panel.visible = True
                 panel.mount(item)
-                self.measurement_tab.measure_controls.visible = True
+                self.measurementWidget.controlsLayout.setVisible(True)
                 self.start_measurement_action.qt.setEnabled(True)
         # Show measurement tab
-        self.tab_widget.current = self.measurement_tab
+        index = self.tabWidget.indexOf(self.measurementWidget)
+        self.tabWidget.setCurrentIndex(index)
 
     def on_tree_double_clicked(self, item, index):
         self.on_start()
@@ -820,8 +817,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if self.use_table():
             self.lock_controls()
             x, y, z = contact.position
-            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
-            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
+            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -831,8 +828,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             self.lock_controls()
             x, y, z = contact.position
             z = safe_z_position(z)
-            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
-            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
+            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -873,7 +870,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
     @handle_exception
     def on_start(self):
         # Store settings
-        self.store_settings()
+        self.writeSettings()
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
@@ -1025,16 +1022,17 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     def on_status_start(self):
         self.lock_controls()
-        self.status_tab.reset()
+        self.statusWidget.reset()
         self.status_process.set("use_environ", self.use_environment())
         self.status_process.set("use_table", self.use_table())
         self.status_process.start()
         # Fix: stay in status tab
-        self.tab_widget.current = self.status_tab
+        index = self.tabWidget.indexOf(self.statusWidget)
+        self.tabWidget.setCurrentIndex(index)
 
     def on_status_finished(self):
         self.unlock_controls()
-        self.status_tab.update_status(self.status_process)
+        self.statusWidget.updateStatus(self.status_process)
 
     # Table calibration
 
@@ -1088,7 +1086,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.table_process.caldone_changed = self.on_table_calibration_changed
         self.sync_table_controls()
         # Store settings
-        self.store_settings()
+        self.writeSettings()
 
     @handle_exception
     def on_laser_sensor_toggled(self, state):
@@ -1145,7 +1143,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 environment.request_pc_data()
 
         else:
-            self.environment_tab.enabled = False
+            self.environmentWidget.setEnabled(False)
 
     def on_pc_data_updated(self, pc_data):
         self.environment_control_widget.update_laser_sensor_state(pc_data.relay_states.laser_sensor)
@@ -1156,13 +1154,13 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.environment_control_widget.update_probecard_light_state(pc_data.relay_states.probecard_light)
         self.environment_control_widget.update_probecard_camera_state(pc_data.relay_states.probecard_camera)
         self.environment_control_widget.update_pid_control_state(pc_data.pid_status)
-        self.environment_tab.enabled = True
+        self.environmentWidget.setEnabled(True)
         t = time.time()
         # Note: occasional crashes due to `NaN` timestamp.
         if not math.isfinite(t):
             logger.error("invalid timestamp: %s", t)
             t = 0
-        self.environment_tab.append_data(t, pc_data)
+        self.environmentWidget.appendData(t, pc_data)
 
     @handle_exception
     def sync_table_controls(self):
@@ -1192,16 +1190,16 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
     @handle_exception
     def on_push_summary(self, *args):
         """Push result to summary and write to summary file (experimantal)."""
-        item = self.summary_tab.append_result(*args)
+        data = self.summaryWidget.appendResult(*args)
         output_path = self.output_widget.current_location
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)
             with open(filename, "a") as fp:
-                header = self.summary_tab.header()
+                header = self.summaryWidget.Header
                 fmt = CSVFormatter(fp)
-                for key in header:
+                for key in data.keys():
                     fmt.add_column(key)
                 if not has_header:
                     fmt.write_header()
-                fmt.write_row({header[i]: item[i].value for i in range(len(header))})
+                fmt.write_row(data)

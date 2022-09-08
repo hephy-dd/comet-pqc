@@ -1,4 +1,6 @@
-from comet import ui
+from typing import List
+
+from PyQt5 import QtCore, QtWidgets
 
 from ..panels import (
     ContactPanel,
@@ -14,90 +16,90 @@ from ..panels import (
     SamplePanel,
 )
 
-__all__ = ["MeasurementTab"]
+__all__ = ["MeasurementWidget"]
 
 
-class MeasurementTab(ui.Tab):
+class MeasurementWidget(QtWidgets.QWidget):
 
-    def __init__(self, restore=None):
-        super().__init__(title="Measurement")
-        self.restore = restore
-        self.panels = PanelStack()
-        self.measure_restore_button = ui.Button(
-            text="Restore Defaults",
-            tool_tip="Restore default measurement parameters.",
-            clicked=self.on_measure_restore
-        )
-        self.measure_controls = ui.Row(
-            self.measure_restore_button,
-            ui.Spacer(),
-            visible=False
-        )
-        self.layout = ui.Column(
-            self.panels,
-            self.measure_controls,
-            stretch=(1, 0)
-        )
+    restore = QtCore.pyqtSignal()
 
-    def lock(self):
-        self.panels.lock()
-        self.measure_controls.enabled = False
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
-    def unlock(self):
-        self.panels.unlock()
-        self.measure_controls.enabled = True
+        self.panels = PanelStack(self)
 
-    def on_measure_restore(self):
-        self.emit("restore")
+        self.restoreButton = QtWidgets.QPushButton(self)
+        self.restoreButton.setText("Restore Defaults")
+        self.restoreButton.setToolTip("Restore default measurement parameters.")
+        self.restoreButton.clicked.connect(self.restore.emit)
 
+        self.controlsLayout = QtWidgets.QWidget(self)
+        self.controlsLayout.setVisible(False)
 
-class PanelStack(ui.Row):
+        controlsLayout = QtWidgets.QHBoxLayout(self.controlsLayout)
+        controlsLayout.addWidget(self.restoreButton)
+        controlsLayout.addStretch()
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.panels)
+        layout.addWidget(self.controlsLayout)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+    def setLocked(self, state: bool) -> None:
+        self.panels.setLocked(state)
+        self.controlsLayout.setEnabled(not state)
+
+class PanelStack(QtWidgets.QWidget):
     """Stack of measurement panels."""
 
-    sample_changed = None
+    sampleChanged = QtCore.pyqtSignal(object)
 
-    def __init__(self, sample_changed=None):
-        super().__init__()
-        self.sample_changed = sample_changed
-        self.append(SamplePanel(visible=False, sample_changed=lambda item: self.sample_changed(item)))
-        self.append(ContactPanel(visible=False))
-        self.append(IVRampPanel(visible=False))
-        self.append(IVRampElmPanel(visible=False))
-        self.append(IVRampBiasPanel(visible=False))
-        self.append(IVRampBiasElmPanel(visible=False))
-        self.append(CVRampPanel(visible=False))
-        self.append(CVRampHVPanel(visible=False))
-        self.append(CVRampAltPanel(visible=False))
-        self.append(IVRamp4WirePanel(visible=False))
-        self.append(FrequencyScanPanel(visible=False))
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.panelWidgets: List = []
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.addPanel(SamplePanel(visible=False, sample_changed=self.sampleChanged.emit))
+        self.addPanel(ContactPanel(visible=False))
+        self.addPanel(IVRampPanel(visible=False))
+        self.addPanel(IVRampElmPanel(visible=False))
+        self.addPanel(IVRampBiasPanel(visible=False))
+        self.addPanel(IVRampBiasElmPanel(visible=False))
+        self.addPanel(CVRampPanel(visible=False))
+        self.addPanel(CVRampHVPanel(visible=False))
+        self.addPanel(CVRampAltPanel(visible=False))
+        self.addPanel(IVRamp4WirePanel(visible=False))
+        self.addPanel(FrequencyScanPanel(visible=False))
+
+    def addPanel(self, panel):
+        self.panelWidgets.append(panel)
+        self.layout().addWidget(panel.qt)
 
     def store(self):
-        for child in self:
+        for child in self.panelWidgets:
             child.store()
 
     def unmount(self):
-        for child in self:
+        for child in self.panelWidgets:
             child.unmount()
 
     def clear_readings(self):
-        for child in self:
+        for child in self.panelWidgets:
             child.clear_readings()
 
     def hide(self):
-        for child in self:
+        for child in self.panelWidgets:
             child.visible = False
 
-    def lock(self):
-        for child in self:
-            child.lock()
-
-    def unlock(self):
-        for child in self:
-            child.unlock()
+    def setLocked(self, state: bool) -> None:
+        for child in self.panelWidgets:
+            child.lock() if state else child.unlock()
 
     def get(self, type):
         """Get panel by type."""
-        for child in self:
+        for child in self.panelWidgets:
             if child.type == type:
                 return child
         return None

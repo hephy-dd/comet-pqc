@@ -90,15 +90,14 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.temporaryNoticeLabel.setStyleSheet("QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}")
         self.temporaryNoticeLabel.setVisible(settings.table_temporary_z_limit)
 
-        self.dashboard = Dashboard(
-            lock_state_changed = self.setLocked,
-        )
+        self.dashboard = Dashboard(self)
+        self.dashboard.lockStateChanged.connect(self.setLocked)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout(widget)
         layout.addWidget(self.temporaryNoticeLabel, 0)
-        layout.addWidget(self.dashboard.qt, 1)
+        layout.addWidget(self.dashboard, 1)
 
         # Events
 
@@ -117,7 +116,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         settings.endGroup()
 
-        self.dashboard.load_settings()
+        self.dashboard.readSettings()
 
     def writeSettings(self) -> None:
         settings = QtCore.QSettings()
@@ -128,7 +127,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         settings.endGroup()
 
-        self.dashboard.store_settings()
+        self.dashboard.writeSettings()
 
     def setLocked(self, state: bool) -> None:
         self.preferencesAction.setEnabled(not state)
@@ -228,7 +227,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         dialog.exec()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
-        result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
+        result = QtWidgets.QMessageBox.question(self, "Quit?", "Do you want to quit the application?")
         if result == QtWidgets.QMessageBox.Yes:
             self.shutdown()
             event.accept()

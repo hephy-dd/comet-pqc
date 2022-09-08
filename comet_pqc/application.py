@@ -52,8 +52,8 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.window.setProperty("githubUrl", GITHUB_URL)
 
         self.dashboard = self.window.dashboard
-        self.dashboard.message_changed = self.on_message,
-        self.dashboard.progress_changed = self.on_progress
+        self.dashboard.messageChanged.connect(self.on_message)
+        self.dashboard.progressChanged.connect(self.on_progress)
 
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)

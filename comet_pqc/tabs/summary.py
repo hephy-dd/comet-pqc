@@ -1,26 +1,38 @@
 import datetime
 
-from comet import ui
-from comet.settings import SettingsMixin
+from PyQt5 import QtGui, QtWidgets
 
-__all__ = ["SummaryTab"]
-
-
-class SummaryTab(ui.Tab):
-
-    def __init__(self):
-        super().__init__(title="Summary")
-        self.summary_tree = SummaryTree()
-        self.layout = self.summary_tree
-
-    def header(self):
-        return self.summary_tree.header_items
-
-    def append_result(self, *args):
-        return self.summary_tree.append_result(*args)
+__all__ = ["SummaryWidget"]
 
 
-class SummaryTreeItem(ui.TreeItem):
+class SummaryWidget(QtWidgets.QWidget):
+
+    Header = ["Time", "Sample", "Type", "Contact", "Measurement", "Result"]
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.treeWidget = QtWidgets.QTreeWidget(self)
+        self.treeWidget.setRootIsDecorated(False)
+        self.treeWidget.setHeaderLabels(type(self).Header)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.treeWidget)
+
+    def appendResult(self, *args):
+        item = SummaryTreeItem(*args)
+        self.treeWidget.addTopLevelItem(item)
+        for index in range(self.treeWidget.columnCount()):
+            self.treeWidget.resizeColumnToContents(index)
+        self.treeWidget.scrollToItem(item)
+        header = type(self).Header
+        row = {}
+        for index in range(self.treeWidget.columnCount()):
+            row.update({header[index]: item.text(index)})
+        return row
+
+
+class SummaryTreeItem(QtWidgets.QTreeWidgetItem):
 
     def __init__(self, timestamp, sample_name, sample_type, contact_name,
                  measurement_name, measurement_state):
@@ -33,24 +45,7 @@ class SummaryTreeItem(ui.TreeItem):
             measurement_state
         ])
         # TODO
-        if "Success" in self[5].value:
-            self[5].color = "green"
+        if "Success" in self.text(5):
+            self.setForeground(5, QtGui.QColor("green"))
         else:
-            self[5].color = "red"
-
-
-class SummaryTree(ui.Tree, SettingsMixin):
-
-    header_items = "Time", "Sample", "Type", "Contact", "Measurement", "Result"
-
-    def __init__(self):
-        super().__init__()
-        self.header = self.header_items
-        self.indentation = 0
-
-    def append_result(self, *args):
-        item = SummaryTreeItem(*args)
-        self.append(item)
-        self.fit()
-        self.scroll_to(item)
-        return item
+            self.setForeground(5, QtGui.QColor("red"))

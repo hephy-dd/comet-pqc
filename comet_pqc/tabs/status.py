@@ -1,131 +1,128 @@
-from comet import ui
+from typing import Dict
 
-__all__ = ["StatusTab"]
+from PyQt5 import QtCore, QtWidgets
+
+__all__ = ["StatusWidget"]
 
 
-class StatusTab(ui.Tab):
+class StatusWidget(QtWidgets.QWidget):
 
     LightStates = {True: "ON", False: "OFF", None: "n/a"}
     DoorStates = {True: "OPEN", False: "CLOSED", None: "n/a"}
 
-    def __init__(self, reload=None):
-        super().__init__(title="Status")
-        self.reload = reload
-        self.matrix_model_text = ui.Text(readonly=True)
-        self.matrix_channels_text = ui.Text(readonly=True)
-        self.hvsrc_model_text = ui.Text(readonly=True)
-        self.vsrc_model_text = ui.Text(readonly=True)
-        self.lcr_model_text = ui.Text(readonly=True)
-        self.elm_model_text = ui.Text(readonly=True)
-        self.table_model_text = ui.Text(readonly=True)
-        self.table_state_text = ui.Text(readonly=True)
-        self.env_model_text = ui.Text(readonly=True)
-        self.reload_status_button = ui.Button("&Reload", clicked=self.on_reload)
-        self.layout = ui.Column(
-            ui.GroupBox(
-                title="Matrix",
-                layout=ui.Column(
-                    ui.Row(
-                        ui.Label("Model:"),
-                        self.matrix_model_text,
-                        stretch=(1, 7)
-                    ),
-                    ui.Row(
-                        ui.Label("Closed channels:"),
-                        self.matrix_channels_text,
-                        stretch=(1, 7)
-                    )
-                )
-            ),
-            ui.GroupBox(
-                title="HVSource",
-                layout=ui.Row(
-                    ui.Label("Model:"),
-                    self.hvsrc_model_text,
-                    stretch=(1, 7)
-                )
-            ),
-            ui.GroupBox(
-                title="VSource",
-                layout=ui.Row(
-                    ui.Label("Model:"),
-                    self.vsrc_model_text,
-                    stretch=(1, 7)
-                )
-            ),
-            ui.GroupBox(
-                title="LCRMeter",
-                layout=ui.Row(
-                    ui.Label("Model:"),
-                    self.lcr_model_text,
-                    stretch=(1, 7)
-                )
-            ),
-            ui.GroupBox(
-                title="Electrometer",
-                layout=ui.Row(
-                    ui.Label("Model:"),
-                    self.elm_model_text,
-                    stretch=(1, 7)
-                )
-            ),
-            ui.GroupBox(
-                title="Table",
-                layout=ui.Column(
-                    ui.Row(
-                        ui.Label("Model:"),
-                        self.table_model_text,
-                        stretch=(1, 7)
-                    ),
-                    ui.Row(
-                        ui.Label("State:"),
-                        self.table_state_text,
-                        stretch=(1, 7)
-                    )
-                )
-            ),
-            ui.GroupBox(
-                title="Environment Box",
-                layout=ui.Column(
-                    ui.Row(
-                        ui.Label("Model:"),
-                        self.env_model_text,
-                        stretch=(1, 7)
-                    )
-                )
-            ),
-            ui.Spacer(),
-            self.reload_status_button
-        )
+    reload = QtCore.pyqtSignal()
 
-    def reset(self):
-        self.matrix_model_text.value = ""
-        self.matrix_channels_text.value = ""
-        self.hvsrc_model_text.value = ""
-        self.vsrc_model_text.value = ""
-        self.lcr_model_text.value = ""
-        self.elm_model_text.value = ""
-        self.table_model_text.value = ""
-        self.table_state_text.value = ""
-        self.env_model_text.value = ""
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
-    def update_status(self, status):
+        self.matrixModelLineEdit = QtWidgets.QLineEdit(self)
+        self.matrixModelLineEdit.setReadOnly(True)
+
+        self.matrixChannelsLineEdit = QtWidgets.QLineEdit(self)
+        self.matrixChannelsLineEdit.setReadOnly(True)
+
+        self.hvsrcModelLineEdit = QtWidgets.QLineEdit(self)
+        self.hvsrcModelLineEdit.setReadOnly(True)
+
+        self.vsrcModelLineEdit = QtWidgets.QLineEdit(self)
+        self.vsrcModelLineEdit.setReadOnly(True)
+
+        self.lcrModelLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrModelLineEdit.setReadOnly(True)
+
+        self.elmModelLineEdit = QtWidgets.QLineEdit(self)
+        self.elmModelLineEdit.setReadOnly(True)
+
+        self.tableModelLineEdit = QtWidgets.QLineEdit(self)
+        self.tableModelLineEdit.setReadOnly(True)
+
+        self.tableStateLineEdit = QtWidgets.QLineEdit(self)
+        self.tableStateLineEdit.setReadOnly(True)
+
+        self.environModelLineEdit = QtWidgets.QLineEdit(self)
+        self.environModelLineEdit.setReadOnly(True)
+
+        self.reloadButton = QtWidgets.QPushButton(self)
+        self.reloadButton.setText("&Reload")
+        self.reloadButton.clicked.connect(self.reload.emit)
+
+        self.matrixGroupBox = QtWidgets.QGroupBox(self)
+        self.matrixGroupBox.setTitle("Matrix")
+
+        matrixLayout = QtWidgets.QFormLayout(self.matrixGroupBox)
+        matrixLayout.addRow("Model", self.matrixModelLineEdit)
+        matrixLayout.addRow("Closed channels", self.matrixChannelsLineEdit)
+
+        self.hvsrcGroupBox = QtWidgets.QGroupBox(self)
+        self.hvsrcGroupBox.setTitle("HV Source")
+
+        hvsrcLayout = QtWidgets.QFormLayout(self.hvsrcGroupBox)
+        hvsrcLayout.addRow("Model", self.hvsrcModelLineEdit)
+
+        self.vsrcGroupBox = QtWidgets.QGroupBox(self)
+        self.vsrcGroupBox.setTitle("V Source")
+
+        vsrcLayout = QtWidgets.QFormLayout(self.vsrcGroupBox)
+        vsrcLayout.addRow("Model", self.vsrcModelLineEdit)
+
+        self.lcrGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrGroupBox.setTitle("LCR Meter")
+
+        lcrLayout = QtWidgets.QFormLayout(self.lcrGroupBox)
+        lcrLayout.addRow("Model", self.lcrModelLineEdit)
+
+        self.elmGroupBox = QtWidgets.QGroupBox(self)
+        self.elmGroupBox.setTitle("Electrometer")
+
+        elmLayout = QtWidgets.QFormLayout(self.elmGroupBox)
+        elmLayout.addRow("Model", self.elmModelLineEdit)
+
+        self.tableGroupBox = QtWidgets.QGroupBox(self)
+        self.tableGroupBox.setTitle("Table")
+
+        tableLayout = QtWidgets.QFormLayout(self.tableGroupBox)
+        tableLayout.addRow("Model", self.tableModelLineEdit)
+        tableLayout.addRow("State", self.tableStateLineEdit)
+
+        self.environGroupBox = QtWidgets.QGroupBox(self)
+        self.environGroupBox.setTitle("Environment Box")
+
+        tableLayout = QtWidgets.QFormLayout(self.environGroupBox)
+        tableLayout.addRow("Model", self.environModelLineEdit)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.matrixGroupBox)
+        layout.addWidget(self.hvsrcGroupBox)
+        layout.addWidget(self.vsrcGroupBox)
+        layout.addWidget(self.lcrGroupBox)
+        layout.addWidget(self.elmGroupBox)
+        layout.addWidget(self.tableGroupBox)
+        layout.addWidget(self.environGroupBox)
+        layout.addStretch()
+        layout.addWidget(self.reloadButton)
+
+    def reset(self) -> None:
+        self.matrixModelLineEdit.setText("")
+        self.matrixChannelsLineEdit.setText("")
+        self.hvsrcModelLineEdit.setText("")
+        self.vsrcModelLineEdit.setText("")
+        self.lcrModelLineEdit.setText("")
+        self.elmModelLineEdit.setText("")
+        self.tableModelLineEdit.setText("")
+        self.tableStateLineEdit.setText("")
+        self.environModelLineEdit.setText("")
+
+    def updateStatus(self, status: Dict[str, str]):
         default = "n/a"
-        self.matrix_model_text.value = status.get("matrix_model") or default
-        self.matrix_channels_text.value = status.get("matrix_channels")
-        self.hvsrc_model_text.value = status.get("hvsrc_model") or default
-        self.vsrc_model_text.value = status.get("vsrc_model") or default
-        self.lcr_model_text.value = status.get("lcr_model") or default
-        self.elm_model_text.value = status.get("elm_model") or default
-        self.table_model_text.value = status.get("table_model") or default
-        self.table_state_text.value = status.get("table_state") or default
-        self.env_model_text.value = status.get("env_model") or default
+        self.matrixModelLineEdit.setText(status.get("matrix_model") or default)
+        self.matrixChannelsLineEdit.setText(status.get("matrix_channels"))
+        self.hvsrcModelLineEdit.setText(status.get("hvsrc_model") or default)
+        self.vsrcModelLineEdit.setText(status.get("vsrc_model") or default)
+        self.lcrModelLineEdit.setText(status.get("lcr_model") or default)
+        self.elmModelLineEdit.setText(status.get("elm_model") or default)
+        self.tableModelLineEdit.setText(status.get("table_model") or default)
+        self.tableStateLineEdit.setText(status.get("table_state") or default)
+        self.environModelLineEdit.setText(status.get("env_model") or default)
 
-    def lock(self):
-        self.reload_status_button.enabled = False
-
-    def unlock(self):
-        self.reload_status_button.enabled = True
-
-    def on_reload(self):
-        self.emit(self.reload)
+    def setLocked(self, state: bool) -> None:
+        self.reloadButton.setEnabled(not state)
