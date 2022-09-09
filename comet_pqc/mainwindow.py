@@ -1,3 +1,4 @@
+import logging
 import webbrowser
 
 from PyQt5 import QtCore, QtWidgets
@@ -108,12 +109,10 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def readSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("MainWindow")
-
         geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
         self.restoreGeometry(geometry)
         state = settings.value("state", QtCore.QByteArray(), QtCore.QByteArray)
         self.restoreState(state)
-
         settings.endGroup()
 
         self.dashboard.readSettings()
@@ -121,10 +120,8 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def writeSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("MainWindow")
-
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("state", self.saveState())
-
         settings.endGroup()
 
         self.dashboard.writeSettings()
@@ -210,6 +207,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         """Raise message box showing exception information."""
         self.showMessage("Error")
         self.hideProgress()
+        logging.exception(exc)
         show_exception(exc, tb)
 
     def shutdown(self) -> None:
@@ -227,7 +225,11 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         dialog.exec()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
-        result = QtWidgets.QMessageBox.question(self, "Quit?", "Do you want to quit the application?")
+        result = QtWidgets.QMessageBox.question(
+            self,
+            "Quit?",
+            "Do you want to quit the application?"
+        )
         if result == QtWidgets.QMessageBox.Yes:
             self.shutdown()
             event.accept()

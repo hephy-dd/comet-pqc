@@ -3,7 +3,7 @@ import os
 
 from comet import ui
 from comet.settings import SettingsMixin
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 
 from .core.position import Position
 from .core.utils import make_path, user_home
@@ -248,10 +248,12 @@ class DirectoryWidget(ui.Row):
         if len(self.location_combo_box) > 1:
             index = self.location_combo_box.qt.currentIndex()
             if index >= 0:
-                if ui.show_question(
-                    title="Remove directory",
-                    text=f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
-                ):
+                result = QtWidgets.QMessageBox.question(
+                    self.qt,
+                    "Remove directory",
+                    f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
+                )
+                if result == QtWidgets.QMessageBox.Yes:
                     self.location_combo_box.qt.removeItem(index)
 
     def update_locations(self):
@@ -267,7 +269,7 @@ class DirectoryWidget(ui.Row):
 
 class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
 
-    def load_settings(self):
+    def readSettings(self):
         self.clear_locations()
         locations = settings.output_path
         if not locations:
@@ -277,7 +279,7 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
         self.location_combo_box.current = settings.current_output_path
         self.update_locations()
 
-    def store_settings(self):
+    def writeSettings(self):
         self.update_locations()
         settings.output_path = self.locations
         settings.current_output_path = self.location_combo_box.current
@@ -289,13 +291,13 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         super().__init__(*args, **kwargs)
         self.duplicates_enabled = False
 
-    def load_settings(self):
+    def readSettings(self):
         self.clear()
         for operator in settings.operators:
             self.append(operator)
         self.current = settings.current_operator
 
-    def store_settings(self):
+    def writeSettings(self):
         settings.current_operator = self.current
         operators = []
         for index in range(len(self)):
@@ -336,22 +338,24 @@ class OperatorWidget(ui.Row, SettingsMixin):
     def on_remove_clicked(self):
         index = self.operator_combo_box.qt.currentIndex()
         if index >= 0:
-            if ui.show_question(
-                title="Remove operator",
-                text=f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
-            ):
+            result = QtWidgets.QMessageBox.question(
+                self.qt,
+                "Remove operator",
+                f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
+            )
+            if result == QtWidgets.QMessageBox.Yes:
                 self.operator_combo_box.qt.removeItem(index)
 
-    def load_settings(self):
-        self.operator_combo_box.load_settings()
+    def readSettings(self):
+        self.operator_combo_box.readSettings()
 
-    def store_settings(self):
-        self.operator_combo_box.store_settings()
+    def writeSettings(self):
+        self.operator_combo_box.writeSettings()
 
 
 class PositionsComboBox(ui.ComboBox, SettingsMixin):
 
-    def load_settings(self):
+    def readSettings(self):
         self.clear()
         for position in settings.table_positions:
             self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
@@ -359,6 +363,6 @@ class PositionsComboBox(ui.ComboBox, SettingsMixin):
         if 0 <= index < len(self):
             self.current = self[index]
 
-    def store_settings(self):
+    def writeSettings(self):
         index = self.index(self.current or 0)
         self.settings["current_table_position"] = index

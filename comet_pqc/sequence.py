@@ -2,8 +2,9 @@ import copy
 import logging
 import math
 import os
+from typing import List
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 import qutie as ui
 import yaml
 
@@ -15,7 +16,7 @@ from .components import (
     WorkingDirectoryWidget,
 )
 from .core.config import SEQUENCE_DIR, list_configs, load_sequence
-from .quickedit import QuickEditDialog
+from .quickedit import QuickEditDialog, QuickEditItem
 from .settings import settings
 from .utils import from_table_unit, to_table_unit
 
@@ -39,96 +40,104 @@ def load_all_sequences(settings):
     return configs
 
 
-class StartSequenceDialog(ui.Dialog, SettingsMixin):
+class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
     """Start sequence dialog."""
 
-    def __init__(self, context, table_enabled):
-        super().__init__()
-        self.title = "Start Sequence"
-        self._contact_checkbox = ui.CheckBox(
-            text="Move table and contact with Probe Card",
-            checked=True,
-            enabled=table_enabled
-        )
-        self._position_checkbox = ui.CheckBox(
-            text="Move table after measurements",
-            checked=False,
-            enabled=table_enabled,
-            changed=self.on_position_checkbox_toggled
-        )
-        self._positions_combobox = PositionsComboBox(
-            enabled=False
-        )
-        self._operator_combobox = OperatorWidget()
-        self._output_combobox = WorkingDirectoryWidget()
-        self._button_box = ui.DialogButtonBox(
-            buttons=("yes", "no"),
-            accepted=self.accept,
-            rejected=self.reject
-        )
-        self._button_box.qt.button(self._button_box.QtClass.Yes).setAutoDefault(False)
-        self._button_box.qt.button(self._button_box.QtClass.No).setDefault(True)
-        self.layout = ui.Column(
-            ui.Label(
-                text=self._create_message(context)
-            ),
-            ui.GroupBox(
-                title="Table",
-                layout=ui.Column(
-                    self._contact_checkbox,
-                    ui.Row(
-                        self._position_checkbox,
-                        self._positions_combobox
-                    ),
-                    ui.Spacer()
-                )
-            ),
-            ui.Row(
-                ui.GroupBox(
-                    title="Operator",
-                    layout=self._operator_combobox
-                ),
-                ui.GroupBox(
-                    title="Working Directory",
-                    layout=self._output_combobox
-                ),
-                stretch=(2, 3)
-            ),
-            self._button_box,
-            stretch=(1, 0, 0, 0)
-        )
+    def __init__(self, context, table_enabled, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Start Sequence")
+
+        self.messageLabel = QtWidgets.QLabel(self)
+        self.messageLabel.setText(self.createMessage(context))
+
+        self.contactCheckBox = QtWidgets.QCheckBox(self)
+        self.contactCheckBox.setText("Move table and contact with Probe Card")
+        self.contactCheckBox.setChecked(True)
+        self.contactCheckBox.setEnabled(table_enabled)
+
+        self.positionCheckBox = QtWidgets.QCheckBox(self)
+        self.positionCheckBox.setText("Move table after measurements")
+        self.positionCheckBox.setChecked(False)
+        self.positionCheckBox.setEnabled(table_enabled)
+        self.positionCheckBox.toggled.connect(self.setPositionsEnabled)
+
+        self.positionsComboBox = PositionsComboBox()
+        self.positionsComboBox.qt.setEnabled(False)
+
+        self.operatorComboBox = OperatorWidget()
+
+        self.outputComboBox = WorkingDirectoryWidget()
+
+        self.tableGroupBox = QtWidgets.QGroupBox(self)
+        self.tableGroupBox.setTitle("Table")
+
+        self.operatorGroupBox = QtWidgets.QGroupBox(self)
+        self.operatorGroupBox.setTitle("Operator")
+
+        self.outputGroupBox = QtWidgets.QGroupBox(self)
+        self.outputGroupBox.setTitle("Working Directory")
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Yes)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.No)
+        self.buttonBox.button(QtWidgets.QDialogButtonBox.Yes).setAutoDefault(False)
+        self.buttonBox.button(QtWidgets.QDialogButtonBox.No).setDefault(True)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        tableLayout = QtWidgets.QGridLayout(self.tableGroupBox)
+        tableLayout.addWidget(self.contactCheckBox, 0, 0, 1, 2)
+        tableLayout.addWidget(self.positionCheckBox, 1, 0)
+        tableLayout.addWidget(self.positionsComboBox.qt, 1, 1)
+        tableLayout.setRowStretch(2, 1)
+
+        operatorLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
+        operatorLayout.addWidget(self.operatorComboBox.qt)
+
+        outputLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
+        outputLayout.addWidget(self.outputComboBox.qt)
+
+        bottomLayout = QtWidgets.QHBoxLayout()
+        bottomLayout.addWidget(self.operatorGroupBox, 2)
+        bottomLayout.addWidget(self.outputGroupBox, 3)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.messageLabel)
+        layout.addWidget(self.tableGroupBox)
+        layout.addLayout(bottomLayout)
+        layout.addWidget(self.buttonBox)
 
     # Settings
 
-    def load_settings(self):
-        self._contact_checkbox.checked = bool(self.settings.get("move_to_contact") or False)
-        self._position_checkbox.checked = bool(self.settings.get("move_on_success") or False)
-        self._positions_combobox.load_settings()
-        self._operator_combobox.load_settings()
-        self._output_combobox.load_settings()
+    def readSettings(self) -> None:
+        self.contactCheckBox.setChecked(bool(self.settings.get("move_to_contact") or False))
+        self.positionCheckBox.setChecked(bool(self.settings.get("move_on_success") or False))
+        self.positionsComboBox.readSettings()
+        self.operatorComboBox.readSettings()
+        self.outputComboBox.readSettings()
 
-    def store_settings(self):
-        self.settings["move_to_contact"] = self._contact_checkbox.checked
-        self.settings["move_on_success"] = self._position_checkbox.checked
-        self._positions_combobox.store_settings()
-        self._operator_combobox.store_settings()
-        self._output_combobox.store_settings()
+    def writeSettings(self) -> None:
+        self.settings["move_to_contact"] = self.contactCheckBox.isChecked()
+        self.settings["move_on_success"] = self.positionCheckBox.isChecked()
+        self.positionsComboBox.writeSettings()
+        self.operatorComboBox.writeSettings()
+        self.outputComboBox.writeSettings()
 
     # Callbacks
 
-    def on_position_checkbox_toggled(self, state):
-        self._positions_combobox.enabled = state
+    def setPositionsEnabled(self, state: bool) -> None:
+        self.positionsComboBox.qt.setEnabled(state)
 
     # Methods
 
-    def move_to_contact(self):
-        return self._contact_checkbox.checked
+    def isMoveToContact(self) -> bool:
+        return self.contactCheckBox.isChecked()
 
-    def move_to_position(self):
-        if self.move_to_contact() and self._position_checkbox.checked:
-            current = self._positions_combobox.current
+    def isMoveToPosition(self):
+        if self.isMoveToContact() and self.positionCheckBox.isChecked():
+            current = self.positionsComboBox.current
             if current:
-                index = self._positions_combobox.index(current)
+                index = self.positionsComboBox.index(current)
                 positions = settings.table_positions
                 if 0 <= index < len(positions):
                     position = positions[index]
@@ -137,73 +146,79 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
 
     # Helpers
 
-    def _create_message(self, context):
+    def createMessage(self, context) -> str:
         if isinstance(context, SamplesItem):
             return "<b>Are you sure to start all enabled sequences for all enabled samples?</b>"
         elif isinstance(context, SampleTreeItem):
             return f"<b>Are you sure to start all enabled sequences for {context.name!r}?</b>"
         elif isinstance(context, ContactTreeItem):
             return f"<b>Are you sure to start sequence {context.name!r}?</b>"
+        return ""
 
 
-class SequenceManager(ui.Dialog, SettingsMixin):
+class SequenceManagerTreeItem(ui.TreeItem):
+
+    def __init__(self, sequence, filename, builtin) -> None:
+        super().__init__([sequence.name, "(built-in)" if builtin else filename])
+        self.sequence = sequence
+        self.sequence.builtin = builtin
+        self.qt.setToolTip(1, filename)
+
+
+class SequenceManager(QtWidgets.QDialog, SettingsMixin):
     """Dialog for managing custom sequence configuration files."""
 
-    def __init__(self):
-        super().__init__()
-        # Properties
-        self.title = "Sequence Manager"
-        # Layout
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Sequence Manager")
         self.resize(640, 480)
+
         self._sequence_tree = ui.Tree(
             header=("Name", "Filename"),
             indentation=0,
-            selected=self.on_sequence_tree_selected
+            selected=self.loadSequencePreview
         )
-        self._add_button = ui.Button(
-            text="&Add",
-            clicked=self.on_add_sequence
-        )
-        self._remove_button = ui.Button(
-            text="&Remove",
-            enabled=False,
-            clicked=self.on_remove_sequence
-        )
+
+        self.addButton = QtWidgets.QPushButton(self)
+        self.addButton.setText("&Add")
+        self.addButton.clicked.connect(self.addSequenceItem)
+
+        self.removeButton = QtWidgets.QPushButton(self)
+        self.removeButton.setText("&Remove")
+        self.removeButton.setEnabled(False)
+        self.removeButton.clicked.connect(self.removeSequenceItem)
+
         self._preview_tree = ui.Tree(header=["Key", "Value"])
-        self.layout = ui.Column(
-            ui.Row(
-                ui.Column(
-                    self._sequence_tree,
-                    self._preview_tree,
-                    stretch=(4, 3)
-                ),
-                ui.Column(
-                    self._add_button,
-                    self._remove_button,
-                    ui.Spacer()
-                ),
-                stretch=(1, 0)
-            ),
-            ui.DialogButtonBox(
-                buttons=("ok", "cancel"),
-                accepted=self.accept,
-                rejected=self.reject
-            ),
-            stretch=(1, 0)
-        )
 
-    # Properties
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
 
-    @property
-    def current_sequence(self):
+        leftLayout = QtWidgets.QVBoxLayout()
+        leftLayout.addWidget(self._sequence_tree.qt, 3)
+        leftLayout.addWidget(self._preview_tree.qt, 4)
+
+        rightLayout = QtWidgets.QVBoxLayout()
+        rightLayout.addWidget(self.addButton, 0)
+        rightLayout.addWidget(self.removeButton, 0)
+        rightLayout.addStretch(1)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addLayout(leftLayout, 0, 0)
+        layout.addLayout(rightLayout, 0, 1)
+        layout.addWidget(self.buttonBox, 1, 0, 1, 2)
+        layout.setColumnStretch(0, 1)
+
+    def currentSequence(self):
         """Return selected sequence object or None if nothing selected."""
         item = self._sequence_tree.current
         if item is not None:
             return item.sequence
         return None
 
-    @property
-    def sequence_filenames(self):
+    def sequenceFilenames(self):
         filenames = []
         for sequence_item in self._sequence_tree:
             filenames.append(sequence_item.sequence.filename)
@@ -211,55 +226,56 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     # Settings
 
-    def load_settings(self):
-        self.load_settings_dialog_size()
-        self.load_settings_sequences()
+    def readSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("SequenceManager")
+        geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreGeometry(geometry)
+        settings.endGroup()
 
-    def load_settings_dialog_size(self):
-        """Load dialog size from settings."""
-        width, height = self.settings.get("sequence_manager_dialog_size") or (640, 480)
-        self.resize(width, height)
+        self.readSettingsSequences()
 
-    def load_settings_sequences(self):
+    def readSettingsSequences(self):
         """Load all built-in and custom sequences from settings."""
         self._sequence_tree.clear()
         for name, filename, builtin in load_all_sequences(self.settings):
             try:
                 sequence = load_sequence(filename)
-                item = self._sequence_tree.append([sequence.name, "(built-in)" if builtin else filename])
-                item.sequence = sequence
-                item.sequence.builtin = builtin
-                item.qt.setToolTip(1, filename)
             except Exception as exc:
+                logger.exception(exc)
                 logger.error("failed to load sequence: %s", filename)
+            else:
+                item = SequenceManagerTreeItem(sequence, filename, builtin)
+                self._sequence_tree.append(item)
         self._sequence_tree.fit()
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
 
-    def store_settings(self):
-        self.store_settings_dialog_size()
-        self.store_settings_sequences()
+    def writeSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("SequenceManager")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.endGroup()
 
-    def store_settings_dialog_size(self):
-        """Store dialog size to settings."""
-        self.settings["sequence_manager_dialog_size"] = self.width, self.height
+        self.writeSettingsSequences()
 
-    def store_settings_sequences(self):
+    def writeSettingsSequences(self):
         """Store custom sequences to settings."""
         sequences = []
         for item in self._sequence_tree:
-            if not item.sequence.builtin:
-                sequences.append(item.sequence.filename)
+            if isinstance(item, SequenceManagerTreeItem):
+                if not item.sequence.builtin:
+                    sequences.append(item.sequence.filename)
         self.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
 
-    def on_sequence_tree_selected(self, item):
+    def loadSequencePreview(self, item):
         """Load sequence config preview."""
-        self._remove_button.enabled = False
+        self.removeButton.setEnabled(False)
         self._preview_tree.clear()
-        if item is not None:
-            self._remove_button.enabled = not item.sequence.builtin
+        if isinstance(item, SequenceManagerTreeItem):
+            self.removeButton.setEnabled(not item.sequence.builtin)
             if os.path.exists(item.sequence.filename):
                 with open(item.sequence.filename) as f:
                     data = yaml.safe_load(f)
@@ -285,7 +301,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                         append(self._preview_tree, key, value)
                     self._preview_tree.fit()
 
-    def on_add_sequence(self):
+    def addSequenceItem(self) -> None:
         filename = ui.filename_open(filter="YAML files (*.yml, *.yaml);;All files (*)")
         if filename:
             try:
@@ -293,22 +309,23 @@ class SequenceManager(ui.Dialog, SettingsMixin):
             except Exception as exc:
                 ui.show_exception(exc)
             else:
-                if filename not in self.sequence_filenames:
-                    item = self._sequence_tree.append([sequence.name, filename])
-                    item.qt.setToolTip(1, filename)
-                    item.sequence = sequence
-                    item.sequence.builtin = False
+                if filename not in self.sequenceFilenames():
+                    item = SequenceManagerTreeItem(sequence, filename, False)
+                    self._sequence_tree.append(item)
                     self._sequence_tree.current = item
 
-    def on_remove_sequence(self):
+    def removeSequenceItem(self) -> None:
         item = self._sequence_tree.current
-        if item and not item.sequence.builtin:
-            if ui.show_question(
-                title="Remove Sequence",
-                text=f"Do yo want to remove sequence {item.sequence.name!r}?"
-            ):
-                self._sequence_tree.remove(item)
-                self._remove_button.enabled = len(self._sequence_tree)
+        if isinstance(item, SequenceManagerTreeItem):
+            if not item.sequence.builtin:
+                result = QtWidgets.QMessageBox.question(
+                    self,
+                    "Remove Sequence",
+                    f"Do yo want to remove sequence {item.sequence.name!r}?"
+                )
+                if result == QtWidgets.QMessageBox.Yes:
+                    self._sequence_tree.remove(item)
+                    self.removeButton.setEnabled(len(self._sequence_tree) > 0)
 
 
 class SequenceTree(ui.Tree):
@@ -341,7 +358,7 @@ class SamplesItem:
     """Virtual item holding multiple samples to be executed."""
 
     def __init__(self, iterable):
-        self.children = []
+        self.children: List = []
         self.extend(iterable)
 
     def append(self, item):
@@ -655,7 +672,7 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.series = {}
         self.analysis = {}
 
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         self.series.clear()
         self.analysis.clear()
@@ -668,9 +685,9 @@ class EditSamplesDialog(SettingsMixin):
         self.sequence_tree = sequence_tree
         self.sequences = sequences
 
-    def _populate_dialog(self, dialog):
+    def populateDialog(self, dialog):
         for sample_item in self.sequence_tree:
-            item = dialog.addItem()
+            item = QuickEditItem()
             item.setEnabled(sample_item.enabled)
             item.setPrefix(sample_item.name_prefix)
             item.setInfix(sample_item.name_infix)
@@ -682,8 +699,9 @@ class EditSamplesDialog(SettingsMixin):
             if sample_item.sequence is not None:
                 item.setCurrentSequence(sample_item.sequence.name)
             item.setProperty("sample_item", sample_item)
+            dialog.addItem(item)
 
-    def _update_samples(self, dialog):
+    def updateSamplesFromDialog(self, dialog):
         for item in dialog.items():
             sample_item = item.property("sample_item")
             sample_item.enabled = item.isEnabled()
@@ -697,19 +715,19 @@ class EditSamplesDialog(SettingsMixin):
                     sequence = load_sequence(filename)
                     sample_item.load_sequence(sequence)
 
-    def load_settings(self, dialog):
+    def readSettings(self, dialog):
         width, height = self.settings.get("quick_edit_dialog_size", (800, 480))
         dialog.resize(width, height)
 
-    def store_settings(self, dialog):
+    def writeSettings(self, dialog):
         width, height = dialog.width(), dialog.height()
         self.settings["quick_edit_dialog_size"] = width, height
 
     def run(self):
         dialog = QuickEditDialog()
-        self.load_settings(dialog)
-        self._populate_dialog(dialog)
+        self.readSettings(dialog)
+        self.populateDialog(dialog)
         dialog.exec()
         if dialog.result() == dialog.Accepted:
-            self._update_samples(dialog)
-        self.store_settings(dialog)
+            self.updateSamplesFromDialog(dialog)
+        self.writeSettings(dialog)

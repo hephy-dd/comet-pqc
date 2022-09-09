@@ -1,3 +1,5 @@
+from PyQt5 import QtWidgets
+
 from comet import ui
 from comet.settings import SettingsMixin
 
@@ -118,23 +120,26 @@ class SamplePanel(BasicPanel, SettingsMixin):
 
     @handle_exception
     def on_reload_clicked(self):
-        if not ui.show_question(
-            title="Reload Configuration",
-            text="Do you want to reload sequence configuration from file?"
-        ): return
         if self.context.sequence:
-            filename = self.context.sequence.filename
-            sequence = config.load_sequence(filename)
-            self.context.load_sequence(sequence)
+            result = QtWidgets.QMessageBox.question(
+                self.qt,
+                "Reload Configuration",
+                "Do you want to reload sequence configuration from file?"
+            )
+            if result == QtWidgets.QMessageBox.Yes:
+                filename = self.context.sequence.filename
+                sequence = config.load_sequence(filename)
+                self.context.load_sequence(sequence)
 
     @handle_exception
     def on_sequence_manager_clicked(self):
         dialog = SequenceManager()
-        dialog.load_settings()
-        if dialog.run():
-            dialog.store_settings()
+        dialog.readSettings()
+        dialog.exec()
+        if dialog.result() == QtWidgets.QDialog.Accepted:
+            dialog.writeSettings()
             self._sequence_text.clear()
-            sequence = dialog.current_sequence
+            sequence = dialog.currentSequence()
             if sequence is not None:
                 self._sequence_text.value = f"{sequence.name}"
                 self._sequence_text.tool_tip = f"{sequence.filename}"

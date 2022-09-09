@@ -2,11 +2,12 @@
 
 import logging
 import math
+from typing import Any, Dict, List
 
 import comet
 import comet.ui as ui
 from comet.settings import SettingsMixin
-from PyQt5 import QtCore, QtGui, QtChart
+from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 
 from .components import (
     CalibrationWidget,
@@ -17,6 +18,8 @@ from .components import (
 from .core.position import Position
 from .settings import TablePosition, settings
 from .utils import format_metric, caldone_valid, format_switch, handle_exception
+
+__all__ = ["TableControlDialog"]
 
 DEFAULT_STEP_UP_DELAY = 0.
 DEFAULT_STEP_UP_MULTIPLY = 2
@@ -33,9 +36,10 @@ logger = logging.getLogger(__name__)
 def safe_z_position(z):
     z_limit = settings.table_z_limit
     if z > z_limit:
-        ui.show_warning(
-            title="Z Warning",
-            text=f"Limiting Z movement to {z_limit:.3f} mm to protect probe card."
+        QtWidgets.QMessageBox.warning(
+            None,
+            "Z Warning",
+            f"Limiting Z movement to {z_limit:.3f} mm to protect probe card."
         )
         z = z_limit
     return z
@@ -211,7 +215,12 @@ class TableContactsWidget(ui.Row):
             self.contacts_tree.fit()
 
     def on_reset_all(self):
-        if ui.show_question("Do you want to reset all contact positions?"):
+        result = QtWidgets.QMessageBox.question(
+            self.qt,
+            "Reset Positions?",
+            "Do you want to reset all contact positions?"
+        )
+        if result == QtWidgets.QMessageBox.Yes:
             for sample_item in self.contacts_tree:
                 for contact_item in sample_item.children:
                     contact_item.position = float("nan"), float("nan"), float("nan")
@@ -221,7 +230,12 @@ class TableContactsWidget(ui.Row):
         current_item = self.contacts_tree.current
         if isinstance(current_item, TableContactItem):
             if current_item.has_position:
-                if ui.show_question(f"Do you want to move table to contact {current_item.name}?"):
+                result = QtWidgets.QMessageBox.question(
+                    self.qt,
+                    "Move Table?",
+                    f"Do you want to move table to contact {current_item.name}?"
+                )
+                if result == QtWidgets.QMessageBox.Yes:
                     x, y, z = current_item.position
                     self.emit(self.absolute_move, Position(x, y, z))
 
@@ -417,7 +431,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
         ))
         self.stretch = 1, 0
 
-    def load_settings(self):
+    def readSettings(self):
         self.positions_tree.clear()
         for position in settings.table_positions:
             self.positions_tree.append(TablePositionItem(
@@ -429,7 +443,7 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
             ))
         self.positions_tree.fit()
 
-    def store_settings(self):
+    def writeSettings(self):
         positions = []
         for position in self.positions_tree:
             x, y, z = position.position
@@ -500,7 +514,12 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_remove_position(self):
         item = self.positions_tree.current
         if item:
-            if ui.show_question(f"Do you want to remove position {item.name!r}?"):
+            result = QtWidgets.QMessageBox.question(
+                self.qt,
+                "Remove Position?",
+                f"Do you want to remove position {item.name!r}?"
+            )
+            if result == QtWidgets.QMessageBox.Yes:
                 self.positions_tree.remove(item)
                 if not len(self.positions_tree):
                     self.edit_button.enabled = False
@@ -510,7 +529,12 @@ class TablePositionsWidget(ui.Row, SettingsMixin):
     def on_move(self):
         item = self.positions_tree.current
         if item:
-            if ui.show_question(f"Do you want to move table to position {item.name!r}?"):
+            result = QtWidgets.QMessageBox.question(
+                self.qt,
+                "Move Table?",
+                f"Do you want to move table to position {item.name!r}?"
+            )
+            if result == QtWidgets.QMessageBox.Yes:
                 x, y ,z = item.position
                 self.emit(self.absolute_move, Position(x, y, z))
 
@@ -605,32 +629,35 @@ class LCRChart(ui.Widget):
         self._marker.append(x, y)
 
 
-class TableControlDialog(ui.Dialog, SettingsMixin):
+class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     process = None
 
-    default_steps = [
+    default_steps: List[Dict[str, Any]] = [
         {"step_size": 1.0, "step_color": "green"}, # microns!
         {"step_size": 10.0, "step_color": "orange"},
         {"step_size": 100.0, "step_color": "red"},
     ]
 
-    maximum_z_step_size = 0.025 # mm
-    z_limit = 0.0
+    probecardLightToggled = QtCore.pyqtSignal(bool)
+    microscopeLightToggled = QtCore.pyqtSignal(bool)
+    boxLightToggled = QtCore.pyqtSignal(bool)
 
-    probecard_light_toggled = None
-    microscope_light_toggled = None
-    box_light_toggled = None
+    def __init__(self, process, lcr_process, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
-    def __init__(self, process, lcr_process):
-        super().__init__()
+        self.maximum_z_step_size: float = 0.025 # mm
+        self.z_limit: float = 0.0
+
         self.lcr_process = lcr_process
         self.lcr_process.finished = self.on_lcr_finished
         self.lcr_process.failed = self.on_lcr_failed
         self.lcr_process.reading = self.on_lcr_reading
-        self.mount(process)
+
+        self.setProcess(process)
         self.resize(640, 480)
-        self.title = "Table Control"
+        self.setWindowTitle("Table Control")
+
         self.add_x_button = KeypadButton(
             text="+X",
             clicked=self.on_add_x
@@ -900,133 +927,135 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
             auto_default=False,
             clicked=self.on_close
         )
-        self.layout = ui.Column(
-            ui.Row(
-                ui.Column(
-                    ui.Row(
+
+        self.topWidget = ui.Row(
+            ui.Column(
+                ui.Row(
+                    ui.GroupBox(
+                        title="Control",
+                        layout=ui.Column(
+                            ui.Spacer(horizontal=False),
+                            self.control_layout,
+                            ui.Spacer(horizontal=False)
+                        )
+                    ),
+                    ui.GroupBox(
+                        title="Step Width",
+                        layout=self.step_width_buttons
+                    ),
+                    self._lcr_groupbox,
+                    ui.Column(
                         ui.GroupBox(
-                            title="Control",
+                            title="Lights",
                             layout=ui.Column(
-                                ui.Spacer(horizontal=False),
-                                self.control_layout,
-                                ui.Spacer(horizontal=False)
+                                self.probecard_light_button,
+                                self.microscope_light_button,
+                                self.box_light_button,
+                                ui.Spacer()
                             )
-                        ),
-                        ui.GroupBox(
-                            title="Step Width",
-                            layout=self.step_width_buttons
-                        ),
-                        self._lcr_groupbox,
-                        ui.Column(
+                        )
+                    ),
+                    stretch=(0, 0, 1, 0)
+                ),
+                ui.Tabs(
+                    ui.Tab(
+                        title="Move",
+                        layout=self.positions_widget
+                    ),
+                    ui.Tab(
+                        title="Contacts",
+                        layout=self.contacts_widget
+                    ),
+                    ui.Tab(
+                        title="Calibrate",
+                        layout=ui.Column(
                             ui.GroupBox(
-                                title="Lights",
+                                title="Table Calibration",
                                 layout=ui.Column(
-                                    self.probecard_light_button,
-                                    self.microscope_light_button,
-                                    self.box_light_button,
-                                    ui.Spacer()
-                                )
-                            )
-                        ),
-                        stretch=(0, 0, 1, 0)
-                    ),
-                    ui.Tabs(
-                        ui.Tab(
-                            title="Move",
-                            layout=self.positions_widget
-                        ),
-                        ui.Tab(
-                            title="Contacts",
-                            layout=self.contacts_widget
-                        ),
-                        ui.Tab(
-                            title="Calibrate",
-                            layout=ui.Column(
-                                ui.GroupBox(
-                                    title="Table Calibration",
-                                    layout=ui.Column(
-                                        ui.Row(
-                                            self._calibrate_button,
-                                            ui.Label("Calibrate table by moving into cal/rm switches\nof every axis in" \
-                                                     " a safe manner to protect the probe card."),
-                                            stretch=(0, 1)
-                                        )
+                                    ui.Row(
+                                        self._calibrate_button,
+                                        ui.Label("Calibrate table by moving into cal/rm switches\nof every axis in" \
+                                                 " a safe manner to protect the probe card."),
+                                        stretch=(0, 1)
                                     )
-                                ),
-                                ui.Spacer(),
-                                stretch=(0, 1)
-                            )
-                        ),
-                        ui.Tab(
-                            title="Options",
-                            layout=ui.Column(
-                                ui.Row(
-                                    self._interval_groupbox,
-                                    self._dodge_groupbox,
-                                    self._contact_quality_groupbox,
-                                    stretch=(0, 0, 1)
-                                ),
-                                self._step_up_groubox,
-                                self._lcr_options_groupbox,
-                                ui.Spacer(),
-                                stretch=(0, 0, 0, 1)
-                            )
+                                )
+                            ),
+                            ui.Spacer(),
+                            stretch=(0, 1)
                         )
                     ),
-                    stretch=(0, 1)
+                    ui.Tab(
+                        title="Options",
+                        layout=ui.Column(
+                            ui.Row(
+                                self._interval_groupbox,
+                                self._dodge_groupbox,
+                                self._contact_quality_groupbox,
+                                stretch=(0, 0, 1)
+                            ),
+                            self._step_up_groubox,
+                            self._lcr_options_groupbox,
+                            ui.Spacer(),
+                            stretch=(0, 0, 0, 1)
+                        )
+                    )
                 ),
-                ui.Column(
-                    self._position_widget,
-                    self._calibration_widget,
-                    ui.GroupBox(
-                        title="Soft Limits",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("Z")
-                            ),
-                            ui.Column(
-                                self.z_limit_label
-                            )
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="Hard Limits",
-                        layout=ui.Row(
-                            ui.Column(
-                                ui.Label("X"),
-                                ui.Label("Y"),
-                                ui.Label("Z")
-                            ),
-                            ui.Column(
-                                self.x_hard_limit_label,
-                                self.y_hard_limit_label,
-                                self.z_hard_limit_label
-                            )
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="Safety",
-                        layout=ui.Row(
-                            ui.Label(
-                                text="Laser Sensor"
-                            ),
-                            self.laser_label
-                        )
-                    ),
-                    ui.Spacer()
-                ),
-                stretch=(1, 0)
+                stretch=(0, 1)
             ),
-            ui.Row(
-                self.progress_bar,
-                self.message_label,
-                ui.Spacer(),
-                self.stop_button,
-                self.close_button
+            ui.Column(
+                self._position_widget,
+                self._calibration_widget,
+                ui.GroupBox(
+                    title="Soft Limits",
+                    layout=ui.Row(
+                        ui.Column(
+                            ui.Label("Z")
+                        ),
+                        ui.Column(
+                            self.z_limit_label
+                        )
+                    )
+                ),
+                ui.GroupBox(
+                    title="Hard Limits",
+                    layout=ui.Row(
+                        ui.Column(
+                            ui.Label("X"),
+                            ui.Label("Y"),
+                            ui.Label("Z")
+                        ),
+                        ui.Column(
+                            self.x_hard_limit_label,
+                            self.y_hard_limit_label,
+                            self.z_hard_limit_label
+                        )
+                    )
+                ),
+                ui.GroupBox(
+                    title="Safety",
+                    layout=ui.Row(
+                        ui.Label(
+                            text="Laser Sensor"
+                        ),
+                        self.laser_label
+                    )
+                ),
+                ui.Spacer()
             ),
             stretch=(1, 0)
         )
-        self.close_event = self.on_close_event
+
+        bottomLayout = QtWidgets.QHBoxLayout()
+        bottomLayout.addWidget(self.progress_bar.qt)
+        bottomLayout.addWidget(self.message_label.qt)
+        bottomLayout.addStretch()
+        bottomLayout.addWidget(self.stop_button.qt)
+        bottomLayout.addWidget(self.close_button.qt)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.topWidget.qt, 1)
+        layout.addLayout(bottomLayout, 0)
+
         self.reset_position()
         self.reset_caldone()
         self.update_limits()
@@ -1250,13 +1279,13 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.update_control_buttons()
 
     def on_probecard_light_clicked(self, state):
-        self.emit(self.probecard_light_toggled, state)
+        self.probecardLightToggled.emit(state)
 
     def on_microscope_light_clicked(self, state):
-        self.emit(self.microscope_light_toggled, state)
+        self.microscopeLightToggled.emit(state)
 
     def on_box_light_clicked(self, state):
-        self.emit(self.box_light_toggled, state)
+        self.boxLightToggled.emit(state)
 
     def update_probecard_light(self, state):
         self.probecard_light_button.checked = state
@@ -1319,9 +1348,10 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def on_close(self):
         self.close()
 
-    def on_close_event(self):
-        self.process.wait()
-        return True
+    def closeEvent(self, event: QtCore.QEvent) -> None:
+        if self.process:
+            self.process.wait()
+        event.accept()
 
     def load_samples(self, sample_items):
         self.contacts_widget.load_samples(sample_items)
@@ -1329,11 +1359,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
     def update_samples(self):
         self.contacts_widget.update_samples()
 
-    def load_settings(self):
-        width, height = self.settings.get("tablecontrol_dialog_size", (640, 480))
-        self.resize(width, height)
-        self.positions_widget.load_settings()
-        self.z_limit = settings.table_z_limit
+    def readSettings(self) -> None:
+        self.positions_widget.readSettings()
+        self.z_limit = float(settings.table_z_limit)
         self.z_limit_label.value = self.z_limit
         x, y, z = settings.table_probecard_maximum_limits
         self.x_hard_limit_label.value = x
@@ -1351,16 +1379,26 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.dodge_height = settings.table_control_dodge_height
         self.lcr_reset_on_move = self.settings.get("tablecontrol_lcr_reset_on_move", True)
 
-    def store_settings(self):
-        self.settings["tablecontrol_dialog_size"] = self.width, self.height
+        settings_ = QtCore.QSettings()
+        settings_.beginGroup("TableControlDialog")
+        geometry = settings_.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreGeometry(geometry)
+        settings_.endGroup()
+
+    def writeSettings(self) -> None:
         self.settings["tablecontrol_step_up_multiply"] = self.step_up_multiply
         self.settings["tablecontrol_lcr_update_delay"] = self.lcr_update_interval
         self.settings["tablecontrol_lcr_matrix_channels"] = self.lcr_matrix_channels
-        self.positions_widget.store_settings()
+        self.positions_widget.writeSettings()
         settings.table_control_update_interval = self.update_interval
         settings.table_control_dodge_enabled = self.dodge_enabled
         settings.table_control_dodge_height = self.dodge_height
         self.settings["tablecontrol_lcr_reset_on_move"] = self.lcr_reset_on_move
+
+        settings_ = QtCore.QSettings()
+        settings_.beginGroup("TableControlDialog")
+        settings_.setValue("geometry", self.saveGeometry())
+        settings_.endGroup()
 
     def lock(self):
         self.control_layout.enabled = False
@@ -1379,9 +1417,9 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.close_button.enabled = True
         self.progress_bar.visible = False
 
-    def mount(self, process):
-        """Mount table process."""
-        self.unmount()
+    def setProcess(self, process):
+        """Set table process and connect signals."""
+        self.removeProcess()
         self.process = process
         self.process.message_changed = self.on_message_changed
         self.process.progress_changed = self.on_progress_changed
@@ -1392,8 +1430,8 @@ class TableControlDialog(ui.Dialog, SettingsMixin):
         self.process.calibration_finished = self.on_calibration_finished
         self.process.stopped = self.on_calibration_finished
 
-    def unmount(self):
-        """Unmount table process."""
+    def removeProcess(self) -> None:
+        """Remove table process."""
         if self.process:
             self.process.message_changed = None
             self.process.progress_changed = None

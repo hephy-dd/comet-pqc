@@ -1,7 +1,8 @@
+from typing import Tuple
+
 from PyQt5 import QtCore, QtWidgets
 
 from comet import SettingsMixin
-from comet import ui
 
 from .settings import settings
 from .utils import from_table_unit, to_table_unit
@@ -59,192 +60,11 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.webapiWidget.writeSettings()
         self.optionsWidget.writeSettings()
 
-        QtWidgets.QMessageBox.information(self, "Restart required", "Application restart required for changes to take effect.")
-
-
-class WebAPIWidget(QtWidgets.QWidget, SettingsMixin):
-    """Web API settings tab for preferences dialog."""
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
-        super().__init__(parent)
-
-        self.enabledCheckBox = QtWidgets.QCheckBox(self)
-        self.enabledCheckBox.setText("Enable Server")
-
-        self.hostnameLineEdit = QtWidgets.QLineEdit(self)
-
-        self.portSpinBox = QtWidgets.QSpinBox(self)
-        self.portSpinBox.setRange(0, 99999)
-        self.portSpinBox.setSingleStep(1)
-
-        self.jsonGroupBox = QtWidgets.QGroupBox(self)
-        self.jsonGroupBox.setTitle("JSON API")
-
-        jsonFormLayout = QtWidgets.QFormLayout()
-        jsonFormLayout.addWidget(self.enabledCheckBox)
-        jsonFormLayout.addRow("Host", self.hostnameLineEdit)
-        jsonFormLayout.addRow("Port", self.portSpinBox)
-
-        jsonLayout = QtWidgets.QHBoxLayout(self.jsonGroupBox)
-        jsonLayout.addLayout(jsonFormLayout, 0)
-        jsonLayout.addStretch(1)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.jsonGroupBox)
-        layout.addStretch()
-
-    def isServerEnabled(self) -> bool:
-        return self.enabledCheckBox.isChecked()
-
-    def setServerEnabled(self, enabled: bool) -> None:
-        self.enabledCheckBox.setChecked(enabled)
-
-    def hostname(self) -> str:
-        return self.hostnameLineEdit.text().strip()
-
-    def setHostname(self, hostname: str) -> None:
-        self.hostnameLineEdit.setText(hostname)
-
-    def port(self) -> int:
-        return int(self.portSpinBox.value())
-
-    def setPort(self, port: int) -> None:
-        self.portSpinBox.setValue(port)
-
-    def readSettings(self) -> None:
-        enabled = self.settings.get("webapi_enabled") or False
-        self.setServerEnabled(enabled)
-        hostname = self.settings.get("webapi_host") or "0.0.0.0"
-        self.setHostname(hostname)
-        port = int(self.settings.get("webapi_port") or 9000)
-        self.setPort(port)
-
-    def writeSettings(self):
-        self.settings["webapi_enabled"] = self.isServerEnabled()
-        self.settings["webapi_host"] = self.hostname()
-        self.settings["webapi_port"] = self.port()
-
-
-class OptionsWidget(QtWidgets.QWidget, SettingsMixin):
-    """Options tab for preferences dialog."""
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
-        super().__init__(parent)
-
-        # Plots
-
-        self.pngPlotsCheckBox = QtWidgets.QCheckBox(self)
-        self.pngPlotsCheckBox.setText("Save plots as PNG")
-
-        self.pointsInPlotsCheckBox = QtWidgets.QCheckBox(self)
-        self.pointsInPlotsCheckBox.setText("Show points in plots")
-
-        self.plotsGroupBox = QtWidgets.QGroupBox(self)
-        self.plotsGroupBox.setTitle("Plots")
-
-        plotsLayout = QtWidgets.QFormLayout(self.plotsGroupBox)
-        plotsLayout.addWidget(self.pngPlotsCheckBox)
-        plotsLayout.addWidget(self.pointsInPlotsCheckBox)
-
-        # Analysis
-
-        self.pngAnalysisCheckBox = QtWidgets.QCheckBox(self)
-        self.pngAnalysisCheckBox.setText("Add analysis preview to PNG")
-
-        self.analysisGroupBox = QtWidgets.QGroupBox(self)
-        self.analysisGroupBox.setTitle("Analysis")
-
-        analysisLayout = QtWidgets.QFormLayout(self.analysisGroupBox)
-        analysisLayout.addWidget(self.pngAnalysisCheckBox)
-
-        # Formats
-
-        self.exportJsonCheckBox = QtWidgets.QCheckBox(self)
-        self.exportJsonCheckBox.setText("Write JSON data (*.json)")
-
-        self.exportTxtCheckBox = QtWidgets.QCheckBox(self)
-        self.exportTxtCheckBox.setText("Write plain text data (*.txt)")
-
-        self.formatsGroupBox = QtWidgets.QGroupBox(self)
-        self.formatsGroupBox.setTitle("Formats")
-
-        formatsLayout = QtWidgets.QFormLayout(self.formatsGroupBox)
-        formatsLayout.addWidget(self.exportJsonCheckBox)
-        formatsLayout.addWidget(self.exportTxtCheckBox)
-
-        # Logfiles
-
-        self.writeLogfilesCheckBox = QtWidgets.QCheckBox(self)
-        self.writeLogfilesCheckBox.setText("Write measurement log files (*.log)")
-
-        self.logfilesGroupBox = QtWidgets.QGroupBox(self)
-        self.logfilesGroupBox.setTitle("Log files")
-
-        logfilesLayout = QtWidgets.QFormLayout(self.logfilesGroupBox)
-        logfilesLayout.addWidget(self.writeLogfilesCheckBox)
-
-        # Auto retry
-
-        self.retryMeasurementSpinBox = QtWidgets.QSpinBox(self)
-        self.retryMeasurementSpinBox.setRange(0, 100)
-        self.retryMeasurementSpinBox.setSuffix("x")
-        self.retryMeasurementSpinBox.setToolTip("Number of retries for measurements with failed analysis.")
-
-        self.retryContactSpinBox = QtWidgets.QSpinBox(self)
-        self.retryContactSpinBox.setRange(0, 10)
-        self.retryContactSpinBox.setSuffix("x")
-        self.retryContactSpinBox.setToolTip("Number of re-contact retries for measurements with failed analysis.")
-
-        self.autoRetryGroupBox = QtWidgets.QGroupBox(self)
-        self.autoRetryGroupBox.setTitle("Auto Retry")
-
-        autoRetryFormLayout = QtWidgets.QFormLayout()
-        autoRetryFormLayout.addRow("Retry Measurements", self.retryMeasurementSpinBox)
-        autoRetryFormLayout.addRow("Retry Contact", self.retryContactSpinBox)
-
-        autoRetryLayout = QtWidgets.QHBoxLayout(self.autoRetryGroupBox)
-        autoRetryLayout.addLayout(autoRetryFormLayout)
-        autoRetryLayout.addStretch()
-
-        layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.plotsGroupBox, 0, 0, 1, 1)
-        layout.addWidget(self.analysisGroupBox, 0, 1, 1, 1)
-        layout.addWidget(self.formatsGroupBox, 1, 0, 1, 1)
-        layout.addWidget(self.logfilesGroupBox, 1, 1, 1, 1)
-        layout.addWidget(self.autoRetryGroupBox, 2, 0, 1, 2)
-        layout.setRowStretch(3, 1)
-
-    def readSettings(self):
-        png_plots = self.settings.get("png_plots", False)
-        self.pngPlotsCheckBox.setChecked(png_plots)
-        points_in_plots = self.settings.get("points_in_plots", False)
-        self.pointsInPlotsCheckBox.setChecked(points_in_plots)
-        png_analysis = self.settings.get("png_analysis", False)
-        self.pngAnalysisCheckBox.setChecked(png_analysis)
-        export_json = self.settings.get("export_json", False)
-        self.exportJsonCheckBox.setChecked(export_json)
-        export_txt = self.settings.get("export_txt", True)
-        self.exportTxtCheckBox.setChecked(export_txt)
-        write_logfiles = self.settings.get("write_logfiles", True)
-        self.writeLogfilesCheckBox.setChecked(write_logfiles)
-        self.retryMeasurementSpinBox.setValue(settings.retry_measurement_count)
-        self.retryContactSpinBox.setValue(settings.retry_contact_count)
-
-    def writeSettings(self):
-        png_plots = self.pngPlotsCheckBox.isChecked()
-        self.settings["png_plots"] = png_plots
-        points_in_plots = self.pointsInPlotsCheckBox.isChecked()
-        self.settings["points_in_plots"] = points_in_plots
-        png_analysis = self.pngAnalysisCheckBox.isChecked()
-        self.settings["png_analysis"] = png_analysis
-        export_json = self.exportJsonCheckBox.isChecked()
-        self.settings["export_json"] = export_json
-        export_txt = self.exportTxtCheckBox.isChecked()
-        self.settings["export_txt"] = export_txt
-        write_logfiles = self.writeLogfilesCheckBox.isChecked()
-        self.settings["write_logfiles"] = write_logfiles
-        settings.retry_measurement_count = self.retryMeasurementSpinBox.value()
-        settings.retry_contact_count = self.retryContactSpinBox.value()
+        QtWidgets.QMessageBox.information(
+            self,
+            "Restart required",
+            "Application restart required for changes to take effect."
+        )
 
 
 class TableStepDialog(QtWidgets.QDialog):
@@ -310,7 +130,7 @@ class TableStepDialog(QtWidgets.QDialog):
     def stepColor(self) -> str:
         return self.stepColorLineEdit.text()
 
-    def setStepColor(self, value: str):
+    def setStepColor(self, value: str) -> None:
         self.stepColorLineEdit.setText(value or "")
 
 
@@ -321,7 +141,8 @@ class ItemDelegate(QtWidgets.QItemDelegate):
 
     def drawDisplay(self, painter, option, rect, text):
         try:
-            text = f"{float(text):.{self.Decimals}f} mm"
+            value = float(text.replace(",", "."))  # TODO issues with locale
+            text = f"{value:.{self.Decimals}f} mm"
         except Exception:
             ...
         super().drawDisplay(painter, option, rect, text)
@@ -493,37 +314,37 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
         layout.addWidget(self.overdriveGroupBox, 4, 1, 1, 1)
         layout.setRowStretch(0, 1)
 
-    def probecardLimits(self):
+    def probecardLimits(self) -> Tuple[float, float, float]:
         x = self.probecardLimitXSpinBox.value()
         y = self.probecardLimitYSpinBox.value()
         z = self.probecardLimitZSpinBox.value()
         return x, y, z
 
-    def setProbecardLimits(self, x, y, z):
+    def setProbecardLimits(self, x: float, y: float, z: float) -> None:
         self.probecardLimitXSpinBox.setValue(x)
         self.probecardLimitYSpinBox.setValue(y)
         self.probecardLimitZSpinBox.setValue(z)
 
-    def joystickLimits(self):
+    def joystickLimits(self) -> Tuple[float, float, float]:
         x = self.joystickLimitXSpinBox.value()
         y = self.joystickLimitYSpinBox.value()
         z = self.joystickLimitZSpinBox.value()
         return x, y, z
 
-    def setJoystickLimits(self, x, y, z):
+    def setJoystickLimits(self, x: float, y: float, z: float) -> None:
         self.joystickLimitXSpinBox.setValue(x)
         self.joystickLimitYSpinBox.setValue(y)
         self.joystickLimitZSpinBox.setValue(z)
 
-    def updateStepButtons(self, current, previous):
+    def updateStepButtons(self, current, previous) -> None:
         enabled = current is not None
         self.editStepButton.setEnabled(enabled)
         self.removeStepButton.setEnabled(enabled)
 
-    def stepDoubleClicked(self, item, column):
+    def stepDoubleClicked(self, item, column) -> None:
         self.editCurrentStep()
 
-    def addNewStep(self):
+    def addNewStep(self) -> None:
         dialog = TableStepDialog()
         dialog.exec()
         if dialog.result() == dialog.Accepted:
@@ -534,7 +355,7 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
             ))
             self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
-    def editCurrentStep(self):
+    def editCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
         if isinstance(item, TableStepItem):
             dialog = TableStepDialog()
@@ -548,10 +369,15 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
                 item.setStepColor(dialog.stepColor())
                 self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
-    def removeCurrentStep(self):
+    def removeCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
         if isinstance(item, TableStepItem):
-            if ui.show_question(f"Do you want to remove step size {item.stepSize()!r}?"):
+            result = QtWidgets.QMessageBox.question(
+                self,
+                "Remove Item",
+                f"Do you want to remove step size {item.stepSize()!r}?"
+            )
+            if result == QtWidgets.QMessageBox.Yes:
                 index = self.stepsTreeWidget.indexOfTopLevelItem(item)
                 self.stepsTreeWidget.takeTopLevelItem(index)
                 if not self.stepsTreeWidget.topLevelItemCount():
@@ -559,7 +385,7 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
                     self.removeStepButton.setEnabled(False)
                 self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
 
-    def readSettings(self):
+    def readSettings(self) -> None:
         table_step_sizes = self.settings.get("table_step_sizes") or []
         self.stepsTreeWidget.clear()
         for item in table_step_sizes:
@@ -582,15 +408,16 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
         self.probecardContactDelaySpinBox.setValue(table_contact_delay)
         self.recontactOverdriveNumberSpinBox.setValue(settings.retry_contact_overdrive)
 
-    def writeSettings(self):
+    def writeSettings(self) -> None:
         table_step_sizes = []
         for index in range(self.stepsTreeWidget.topLevelItemCount()):
             item = self.stepsTreeWidget.topLevelItem(index)
-            table_step_sizes.append({
-                "step_size": to_table_unit(item.stepSize()),
-                "z_limit": to_table_unit(item.zLimit()),
-                "step_color": format(item.stepColor()),
-            })
+            if isinstance(item, TableStepItem):
+                table_step_sizes.append({
+                    "step_size": to_table_unit(item.stepSize()),
+                    "z_limit": to_table_unit(item.zLimit()),
+                    "step_color": format(item.stepColor()),
+                })
         self.settings["table_step_sizes"] = table_step_sizes
         settings.table_z_limit = self.zLimitMovementSpinBox.value()
         # Probecard limits
@@ -602,3 +429,188 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
         table_contact_delay = self.probecardContactDelaySpinBox.value()
         self.settings["table_contact_delay"] = table_contact_delay
         settings.retry_contact_overdrive = self.recontactOverdriveNumberSpinBox.value()
+
+
+class WebAPIWidget(QtWidgets.QWidget, SettingsMixin):
+    """Web API settings tab for preferences dialog."""
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.enabledCheckBox = QtWidgets.QCheckBox(self)
+        self.enabledCheckBox.setText("Enable Server")
+
+        self.hostnameLineEdit = QtWidgets.QLineEdit(self)
+
+        self.portSpinBox = QtWidgets.QSpinBox(self)
+        self.portSpinBox.setRange(0, 99999)
+        self.portSpinBox.setSingleStep(1)
+
+        self.jsonGroupBox = QtWidgets.QGroupBox(self)
+        self.jsonGroupBox.setTitle("JSON API")
+
+        jsonFormLayout = QtWidgets.QFormLayout()
+        jsonFormLayout.addWidget(self.enabledCheckBox)
+        jsonFormLayout.addRow("Host", self.hostnameLineEdit)
+        jsonFormLayout.addRow("Port", self.portSpinBox)
+
+        jsonLayout = QtWidgets.QHBoxLayout(self.jsonGroupBox)
+        jsonLayout.addLayout(jsonFormLayout, 0)
+        jsonLayout.addStretch(1)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.jsonGroupBox)
+        layout.addStretch()
+
+    def isServerEnabled(self) -> bool:
+        return self.enabledCheckBox.isChecked()
+
+    def setServerEnabled(self, enabled: bool) -> None:
+        self.enabledCheckBox.setChecked(enabled)
+
+    def hostname(self) -> str:
+        return self.hostnameLineEdit.text().strip()
+
+    def setHostname(self, hostname: str) -> None:
+        self.hostnameLineEdit.setText(hostname)
+
+    def port(self) -> int:
+        return int(self.portSpinBox.value())
+
+    def setPort(self, port: int) -> None:
+        self.portSpinBox.setValue(port)
+
+    def readSettings(self) -> None:
+        enabled = self.settings.get("webapi_enabled") or False
+        self.setServerEnabled(enabled)
+        hostname = self.settings.get("webapi_host") or "0.0.0.0"
+        self.setHostname(hostname)
+        port = int(self.settings.get("webapi_port") or 9000)
+        self.setPort(port)
+
+    def writeSettings(self) -> None:
+        self.settings["webapi_enabled"] = self.isServerEnabled()
+        self.settings["webapi_host"] = self.hostname()
+        self.settings["webapi_port"] = self.port()
+
+
+class OptionsWidget(QtWidgets.QWidget, SettingsMixin):
+    """Options tab for preferences dialog."""
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        # Plots
+
+        self.pngPlotsCheckBox = QtWidgets.QCheckBox(self)
+        self.pngPlotsCheckBox.setText("Save plots as PNG")
+
+        self.pointsInPlotsCheckBox = QtWidgets.QCheckBox(self)
+        self.pointsInPlotsCheckBox.setText("Show points in plots")
+
+        self.plotsGroupBox = QtWidgets.QGroupBox(self)
+        self.plotsGroupBox.setTitle("Plots")
+
+        plotsLayout = QtWidgets.QFormLayout(self.plotsGroupBox)
+        plotsLayout.addWidget(self.pngPlotsCheckBox)
+        plotsLayout.addWidget(self.pointsInPlotsCheckBox)
+
+        # Analysis
+
+        self.pngAnalysisCheckBox = QtWidgets.QCheckBox(self)
+        self.pngAnalysisCheckBox.setText("Add analysis preview to PNG")
+
+        self.analysisGroupBox = QtWidgets.QGroupBox(self)
+        self.analysisGroupBox.setTitle("Analysis")
+
+        analysisLayout = QtWidgets.QFormLayout(self.analysisGroupBox)
+        analysisLayout.addWidget(self.pngAnalysisCheckBox)
+
+        # Formats
+
+        self.exportJsonCheckBox = QtWidgets.QCheckBox(self)
+        self.exportJsonCheckBox.setText("Write JSON data (*.json)")
+
+        self.exportTxtCheckBox = QtWidgets.QCheckBox(self)
+        self.exportTxtCheckBox.setText("Write plain text data (*.txt)")
+
+        self.formatsGroupBox = QtWidgets.QGroupBox(self)
+        self.formatsGroupBox.setTitle("Formats")
+
+        formatsLayout = QtWidgets.QFormLayout(self.formatsGroupBox)
+        formatsLayout.addWidget(self.exportJsonCheckBox)
+        formatsLayout.addWidget(self.exportTxtCheckBox)
+
+        # Logfiles
+
+        self.writeLogfilesCheckBox = QtWidgets.QCheckBox(self)
+        self.writeLogfilesCheckBox.setText("Write measurement log files (*.log)")
+
+        self.logfilesGroupBox = QtWidgets.QGroupBox(self)
+        self.logfilesGroupBox.setTitle("Log files")
+
+        logfilesLayout = QtWidgets.QFormLayout(self.logfilesGroupBox)
+        logfilesLayout.addWidget(self.writeLogfilesCheckBox)
+
+        # Auto retry
+
+        self.retryMeasurementSpinBox = QtWidgets.QSpinBox(self)
+        self.retryMeasurementSpinBox.setRange(0, 100)
+        self.retryMeasurementSpinBox.setSuffix(" x")
+        self.retryMeasurementSpinBox.setToolTip("Number of retries for measurements with failed analysis.")
+
+        self.retryContactSpinBox = QtWidgets.QSpinBox(self)
+        self.retryContactSpinBox.setRange(0, 10)
+        self.retryContactSpinBox.setSuffix(" x")
+        self.retryContactSpinBox.setToolTip("Number of re-contact retries for measurements with failed analysis.")
+
+        self.autoRetryGroupBox = QtWidgets.QGroupBox(self)
+        self.autoRetryGroupBox.setTitle("Auto Retry")
+
+        autoRetryFormLayout = QtWidgets.QFormLayout()
+        autoRetryFormLayout.addRow("Retry Measurements", self.retryMeasurementSpinBox)
+        autoRetryFormLayout.addRow("Retry Contact", self.retryContactSpinBox)
+
+        autoRetryLayout = QtWidgets.QHBoxLayout(self.autoRetryGroupBox)
+        autoRetryLayout.addLayout(autoRetryFormLayout)
+        autoRetryLayout.addStretch()
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.plotsGroupBox, 0, 0, 1, 1)
+        layout.addWidget(self.analysisGroupBox, 0, 1, 1, 1)
+        layout.addWidget(self.formatsGroupBox, 1, 0, 1, 1)
+        layout.addWidget(self.logfilesGroupBox, 1, 1, 1, 1)
+        layout.addWidget(self.autoRetryGroupBox, 2, 0, 1, 2)
+        layout.setRowStretch(3, 1)
+
+    def readSettings(self) -> None:
+        png_plots = self.settings.get("png_plots", False)
+        self.pngPlotsCheckBox.setChecked(png_plots)
+        points_in_plots = self.settings.get("points_in_plots", False)
+        self.pointsInPlotsCheckBox.setChecked(points_in_plots)
+        png_analysis = self.settings.get("png_analysis", False)
+        self.pngAnalysisCheckBox.setChecked(png_analysis)
+        export_json = self.settings.get("export_json", False)
+        self.exportJsonCheckBox.setChecked(export_json)
+        export_txt = self.settings.get("export_txt", True)
+        self.exportTxtCheckBox.setChecked(export_txt)
+        write_logfiles = self.settings.get("write_logfiles", True)
+        self.writeLogfilesCheckBox.setChecked(write_logfiles)
+        self.retryMeasurementSpinBox.setValue(settings.retry_measurement_count)
+        self.retryContactSpinBox.setValue(settings.retry_contact_count)
+
+    def writeSettings(self) -> None:
+        png_plots = self.pngPlotsCheckBox.isChecked()
+        self.settings["png_plots"] = png_plots
+        points_in_plots = self.pointsInPlotsCheckBox.isChecked()
+        self.settings["points_in_plots"] = points_in_plots
+        png_analysis = self.pngAnalysisCheckBox.isChecked()
+        self.settings["png_analysis"] = png_analysis
+        export_json = self.exportJsonCheckBox.isChecked()
+        self.settings["export_json"] = export_json
+        export_txt = self.exportTxtCheckBox.isChecked()
+        self.settings["export_txt"] = export_txt
+        write_logfiles = self.writeLogfilesCheckBox.isChecked()
+        self.settings["write_logfiles"] = write_logfiles
+        settings.retry_measurement_count = self.retryMeasurementSpinBox.value()
+        settings.retry_contact_count = self.retryContactSpinBox.value()

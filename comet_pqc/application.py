@@ -127,13 +127,13 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             failed=self.on_show_error
         ))
 
-    def load_settings(self):
+    def readSettings(self):
         self.window.readSettings()
 
-    def store_settings(self):
+    def writeSettings(self):
         self.window.writeSettings()
 
-    def event_loop(self):
+    def eventLoop(self):
         # Sync environment controls
         if self.dashboard.use_environment():
             self.dashboard.environ_process.start()
