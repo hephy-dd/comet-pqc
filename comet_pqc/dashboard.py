@@ -7,7 +7,6 @@ import webbrowser
 from typing import List
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import qutie as ui
 
 import comet
 from comet.process import ProcessMixin
@@ -254,8 +253,13 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
 
     @handle_exception
     def on_open_clicked(self, state):
-        filename = ui.filename_open(path=self.property("currentPath"), filter="JSON (*.json)")
-        if filename:
+        filename, result = QtWidgets.QFileDialog.getOpenFileName(
+            parent=self,
+            caption="Open JSON",
+            directory=self.property("currentPath"),
+            filter="JSON (*.json)"
+        )
+        if result:
             with open(filename) as f:
                 logger.info("Reading sequence... %s", filename)
                 data = json.load(f)
@@ -285,7 +289,12 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
 
     @handle_exception
     def on_save_clicked(self, state):
-        filename = ui.filename_save(path=self.property("currentPath"), filter="JSON (*.json)")
+        filename, result = QtWidgets.QFileDialog.getSaveFileName(
+            parent=self,
+            caption="Save JSON",
+            directory=self.property("currentPath"),
+            filter="JSON (*.json)"
+        )
         if filename:
             samples = [sample.to_settings() for sample in self._sequence_tree]
             data = {
@@ -295,14 +304,6 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
             # Auto filename extension
             if os.path.splitext(filename)[-1] not in [".json"]:
                 filename = f"{filename}.json"
-                if os.path.exists(filename):
-                    result = QtWidgets.QMessageBox.question(
-                        self,
-                        "Overwrite?",
-                        f"Do you want to overwrite existing file {filename!r}?"
-                    )
-                    if result != QtWidgets.QMessageBox.Yes:
-                        return
             with open(filename, "w") as f:
                 logger.info("Writing sequence... %s", filename)
                 json.dump(data, f)
@@ -323,13 +324,8 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
         self.setTitle("Table")
         self.setCheckable(True)
 
-        buttonStyleSheet: str = "QPushButton:checked{color:green;font-weight:bold;}"
-
-        self.joystickButton = QtWidgets.QPushButton(self)
-        self.joystickButton.setText("Joystick")
+        self.joystickButton = ToggleButton("Joystick", self)
         self.joystickButton.setStatusTip("Toggle table joystick")
-        self.joystickButton.setCheckable(True)
-        self.joystickButton.setStyleSheet(buttonStyleSheet)
         self.joystickButton.toggled.connect(self.joystickToggled.emit)
 
         self._position_widget = PositionWidget()
@@ -389,70 +385,36 @@ class EnvironGroupBox(QtWidgets.QGroupBox):
         self.setTitle("Environment Box")
         self.setCheckable(True)
 
-        buttonStyleSheet = "QPushButton:checked{color:green;font-weight:bold;}"
-
-        self.laserSensorButton = QtWidgets.QPushButton(self)
-        self.laserSensorButton.setText("Laser")
+        self.laserSensorButton = ToggleButton("Laser", self)
         self.laserSensorButton.setStatusTip("Toggle laser")
-        self.laserSensorButton.setCheckable(True)
-        self.laserSensorButton.setChecked(False)
-        self.laserSensorButton.setStyleSheet(buttonStyleSheet)
         self.laserSensorButton.toggled.connect(self.laserSensorToggled.emit)
 
-        self.boxLightButton = QtWidgets.QPushButton(self)
-        self.boxLightButton.setText("Box Light")
+        self.boxLightButton = ToggleButton("Box Light", self)
         self.boxLightButton.setStatusTip("Toggle box light")
-        self.boxLightButton.setCheckable(True)
-        self.boxLightButton.setChecked(False)
-        self.boxLightButton.setStyleSheet(buttonStyleSheet)
         self.boxLightButton.toggled.connect(self.boxLightToggled.emit)
 
-        self.microscopeLightButton = QtWidgets.QPushButton(self)
-        self.microscopeLightButton.setText("Mic Light")
+        self.microscopeLightButton = ToggleButton("Mic Light", self)
         self.microscopeLightButton.setStatusTip("Toggle microscope light")
-        self.microscopeLightButton.setCheckable(True)
-        self.microscopeLightButton.setChecked(False)
-        self.microscopeLightButton.setStyleSheet(buttonStyleSheet)
         self.microscopeLightButton.toggled.connect(self.microscopeLightToggled.emit)
 
-        self.microscopeCameraButton = QtWidgets.QPushButton(self)
-        self.microscopeCameraButton.setText("Mic Cam")
+        self.microscopeCameraButton = ToggleButton("Mic Cam", self)
         self.microscopeCameraButton.setStatusTip("Toggle microscope camera power")
-        self.microscopeCameraButton.setCheckable(True)
-        self.microscopeCameraButton.setChecked(False)
-        self.microscopeCameraButton.setStyleSheet(buttonStyleSheet)
         self.microscopeCameraButton.toggled.connect(self.microscopeCameraToggled.emit)
 
-        self.microscopeControlButton = QtWidgets.QPushButton(self)
-        self.microscopeControlButton.setText("Mic Ctrl")
+        self.microscopeControlButton = ToggleButton("Mic Ctrl", self)
         self.microscopeControlButton.setStatusTip("Toggle microscope control")
-        self.microscopeControlButton.setCheckable(True)
-        self.microscopeControlButton.setChecked(False)
-        self.microscopeControlButton.setStyleSheet(buttonStyleSheet)
         self.microscopeControlButton.toggled.connect(self.microscopeControlToggled.emit)
 
-        self.probecardLightButton = QtWidgets.QPushButton(self)
-        self.probecardLightButton.setText("PC Light")
+        self.probecardLightButton = ToggleButton("PC Light", self)
         self.probecardLightButton.setStatusTip("Toggle probe card light")
-        self.probecardLightButton.setCheckable(True)
-        self.probecardLightButton.setChecked(False)
-        self.probecardLightButton.setStyleSheet(buttonStyleSheet)
         self.probecardLightButton.toggled.connect(self.probecardLightToggled.emit)
 
-        self.probecardCameraButton = QtWidgets.QPushButton(self)
-        self.probecardCameraButton.setText("PC Cam")
+        self.probecardCameraButton = ToggleButton("PC Cam", self)
         self.probecardCameraButton.setStatusTip("Toggle probe card camera power")
-        self.probecardCameraButton.setCheckable(True)
-        self.probecardCameraButton.setChecked(False)
-        self.probecardCameraButton.setStyleSheet(buttonStyleSheet)
         self.probecardCameraButton.toggled.connect(self.probecard_camera_toggled.emit)
 
-        self.pidControlButton = QtWidgets.QPushButton(self)
-        self.pidControlButton.setText("PID Control")
+        self.pidControlButton = ToggleButton("PID Control", self)
         self.pidControlButton.setStatusTip("Toggle PID control")
-        self.pidControlButton.setCheckable(True)
-        self.pidControlButton.setChecked(False)
-        self.pidControlButton.setStyleSheet(buttonStyleSheet)
         self.pidControlButton.toggled.connect(self.pidControlToggled.emit)
 
         layout = QtWidgets.QGridLayout(self)
@@ -539,23 +501,26 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         self.operator_widget = OperatorWidget()
         self.operator_widget.readSettings()
-        self.operator_groupbox = ui.GroupBox(
-            title="Operator",
-            layout=self.operator_widget
-        )
+
+        self.operatorGroupBox = QtWidgets.QGroupBox(self)
+        self.operatorGroupBox.setTitle("Operator")
+
+        operatorLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
+        operatorLayout.addWidget(self.operator_widget.qt)
 
         # Working directory
 
         self.output_widget = WorkingDirectoryWidget()
 
-        self.output_groupbox = ui.GroupBox(
-            title="Working Directory",
-            layout=self.output_widget
-        )
+        self.outputGroupBox = QtWidgets.QGroupBox(self)
+        self.outputGroupBox.setTitle("Output Directory")
+
+        outputLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
+        outputLayout.addWidget(self.output_widget.qt)
 
         # Controls
 
-        self.control_widget = QtWidgets.QWidget(self)
+        self.controlWidget = QtWidgets.QWidget(self)
 
         # Tabs
 
@@ -590,15 +555,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         self.splitter = QtWidgets.QSplitter(self)
         self.splitter.setChildrenCollapsible(False)
-        self.splitter.addWidget(self.control_widget)
+        self.splitter.addWidget(self.controlWidget)
         self.splitter.addWidget(self.tabWidget)
         self.splitter.setSizes([4, 9])
 
         controlBottomLayout = QtWidgets.QHBoxLayout()
-        controlBottomLayout.addWidget(self.operator_groupbox.qt, 3)
-        controlBottomLayout.addWidget(self.output_groupbox.qt, 7)
+        controlBottomLayout.addWidget(self.operatorGroupBox, 3)
+        controlBottomLayout.addWidget(self.outputGroupBox, 7)
 
-        controlLayout = QtWidgets.QVBoxLayout(self.control_widget)
+        controlLayout = QtWidgets.QVBoxLayout(self.controlWidget)
         controlLayout.addWidget(self.sequence_widget, 1)
         controlLayout.addWidget(self.tableControlWidget)
         controlLayout.addWidget(self.environGroupBox)
@@ -691,7 +656,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     def output_dir(self):
         """Return output base path."""
-        return os.path.realpath(self.output_widget.current_location)
+        return os.path.realpath(self.output_widget.currentLocation())
 
     def create_output_dir(self):
         """Create output directory for sample if not exists, return directory
@@ -718,8 +683,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.environGroupBox.setEnabled(False)
         self.tableControlWidget.setEnabled(False)
         self.sequence_widget.lock()
-        self.output_groupbox.enabled = False
-        self.operator_groupbox.enabled = False
+        self.outputGroupBox.setEnabled(False)
+        self.operatorGroupBox.setEnabled(False)
         self.measurementWidget.setLocked(True)
         self.statusWidget.setLocked(True)
         self.lockStateChanged.emit(True)
@@ -729,8 +694,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.environGroupBox.setEnabled(True)
         self.tableControlWidget.setEnabled(True)
         self.sequence_widget.unlock()
-        self.output_groupbox.enabled = True
-        self.operator_groupbox.enabled = True
+        self.outputGroupBox.setEnabled(True)
+        self.operatorGroupBox.setEnabled(True)
         self.measurementWidget.setLocked(False)
         self.statusWidget.setLocked(False)
         self.lockStateChanged.emit(False)
@@ -1028,7 +993,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.table_process.enable_joystick(False)
         dialog = TableControlDialog(self.table_process, self.contact_quality_process)
         dialog.readSettings()
-        dialog.load_samples(list(self.sequence_tree)) # HACK
+        dialog.loadSamples(list(self.sequence_tree)) # HACK
         if self.use_environment():
             # TODO !!!
             with self.environ_process as environ:
@@ -1045,7 +1010,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.contact_quality_process.stop()
         self.contact_quality_process.join()
         dialog.writeSettings()
-        dialog.update_samples()
+        dialog.updateSamples()
         # Prevent glitch
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):
@@ -1162,7 +1127,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
     def on_push_summary(self, *args):
         """Push result to summary and write to summary file (experimantal)."""
         data = self.summaryWidget.appendResult(*args)
-        output_path = self.output_widget.current_location
+        output_path = self.output_widget.currentLocation()
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)

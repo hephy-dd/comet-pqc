@@ -2,7 +2,7 @@
 
 import logging
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import comet
 import comet.ui as ui
@@ -33,7 +33,7 @@ DEFAULT_MATRIX_CHANNELS = [
 logger = logging.getLogger(__name__)
 
 
-def safe_z_position(z):
+def safe_z_position(z: float) -> float:
     z_limit = settings.table_z_limit
     if z > z_limit:
         QtWidgets.QMessageBox.warning(
@@ -137,86 +137,89 @@ class TableContactItem(ui.TreeItem):
         self.__position = float("nan"), float("nan"), float("nan")
 
 
-class TableContactsWidget(ui.Row):
+class TableContactsWidget(QtWidgets.QWidget):
 
-    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self.absolute_move = absolute_move
+    positionPicked = QtCore.pyqtSignal(object)
+    absoluteMove = QtCore.pyqtSignal(Position)
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
         self.contacts_tree = ui.Tree(
             header=("Contact", "Pos", "X", "Y", "Z", None),
             selected=self.on_contacts_selected
         )
-        self.contacts_tree.fit()
-        self.pick_button = ui.Button(
-            text="Assign &Position",
-            tool_tip="Assign current table position to selected position item",
-            clicked=self.on_pick_position,
-            enabled=False
-        )
-        self.calculate_button= ui.Button(
-            text="&Calculate",
-            clicked=self.on_calculate,
-            enabled=False
-        )
-        self.move_button= ui.Button(
-            text="&Move",
-            tool_tip="Move to selected position",
-            clicked=self.on_move,
-            enabled=False
-        )
-        self.reset_button = ui.Button(
-            text="&Reset",
-            clicked=self.on_reset,
-            enabled=False
-        )
-        self.reset_all_button = ui.Button(
-            text="Reset &All",
-            clicked=self.on_reset_all
-        )
-        self.append(self.contacts_tree)
-        self.append(ui.Column(
-            self.pick_button,
-            self.move_button,
-            self.calculate_button,
-            ui.Spacer(),
-            self.reset_button,
-            self.reset_all_button
-        ))
-        self.stretch = 1, 0
 
-    def append_sample(self, sample_item):
+        self.contacts_tree.fit()
+
+        self.pickButton = QtWidgets.QPushButton(self)
+        self.pickButton.setText("Assign &Position")
+        self.pickButton.setToolTip("Assign current table position to selected position item")
+        self.pickButton.setEnabled(False)
+        self.pickButton.clicked.connect(self.pickPosition)
+
+        self.calculateButton = QtWidgets.QPushButton(self)
+        self.calculateButton.setText("&Calculate")
+        self.calculateButton.setEnabled(False)
+        self.calculateButton.clicked.connect(self.calculatePositions)
+
+        self.moveButton = QtWidgets.QPushButton(self)
+        self.moveButton.setText("&Move")
+        self.moveButton.setToolTip("Move to selected position")
+        self.moveButton.setEnabled(False)
+        self.moveButton.clicked.connect(self.moveToPosition)
+
+        self.resetButton = QtWidgets.QPushButton(self)
+        self.resetButton.setText("&Reset")
+        self.resetButton.setEnabled(False)
+        self.resetButton.clicked.connect(self.resetCurrentPosition)
+
+        self.resetAllButton = QtWidgets.QPushButton(self)
+        self.resetAllButton.setText("Reset &All")
+        self.resetAllButton.clicked.connect(self.resetAllPositions)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.contacts_tree.qt, 0, 0, 6, 1)
+        layout.addWidget(self.pickButton, 0, 1)
+        layout.addWidget(self.moveButton, 1, 1)
+        layout.addWidget(self.calculateButton, 2, 1)
+        layout.addWidget(self.resetButton, 4, 1)
+        layout.addWidget(self.resetAllButton, 5, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setRowStretch(3, 1)
+
+    def appendSampleItem(self, sample_item):
         self.contacts_tree.append(TableSampleItem(sample_item))
 
     def on_contacts_selected(self, item):
-        self.update_button_states(item)
+        self.updateButtonStates(item)
 
-    def update_button_states(self, item=None):
+    def updateButtonStates(self, item: Optional[TableContactItem] = None) -> None:
         if item is None:
             item = self.contacts_tree.current
         is_contact = isinstance(item, TableContactItem)
-        self.pick_button.enabled = is_contact
-        self.move_button.enabled = item.has_position if is_contact else False
-        self.calculate_button.enabled = not is_contact
-        self.reset_button.enabled = is_contact
+        self.pickButton.setEnabled(is_contact)
+        self.moveButton.setEnabled(item.has_position if is_contact else False)
+        self.calculateButton.setEnabled(not is_contact)
+        self.resetButton.setEnabled(is_contact)
 
-    def on_pick_position(self):
-        item = self.contacts_tree.current
+    def pickPosition(self):
+        item: Optional[TableContactItem] = self.contacts_tree.current
         if isinstance(item, TableContactItem):
             def callback(x, y, z):
                 item.position = x, y, z
                 self.contacts_tree.fit()
-            self.emit(self.position_picked, callback)
+            self.positionPicked.emit(callback)
 
-    def on_reset(self):
-        item = self.contacts_tree.current
+    def resetCurrentPosition(self):
+        item: Optional[TableContactItem] = self.contacts_tree.current
         if isinstance(item, TableContactItem):
             item.position = float("nan"), float("nan"), float("nan")
             self.contacts_tree.fit()
 
-    def on_reset_all(self):
+    def resetAllPositions(self):
         result = QtWidgets.QMessageBox.question(
-            self.qt,
+            self,
             "Reset Positions?",
             "Do you want to reset all contact positions?"
         )
@@ -226,352 +229,370 @@ class TableContactsWidget(ui.Row):
                     contact_item.position = float("nan"), float("nan"), float("nan")
             self.contacts_tree.fit()
 
-    def on_move(self):
-        current_item = self.contacts_tree.current
+    def moveToPosition(self):
+        current_item: Optional[TableContactItem] = self.contacts_tree.current
         if isinstance(current_item, TableContactItem):
             if current_item.has_position:
                 result = QtWidgets.QMessageBox.question(
-                    self.qt,
+                    self,
                     "Move Table?",
                     f"Do you want to move table to contact {current_item.name}?"
                 )
                 if result == QtWidgets.QMessageBox.Yes:
                     x, y, z = current_item.position
-                    self.emit(self.absolute_move, Position(x, y, z))
+                    self.absoluteMove.emit(Position(x, y, z))
 
-    def on_calculate(self):
+    def calculatePositions(self):
         current_item = self.contacts_tree.current
         if isinstance(current_item, TableSampleItem):
             current_item.calculate_positions()
 
-    def load_samples(self, sample_items):
+    def loadSamples(self, sample_items):
         self.contacts_tree.clear()
         for sample_item in sample_items:
-            self.append_sample(sample_item)
+            self.appendSampleItem(sample_item)
         self.contacts_tree.fit()
 
-    def update_samples(self):
+    def updateSamples(self):
         for sample_item in self.contacts_tree:
             sample_item.update_contacts()
 
-    def lock(self):
-        self.pick_button.enabled = False
-        self.move_button.enabled = False
-        self.calculate_button.enabled = False
-        self.reset_button.enabled = False
-        self.reset_all_button.enabled = False
-
-    def unlock(self):
-        self.update_button_states()
-        self.reset_all_button.enabled = True
-
+    def setLocked(self, state: bool) -> None:
+        if state:
+            self.pickButton.setEnabled(False)
+            self.moveButton.setEnabled(False)
+            self.calculateButton.setEnabled(False)
+            self.resetButton.setEnabled(False)
+            self.resetAllButton.setEnabled(False)
+        else:
+            self.updateButtonStates()
+            self.resetAllButton.setEnabled(True)
 
 class TablePositionItem(ui.TreeItem):
 
-    def __init__(self, name, x, y, z, comment=None):
+    def __init__(self, name: str, position: Position, comment: str = None):
         super().__init__()
         for i in range(1, 4):
             self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
-        self.name = name
-        self.position = x, y, z
-        self.comment = comment or ""
+        self.setName(name)
+        self.setPosition(position)
+        self.setComment(comment or "")
 
-    @property
-    def name(self):
+    def name(self) -> str:
         return self[0].value
 
-    @name.setter
-    def name(self, value):
+    def setName(self, value: str) -> None:
         self[0].value = value
 
-    @property
-    def position(self):
+    def position(self) -> Position:
         return self.__position
 
-    @position.setter
-    def position(self, value):
-        x, y, z = value
-        self.__position = x, y, z
-        self[1].value = format(x, ".3f")
-        self[2].value = format(y, ".3f")
-        self[3].value = format(z, ".3f")
+    def setPosition(self, position: Position) -> None:
+        self.__position = position
+        self[1].value = format(position.x, ".3f")
+        self[2].value = format(position.y, ".3f")
+        self[3].value = format(position.z, ".3f")
 
-    @property
-    def comment(self):
+    def comment(self) -> str:
         return self[4].value
 
-    @comment.setter
-    def comment(self, value):
+    def setComment(self, value: str) -> None:
         self[4].value = value
 
 
-class PositionDialog(ui.Dialog):
+class PositionDialog(QtWidgets.QDialog):
 
-    def __init__(self, position_picked=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self._name_text = ui.Text(value="Unnamed")
-        self._x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._comment_text = ui.Text()
-        self._assign_button = ui.Button(
-            text="Assign Position",
-            tool_tip="Assign current table position.",
-            clicked=self.on_assign_clicked
-        )
-        self._button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
-        self.layout = ui.Column(
-            ui.Label("Name", tool_tip="Position name"),
-            self._name_text,
-            ui.Row(
-                ui.Column(
-                    ui.Label("X", tool_tip="Position X coordinate"),
-                    self._x_number
-                ),
-                ui.Column(
-                    ui.Label("Y", tool_tip="Position Y coordinate"),
-                    self._y_number
-                ),
-                ui.Column(
-                    ui.Label("Z", tool_tip="Position Z coordinate"),
-                    self._z_number
-                ),
-                ui.Column(
-                    ui.Spacer(),
-                    self._assign_button,
-                )
-            ),
-            ui.Label("Comment", tool_tip="Optional position comment"),
-            self._comment_text,
-            ui.Spacer(),
-            self._button_box
-        )
+    positionPicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
-    @property
-    def name(self):
-        return self._name_text.value
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
-    @name.setter
-    def name(self, value):
-        self._name_text.value = value
+        self.nameLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.nameLabel.setText("Name")
+        self.nameLabel.setToolTip("Position name")
 
-    @property
-    def position(self):
-        x = self._x_number.value
-        y = self._y_number.value
-        z = self._z_number.value
-        return x, y, z
+        self.nameLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.nameLineEdit.setText("Unnamed")
 
-    @position.setter
-    def position(self, value):
-        x, y, z = value
-        self._x_number.value = x
-        self._y_number.value = y
-        self._z_number.value = z
+        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel.setText("X")
+        self.xLabel.setToolTip("Position X coordinate")
 
-    @property
-    def comment(self):
-        return self._comment_text.value
+        self.xSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.xSpinBox.setRange(0, 1000)
+        self.xSpinBox.setDecimals(3)
+        self.xSpinBox.setSuffix(" mm")
 
-    @comment.setter
-    def comment(self, value):
-        self._comment_text.value = value
+        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel.setText("Y")
+        self.yLabel.setToolTip("Position Y coordinate")
 
-    def on_assign_clicked(self):
-        self.layout.enabled = False
+        self.ySpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.ySpinBox.setRange(0, 1000)
+        self.ySpinBox.setDecimals(3)
+        self.ySpinBox.setSuffix(" mm")
+
+        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel.setText("Z")
+        self.zLabel.setToolTip("Position Z coordinate")
+
+        self.zSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.zSpinBox.setRange(0, 1000)
+        self.zSpinBox.setDecimals(3)
+        self.zSpinBox.setSuffix(" mm")
+
+        self.commentLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.commentLabel.setText("Comment")
+        self.commentLabel.setToolTip("Optional position comment")
+
+        self.commentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+
+        self.assignButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.assignButton.setText("Assign Position")
+        self.assignButton.setToolTip("Assign current table position.")
+        self.assignButton.clicked.connect(self.assignPosition)
+
+        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.nameLabel, 0, 0, 1, 7)
+        layout.addWidget(self.nameLineEdit, 1, 0, 1, 5)
+        layout.addWidget(self.xLabel, 2, 0)
+        layout.addWidget(self.yLabel, 2, 1)
+        layout.addWidget(self.zLabel, 2, 2)
+        layout.addWidget(self.xSpinBox, 3, 0)
+        layout.addWidget(self.ySpinBox, 3, 1)
+        layout.addWidget(self.zSpinBox, 3, 2)
+        layout.addWidget(self.assignButton, 3, 4)
+        layout.addWidget(self.commentLabel, 4, 0, 1, 5)
+        layout.addWidget(self.commentLineEdit, 5, 0, 1, 5)
+        layout.addWidget(self.buttonBox, 7, 0, 1, 5)
+        layout.setRowStretch(6, 1)
+
+    def name(self) -> str:
+        return self.nameLineEdit.text()
+
+    def setName(self, name: str) -> None:
+        self.nameLineEdit.setText(name)
+
+    def position(self) -> Position:
+        x = self.xSpinBox.value()
+        y = self.ySpinBox.value()
+        z = self.zSpinBox.value()
+        return Position(x, y, z)
+
+    def setPosition(self, position: Position) -> None:
+        x, y, z = position
+        self.xSpinBox.setValue(x)
+        self.ySpinBox.setValue(y)
+        self.zSpinBox.setValue(z)
+
+    def comment(self) -> str:
+        return self.commentLineEdit.text()
+
+    def setComment(self, comment: str) -> None:
+        self.commentLineEdit.setText(comment)
+
+    def assignPosition(self) -> None:
+        self.setEnabled(False)
         def callback(x, y, z):
-            self.position = x, y, z
-            self.layout.enabled = True
-        self.emit(self.position_picked, callback)
+            self.setPosition((x, y, z))
+            self.setEnabled(True)
+        self.positionPicked.emit(callback)
 
 
-class TablePositionsWidget(ui.Row, SettingsMixin):
+class TablePositionsWidget(QtWidgets.QWidget):
 
-    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self.absolute_move = absolute_move
+    positionPicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
+    absoluteMove: QtCore.pyqtSignal = QtCore.pyqtSignal(Position)
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
         self.positions_tree = ui.Tree(
             header=("Name", "X", "Y", "Z", "Comment"),
             root_is_decorated=False,
             selected=self.on_position_selected,
             double_clicked=self.on_position_double_clicked
         )
-        self.add_button = ui.Button(
-            text="&Add",
-            tool_tip="Add new position item",
-            clicked=self.on_add_position
-        )
-        self.edit_button = ui.Button(
-            text="&Edit",
-            tool_tip="Edit selected position item",
-            clicked=self.on_edit_position,
-            enabled=False
-        )
-        self.remove_button = ui.Button(
-            text="&Remove",
-            tool_tip="Remove selected position item",
-            clicked=self.on_remove_position,
-            enabled=False
-        )
-        self.move_button= ui.Button(
-            text="&Move",
-            tool_tip="Move to selected position",
-            clicked=self.on_move,
-            enabled=False
-        )
-        self.append(self.positions_tree)
-        self.append(ui.Column(
-            self.move_button,
-            ui.Spacer(),
-            self.add_button,
-            self.edit_button,
-            self.remove_button
-        ))
-        self.stretch = 1, 0
 
-    def readSettings(self):
+        self.addButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.addButton.setText("&Add")
+        self.addButton.setToolTip("Add new position item")
+        self.addButton.clicked.connect(self.addPosition)
+
+        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton.setText("&Edit")
+        self.editButton.setToolTip("Edit selected position item")
+        self.editButton.setEnabled(False)
+        self.editButton.clicked.connect(self.editPosition)
+
+        self.removeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.removeButton.setText("&Remove")
+        self.removeButton.setToolTip("Remove selected position item")
+        self.removeButton.setEnabled(False)
+        self.removeButton.clicked.connect(self.removePosition)
+
+        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton.setText("&Move")
+        self.moveButton.setToolTip("Move to selected position")
+        self.moveButton.setEnabled(False)
+        self.moveButton.clicked.connect(self.moveToPosition)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.positions_tree.qt, 0, 0, 5, 1)
+        layout.addWidget(self.moveButton, 0, 1)
+        layout.addWidget(self.addButton, 2, 1)
+        layout.addWidget(self.editButton, 3, 1)
+        layout.addWidget(self.removeButton, 4, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setRowStretch(1, 1)
+
+    def readSettings(self) -> None:
         self.positions_tree.clear()
         for position in settings.table_positions:
-            self.positions_tree.append(TablePositionItem(
+            item = TablePositionItem(
                 name=position.name,
-                x=position.x,
-                y=position.y,
-                z=position.z,
+                position=Position(position.x, position.y, position.z),
                 comment=position.comment,
-            ))
+            )
+            self.positions_tree.append(item)
         self.positions_tree.fit()
 
-    def writeSettings(self):
-        positions = []
-        for position in self.positions_tree:
-            x, y, z = position.position
+    def writeSettings(self) -> None:
+        positions: List[TablePosition] = []
+        for item in self.positions_tree:
             positions.append(TablePosition(
-                name=position.name,
-                x=x,
-                y=y,
-                z=z,
-                comment=position.comment
+                name=item.name(),
+                x=item.position().x,
+                y=item.position().y,
+                z=item.position().z,
+                comment=item.comment()
             ))
         settings.table_positions = positions
 
-    def lock(self):
-        self.add_button.enabled = False
-        self.edit_button.enabled = False
-        self.remove_button.enabled = False
-        self.move_button.enabled = False
-        # Remove event
-        self.positions_tree.double_clicked = None
-
-    def unlock(self):
-        enabled = self.positions_tree.current is not None
-        self.add_button.enabled = True
-        self.edit_button.enabled = enabled
-        self.remove_button.enabled = enabled
-        self.move_button.enabled = enabled
-        # Restore event
-        self.positions_tree.double_clicked = self.on_position_double_clicked
+    def setLocked(self, state: bool) -> None:
+        if state:
+            self.addButton.setEnabled(False)
+            self.editButton.setEnabled(False)
+            self.removeButton.setEnabled(False)
+            self.moveButton.setEnabled(False)
+            # Remove event
+            self.positions_tree.double_clicked = None
+        else:
+            enabled = self.positions_tree.current is not None
+            self.addButton.setEnabled(True)
+            self.editButton.setEnabled(enabled)
+            self.removeButton.setEnabled(enabled)
+            self.moveButton.setEnabled(enabled)
+            # Restore event
+            self.positions_tree.double_clicked = self.on_position_double_clicked
 
     def on_position_selected(self, item):
         enabled = item is not None
-        self.edit_button.enabled = True
-        self.remove_button.enabled = True
-        self.move_button.enabled = True
+        self.editButton.setEnabled(True)
+        self.removeButton.setEnabled(True)
+        self.moveButton.setEnabled(True)
 
     def on_position_double_clicked(self, *args):
-        self.on_move()
+        self.moveToPosition()
 
     def on_position_picked(self, callback):
-        self.emit(self.position_picked, callback)
+        self.positionPicked.emit(callback)
 
-    def on_add_position(self):
-        dialog = PositionDialog(
-            position_picked=self.on_position_picked
-        )
-        if dialog.run():
-            name = dialog.name
-            x, y, z = dialog.position
-            comment = dialog.comment
-            self.positions_tree.append(TablePositionItem(name, x, y, z, comment))
+    def addPosition(self) -> None:
+        dialog = PositionDialog()
+        dialog.positionPicked.connect(self.on_position_picked)
+        dialog.exec()
+        if dialog.result() == QtWidgets.QDialog.Accepted:
+            name = dialog.name()
+            position = dialog.position()
+            comment = dialog.comment()
+            item = TablePositionItem(name, position, comment)
+            self.positions_tree.append(item)
             self.positions_tree.fit()
 
-    def on_edit_position(self):
-        item = self.positions_tree.current
-        if item:
-            dialog = PositionDialog(
-                position_picked=self.on_position_picked
-            )
-            dialog.name = item.name
-            dialog.position = item.position
-            dialog.comment = item.comment
-            if dialog.run():
-                item.name = dialog.name
-                item.position = dialog.position
-                item.comment = dialog.comment
+    def editPosition(self) -> None:
+        item: Optional[TablePositionItem] = self.positions_tree.current
+        if isinstance(item, TablePositionItem):
+            dialog = PositionDialog()
+            dialog.positionPicked.connect(self.on_position_picked)
+            dialog.setName(item.name())
+            dialog.setPosition(item.position())
+            dialog.setComment(item.comment())
+            dialog.exec()
+            if dialog.result() == QtWidgets.QDialog.Accepted:
+                item.setName(dialog.name())
+                item.setPosition(dialog.position())
+                item.setComment(dialog.comment())
                 self.positions_tree.fit()
 
-    def on_remove_position(self):
-        item = self.positions_tree.current
-        if item:
+    def removePosition(self) -> None:
+        item: Optional[TablePositionItem] = self.positions_tree.current
+        if isinstance(item, TablePositionItem):
             result = QtWidgets.QMessageBox.question(
-                self.qt,
+                self,
                 "Remove Position?",
-                f"Do you want to remove position {item.name!r}?"
+                f"Do you want to remove position {item.name()!r}?"
             )
             if result == QtWidgets.QMessageBox.Yes:
                 self.positions_tree.remove(item)
                 if not len(self.positions_tree):
-                    self.edit_button.enabled = False
-                    self.remove_button.enabled = False
+                    self.editButton.setEnabled(False)
+                    self.removeButton.setEnabled(False)
                 self.positions_tree.fit()
 
-    def on_move(self):
-        item = self.positions_tree.current
-        if item:
+    def moveToPosition(self) -> None:
+        item: Optional[TablePositionItem] = self.positions_tree.current
+        if isinstance(item, TablePositionItem):
             result = QtWidgets.QMessageBox.question(
-                self.qt,
+                self,
                 "Move Table?",
-                f"Do you want to move table to position {item.name!r}?"
+                f"Do you want to move table to position {item.name()!r}?"
             )
             if result == QtWidgets.QMessageBox.Yes:
-                x, y ,z = item.position
-                self.emit(self.absolute_move, Position(x, y, z))
+                self.absoluteMove.emit(item.position())
 
 
-class LCRChart(ui.Widget):
+class LCRChartWidget(QtWidgets.QWidget):
 
-    max_points = 1000
+    MaxPoints: int = 1000
 
-    def __init__(self):
-        super().__init__()
-        self._chart = QtChart.QChart()
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setMinimumSize(160, 60)
+
+        self._chart: QtChart.QChart = QtChart.QChart()
         self._chart.legend().hide()
         self._chart.layout().setContentsMargins(0, 0, 0, 0)
         self._chart.setBackgroundRoundness(0)
         self._chart.setBackgroundVisible(False)
         self._chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
 
-        self._xAxis = QtChart.QValueAxis()
+        self._xAxis: QtChart.QValueAxis = QtChart.QValueAxis()
         self._xAxis.setTickCount(3)
         self._xAxis.setMinorTickCount(4)
         self._xAxis.setLabelFormat("%.3f mm")
         self._chart.addAxis(self._xAxis, QtCore.Qt.AlignBottom)
 
-        self._yAxis = QtChart.QValueAxis()
+        self._yAxis: QtChart.QValueAxis = QtChart.QValueAxis()
         self._yAxis.setTickCount(2)
         self._yAxis.setMinorTickCount(3)
         self._yAxis.setLabelFormat("%.2g Ohm")
         self._chart.addAxis(self._yAxis, QtCore.Qt.AlignLeft)
 
-        self._line = QtChart.QLineSeries()
+        self._line: QtChart.QLineSeries = QtChart.QLineSeries()
         self._line.setColor(QtGui.QColor("magenta"))
 
         self._chart.addSeries(self._line)
         self._line.attachAxis(self._xAxis)
         self._line.attachAxis(self._yAxis)
 
-        self._series = QtChart.QScatterSeries()
+        self._series: QtChart.QScatterSeries = QtChart.QScatterSeries()
         self._series.setName("R")
         self._series.setMarkerSize(3)
         self._series.setBorderColor(QtGui.QColor("red"))
@@ -581,7 +602,7 @@ class LCRChart(ui.Widget):
         self._series.attachAxis(self._xAxis)
         self._series.attachAxis(self._yAxis)
 
-        self._marker = QtChart.QScatterSeries()
+        self._marker: QtChart.QScatterSeries = QtChart.QScatterSeries()
         self._marker.setMarkerSize(9)
         self._marker.setBorderColor(QtGui.QColor("red"))
         self._marker.setColor(QtGui.QColor("red"))
@@ -590,48 +611,46 @@ class LCRChart(ui.Widget):
         self._marker.attachAxis(self._xAxis)
         self._marker.attachAxis(self._yAxis)
 
-        self.qt.setMinimumSize(160, 60)
+        self._chartView: QtChart.QChartView = QtChart.QChartView(self._chart)
 
-        self._view = QtChart.QChartView(self._chart)
-        self.qt.layout().setContentsMargins(0, 0, 0, 0)
-        self.qt.layout().addWidget(self._view)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._chartView)
 
-    def get_y_limits(self):
-        limits = []
+    def getYLimits(self) -> List[float]:
+        limits: List[float] = []
         for point in self._series.pointsVector():
             limits.append(point.y())
         return limits
 
-    def clear(self):
+    def clear(self) -> None:
         self._series.clear()
 
-    def append(self, x, y):
-        if self._series.count() > self.max_points:
+    def append(self, x: float, y: float) -> None:
+        if self._series.count() > type(self).MaxPoints:
             self._series.remove(0)
         self._series.append(QtCore.QPointF(x, y))
-        self.set_marker(x, y)
+        self.setMarker(x, y)
 
-    def set_limits(self, x):
+    def setLimits(self, x: float) -> None:
         self._xAxis.setRange(x - 0.050, x + 0.050)
-        limits = self.get_y_limits()
+        limits = self.getYLimits()
         if limits:
             self._yAxis.setRange(min(limits), max(limits))
             self._yAxis.applyNiceNumbers()
             self._yAxis.setTickCount(2)
 
-    def set_line(self, x):
+    def setLine(self, x: float) -> None:
         self._line.clear()
         self._line.append(x, self._yAxis.min())
         self._line.append(x, self._yAxis.max())
 
-    def set_marker(self, x, y):
+    def setMarker(self, x: float, y: float) -> None:
         self._marker.clear()
         self._marker.append(x, y)
 
 
 class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
-
-    process = None
 
     default_steps: List[Dict[str, Any]] = [
         {"step_size": 1.0, "step_color": "green"}, # microns!
@@ -639,421 +658,355 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         {"step_size": 100.0, "step_color": "red"},
     ]
 
-    probecardLightToggled = QtCore.pyqtSignal(bool)
-    microscopeLightToggled = QtCore.pyqtSignal(bool)
-    boxLightToggled = QtCore.pyqtSignal(bool)
+    probecardLightToggled: QtCore.pyqtSignal = QtCore.pyqtSignal(bool)
+    microscopeLightToggled: QtCore.pyqtSignal = QtCore.pyqtSignal(bool)
+    boxLightToggled: QtCore.pyqtSignal = QtCore.pyqtSignal(bool)
 
     def __init__(self, process, lcr_process, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-
+        self.process = None
         self.maximum_z_step_size: float = 0.025 # mm
         self.z_limit: float = 0.0
 
         self.lcr_process = lcr_process
-        self.lcr_process.finished = self.on_lcr_finished
-        self.lcr_process.failed = self.on_lcr_failed
-        self.lcr_process.reading = self.on_lcr_reading
+        self.lcr_process.failed = self.setLCRFailed
+        self.lcr_process.reading = self.setLCRReading
 
         self.setProcess(process)
         self.resize(640, 480)
         self.setWindowTitle("Table Control")
 
-        self.add_x_button = KeypadButton(
-            text="+X",
-            clicked=self.on_add_x
-        )
-        self.sub_x_button = KeypadButton(
-            text="-X",
-            clicked=self.on_sub_x
-        )
-        self.add_y_button = KeypadButton(
-            text="+Y",
-            clicked=self.on_add_y
-        )
-        self.sub_y_button = KeypadButton(
-            text="-Y",
-            clicked=self.on_sub_y
-        )
-        self.add_z_button = KeypadButton(
-            text="+Z",
-            clicked=self.on_add_z
-        )
-        self.sub_z_button = KeypadButton(
-            text="-Z",
-            clicked=self.on_sub_z
-        )
-        self.step_up_button = KeypadButton(
-            text="↑⇵",
-            tool_tip="Step up, move single step up then double step down and double step up (experimental).",
-            clicked=self.on_step_up
-        )
-        self.control_buttons = (
-            self.add_x_button,
-            self.sub_x_button,
-            self.add_y_button,
-            self.sub_y_button,
-            self.add_z_button,
-            self.sub_z_button,
-            self.step_up_button
-        )
-        self._lcr_prim_text = ui.Text(readonly=True)
-        self._lcr_sec_text = ui.Text(readonly=True)
-        self._lcr_chart = LCRChart()
-        self._lcr_groupbox = ui.GroupBox(
-            title="Contact Quality (LCR)",
-            checkable=True,
-            checked=False,
-            toggled=self.on_lcr_toggled,
-            layout=ui.Column(
-                ui.Row(
-                    ui.Label("Cp"),
-                    self._lcr_prim_text
-                ),
-                ui.Row(
-                    ui.Label("Rp"),
-                    self._lcr_sec_text
-                ),
-                self._lcr_chart
-            )
-        )
-        self.probecard_light_button = ToggleButton(
-            text="PC Light",
-            tool_tip="Toggle probe card light",
-            checkable=True,
-            checked=False,
-            enabled=False,
-            toggled=self.on_probecard_light_clicked
-        )
-        self.microscope_light_button = ToggleButton(
-            text="Mic Light",
-            tool_tip="Toggle microscope light",
-            checkable=True,
-            checked=False,
-            enabled=False,
-            toggled=self.on_microscope_light_clicked
-        )
-        self.box_light_button = ToggleButton(
-            text="Box Light",
-            tool_tip="Toggle box light",
-            checkable=True,
-            checked=False,
-            enabled=False,
-            toggled=self.on_box_light_clicked
-        )
+        self.addXButton: KeypadButton = KeypadButton("+X", self)
+        self.addXButton.clicked.connect(self.on_add_x)
+
+        self.subXButton: KeypadButton = KeypadButton("-X", self)
+        self.subXButton.clicked.connect(self.on_sub_x)
+
+        self.addYButton: KeypadButton = KeypadButton("+Y", self)
+        self.addYButton.clicked.connect(self.on_add_y)
+
+        self.subYButton: KeypadButton = KeypadButton("-Y", self)
+        self.subYButton.clicked.connect(self.on_sub_y)
+
+        self.addZButton: KeypadButton = KeypadButton("+Z", self)
+        self.addZButton.clicked.connect(self.on_add_z)
+
+        self.subZButton: KeypadButton = KeypadButton("-Z", self)
+        self.subZButton.clicked.connect(self.on_sub_z)
+
+        self.stepUpButton: KeypadButton = KeypadButton("↑⇵", self)
+        self.stepUpButton.setToolTip("Move single step up then double step down and double step up (experimental).")
+        self.stepUpButton.clicked.connect(self.on_step_up)
+
+        self.controlButtons: List[KeypadButton] = [
+            self.addXButton,
+            self.subXButton,
+            self.addYButton,
+            self.subYButton,
+            self.addZButton,
+            self.subZButton,
+            self.stepUpButton
+        ]
+
+        # Contact Quality
+
+        self.lcrPrimaryLabel: QtWidgets.QLabel = QtWidgets.QLabel("Cp", self)
+
+        self.lcrPrimaryLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrPrimaryLineEdit.setReadOnly(True)
+
+        self.lcrSecondaryLabel: QtWidgets.QLabel = QtWidgets.QLabel("Rp", self)
+
+        self.lcrSecondaryLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrSecondaryLineEdit.setReadOnly(True)
+
+        self.lcrChartWidget: LCRChartWidget = LCRChartWidget(self)
+
+        self.lcrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrGroupBox.setTitle("Contact Quality (LCR)")
+        self.lcrGroupBox.setCheckable(True)
+        self.lcrGroupBox.setChecked(False)
+        self.lcrGroupBox.toggled.connect(self.on_lcr_toggled)
+
+        lcrGroupBoxLayout = QtWidgets.QGridLayout(self.lcrGroupBox)
+        lcrGroupBoxLayout.addWidget(self.lcrPrimaryLabel, 0, 0)
+        lcrGroupBoxLayout.addWidget(self.lcrPrimaryLineEdit, 0, 1)
+        lcrGroupBoxLayout.addWidget(self.lcrSecondaryLabel, 1, 0)
+        lcrGroupBoxLayout.addWidget(self.lcrSecondaryLineEdit, 1, 1)
+        lcrGroupBoxLayout.addWidget(self.lcrChartWidget, 2, 0, 1, 2)
+
+        self.probecardLightButton: ToggleButton = ToggleButton("PC Light", self)
+        self.probecardLightButton.setToolTip("Toggle probe card light")
+        self.probecardLightButton.setEnabled(False)
+        self.probecardLightButton.toggled.connect(self.on_probecard_light_clicked)
+
+        self.microscopeLightButton: ToggleButton = ToggleButton("Mic Light", self)
+        self.microscopeLightButton.setToolTip("Toggle microscope light")
+        self.microscopeLightButton.setEnabled(False)
+        self.microscopeLightButton.toggled.connect(self.on_microscope_light_clicked)
+
+        self.boxLightButton: ToggleButton = ToggleButton("Box Light", self)
+        self.boxLightButton.setToolTip("Toggle box light")
+        self.boxLightButton.setEnabled(False)
+        self.boxLightButton.toggled.connect(self.on_box_light_clicked)
+
         # Create movement radio buttons
-        self.step_width_buttons = ui.Column()
+        self.stepWidthButtons: List[QtWidgets.QRadioButton] = []
+        self.stepWidthButtonsLayout = QtWidgets.QVBoxLayout()
         for item in self.load_table_step_sizes():
             step_size = item.get("step_size") * comet.ureg("um")
             step_color = item.get("step_color")
             step_size_label = format_metric(step_size.to("m").m, "m", decimals=1)
-            button = ui.RadioButton(
-                text=step_size_label,
-                tool_tip=f"Move in {step_size_label} steps.",
-                stylesheet=f"QRadioButton:enabled{{color:{step_color};}}",
-                checked=len(self.step_width_buttons) == 0,
-                toggled=self.on_step_toggled
-            )
-            button.movement_width = step_size.to("mm").m
-            button.movement_color = step_color
-            self.step_width_buttons.append(button)
-        self.control_layout = ui.Column(
-            ui.Row(
-                ui.Row(
-                    ui.Column(
-                        KeypadSpacer(),
-                        self.sub_y_button,
-                        KeypadSpacer()
-                    ),
-                    ui.Column(
-                        self.sub_x_button,
-                        KeypadSpacer(),
-                        self.add_x_button,
-                    ),
-                    ui.Column(
-                        KeypadSpacer(),
-                        self.add_y_button,
-                        KeypadSpacer(),
-                    ),
-                    KeypadSpacer(),
-                    ui.Column(
-                        ui.Row(
-                            self.add_z_button,
-                            self.step_up_button
-                        ),
-                        KeypadSpacer(),
-                        self.sub_z_button
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(0, 1)
-            ),
-            ui.Spacer(),
-            stretch=(0, 1)
-        )
-        self.positions_widget = TablePositionsWidget(
-            enabled=False,
-            position_picked=self.on_position_picked,
-            absolute_move=self.on_absolute_move
-        )
-        self.contacts_widget = TableContactsWidget(
-            enabled=False,
-            position_picked=self.on_position_picked,
-            absolute_move=self.on_absolute_move
-        )
+            button = QtWidgets.QRadioButton()
+            button.setText(step_size_label)
+            button.setToolTip(f"Move in {step_size_label} steps.")
+            button.setStyleSheet(f"QRadioButton:enabled{{color:{step_color};}}")
+            button.setChecked(len(self.stepWidthButtons) == 0)
+            button.toggled.connect(self.on_step_toggled)
+            button.setProperty("movement_width", step_size.to("mm").m)
+            button.setProperty("movement_color", step_color)
+            self.stepWidthButtons.append(button)
+            self.stepWidthButtonsLayout.addWidget(button)
+
+        self.controlGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.controlGroupBox.setTitle("Table Control")
+
+        controlLayout = QtWidgets.QGridLayout(self.controlGroupBox)
+        controlLayout.addWidget(self.addXButton, 3, 1)
+        controlLayout.addWidget(self.subXButton, 1, 1)
+        controlLayout.addWidget(self.addYButton, 2, 2)
+        controlLayout.addWidget(self.subYButton, 2, 0)
+        controlLayout.addWidget(self.addZButton, 1, 4)
+        controlLayout.addWidget(self.subZButton, 3, 4)
+        controlLayout.addWidget(self.stepUpButton, 1, 5)
+        controlLayout.setColumnMinimumWidth(3, 32)
+        controlLayout.setRowStretch(0, 1)
+        controlLayout.setRowStretch(4, 1)
+
+        self.positions_widget = TablePositionsWidget(self)
+        self.positions_widget.setEnabled(False)
+        self.positions_widget.positionPicked.connect(self.on_position_picked)
+        self.positions_widget.absoluteMove.connect(self.on_absolute_move)
+
+        self.contacts_widget = TableContactsWidget(self)
+        self.contacts_widget.setEnabled(False)
+        self.contacts_widget.positionPicked.connect(self.on_position_picked)
+        self.contacts_widget.absoluteMove.connect(self.on_absolute_move)
+
         self._position_widget = PositionWidget()
+
         self._calibration_widget = CalibrationWidget()
+
         self.z_limit_label = PositionLabel()
+
         self.x_hard_limit_label = PositionLabel()
         self.y_hard_limit_label = PositionLabel()
         self.z_hard_limit_label = PositionLabel()
-        self.laser_label = SwitchLabel()
-        self._calibrate_button = ui.Button(
-            text="Calibrate",
-            clicked=self.on_calibrate
-        )
-        self._update_interval_number = ui.Number(
-            value = settings.table_control_update_interval,
-            minimum=.5,
-            maximum=10.0,
-            decimals=2,
-            step=0.25,
-            suffix="s",
-            changed=self.on_update_interval_changed
-        )
-        self._interval_groupbox = ui.GroupBox(
-            title="Update Interval",
-            layout=ui.Row(
-                self._update_interval_number,
-                ui.Spacer(),
-                stretch=(0, 1)
-            )
-        )
-        self._dodge_height_number = ui.Number(
-            tool_tip="Doge height in microns.",
-            minimum=0,
-            maximum=10000,
-            decimals=0,
-            step=1,
-            suffix="um"
-        )
-        self._dodge_groupbox = ui.GroupBox(
-            title="X/Y Dodge",
-            tool_tip="Enables -/+ Z dodge for XY movements.",
-            checkable=True,
-            layout=ui.Row(
-                ui.Label("Height"),
-                self._dodge_height_number,
-                ui.Spacer(),
-                stretch=(0, 0, 1)
-            )
-        )
-        self._lcr_reset_on_move_checkbox = ui.CheckBox(
-            text="Reset graph on X/Y move"
-        )
-        self._contact_quality_groupbox = ui.GroupBox(
-            title="Contact Quality (LCR)",
-            layout=ui.Row(
-                self._lcr_reset_on_move_checkbox,
-                ui.Spacer(),
-                stretch=(0, 1)
-            )
-        )
-        self._step_up_delay_number = ui.Number(
-            minimum=0,
-            maximum=1000,
-            decimals=0,
-            step=25,
-            suffix="ms"
-        )
-        self._step_up_multiply_number = ui.Number(
-            minimum=1,
-            maximum=10,
-            decimals=0,
-            suffix="x"
-        )
-        self._step_up_groubox = ui.GroupBox(
-            title="Step Up (↑⇵)",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Delay"),
-                    ui.Label("Multiplicator (⇵)")
-                ),
-                ui.Column(
-                    self._step_up_delay_number,
-                    self._step_up_multiply_number
-                ),
-                ui.Spacer()
-            )
-        )
-        self._lcr_update_interval_number =ui.Number(
-            minimum=0,
-            maximum=1000,
-            decimals=0,
-            step=25,
-            suffix="ms"
-        )
-        self._lcr_matrix_channels_text = ui.Text(
-        )
-        self._lcr_options_groupbox = ui.GroupBox(
-            title="Contact Quality (LCR)",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Reading Interval"),
-                    ui.Label("Matrix Channels"),
-                ),
-                ui.Column(
-                    ui.Row(
-                        self._lcr_update_interval_number,
-                        ui.Spacer()
-                    ),
-                    self._lcr_matrix_channels_text
-                )
-            )
-        )
-        self.progress_bar = ui.ProgressBar(
-            visible=False
-        )
-        self.message_label = ui.Label()
-        self.stop_button = ui.Button(
-            text="&Stop",
-            default=False,
-            auto_default=False,
-            enabled=False,
-            clicked=self.on_stop
-        )
-        self.close_button = ui.Button(
-            text="&Close",
-            default=False,
-            auto_default=False,
-            clicked=self.on_close
-        )
 
-        self.topWidget = ui.Row(
-            ui.Column(
-                ui.Row(
-                    ui.GroupBox(
-                        title="Control",
-                        layout=ui.Column(
-                            ui.Spacer(horizontal=False),
-                            self.control_layout,
-                            ui.Spacer(horizontal=False)
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="Step Width",
-                        layout=self.step_width_buttons
-                    ),
-                    self._lcr_groupbox,
-                    ui.Column(
-                        ui.GroupBox(
-                            title="Lights",
-                            layout=ui.Column(
-                                self.probecard_light_button,
-                                self.microscope_light_button,
-                                self.box_light_button,
-                                ui.Spacer()
-                            )
-                        )
-                    ),
-                    stretch=(0, 0, 1, 0)
-                ),
-                ui.Tabs(
-                    ui.Tab(
-                        title="Move",
-                        layout=self.positions_widget
-                    ),
-                    ui.Tab(
-                        title="Contacts",
-                        layout=self.contacts_widget
-                    ),
-                    ui.Tab(
-                        title="Calibrate",
-                        layout=ui.Column(
-                            ui.GroupBox(
-                                title="Table Calibration",
-                                layout=ui.Column(
-                                    ui.Row(
-                                        self._calibrate_button,
-                                        ui.Label("Calibrate table by moving into cal/rm switches\nof every axis in" \
-                                                 " a safe manner to protect the probe card."),
-                                        stretch=(0, 1)
-                                    )
-                                )
-                            ),
-                            ui.Spacer(),
-                            stretch=(0, 1)
-                        )
-                    ),
-                    ui.Tab(
-                        title="Options",
-                        layout=ui.Column(
-                            ui.Row(
-                                self._interval_groupbox,
-                                self._dodge_groupbox,
-                                self._contact_quality_groupbox,
-                                stretch=(0, 0, 1)
-                            ),
-                            self._step_up_groubox,
-                            self._lcr_options_groupbox,
-                            ui.Spacer(),
-                            stretch=(0, 0, 0, 1)
-                        )
-                    )
-                ),
-                stretch=(0, 1)
-            ),
-            ui.Column(
-                self._position_widget,
-                self._calibration_widget,
-                ui.GroupBox(
-                    title="Soft Limits",
-                    layout=ui.Row(
-                        ui.Column(
-                            ui.Label("Z")
-                        ),
-                        ui.Column(
-                            self.z_limit_label
-                        )
-                    )
-                ),
-                ui.GroupBox(
-                    title="Hard Limits",
-                    layout=ui.Row(
-                        ui.Column(
-                            ui.Label("X"),
-                            ui.Label("Y"),
-                            ui.Label("Z")
-                        ),
-                        ui.Column(
-                            self.x_hard_limit_label,
-                            self.y_hard_limit_label,
-                            self.z_hard_limit_label
-                        )
-                    )
-                ),
-                ui.GroupBox(
-                    title="Safety",
-                    layout=ui.Row(
-                        ui.Label(
-                            text="Laser Sensor"
-                        ),
-                        self.laser_label
-                    )
-                ),
-                ui.Spacer()
-            ),
-            stretch=(1, 0)
-        )
+        self.laserLabel: SwitchLabel = SwitchLabel(self)
+
+        self.calibrateButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.calibrateButton.setText("Calibrate")
+        self.calibrateButton.clicked.connect(self.requestCalibrate)
+
+        self.updateIntervalSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.updateIntervalSpinBox.setDecimals(2)
+        self.updateIntervalSpinBox.setRange(0.5, 10.0)
+        self.updateIntervalSpinBox.setSingleStep(0.25)
+        self.updateIntervalSpinBox.setSuffix(" s")
+        self.updateIntervalSpinBox.setValue(settings.table_control_update_interval)
+        self.updateIntervalSpinBox.editingFinished.connect(lambda: self.setUpdateInterval(self.updateIntervalSpinBox.value()))
+
+        self.intervalGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.intervalGroupBox.setTitle("Update Interval")
+
+        intervalGroupBoxLayout = QtWidgets.QHBoxLayout(self.intervalGroupBox)
+        intervalGroupBoxLayout.addWidget(self.updateIntervalSpinBox)
+        intervalGroupBoxLayout.addStretch()
+
+        self.dodgeHeightSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.dodgeHeightSpinBox.setToolTip("Doge height in microns.")
+        self.dodgeHeightSpinBox.setRange(0, 10000)
+        self.dodgeHeightSpinBox.setSingleStep(1)
+        self.dodgeHeightSpinBox.setSuffix(" um")
+
+        self.dodgeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.dodgeGroupBox.setTitle("X/Y Dodge")
+        self.dodgeGroupBox.setToolTip("Enables -/+ Z dodge for XY movements.")
+        self.dodgeGroupBox.setCheckable(True)
+
+        dodgeGroupBoxLayout = QtWidgets.QHBoxLayout(self.dodgeGroupBox)
+        dodgeGroupBoxLayout.addWidget(QtWidgets.QLabel("Height"))
+        dodgeGroupBoxLayout.addWidget(self.dodgeHeightSpinBox)
+
+        self.lcrResetOnMoveCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.lcrResetOnMoveCheckBox.setText("Reset graph on X/Y move")
+
+        self.contactQualityGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.contactQualityGroupBox.setTitle("Contact Quality (LCR)")
+
+        contactQualityGroupBoxLayout = QtWidgets.QHBoxLayout(self.contactQualityGroupBox)
+        contactQualityGroupBoxLayout.addWidget(self.lcrResetOnMoveCheckBox)
+
+        self.stepUpDelaySpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.stepUpDelaySpinBox.setRange(0, 1000)
+        self.stepUpDelaySpinBox.setSingleStep(25)
+        self.stepUpDelaySpinBox.setSuffix(" ms")
+
+        self.stepUpMultiplySpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.stepUpMultiplySpinBox.setRange(1, 10)
+        self.stepUpMultiplySpinBox.setSuffix(" x")
+
+        self.stepUpGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.stepUpGroupBox.setTitle("Step Up (↑⇵)")
+
+        stepUpGroupBoxLayout = QtWidgets.QGridLayout(self.stepUpGroupBox)
+        stepUpGroupBoxLayout.addWidget(QtWidgets.QLabel("Delay"), 0, 0)
+        stepUpGroupBoxLayout.addWidget(self.stepUpDelaySpinBox, 0, 1)
+        stepUpGroupBoxLayout.addWidget(QtWidgets.QLabel("Multiplicator (⇵)"), 1, 0)
+        stepUpGroupBoxLayout.addWidget(self.stepUpMultiplySpinBox, 1, 1)
+        stepUpGroupBoxLayout.setColumnStretch(2, 1)
+
+        self.lcrUpdateIntervalSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.lcrUpdateIntervalSpinBox.setRange(0, 1000)
+        self.lcrUpdateIntervalSpinBox.setSingleStep(25)
+        self.lcrUpdateIntervalSpinBox.setSuffix(" ms")
+
+        self.lcrMatrixChannelsLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+
+        self.lcrOptionsGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrOptionsGroupBox.setTitle("Contact Quality (LCR)")
+
+        lcrOptionsGroupBoxLayout = QtWidgets.QGridLayout(self.lcrOptionsGroupBox)
+        lcrOptionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Reading Interval"), 0, 0)
+        lcrOptionsGroupBoxLayout.addWidget(self.lcrUpdateIntervalSpinBox, 0, 1)
+        lcrOptionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Matrix Channels"), 1, 0)
+        lcrOptionsGroupBoxLayout.addWidget(self.lcrMatrixChannelsLineEdit, 1, 1, 1, 10)
+        stepUpGroupBoxLayout.setColumnStretch(0, 0)
+        stepUpGroupBoxLayout.setColumnStretch(1, 0)
+        stepUpGroupBoxLayout.setColumnStretch(9, 1)
+
+        self.progressBar: QtWidgets.QProgressBar = QtWidgets.QProgressBar(self)
+        self.progressBar.setVisible(False)
+
+        self.messageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+
+        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stopButton.setText("&Stop")
+        self.stopButton.setDefault(False)
+        self.stopButton.setAutoDefault(False)
+        self.stopButton.setEnabled(False)
+        self.stopButton.clicked.connect(self.requestStop)
+
+        self.closeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.closeButton.setText("&Close")
+        self.closeButton.setDefault(False)
+        self.closeButton.setAutoDefault(False)
+        self.closeButton.clicked.connect(self.close)
+
+        self.stepWidthGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.stepWidthGroupBox.setTitle("Step Width")
+
+        stepWidthGroupBoxLayout = QtWidgets.QVBoxLayout(self.stepWidthGroupBox)
+        stepWidthGroupBoxLayout.addLayout(self.stepWidthButtonsLayout)
+        stepWidthGroupBoxLayout.addStretch()
+
+        self.lightsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.lightsGroupBox.setTitle("Lights")
+
+        lightsLayout = QtWidgets.QVBoxLayout(self.lightsGroupBox)
+        lightsLayout.addWidget(self.probecardLightButton)
+        lightsLayout.addWidget(self.microscopeLightButton)
+        lightsLayout.addWidget(self.boxLightButton)
+        lightsLayout.addStretch()
+
+        controlsLayout = QtWidgets.QHBoxLayout()
+        controlsLayout.addWidget(self.controlGroupBox)
+        controlsLayout.addWidget(self.stepWidthGroupBox)
+        controlsLayout.addWidget(self.lcrGroupBox)
+        controlsLayout.addWidget(self.lightsGroupBox)
+        controlsLayout.addStretch()
+
+        self.calibrateGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.calibrateGroupBox.setTitle("Table Calibration")
+
+        calibrateLayout = QtWidgets.QVBoxLayout(self.calibrateGroupBox)
+        calibrateLayout.addWidget(self.calibrateButton)
+        calibrateLayout.addWidget(QtWidgets.QLabel(
+            "Calibrate table by moving into cal/rm switches\nof every axis in" \
+            " a safe manner to protect the probe card."
+        ))
+
+        self.calibrateWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        calibrateTabLayout = QtWidgets.QVBoxLayout(self.calibrateWidget)
+        calibrateTabLayout.addWidget(self.calibrateGroupBox, 0)
+        calibrateTabLayout.addStretch()
+
+        self.optionsWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        optionsTabLayout = QtWidgets.QGridLayout(self.optionsWidget)
+        optionsTabLayout.addWidget(self.intervalGroupBox, 0, 0)
+        optionsTabLayout.addWidget(self.dodgeGroupBox, 0, 1)
+        optionsTabLayout.addWidget(self.contactQualityGroupBox, 0, 2)
+        optionsTabLayout.addWidget(self.stepUpGroupBox, 1, 0, 1, 3)
+        optionsTabLayout.addWidget(self.lcrOptionsGroupBox, 2, 0, 1, 3)
+        optionsTabLayout.setRowStretch(3, 1)
+        optionsTabLayout.setColumnStretch(2, 1)
+
+        self.tabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget.addTab(self.positions_widget, "Move")
+        self.tabWidget.addTab(self.contacts_widget, "Contacts")
+        self.tabWidget.addTab(self.calibrateWidget, "Calibrate")
+        self.tabWidget.addTab(self.optionsWidget, "Options")
+
+        topLeftLayout = QtWidgets.QVBoxLayout()
+        topLeftLayout.addLayout(controlsLayout, 0)
+        topLeftLayout.addWidget(self.tabWidget, 1)
+
+
+        self.softLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.softLimitsGroupBox.setTitle("Soft Limits")
+
+        softLimitsGroupBoxLayout = QtWidgets.QFormLayout(self.softLimitsGroupBox)
+        softLimitsGroupBoxLayout.addRow("Z", self.z_limit_label.qt)
+
+        self.hardLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.hardLimitsGroupBox.setTitle("Hard Limits")
+
+        hardLimitsGroupBoxLayout = QtWidgets.QFormLayout(self.hardLimitsGroupBox)
+        hardLimitsGroupBoxLayout.addRow("X", self.x_hard_limit_label.qt)
+        hardLimitsGroupBoxLayout.addRow("Y", self.y_hard_limit_label.qt)
+        hardLimitsGroupBoxLayout.addRow("Z", self.z_hard_limit_label.qt)
+
+        self.safetyGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.safetyGroupBox.setTitle("Safety")
+
+        safetyGroupBoxLayout = QtWidgets.QHBoxLayout(self.safetyGroupBox)
+        safetyGroupBoxLayout.addWidget(QtWidgets.QLabel("Laser Sensor"))
+        safetyGroupBoxLayout.addWidget(self.laserLabel)
+
+        topRightLayout = QtWidgets.QVBoxLayout()
+        topRightLayout.addWidget(self._position_widget.qt)
+        topRightLayout.addWidget(self._calibration_widget.qt)
+        topRightLayout.addWidget(self.softLimitsGroupBox)
+        topRightLayout.addWidget(self.hardLimitsGroupBox)
+        topRightLayout.addWidget(self.safetyGroupBox)
+        topRightLayout.addStretch()
+
+        topLayout = QtWidgets.QHBoxLayout()
+        topLayout.addLayout(topLeftLayout, 1)
+        topLayout.addLayout(topRightLayout, 0)
 
         bottomLayout = QtWidgets.QHBoxLayout()
-        bottomLayout.addWidget(self.progress_bar.qt)
-        bottomLayout.addWidget(self.message_label.qt)
+        bottomLayout.addWidget(self.progressBar)
+        bottomLayout.addWidget(self.messageLabel)
         bottomLayout.addStretch()
-        bottomLayout.addWidget(self.stop_button.qt)
-        bottomLayout.addWidget(self.close_button.qt)
+        bottomLayout.addWidget(self.stopButton)
+        bottomLayout.addWidget(self.closeButton)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.topWidget.qt, 1)
+        layout.addLayout(topLayout, 1)
         layout.addLayout(bottomLayout, 0)
 
         self.reset_position()
@@ -1064,82 +1017,82 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     @property
     def step_width(self):
-        for button in self.step_width_buttons:
-            if button.checked:
-                return abs(button.movement_width)
+        for button in self.stepWidthButtons:
+            if button.isChecked():
+                return abs(button.property("movement_width"))
         return 0
 
     @property
     def step_color(self):
-        for button in self.step_width_buttons:
-            if button.checked:
-                return button.movement_color
+        for button in self.stepWidthButtons:
+            if button.isChecked():
+                return button.property("movement_color")
         return "black"
 
     @property
-    def update_interval(self):
-        return self._update_interval_number.value
+    def update_interval(self) -> float:
+        return self.updateIntervalSpinBox.value()
 
     @update_interval.setter
-    def update_interval(self, value):
-        self._update_interval_number.value = value
+    def update_interval(self, value: float) -> None:
+        self.updateIntervalSpinBox.setValue(value)
 
     @property
     def dodge_enabled(self):
-        return self._dodge_groupbox.checked
+        return self.dodgeGroupBox.isChecked()
 
     @dodge_enabled.setter
     def dodge_enabled(self, value):
-        self._dodge_groupbox.checked = value
+        self.dodgeGroupBox.setChecked(value)
 
     @property
     def dodge_height(self):
-        return (self._dodge_height_number.value * comet.ureg("um")).to("mm").m
+        return (self.dodgeHeightSpinBox.value() * comet.ureg("um")).to("mm").m
 
     @dodge_height.setter
     def dodge_height(self, value):
-        self._dodge_height_number.value = (value * comet.ureg("mm")).to("um").m
+        self.dodgeHeightSpinBox.setValue((value * comet.ureg("mm")).to("um").m)
 
     @property
     def lcr_reset_on_move(self):
-        return self._lcr_reset_on_move_checkbox.checked
+        return self.lcrResetOnMoveCheckBox.isChecked()
 
     @lcr_reset_on_move.setter
     def lcr_reset_on_move(self, value):
-        self._lcr_reset_on_move_checkbox.checked = value
+        self.lcrResetOnMoveCheckBox.setChecked(value)
 
     @property
-    def step_up_delay(self):
+    def step_up_delay(self) -> float:
         """Return step up delay in seconds."""
-        return (self._step_up_delay_number.value * comet.ureg("ms")).to("s").m
+        return (self.stepUpDelaySpinBox.value() * comet.ureg("ms")).to("s").m
 
     @step_up_delay.setter
-    def step_up_delay(self, value):
-        self._step_up_delay_number.value = (value * comet.ureg("s")).to("ms").m
+    def step_up_delay(self, value: float) -> None:
+        self.stepUpDelaySpinBox.setValue((value * comet.ureg("s")).to("ms").m)
 
     @property
-    def step_up_multiply(self):
+    def step_up_multiply(self) -> int:
         """Return step up delay in seconds."""
-        return int(self._step_up_multiply_number.value)
+        return self.stepUpMultiplySpinBox.value()
 
     @step_up_multiply.setter
-    def step_up_multiply(self, value):
-        self._step_up_multiply_number.value = value
+    def step_up_multiply(self, value: int) -> None:
+        self.stepUpMultiplySpinBox.setValue(value)
 
     @property
     def lcr_update_interval(self):
         """LCR update interval in seconds."""
-        return (self._lcr_update_interval_number.value * comet.ureg("ms")).to("s").m
+        return (self.lcrUpdateIntervalSpinBox.value() * comet.ureg("ms")).to("s").m
 
     @lcr_update_interval.setter
     def lcr_update_interval(self, value):
-        self._lcr_update_interval_number.value = (value * comet.ureg("s")).to("ms").m
+        self.lcrUpdateIntervalSpinBox.setValue((value * comet.ureg("s")).to("ms").m)
 
     @property
     def lcr_matrix_channels(self):
         """Matrix channels used for LCR readings."""
         tokens = []
-        for token in self._lcr_matrix_channels_text.value.split(","):
+        for token in self.lcrMatrixChannelsLineEdit.text().split(","):
             token = token.strip()
             if token:
                 tokens.append(token)
@@ -1147,7 +1100,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     @lcr_matrix_channels.setter
     def lcr_matrix_channels(self, value):
-        self._lcr_matrix_channels_text.value = ", ".join([token for token in value])
+        self.lcrMatrixChannelsLineEdit.setText(", ".join([token for token in value]))
 
     def load_table_step_sizes(self):
         return self.settings.get("table_step_sizes") or self.default_steps
@@ -1161,17 +1114,17 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.update_limits()
         self.update_control_buttons()
         if math.isfinite(position.z):
-            self._lcr_chart.set_limits(position.z)
-            self._lcr_chart.set_line(position.z)
+            self.lcrChartWidget.setLimits(position.z)
+            self.lcrChartWidget.setLine(position.z)
 
     def reset_caldone(self):
         self._calibration_widget.reset_calibration()
 
     def update_caldone(self, position):
         self.current_caldone = position
-        self.positions_widget.enabled = caldone_valid(position)
-        self.contacts_widget.enabled = caldone_valid(position)
-        self.control_layout.enabled = caldone_valid(position)
+        self.positions_widget.setEnabled(caldone_valid(position))
+        self.contacts_widget.setEnabled(caldone_valid(position))
+        self.controlGroupBox.setEnabled(caldone_valid(position))
         self._calibration_widget.update_calibration(position)
 
     def update_limits(self):
@@ -1182,32 +1135,32 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
                 self.z_limit_label.stylesheet = "QLabel:enabled{color:red;}"
 
     def reset_safety(self):
-        self.laser_label.value = None
+        self.laserLabel.clear()
 
-    def update_safety(self, laser_sensor):
-        self.laser_label.value = laser_sensor
+    def update_safety(self, laser_sensor) -> None:
+        self.laserLabel.setState(laser_sensor)
 
     def update_control_buttons(self):
         x, y, z = self.current_position
         self.update_x_buttons(x)
         self.update_y_buttons(y)
         self.update_z_buttons(z)
-        for button in self.control_buttons:
-            button.stylesheet = f"QPushButton:enabled{{color:{self.step_color or 'black'}}}"
+        for button in self.controlButtons:
+            button.setStyleSheet(f"QPushButton:enabled{{color:{self.step_color or 'black'}}}")
 
     def update_x_buttons(self, x):
         x_enabled = True
         if not math.isnan(x):
             if (x - self.step_width) < 0:
                 x_enabled = False
-        self.sub_x_button.enabled = x_enabled
+        self.subXButton.setEnabled(x_enabled)
 
     def update_y_buttons(self, y):
         y_enabled = True
         if not math.isnan(y):
             if (y - self.step_width) < 0:
                 y_enabled = False
-        self.sub_y_button.enabled = y_enabled
+        self.subYButton.setEnabled(y_enabled)
 
     def update_z_buttons(self, z):
         # Disable move up button for large step sizes
@@ -1217,9 +1170,9 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
                 z_enabled = True
             else:
                 z_enabled = self.step_width <= self.maximum_z_step_size
-        self.add_z_button.enabled = z_enabled
+        self.addZButton.setEnabled(z_enabled)
         step_up_limit = comet.ureg("10.0 um").to("mm").m
-        self.step_up_button.enabled = z_enabled and (self.step_width <= step_up_limit) # TODO
+        self.stepUpButton.setEnabled(z_enabled and (self.step_width <= step_up_limit))  # TODO
 
     def relative_move_xy(self, x, y):
         # Dodge on X/Y movements.
@@ -1233,11 +1186,11 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
             vector = [(x, y, 0)]
         # Clear contact quality graph on X/Y movements.
         if self.lcr_reset_on_move:
-            self._lcr_chart.clear()
+            self.lcrChartWidget.clear()
         self.process.relative_move_vector(vector)
         # Clear contact quality graph on X/Y movements.
         if self.lcr_reset_on_move:
-            self._lcr_chart.clear()
+            self.lcrChartWidget.clear()
 
     def on_add_x(self):
         self.lock()
@@ -1288,40 +1241,44 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.boxLightToggled.emit(state)
 
     def update_probecard_light(self, state):
-        self.probecard_light_button.checked = state
+        self.probecardLightButton.setChecked(state)
 
     def update_microscope_light(self, state):
-        self.microscope_light_button.checked = state
+        self.microscopeLightButton.setChecked(state)
 
-    def update_box_light(self, state):
-        self.box_light_button.checked = state
+    def update_box_light(self, state: bool) -> None:
+        self.boxLightButton.setChecked(state)
 
-    def update_lights_enabled(self, state):
-        self.probecard_light_button.enabled = state
-        self.microscope_light_button.enabled = state
-        self.box_light_button.enabled = state
+    def update_lights_enabled(self, state: bool) -> None:
+        self.probecardLightButton.setEnabled(state)
+        self.microscopeLightButton.setEnabled(state)
+        self.boxLightButton.setEnabled(state)
 
     def on_move_finished(self):
-        self.progress_bar.visible = False
-        self.stop_button.enabled = False
+        self.progressBar.setVisible(False)
+        self.stopButton.setEnabled(False)
         self.unlock()
 
     def on_calibration_finished(self):
-        self.progress_bar.visible = False
-        self.stop_button.enabled = False
+        self.progressBar.setVisible(False)
+        self.stopButton.setEnabled(False)
         self.unlock()
 
-    def on_message_changed(self, message):
-        self.message_label.text = message
+    @QtCore.pyqtSlot(str)
+    def setMessage(self, message: str) -> None:
+        self.messageLabel.setText(message)
         logger.info(message)
 
-    def on_progress_changed(self, a, b):
-        self.progress_bar.value = a
-        self.progress_bar.maximum = b
-        self.progress_bar.visible = True
+    @QtCore.pyqtSlot(int, int)
+    def setProgress(self, value: int, maximum: int) -> None:
+        self.progressBar.setValue(value)
+        self.progressBar.setRange(0, maximum)
+        self.progressBar.setVisible(True)
 
-    def on_update_interval_changed(self, value):
-        self.process.update_interval = value
+    @QtCore.pyqtSlot(float)
+    def setUpdateInterval(self, interval: float) -> None:
+        logger.info("Set update interval: %.2f s", interval)
+        self.process.update_interval = interval  # type: ignore
 
     def on_position_picked(self, callback):
         x, y, z = self.current_position
@@ -1332,32 +1289,29 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         position = Position(position.x, position.y, safe_z_position(position.z))
         self.lock()
         # Clear contact quality graph on X/Y movements.
-        self._lcr_chart.clear()
-        self.stop_button.enabled = True
+        self.lcrChartWidget.clear()
+        self.stopButton.setEnabled(True)
         self.process.safe_absolute_move(position.x, position.y, position.z)
 
-    def on_calibrate(self):
+    def requestCalibrate(self):
         self.lock()
-        self.stop_button.enabled = True
+        self.stopButton.setEnabled(True)
         self.process.calibrate_table()
 
-    def on_stop(self):
-        self.stop_button.enabled = False
+    def requestStop(self):
+        self.stopButton.setEnabled(False)
         self.process.stop_current_action()
-
-    def on_close(self):
-        self.close()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
         if self.process:
             self.process.wait()
         event.accept()
 
-    def load_samples(self, sample_items):
-        self.contacts_widget.load_samples(sample_items)
+    def loadSamples(self, sample_items) -> None:
+        self.contacts_widget.loadSamples(sample_items)
 
-    def update_samples(self):
-        self.contacts_widget.update_samples()
+    def updateSamples(self) -> None:
+        self.contacts_widget.updateSamples()
 
     def readSettings(self) -> None:
         self.positions_widget.readSettings()
@@ -1401,28 +1355,27 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         settings_.endGroup()
 
     def lock(self):
-        self.control_layout.enabled = False
-        self.positions_widget.lock()
-        self.contacts_widget.lock()
-        self.close_button.enabled = False
-        self.progress_bar.visible = True
-        self.progress_bar.minimum = 0
-        self.progress_bar.maximum = 0
-        self.progress_bar.value = 0
+        self.controlGroupBox.setEnabled(False)
+        self.positions_widget.setLocked(True)
+        self.contacts_widget.setLocked(True)
+        self.closeButton.setEnabled(False)
+        self.progressBar.setVisible(True)
+        self.progressBar.setRange(0, 0)
+        self.progressBar.setValue(0)
 
     def unlock(self):
-        self.control_layout.enabled = True
-        self.positions_widget.unlock()
-        self.contacts_widget.unlock()
-        self.close_button.enabled = True
-        self.progress_bar.visible = False
+        self.controlGroupBox.setEnabled(True)
+        self.positions_widget.setLocked(False)
+        self.contacts_widget.setLocked(False)
+        self.closeButton.setEnabled(True)
+        self.progressBar.setVisible(False)
 
     def setProcess(self, process):
         """Set table process and connect signals."""
         self.removeProcess()
         self.process = process
-        self.process.message_changed = self.on_message_changed
-        self.process.progress_changed = self.on_progress_changed
+        self.process.message_changed = self.setMessage
+        self.process.progress_changed = self.setProgress
         self.process.position_changed = self.update_position
         self.process.caldone_changed = self.update_caldone
         self.process.relative_move_finished = self.on_move_finished
@@ -1444,64 +1397,47 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     @handle_exception
     def on_lcr_toggled(self, state):
-        self._lcr_prim_text.enabled = state
-        self._lcr_sec_text.enabled = state
-        self._lcr_chart.enabled = state
+        self.lcrPrimaryLineEdit.setEnabled(state)
+        self.lcrSecondaryLineEdit.setEnabled(state)
+        self.lcrChartWidget.setEnabled(state)
         if state:
-            self._lcr_chart.clear()
+            self.lcrChartWidget.clear()
             self.lcr_process.update_interval = self.lcr_update_interval
             self.lcr_process.matrix_channels = self.lcr_matrix_channels
             self.lcr_process.start()
         else:
             self.lcr_process.stop()
 
-    def on_lcr_finished(self):
-        ...
+    def setLCRFailed(self, *args):
+        self.lcrPrimaryLineEdit.setText("ERROR")
+        self.lcrSecondaryLineEdit.setText("ERROR")
 
-    def on_lcr_failed(self, *args):
-        self._lcr_prim_text.value = "ERROR"
-        self._lcr_sec_text.value = "ERROR"
-
-    def on_lcr_reading(self, prim, sec):
-        self._lcr_prim_text.value = format_metric(prim, unit="F")
-        self._lcr_sec_text.value = format_metric(sec, unit="Ohm")
+    def setLCRReading(self, prim, sec):
+        self.lcrPrimaryLineEdit.setText(format_metric(prim, unit="F"))
+        self.lcrSecondaryLineEdit.setText(format_metric(sec, unit="Ohm"))
         _, _, z = self.current_position
         if math.isfinite(z) and math.isfinite(sec):
             # Append only absolute Rp readings
-            self._lcr_chart.append(z, abs(sec))
-            self._lcr_chart.set_line(z)
+            self.lcrChartWidget.append(z, abs(sec))
+            self.lcrChartWidget.setLine(z)
 
 
-class SwitchLabel(ui.Label):
+class SwitchLabel(QtWidgets.QLabel):
 
-    def __init__(self, value=None):
-        super().__init__()
-        self.value = value
-
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        self.__value = value
-        if value is None:
-            self.text = float("nan")
-            self.qt.setStyleSheet("")
+    def setState(self, state):
+        if state is None:
+            self.setText(format(float("nan")))
+            self.setStyleSheet("")
         else:
-            self.text = format_switch(value)
-            self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
+            self.setText(format_switch(state))
+            self.setStyleSheet("QLabel:enabled{color:green}" if state else "QLabel:enabled{color:red}")
 
 
-class KeypadSpacer(ui.Spacer):
+class KeypadButton(QtWidgets.QPushButton):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.qt.setFixedSize(30, 30)
-
-
-class KeypadButton(ui.Button):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.qt.setFixedSize(32, 32)
+    def __init__(self, text: str, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
+        self.setFixedSize(32, 32)
+        self.setText(text)
+        self.setDefault(False)
+        self.setAutoDefault(False)

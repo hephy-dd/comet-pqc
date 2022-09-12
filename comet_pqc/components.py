@@ -26,17 +26,14 @@ __all__ = [
 ]
 
 
-class ToggleButton(ui.Button):
+class ToggleButton(QtWidgets.QPushButton):
     """Colored checkable button."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.icons = {False: create_icon(12, "grey"), True: create_icon(12, "green")}
-        self.on_toggle_color(self.checked)
-        self.qt.toggled.connect(self.on_toggle_color)
-
-    def on_toggle_color(self, state):
-        self.icon = self.icons[state]
+    def __init__(self, text: str, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setText(text)
+        self.setCheckable(True)
+        self.setStyleSheet("QPushButton:checked{color:green;font-weight:bold;}")
 
 
 class PositionLabel(ui.Label):
@@ -201,8 +198,7 @@ class DirectoryWidget(ui.Row):
         self.append(self.select_button)
         self.append(self.remove_button)
 
-    @property
-    def current_location(self):
+    def currentLocation(self) -> str:
         return self.location_combo_box.qt.currentText().strip()
 
     @property
@@ -225,13 +221,12 @@ class DirectoryWidget(ui.Row):
         self.location_combo_box.append(value)
 
     def on_location_changed(self, _):
-        location = self.current_location
         self.remove_button.enabled = len(self.location_combo_box) > 1
 
     def on_select_clicked(self):
         value = ui.directory_open(
             title="Select directory",
-            path=self.current_location
+            path=self.currentLocation()
         )
         if value:
             for i in range(self.location_combo_box.qt.count()):
@@ -267,7 +262,7 @@ class DirectoryWidget(ui.Row):
             self.location_combo_box.qt.setCurrentIndex(0)
 
 
-class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
+class WorkingDirectoryWidget(DirectoryWidget):
 
     def readSettings(self):
         self.clear_locations()
