@@ -92,7 +92,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.temporaryNoticeLabel.setVisible(settings.table_temporary_z_limit)
 
         self.dashboard = Dashboard(self)
-        self.dashboard.lockStateChanged.connect(self.setLocked)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
@@ -100,11 +99,30 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         layout.addWidget(self.temporaryNoticeLabel, 0)
         layout.addWidget(self.dashboard, 1)
 
-        # Events
+        # State machine
 
-        self.setLocked(False)
-        self.hideMessage()
-        self.hideProgress()
+        self.idleState = QtCore.QState()
+        self.idleState.entered.connect(self.enterIdle)
+
+        self.runningState = QtCore.QState()
+        self.runningState.entered.connect(self.enterRunning)
+
+        self.stoppingState = QtCore.QState()
+        self.stoppingState.entered.connect(self.enterStopping)
+
+        self.idleState.addTransition(self.dashboard.started, self.runningState)
+
+        self.runningState.addTransition(self.dashboard.stopping, self.stoppingState)
+        self.runningState.addTransition(self.dashboard.finished, self.idleState)
+
+        self.stoppingState.addTransition(self.dashboard.finished, self.idleState)
+
+        self.stateMachine= QtCore.QStateMachine(self)
+        self.stateMachine.addState(self.idleState)
+        self.stateMachine.addState(self.runningState)
+        self.stateMachine.addState(self.stoppingState)
+        self.stateMachine.setInitialState(self.idleState)
+        self.stateMachine.start()
 
     def readSettings(self) -> None:
         settings = QtCore.QSettings()
@@ -126,9 +144,18 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         self.dashboard.writeSettings()
 
-    def setLocked(self, state: bool) -> None:
-        self.preferencesAction.setEnabled(not state)
-        self.resourcesAction.setEnabled(not state)
+    def enterIdle(self) -> None:
+        self.preferencesAction.setEnabled(True)
+        self.resourcesAction.setEnabled(True)
+        self.hideMessage()
+        self.hideProgress()
+
+    def enterRunning(self) -> None:
+        self.preferencesAction.setEnabled(False)
+        self.resourcesAction.setEnabled(False)
+
+    def enterStopping(self) -> None:
+        ...
 
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
@@ -203,12 +230,12 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.progressBar.setValue(0)
         self.progressBar.hide()
 
-    def showException(self, exc: Exception, tb=None) -> None:
+    def showException(self, exc: Exception) -> None:
         """Raise message box showing exception information."""
         self.showMessage("Error")
         self.hideProgress()
         logging.exception(exc)
-        show_exception(exc, tb)
+        show_exception(exc)
 
     def shutdown(self) -> None:
         def shutdown():
@@ -223,6 +250,8 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         dialog.setLabelText("Stopping active threads...")
         QtCore.QTimer.singleShot(250, shutdown)
         dialog.exec()
+
+        self.stateMachine.stop()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
         result = QtWidgets.QMessageBox.question(

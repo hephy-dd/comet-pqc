@@ -9,7 +9,6 @@ from .core.position import Position
 from .core.utils import make_path, user_home
 from .settings import settings
 from .utils import (
-    create_icon,
     format_table_unit,
     getcal,
     getrm,
@@ -33,7 +32,10 @@ class ToggleButton(QtWidgets.QPushButton):
         super().__init__(parent)
         self.setText(text)
         self.setCheckable(True)
-        self.setStyleSheet("QPushButton:checked{color:green;font-weight:bold;}")
+        self.setStyleSheet("""
+            QPushButton:disabled:checked{font-weight:bold;}
+            QPushButton:enabled:checked{color:green;font-weight:bold;}
+        """)
 
 
 class PositionLabel(ui.Label):

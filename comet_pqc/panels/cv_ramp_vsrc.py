@@ -1,5 +1,6 @@
 import comet
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, LCRMixin, VSourceMixin
@@ -12,8 +13,8 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
 
     type = "cv_ramp_vsrc"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
         self.title = "CV Ramp (V Source)"
 
         self.register_hvsource()
@@ -24,14 +25,14 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
-        self.data_tabs.insert(0, ui.Tab(title="CV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
 
         self.plot2 = ui.Plot(height=300, legend="right")
         self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
         self.plot2.axes.get("y").qt.setLabelFormat("%G")
         self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
-        self.data_tabs.insert(1, ui.Tab(title="1/C² Curve", layout=self.plot2))
+        self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
         self.voltage_stop = ui.Number(decimals=3, suffix="V")
@@ -134,8 +135,8 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
                 else:
                     self.plot2.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self):
+        super().clearReadings()
         for series in self.plot.series.values():
             series.clear()
         for series in self.plot2.series.values():

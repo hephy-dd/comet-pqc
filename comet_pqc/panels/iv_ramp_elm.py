@@ -1,5 +1,6 @@
 import comet
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
 from .mixins import ElectrometerMixin, EnvironmentMixin, HVSourceMixin
@@ -12,8 +13,8 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
 
     type = "iv_ramp_elm"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
         self.title = "IV Ramp Elm"
 
         self.register_vsource()
@@ -26,7 +27,7 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
         self.voltage_stop = ui.Number(decimals=3, suffix="V")
@@ -107,8 +108,8 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
             else:
                 self.plot.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self):
+        super().clearReadings()
         self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()

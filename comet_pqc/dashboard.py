@@ -456,12 +456,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     sample_count = 4
 
-    lockStateChanged = QtCore.pyqtSignal(bool)
     messageChanged = QtCore.pyqtSignal(str)
     progressChanged = QtCore.pyqtSignal(int, int)
 
-    def __init__(self, parent: QtWidgets.QWidget = None):
+    started: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    stopping: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    finished: QtCore.pyqtSignal = QtCore.pyqtSignal()
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
+
         # Layout
         self.sequence_widget = SequenceWidget(self)
         self.sequence_widget.treeSelected.connect(self.on_tree_selected)
@@ -564,6 +568,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         controlBottomLayout.addWidget(self.outputGroupBox, 7)
 
         controlLayout = QtWidgets.QVBoxLayout(self.controlWidget)
+        controlLayout.setContentsMargins(0, 0, 8, 0)
         controlLayout.addWidget(self.sequence_widget, 1)
         controlLayout.addWidget(self.tableControlWidget)
         controlLayout.addWidget(self.environGroupBox)
@@ -687,7 +692,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.operatorGroupBox.setEnabled(False)
         self.measurementWidget.setLocked(True)
         self.statusWidget.setLocked(True)
-        self.lockStateChanged.emit(True)
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
@@ -698,14 +702,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.operatorGroupBox.setEnabled(True)
         self.measurementWidget.setLocked(False)
         self.statusWidget.setLocked(False)
-        self.lockStateChanged.emit(False)
 
     # Sequence control
 
     def on_tree_selected(self, item):
         self.panels.store()
         self.panels.unmount()
-        self.panels.clear_readings()
+        self.panels.clearReadings()
         self.panels.hide()
         self.measurementWidget.controlsLayout.setVisible(False)
         self.startSampleAction.setEnabled(False)
@@ -713,12 +716,12 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.startMeasurementAction.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(item)
             self.startSampleAction.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
-            panel.visible = True
+            panel.setVisible(True)
             panel.table_move = self.on_table_contact
             panel.table_contact = self.on_table_move
             panel.mount(item)
@@ -726,7 +729,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             if panel:
-                panel.visible = True
+                panel.setVisible(True)
                 panel.mount(item)
                 self.measurementWidget.controlsLayout.setVisible(True)
                 self.startMeasurementAction.setEnabled(True)
@@ -768,11 +771,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         current_item = self.sequence_tree.current
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(current_item)
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(current_item)
         self.unlock_controls()
 
@@ -853,7 +856,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         # Create output directory
         self.panels.store()
         self.panels.unmount()
-        self.panels.clear_readings()
+        self.panels.clearReadings()
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
@@ -879,9 +882,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             self.sequence_tree.scroll_to(item)
             self.panels.unmount()
             self.panels.hide()
-            self.panels.clear_readings()
+            self.panels.clearReadings()
             panel = self.panels.get(item.type)
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(item)
             measure.reading = panel.append_reading
             measure.update = panel.update_readings
@@ -894,6 +897,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         measure.hide_measurement = hide_measurement
         measure.push_summary = self.on_push_summary
         measure.start()
+        self.started.emit()
 
     def on_measurement_state(self, item, state=None):
         item.state = state
@@ -912,10 +916,12 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
     def on_stop(self):
         self.sequence_widget.stop()
         self.measure_process.stop()
+        self.stopping.emit()
 
     def on_finished(self):
         self.sync_environment_controls()
         self.unlock_controls()
+        self.finished.emit()
 
     @handle_exception
     def on_reset_sequence_state(self):
@@ -927,13 +933,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         if result == QtWidgets.QMessageBox.Yes:
             current_item = self.sequence_tree.current
             self.panels.unmount()
-            self.panels.clear_readings()
+            self.panels.clearReadings()
             self.panels.hide()
             for sample_item in self.sequence_tree:
                 sample_item.reset()
             if current_item is not None:
                 panel = self.panels.get(current_item.type)
-                panel.visible = True
+                panel.setVisible(True)
                 panel.mount(current_item)
 
     @handle_exception

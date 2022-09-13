@@ -170,7 +170,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         logger.exception(exc)
         self.window.showMessage("Exception occured!")
         self.window.hideProgress()
-        self.window.showException(exc, tb)
+        self.window.showException(exc)
 
     def on_message(self, message: Optional[str]) -> None:
         if message is None:

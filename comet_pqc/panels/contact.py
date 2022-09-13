@@ -1,6 +1,7 @@
 import math
 
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from ..components import PositionWidget
 from ..core.position import Position
@@ -13,10 +14,10 @@ class ContactPanel(BasicPanel):
 
     type = "contact"
 
-    def __init__(self, *args, table_move=None, table_contact=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.table_move = table_move
-        self.table_contact = table_contact
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.table_move = None
+        self.table_contact = None
         self.use_table = False
         self._position_valid = False
         self.title = "Contact"
@@ -34,26 +35,26 @@ class ContactPanel(BasicPanel):
             clicked=self.on_contact,
             enabled=False
         )
-        self.layout.insert(2, ui.Row(
+        self._table_control = ui.Row(
             self._position_widget,
             ui.GroupBox(
                 title="Table Control",
                 layout=ui.Column(
                     self._move_button,
                     self._contact_button,
-                    ui.Spacer()
                 )
             ),
             ui.Spacer(vertical=False),
             stretch=(0, 0, 1)
-        ))
-        self.layout.insert(3, ui.Spacer())
-        self.layout.stretch = 0, 0, 0, 1
+        )
+        self.rootLayout.addWidget(self._table_control.qt, 0)
+        self.rootLayout.addStretch()
 
     def update_use_table(self, enabled):
         self.use_table = enabled
-        self._move_button.enabled = self._position_valid and self.use_table
-        self._contact_button.enabled = self._position_valid and self.use_table
+        isLocked = self.isLocked()
+        self._move_button.enabled = self._position_valid and self.use_table and not isLocked
+        self._contact_button.enabled = self._position_valid and self.use_table and not isLocked
 
     def update_position(self):
         if self.context is None:
@@ -62,14 +63,25 @@ class ContactPanel(BasicPanel):
             position = Position(*self.context.position)
         self._position_widget.update_position(position)
         self._position_valid = not math.isnan(position.z)
-        self._move_button.enabled = self._position_valid and self.use_table
-        self._contact_button.enabled = self._position_valid and self.use_table
+        isLocked = self.isLocked()
+        self._move_button.enabled = self._position_valid and self.use_table and not isLocked
+        self._contact_button.enabled = self._position_valid and self.use_table and not isLocked
+
+    def lock(self):
+        super().lock()
+        self._move_button.enabled = False
+        self._contact_button.enabled = False
+
+    def unlock(self):
+        super().unlock()
+        self._move_button.enabled = True
+        self._contact_button.enabled = True
 
     def mount(self, context):
         """Mount measurement to panel."""
         super().mount(context)
-        self.title_label.text = f"{self.title} &rarr; {context.name}"
-        self.description_label.text = context.description
+        self.titleLabel.setText(f"{self.title} &rarr; {context.name}")
+        self.descriptionLabel.setText(context.description)
         self.update_position()
 
     def on_move(self):

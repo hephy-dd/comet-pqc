@@ -1,5 +1,6 @@
 import comet
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin
@@ -12,8 +13,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     type = "iv_ramp_4_wire"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
         self.title = "4 Wire IV Ramp"
 
         self.register_hvsource()
@@ -24,7 +25,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.plot.add_axis("y", align="right", text="Voltage [V]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.current_start = ui.Number(decimals=3, suffix="uA")
         self.current_stop = ui.Number(decimals=3, suffix="uA")
@@ -105,8 +106,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 self.plot.qt.chart().zoomOut() # HACK
                 self.plot.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self):
+        super().clearReadings()
         self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()

@@ -1,5 +1,6 @@
 import comet
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, LCRMixin
@@ -12,8 +13,8 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
 
     type = "frequency_scan"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
         self.title = "Frequency Scan"
 
         self.register_vsource()
@@ -24,7 +25,7 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
-        self.data_tabs.insert(0, ui.Tab(title="CV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
 
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
 

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -14,6 +14,7 @@ from ..panels import (
     IVRampElmPanel,
     IVRampPanel,
     SamplePanel,
+    BasicPanel,
 )
 
 __all__ = ["MeasurementWidget"]
@@ -21,19 +22,19 @@ __all__ = ["MeasurementWidget"]
 
 class MeasurementWidget(QtWidgets.QWidget):
 
-    restore = QtCore.pyqtSignal()
+    restore: QtCore.pyqtSignal = QtCore.pyqtSignal()
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
 
-        self.panels = PanelStack(self)
+        self.panels: PanelStack = PanelStack(self)
 
-        self.restoreButton = QtWidgets.QPushButton(self)
+        self.restoreButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.restoreButton.setText("Restore Defaults")
         self.restoreButton.setToolTip("Restore default measurement parameters.")
         self.restoreButton.clicked.connect(self.restore.emit)
 
-        self.controlsLayout = QtWidgets.QWidget(self)
+        self.controlsLayout: QtWidgets.QWidget = QtWidgets.QWidget(self)
         self.controlsLayout.setVisible(False)
 
         controlsLayout = QtWidgets.QHBoxLayout(self.controlsLayout)
@@ -49,55 +50,61 @@ class MeasurementWidget(QtWidgets.QWidget):
         self.panels.setLocked(state)
         self.controlsLayout.setEnabled(not state)
 
+
 class PanelStack(QtWidgets.QWidget):
     """Stack of measurement panels."""
 
-    sampleChanged = QtCore.pyqtSignal(object)
+    sampleChanged: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.panelWidgets: List = []
+        self.panelWidgets: List[BasicPanel] = []
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.addPanel(SamplePanel(visible=False, sample_changed=self.sampleChanged.emit))
-        self.addPanel(ContactPanel(visible=False))
-        self.addPanel(IVRampPanel(visible=False))
-        self.addPanel(IVRampElmPanel(visible=False))
-        self.addPanel(IVRampBiasPanel(visible=False))
-        self.addPanel(IVRampBiasElmPanel(visible=False))
-        self.addPanel(CVRampPanel(visible=False))
-        self.addPanel(CVRampHVPanel(visible=False))
-        self.addPanel(CVRampAltPanel(visible=False))
-        self.addPanel(IVRamp4WirePanel(visible=False))
-        self.addPanel(FrequencyScanPanel(visible=False))
+        self.samplePanel = SamplePanel(self)
+        self.samplePanel.sampleChanged.connect(self.sampleChanged.emit)
+        self.addPanel(self.samplePanel)
 
-    def addPanel(self, panel):
+        self.addPanel(ContactPanel(self))
+        self.addPanel(IVRampPanel(self))
+        self.addPanel(IVRampElmPanel(self))
+        self.addPanel(IVRampBiasPanel(self))
+        self.addPanel(IVRampBiasElmPanel(self))
+        self.addPanel(CVRampPanel(self))
+        self.addPanel(CVRampHVPanel(self))
+        self.addPanel(CVRampAltPanel(self))
+        self.addPanel(IVRamp4WirePanel(self))
+        self.addPanel(FrequencyScanPanel(self))
+
+        self.hide()
+
+    def addPanel(self, panel: BasicPanel) ->  None:
         self.panelWidgets.append(panel)
-        self.layout().addWidget(panel.qt)
+        self.layout().addWidget(panel)
 
-    def store(self):
+    def store(self) -> None:
         for child in self.panelWidgets:
             child.store()
 
-    def unmount(self):
+    def unmount(self) -> None:
         for child in self.panelWidgets:
             child.unmount()
 
-    def clear_readings(self):
+    def clearReadings(self) -> None:
         for child in self.panelWidgets:
-            child.clear_readings()
+            child.clearReadings()
 
-    def hide(self):
+    def hide(self) -> None:
         for child in self.panelWidgets:
-            child.visible = False
+            child.setVisible(False)
 
     def setLocked(self, state: bool) -> None:
         for child in self.panelWidgets:
             child.lock() if state else child.unlock()
 
-    def get(self, type):
+    def get(self, type) -> Optional[BasicPanel]:
         """Get panel by type."""
         for child in self.panelWidgets:
             if child.type == type:

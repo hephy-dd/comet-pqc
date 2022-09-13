@@ -1,5 +1,6 @@
 import comet
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin
@@ -12,8 +13,8 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
 
     type = "iv_ramp"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
         self.title = "IV Ramp"
 
         self.register_vsource()
@@ -24,7 +25,7 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
         self.voltage_stop = ui.Number(decimals=3, suffix="V")
@@ -103,8 +104,8 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
             else:
                 self.plot.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self):
+        super().clearReadings()
         self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()

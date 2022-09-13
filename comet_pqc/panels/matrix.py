@@ -1,5 +1,6 @@
 from comet import ui
 from comet.resource import ResourceMixin
+from PyQt5 import QtCore, QtWidgets
 
 from .panel import Panel
 
@@ -34,8 +35,8 @@ class MatrixPanel(Panel, ResourceMixin):
 
     type = "matrix"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
 
         self.matrix_enable = ui.CheckBox(text="Enable Switching")
         self.matrix_channels = MatrixChannelsText(

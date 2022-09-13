@@ -1,4 +1,5 @@
 from comet import ui
+from PyQt5 import QtCore, QtWidgets
 
 from ..utils import format_metric, format_switch
 
@@ -57,7 +58,7 @@ class HVSourceMixin:
         self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
         self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
+        self.hvSourceGroupBox = ui.GroupBox(
             title="HV Source Status",
             layout=ui.Column(
                 ui.Row(
@@ -75,7 +76,8 @@ class HVSourceMixin:
                     )
                 )
             )
-        ))
+        )
+        self.statusPanelLayout.addWidget(self.hvSourceGroupBox.qt)
 
         self.control_tabs.append(ui.Tab(
             title="HV Source",
@@ -114,7 +116,7 @@ class HVSourceMixin:
             )
         ))
 
-        def handler(state):
+        def handler(state: dict) -> None:
             if "hvsrc_voltage" in state:
                 value = state.get("hvsrc_voltage")
                 self.status_hvsrc_voltage.value = format_metric(value, "V")
@@ -161,7 +163,7 @@ class VSourceMixin:
         self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
         self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
+        self.vSourceGroupBox = ui.GroupBox(
             title="V Source Status",
             layout=ui.Column(
                 ui.Row(
@@ -179,7 +181,8 @@ class VSourceMixin:
                     )
                 )
             )
-        ))
+        )
+        self.statusPanelLayout.addWidget(self.vSourceGroupBox.qt)
 
         self.control_tabs.append(ui.Tab(
             title="V Source",
@@ -208,7 +211,7 @@ class VSourceMixin:
             )
         ))
 
-        def handler(state):
+        def handler(state: dict) -> None:
             if "vsrc_voltage" in state:
                 value = state.get("vsrc_voltage")
                 self.status_vsrc_voltage.value = format_metric(value, "V")
@@ -268,7 +271,7 @@ class ElectrometerMixin:
 
         self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
+        self.elmGroupBox = ui.GroupBox(
             title="Electrometer Status",
             layout=ui.Column(
                 ui.Row(
@@ -280,7 +283,8 @@ class ElectrometerMixin:
                     stretch=(1, 2)
                 )
             )
-        ))
+        )
+        self.statusPanelLayout.addWidget(self.elmGroupBox.qt)
 
         self.control_tabs.append(ui.Tab(
             title="Electrometer",
@@ -330,7 +334,7 @@ class ElectrometerMixin:
             )
         ))
 
-        def handler(state):
+        def handler(state: dict) -> None:
             if "elm_current" in state:
                 value = state.get("elm_current")
                 self.status_elm_current.value = format_metric(value, "A")
@@ -368,7 +372,7 @@ class LCRMixin:
         self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
         self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
+        self.lcrGroupBox = ui.GroupBox(
             title="LCR Status",
             layout=ui.Row(
                 ui.Column(
@@ -384,7 +388,8 @@ class LCRMixin:
                     self.status_lcr_output
                 )
             )
-        ))
+        )
+        self.statusPanelLayout.addWidget(self.lcrGroupBox.qt)
 
         self.control_tabs.append(ui.Tab(
             title="LCR",
@@ -416,7 +421,7 @@ class LCRMixin:
             )
         ))
 
-        def handler(state):
+        def handler(state: dict) -> None:
             if "lcr_voltage" in state:
                 value = state.get("lcr_voltage")
                 self.status_lcr_voltage.value = format_metric(value, "V")
@@ -442,7 +447,7 @@ class EnvironmentMixin:
         self.bind("status_env_box_temperature", self.status_env_box_temperature, NO_VALUE)
         self.bind("status_env_box_humidity", self.status_env_box_humidity, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
+        self.environGroupBox = ui.GroupBox(
             title="Environment Status",
             layout=ui.Column(
                 ui.Row(
@@ -460,9 +465,10 @@ class EnvironmentMixin:
                     )
                 )
             )
-        ))
+        )
+        self.statusPanelLayout.addWidget(self.environGroupBox.qt)
 
-        def handler(state):
+        def handler(state: dict) -> None:
             if "env_chuck_temperature" in state:
                 value = state.get("env_chuck_temperature")
                 self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)

@@ -18,7 +18,7 @@ from .components import (
 from .core.config import SEQUENCE_DIR, list_configs, load_sequence
 from .quickedit import QuickEditDialog, QuickEditItem
 from .settings import settings
-from .utils import from_table_unit, to_table_unit
+from .utils import from_table_unit, to_table_unit, show_exception
 
 __all__ = ["StartSequenceDialog", "SequenceManager", "SequenceTree"]
 
@@ -307,7 +307,7 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
             try:
                 sequence = load_sequence(filename)
             except Exception as exc:
-                ui.show_exception(exc)
+                show_exception(exc)
             else:
                 if filename not in self.sequenceFilenames():
                     item = SequenceManagerTreeItem(sequence, filename, False)
