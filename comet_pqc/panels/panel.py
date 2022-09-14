@@ -7,17 +7,17 @@ from PyQt5 import QtCore, QtWidgets
 
 from ..utils import stitch_pixmaps
 
-__all__ = ["BasicPanel", "Panel"]
+__all__ = ["Panel", "MeasurementPanel"]
 
 
-class BasicPanel(SettingsMixin, QtWidgets.QWidget):
+class Panel(SettingsMixin, QtWidgets.QWidget):
 
     type: str = ""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
 
-        self.title = ""
+        self.setTitle("")
 
         self.titleLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
         self.titleLabel.setStyleSheet("font-size: 16px; font-weight: bold; height: 32px;")
@@ -29,24 +29,27 @@ class BasicPanel(SettingsMixin, QtWidgets.QWidget):
         self.rootLayout.addWidget(self.titleLabel, 0)
         self.rootLayout.addWidget(self.descriptionLabel, 0)
 
+    def title(self) -> str:
+        return self.property("title")
+
+    def setTitle(self, title: str) -> None:
+        self.setProperty("title", title)
+
     @property
     def context(self):
-        self.property("context")
+        return self.property("context")
 
-    def store(self):
+    def store(self) -> None:
         ...
 
-    def restore(self):
+    def restore(self) -> None:
         ...
 
-    def clearReadings(self):
+    def clearReadings(self) -> None:
         ...
 
-    def lock(self):
-        self.setProperty("locked", True)
-
-    def unlock(self):
-        self.setProperty("locked", False)
+    def setLocked(self, state: bool) -> None:
+        self.setProperty("locked", state)
 
     def isLocked(self) -> bool:
         return self.property("locked") == True
@@ -62,7 +65,7 @@ class BasicPanel(SettingsMixin, QtWidgets.QWidget):
         self.descriptionLabel.setVisible(False)
 
 
-class Panel(BasicPanel):
+class MeasurementPanel(Panel):
     """Base class for measurement panels."""
 
     type = "measurement"
@@ -71,15 +74,15 @@ class Panel(BasicPanel):
         super().__init__(parent)
         self._bindings: Dict[str, Tuple] = {}
         self.state_handlers: List[Callable] = []
+        self.measurement = None
 
         self.dataPanelLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
 
-        self.general_tab = ui.Tab(
-                title="General",
-                layout=ui.Row()
-            )
+        self.generalWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+        self.generalWidgetLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self.generalWidget)
 
-        self.control_tabs = ui.Tabs(self.general_tab)
+        self.controlTabWidget = QtWidgets.QTabWidget(self)
+        self.controlTabWidget.addTab(self.generalWidget, "General")
 
         self.statusPanelLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
 
@@ -88,27 +91,27 @@ class Panel(BasicPanel):
         self.statusWrapperLayout.addStretch()
 
         self.controlPanelLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.controlPanelLayout.addWidget(self.control_tabs.qt, 3)
+        self.controlPanelLayout.addWidget(self.controlTabWidget, 3)
         self.controlPanelLayout.addLayout(self.statusWrapperLayout, 1)
 
         self.rootLayout.insertLayout(2, self.dataPanelLayout)
         self.rootLayout.insertLayout(3, self.controlPanelLayout)
-
-        self.measurement = None
 
         self.dataTabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
 
         self.dataPanelLayout.addWidget(self.dataTabWidget)
 
         # Add analysis tab
-        self.analysis_tree = ui.Tree(header=["Parameter", "Value"])
-        self.dataTabWidget.insertTab(0, self.analysis_tree.qt, "Analysis")
+        self.analysisTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.analysisTreeWidget.setHeaderLabels(["Parameter", "Value"])
+
+        self.dataTabWidget.insertTab(0, self.analysisTreeWidget, "Analysis")
 
         # Plots
         self.series_transform: Dict[str, object] = {}
         self.series_transform_default = lambda x, y: (x, y)
 
-    def bind(self, key, element, default=None, unit=None):
+    def bind(self, key: str, element, default=None, unit: str = None):
         """Bind measurement parameter to UI element for syncronization on mount
         and store.
 
@@ -121,7 +124,7 @@ class Panel(BasicPanel):
     def mount(self, measurement):
         """Mount measurement to panel."""
         super().mount(measurement)
-        self.titleLabel.setText(f"{self.title} &rarr; {measurement.name}")
+        self.titleLabel.setText(f"{self.title()} &rarr; {measurement.name}")
         self.descriptionLabel.setText(measurement.description)
         self.descriptionLabel.setVisible(len(measurement.description) > 0)
         self.measurement = measurement
@@ -153,16 +156,16 @@ class Panel(BasicPanel):
         # Update plot series style
         points_in_plots = self.settings.get("points_in_plots") or False
         for index in range(self.dataTabWidget.count()):
-            tab = self.dataTabWidget.widget(index).reflection()
-            if hasattr(tab, "layout") and hasattr(tab.layout, "series"):
-                for series in tab.layout.series.values():
+            widget = self.dataTabWidget.widget(index)
+            if widget.property("type") == "plot":
+                for series in widget.reflection().series.values():
                     series.qt.setPointsVisible(points_in_plots)
 
     def unmount(self):
         """Unmount measurement from panel."""
         super().unmount()
         self.measurement = None
-        self.analysis_tree.clear()
+        self.analysisTreeWidget.clear()
 
     def store(self):
         """Store UI element values to measurement parameters."""
@@ -218,56 +221,60 @@ class Panel(BasicPanel):
     def append_reading(self, name, x, y):
         ...
 
-    def update_readings(self):
+    def updateReadings(self):
         ...
 
     def clearReadings(self):
-        self.analysis_tree.clear()
+        self.analysisTreeWidget.clear()
         if self.measurement:
             self.measurement.analysis.clear()
 
-    def append_analysis(self, key, values):
+    def append_analysis(self, key: str, values: dict):
         if self.measurement:
             self.measurement.analysis[key] = values
-            item = self.analysis_tree.append([key])
+            item = QtWidgets.QTreeWidgetItem()
+            item.setText(0, key)
+            self.analysisTreeWidget.addTopLevelItem(item)
             for k, v in values.items():
-                item.append([k, format(v)])
-            self.analysis_tree.fit()
+                child = QtWidgets.QTreeWidgetItem()
+                child.setText(0, k)
+                child.setText(1, format(v))
+                item.addChild(child)
+            item.setExpanded(True)
+            self.analysisTreeWidget.resizeColumnToContents(0)
+            self.analysisTreeWidget.resizeColumnToContents(1)
 
     def load_analysis(self):
-        self.analysis_tree.clear()
+        self.analysisTreeWidget.clear()
         if self.measurement:
             for key, values in self.measurement.analysis.items():
                 self.append_analysis(key, values)
 
-    def lock(self):
-        super().lock()
-        for tab in self.control_tabs:
-            tab.enabled = False
-        if self.general_tab in self.control_tabs:
-            self.control_tabs.current = self.general_tab
-        self.control_tabs.enabled = True
-        self.statusPanelLayout.enabled = True
+    def setLocked(self, state: bool) -> None:
+        super().setLocked(state)
+        for index in range(self.controlTabWidget.count()):
+            widget = self.controlTabWidget.widget(index)
+            widget.setEnabled(not state)
+        if state:
+            index = self.controlTabWidget.indexOf(self.generalWidget)
+            self.controlTabWidget.setCurrentIndex(index)
+            self.controlTabWidget.setEnabled(True)
+            self.statusPanelLayout.setEnabled(True)
 
-    def unlock(self):
-        super().unlock()
-        for tab in self.control_tabs:
-            tab.enabled = True
-
-    def save_to_image(self, filename: str) -> None:
+    def saveToImage(self, filename: str) -> None:
         """Save screenshots of data tabs to stitched image."""
-        current: int = self.dataTabWidget.currentIndex()
-        pixmaps = []
+        currentIndex: int = self.dataTabWidget.currentIndex()
+        pixmaps: List = []
         png_analysis = self.settings.get("png_analysis") or False
         for index in range(self.dataTabWidget.count()):
-            tab = self.dataTabWidget.widget(index)
+            widget = self.dataTabWidget.widget(index)
             self.dataTabWidget.setCurrentIndex(index)
-            if hasattr(tab, "layout") and hasattr(tab.layout, "series"):
-                tab.layout.fit()
+            if widget.property("type") == "plot":
+                widget.reflection().fit()  # type: ignore
                 pixmaps.append(self.dataTabWidget.grab())
-            elif tab.layout is self.analysis_tree:
+            elif widget is self.analysisTreeWidget:
                 if png_analysis:
                     pixmaps.append(self.dataTabWidget.grab())
-        self.dataTabWidget.setCurrentIndex(current)
+        self.dataTabWidget.setCurrentIndex(currentIndex)
         if pixmaps:
             stitch_pixmaps(pixmaps).save(filename)

@@ -106,6 +106,20 @@ def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> Q
     return canvas
 
 
+class ExceptionHandler:
+
+    def __init__(self, parent):
+        self.parent = parent
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, traceback):
+        logging.exception(exc_val)
+        show_exception(exc_val)
+        return True
+
+
 def handle_exception(func: Callable) -> Callable:
     def catch_exception_wrapper(*args, **kwargs):
         try:

@@ -15,9 +15,9 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.title = "CV Ramp (V Source)"
+        self.setTitle("CV Ramp (V Source)")
 
-        self.register_hvsource()
+        self.register_vsource()
         self.register_lcr()
         self.register_environment()
 
@@ -25,6 +25,7 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
+        self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
 
         self.plot2 = ui.Plot(height=300, legend="right")
@@ -32,6 +33,7 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
         self.plot2.axes.get("y").qt.setLabelFormat("%G")
         self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
+        self.plot2.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
 
         self.voltage_start = ui.Number(decimals=3, suffix="V")
@@ -54,42 +56,42 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.bind("lcr_frequency", self.lcr_frequency, 1.0, unit="kHz")
         self.bind("lcr_amplitude", self.lcr_amplitude, 250, unit="mV")
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="V Source Ramp",
-                layout=ui.Column(
-                    ui.Label(text="Start"),
-                    self.voltage_start,
-                    ui.Label(text="Stop"),
-                    self.voltage_stop,
-                    ui.Label(text="Step"),
-                    self.voltage_step,
-                    ui.Label(text="Waiting Time"),
-                    self.waiting_time,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="V Source",
-                layout=ui.Column(
-                    ui.Label(text="Compliance"),
-                    self.vsrc_current_compliance,
-                    self.vsrc_accept_compliance,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="LCR",
-                layout=ui.Column(
-                    ui.Label(text="AC Frequency"),
-                    self.lcr_frequency,
-                    ui.Label(text="AC Amplitude"),
-                    self.lcr_amplitude,
-                    ui.Spacer()
-                )
-            ),
-            stretch=(1, 1, 1)
-        )
+        vsrcRampGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        vsrcRampGroupBox.setTitle("V Source Ramp")
+
+        vsrcRampGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(vsrcRampGroupBox)
+        vsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start", self))
+        vsrcRampGroupBoxLayout.addWidget(self.voltage_start.qt)
+        vsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop", self))
+        vsrcRampGroupBoxLayout.addWidget(self.voltage_stop.qt)
+        vsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step", self))
+        vsrcRampGroupBoxLayout.addWidget(self.voltage_step.qt)
+        vsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time", self))
+        vsrcRampGroupBoxLayout.addWidget(self.waiting_time.qt)
+        vsrcRampGroupBoxLayout.addStretch()
+
+        vsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        vsrcGroupBox.setTitle("V Source")
+
+        vsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(vsrcGroupBox)
+        vsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
+        vsrcGroupBoxLayout.addWidget(self.vsrc_current_compliance.qt)
+        vsrcGroupBoxLayout.addWidget(self.vsrc_accept_compliance.qt)
+        vsrcGroupBoxLayout.addStretch()
+
+        frequencyGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        frequencyGroupBox.setTitle("LCR")
+
+        frequencyGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(frequencyGroupBox)
+        frequencyGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency", self))
+        frequencyGroupBoxLayout.addWidget(self.lcr_frequency.qt)
+        frequencyGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Amplitude", self))
+        frequencyGroupBoxLayout.addWidget(self.lcr_amplitude.qt)
+        frequencyGroupBoxLayout.addStretch()
+
+        self.generalWidgetLayout.addWidget(vsrcRampGroupBox, 1)
+        self.generalWidgetLayout.addWidget(vsrcGroupBox, 1)
+        self.generalWidgetLayout.addWidget(frequencyGroupBox, 1)
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")

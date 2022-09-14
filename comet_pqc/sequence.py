@@ -341,13 +341,9 @@ class SequenceTree(ui.Tree):
 
     # Methods
 
-    def lock(self):
+    def setLocked(self, state: bool) -> None:
         for contact in self:
-            contact.lock()
-
-    def unlock(self):
-        for contact in self:
-            contact.unlock()
+            contact.setLocked(state)
 
     def reset(self):
         for contact in self:
@@ -438,17 +434,11 @@ class SequenceTreeItem(ui.TreeItem):
 
     # Methods
 
-    def lock(self):
-        self.checkable = False
-        self.selectable = False
+    def setLocked(self, state: bool) -> None:
+        self.checkable = not state
+        self.selectable = not state
         for child in self.children:
-            child.lock()
-
-    def unlock(self):
-        self.checkable = True
-        self.selectable = True
-        for child in self.children:
-            child.unlock()
+            child.setLocked(state)
 
     def reset(self):
         self.state = None

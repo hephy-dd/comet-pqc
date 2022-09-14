@@ -15,9 +15,9 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.title = "4 Wire IV Ramp"
+        self.setTitle("4 Wire IV Ramp")
 
-        self.register_hvsource()
+        self.register_vsource()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")
@@ -25,6 +25,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.plot.add_axis("y", align="right", text="Voltage [V]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
+        self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.current_start = ui.Number(decimals=3, suffix="uA")
@@ -41,33 +42,32 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.bind("vsrc_voltage_compliance", self.vsrc_voltage_compliance, 0, unit="V")
         self.bind("vsrc_accept_compliance", self.vsrc_accept_compliance, False)
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="Ramp",
-                layout=ui.Column(
-                    ui.Label(text="Start"),
-                    self.current_start,
-                    ui.Label(text="Stop"),
-                    self.current_stop,
-                    ui.Label(text="Step"),
-                    self.current_step,
-                    ui.Label(text="Waiting Time"),
-                    self.waiting_time,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="V Source",
-                layout=ui.Column(
-                    ui.Label(text="Compliance"),
-                    self.vsrc_voltage_compliance,
-                    self.vsrc_accept_compliance,
-                    ui.Spacer()
-                )
-            ),
-            ui.Spacer(),
-            stretch=(1, 1, 1)
-        )
+        currentRampGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        currentRampGroupBox.setTitle("Current Ramp")
+
+        currentRampGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(currentRampGroupBox)
+        currentRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start", self))
+        currentRampGroupBoxLayout.addWidget(self.current_start.qt)
+        currentRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop", self))
+        currentRampGroupBoxLayout.addWidget(self.current_stop.qt)
+        currentRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step", self))
+        currentRampGroupBoxLayout.addWidget(self.current_step.qt)
+        currentRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time", self))
+        currentRampGroupBoxLayout.addWidget(self.waiting_time.qt)
+        currentRampGroupBoxLayout.addStretch()
+
+        vsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        vsrcGroupBox.setTitle("V Source")
+
+        vsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(vsrcGroupBox)
+        vsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
+        vsrcGroupBoxLayout.addWidget(self.vsrc_voltage_compliance.qt)
+        vsrcGroupBoxLayout.addWidget(self.vsrc_accept_compliance.qt)
+        vsrcGroupBoxLayout.addStretch()
+
+        self.generalWidgetLayout.addWidget(currentRampGroupBox, 1)
+        self.generalWidgetLayout.addWidget(vsrcGroupBox, 1)
+        self.generalWidgetLayout.addStretch(1)
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
@@ -85,7 +85,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             for x, y in points:
                 self.plot.series.get(name).append(*tr(x, y))
             self.plot.series.get(name).qt.setVisible(True)
-        self.update_readings()
+        self.updateReadings()
 
     def append_reading(self, name, x, y):
         if self.measurement:
@@ -97,8 +97,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
                 self.plot.series.get(name).append(*tr(x, y))
                 self.plot.series.get(name).qt.setVisible(True)
 
-    def update_readings(self):
-        super().update_readings()
+    def updateReadings(self):
+        super().updateReadings()
         if self.measurement:
             if self.plot.zoomed:
                 self.plot.update("x")

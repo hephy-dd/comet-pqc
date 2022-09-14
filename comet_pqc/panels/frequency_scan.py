@@ -15,9 +15,9 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.title = "Frequency Scan"
+        self.setTitle("Frequency Scan")
 
-        self.register_vsource()
+        self.register_hvsource()
         self.register_lcr()
         self.register_environment()
 
@@ -25,6 +25,7 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
+        self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
 
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
@@ -43,34 +44,33 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
         self.bind("lcr_frequency_steps", self.lcr_frequency_steps, 1)
         self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="HV Source",
-                layout=ui.Column(
-                    ui.Label(text="Bias Voltage"),
-                    self.bias_voltage,
-                    ui.Label(text="Current Compliance"),
-                    self.hvsrc_current_compliance,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="LCR",
-                layout=ui.Column(
-                    ui.Label(text="AC Frequency Start"),
-                    self.lcr_frequency_start,
-                    ui.Label(text="AC Frequency Stop"),
-                    self.lcr_frequency_stop,
-                    ui.Label(text="AC Frequency Steps (log10)"),
-                    self.lcr_frequency_steps,
-                    ui.Label(text="AC Amplitude"),
-                    self.lcr_amplitude,
-                    ui.Spacer()
-                )
-            ),
-            ui.Spacer(),
-            stretch=(1, 1, 1)
-        )
+        hvsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        hvsrcGroupBox.setTitle("HV Source")
+
+        hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
+        hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage", self))
+        hvsrcGroupBoxLayout.addWidget(self.bias_voltage.qt)
+        hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Current Compliance", self))
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
+        hvsrcGroupBoxLayout.addStretch()
+
+        lcrRampGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        lcrRampGroupBox.setTitle("LCR")
+
+        lcrGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(lcrRampGroupBox)
+        lcrGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency Start", self))
+        lcrGroupBoxLayout.addWidget(self.lcr_frequency_start.qt)
+        lcrGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency Stop", self))
+        lcrGroupBoxLayout.addWidget(self.lcr_frequency_stop.qt)
+        lcrGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency Steps (log10)", self))
+        lcrGroupBoxLayout.addWidget(self.lcr_frequency_steps.qt)
+        lcrGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Amplitude", self))
+        lcrGroupBoxLayout.addWidget(self.lcr_amplitude.qt)
+        lcrGroupBoxLayout.addStretch()
+
+        self.generalWidgetLayout.addWidget(hvsrcGroupBox, 1)
+        self.generalWidgetLayout.addWidget(lcrRampGroupBox, 1)
+        self.generalWidgetLayout.addStretch(1)
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")

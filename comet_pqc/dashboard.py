@@ -51,13 +51,13 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
 
     ConfigVersion: int = 1
 
-    treeSelected = QtCore.pyqtSignal(object)
-    treeDoubleClicked = QtCore.pyqtSignal(object, int)
-    startAllClicked = QtCore.pyqtSignal()
-    startClicked = QtCore.pyqtSignal()
-    stopClicked = QtCore.pyqtSignal()
-    resetSequenceState = QtCore.pyqtSignal()
-    editSequenceClicked = QtCore.pyqtSignal()
+    treeSelected: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
+    treeDoubleClicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object, int)
+    startAllClicked: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    startClicked: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    stopClicked: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    resetSequenceState: QtCore.pyqtSignal = QtCore.pyqtSignal()
+    editSequenceClicked: QtCore.pyqtSignal = QtCore.pyqtSignal()
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
@@ -70,75 +70,75 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         )
         self._sequence_tree.qt.setMinimumWidth(360)
 
-        self.startAllAction = QtWidgets.QAction(self)
+        self.startAllAction: QtWidgets.QAction = QtWidgets.QAction(self)
         self.startAllAction.setText("&All Samples")
         self.startAllAction.triggered.connect(self.startAllClicked.emit)
 
-        self.startSampleAction = QtWidgets.QAction(self)
+        self.startSampleAction: QtWidgets.QAction = QtWidgets.QAction(self)
         self.startSampleAction.setText("&Sample")
         self.startSampleAction.setEnabled(False)
         self.startSampleAction.triggered.connect(self.startClicked.emit)
 
-        self.startContactAction = QtWidgets.QAction(self)
+        self.startContactAction: QtWidgets.QAction = QtWidgets.QAction(self)
         self.startContactAction.setText("&Contact")
         self.startContactAction.setEnabled(False)
         self.startContactAction.triggered.connect(self.startClicked.emit)
 
-        self.startMeasurementAction = QtWidgets.QAction(self)
+        self.startMeasurementAction: QtWidgets.QAction = QtWidgets.QAction(self)
         self.startMeasurementAction.setText("&Measurement")
         self.startMeasurementAction.setEnabled(False)
         self.startMeasurementAction.triggered.connect(self.startClicked.emit)
 
-        self.startMenu = QtWidgets.QMenu(self)
+        self.startMenu: QtWidgets.QMenu = QtWidgets.QMenu(self)
         self.startMenu.addAction(self.startAllAction)
         self.startMenu.addAction(self.startSampleAction)
         self.startMenu.addAction(self.startContactAction)
         self.startMenu.addAction(self.startMeasurementAction)
 
-        self.startButton = QtWidgets.QPushButton(self)
+        self.startButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.startButton.setText("Start")
         self.startButton.setStatusTip("Start measurement sequence.")
         self.startButton.setStyleSheet("QPushButton:enabled{color:green;font-weight:bold;}")
         self.startButton.setMenu(self.startMenu)
 
-        self.stopButton = QtWidgets.QPushButton(self)
+        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.stopButton.setText("Stop")
         self.stopButton.setStatusTip("Stop measurement sequence.")
         self.stopButton.setEnabled(False)
         self.stopButton.setStyleSheet("QPushButton:enabled{color:red;font-weight:bold;}")
         self.stopButton.clicked.connect(self.stopClicked.emit)
 
-        self.resetButton = QtWidgets.QPushButton(self)
+        self.resetButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.resetButton.setText("Reset")
         self.resetButton.setStatusTip("Reset measurement sequence state.")
         self.resetButton.clicked.connect(self.resetSequenceState.emit)
 
-        self.editButton = QtWidgets.QPushButton(self)
+        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.editButton.setText("Edit")
         self.editButton.setStatusTip("Quick edit properties of sequence items.")
         self.editButton.clicked.connect(self.editSequenceClicked.emit)
 
-        self.reloadConfigButton = QtWidgets.QToolButton(self)
+        self.reloadConfigButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
         self.reloadConfigButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "reload.svg")))
         self.reloadConfigButton.setStatusTip("Reload sequence configurations from file.")
         self.reloadConfigButton.clicked.connect(self.on_reload_config_clicked)
 
-        self.addSampleButton = QtWidgets.QToolButton(self)
+        self.addSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
         self.addSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
         self.addSampleButton.setStatusTip("Add new sample sequence.")
         self.addSampleButton.clicked.connect(self.on_add_sample_clicked)
 
-        self.removeSampleButton = QtWidgets.QToolButton(self)
+        self.removeSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
         self.removeSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
         self.removeSampleButton.setStatusTip("Remove current sample sequence.")
         self.removeSampleButton.clicked.connect(self.on_remove_sample_clicked)
 
-        self.openButton = QtWidgets.QToolButton(self)
+        self.openButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
         self.openButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_open.svg")))
         self.openButton.setStatusTip("Open sequence tree from file.")
         self.openButton.clicked.connect(self.on_open_clicked)
 
-        self.saveButton = QtWidgets.QToolButton(self)
+        self.saveButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
         self.saveButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_save.svg")))
         self.saveButton.setStatusTip("Save sequence tree to file.")
         self.saveButton.clicked.connect(self.on_save_clicked)
@@ -158,7 +158,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         layout.addWidget(self._sequence_tree.qt)
         layout.addLayout(bottomLayout)
 
-    def readSettings(self):
+    def readSettings(self) -> None:
         samples = self.settings.get("sequence_samples") or []
         self._sequence_tree.clear()
         for kwargs in samples:
@@ -174,7 +174,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         self._sequence_tree.fit()
         self.setProperty("currentPath", self.settings.get("sequence_default_path") or user_home())
 
-    def writeSettings(self):
+    def writeSettings(self) -> None:
         sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
         self.settings["sequence_samples"] = sequence_samples
         self.settings["sequence_default_path"] = self.property("currentPath")
@@ -194,7 +194,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         self.removeSampleButton.setEnabled(False)
         self.saveButton.setEnabled(False)
         self.openButton.setEnabled(False)
-        self._sequence_tree.lock()
+        self._sequence_tree.setLocked(True)
 
     def unlock(self):
         self.startButton.setEnabled(True)
@@ -206,11 +206,11 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         self.removeSampleButton.setEnabled(True)
         self.saveButton.setEnabled(True)
         self.openButton.setEnabled(True)
-        self._sequence_tree.unlock()
+        self._sequence_tree.setLocked(False)
         self.setProperty("locked", False)
 
     def stop(self):
-        self.stopButton.enabled = False
+        self.stopButton.setEnabled(False)
 
     @handle_exception
     def on_reload_config_clicked(self, state):
@@ -269,7 +269,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
             if version is None:
                 raise RuntimeError(f"Missing version information in sequence: {filename}")
             elif isinstance(version, int):
-                if version != self.ConfigVersion:
+                if version != type(self).ConfigVersion:
                     raise RuntimeError(f"Invalid version in sequence: {filename}")
             else:
                 raise RuntimeError(f"Invalid version information in sequence: {filename}")
@@ -298,7 +298,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         if filename:
             samples = [sample.to_settings() for sample in self._sequence_tree]
             data = {
-                "version": self.ConfigVersion,
+                "version": type(self).ConfigVersion,
                 "sequence": samples
             }
             # Auto filename extension
@@ -595,7 +595,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.measure_process.finished = self.on_finished
         self.measure_process.measurement_state = self.on_measurement_state
         self.measure_process.measurement_reset = self.on_measurement_reset
-        self.measure_process.save_to_image = self.on_save_to_image
+        self.measure_process.save_to_image = self.saveToImage
 
         self.contact_quality_process = self.processes.get("contact_quality")
 
@@ -722,8 +722,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.setVisible(True)
-            panel.table_move = self.on_table_contact
-            panel.table_contact = self.on_table_move
+            panel.moveRequested.connect(self.on_table_contact)
+            panel.contactRequested.connect(self.on_table_move)
             panel.mount(item)
             self.startContactAction.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
@@ -887,7 +887,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             panel.setVisible(True)
             panel.mount(item)
             measure.reading = panel.append_reading
-            measure.update = panel.update_readings
+            measure.update = panel.updateReadings
             measure.append_analysis = panel.append_analysis
             measure.state = panel.state
         def hide_measurement(item):
@@ -907,11 +907,12 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         item.reset()
         self.sequence_tree.fit()
 
-    def on_save_to_image(self, item, filename):
+    def saveToImage(self, item: MeasurementTreeItem, filename: str) -> None:
+        """Save item plots to image file if enabled in properties."""
         plot_png = self.settings.get("png_plots") or False
         panel = self.panels.get(item.type)
         if panel and plot_png:
-            panel.save_to_image(filename)
+            panel.saveToImage(filename)
 
     def on_stop(self):
         self.sequence_widget.stop()
@@ -992,7 +993,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.tableControlWidget.update_calibration(position)
         panel = self.panels.get("contact")
         if panel:
-            panel.update_use_table(self.use_table() and self.tableControlWidget.isCalibrationValid())
+            panel.updateUseTable(self.use_table() and self.tableControlWidget.isCalibrationValid())
 
     @handle_exception
     def on_table_control_clicked(self):

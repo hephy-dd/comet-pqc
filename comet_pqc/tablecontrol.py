@@ -1216,31 +1216,31 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
             self.lcrChartWidget.clear()
 
     def on_add_x(self):
-        self.lock()
+        self.setLocked(True)
         self.relative_move_xy(+self.step_width, 0)
 
     def on_sub_x(self):
-        self.lock()
+        self.setLocked(True)
         self.relative_move_xy(-self.step_width, 0)
 
     def on_add_y(self):
-        self.lock()
+        self.setLocked(True)
         self.relative_move_xy(0, +self.step_width)
 
     def on_sub_y(self):
-        self.lock()
+        self.setLocked(True)
         self.relative_move_xy(0, -self.step_width)
 
     def on_add_z(self):
-        self.lock()
+        self.setLocked(True)
         self.process.relative_move(0, 0, +self.step_width)
 
     def on_sub_z(self):
-        self.lock()
+        self.setLocked(True)
         self.process.relative_move(0, 0, -self.step_width)
 
     def on_step_up(self):
-        self.lock()
+        self.setLocked(True)
         step_width = self.step_width
         multiply = self.step_up_multiply
         vector = (
@@ -1280,12 +1280,12 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
     def on_move_finished(self):
         self.progressBar.setVisible(False)
         self.stopButton.setEnabled(False)
-        self.unlock()
+        self.setLocked(False)
 
     def on_calibration_finished(self):
         self.progressBar.setVisible(False)
         self.stopButton.setEnabled(False)
-        self.unlock()
+        self.setLocked(False)
 
     @QtCore.pyqtSlot(str)
     def setMessage(self, message: str) -> None:
@@ -1310,14 +1310,14 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
     def requestAbsoluteMove(self, position):
         # Update to safe Z position
         position = Position(position.x, position.y, safe_z_position(position.z))
-        self.lock()
+        self.setLocked(True)
         # Clear contact quality graph on X/Y movements.
         self.lcrChartWidget.clear()
         self.stopButton.setEnabled(True)
         self.process.safe_absolute_move(position.x, position.y, position.z)
 
     def requestCalibrate(self):
-        self.lock()
+        self.setLocked(True)
         self.stopButton.setEnabled(True)
         self.process.calibrate_table()
 
@@ -1377,21 +1377,21 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         settings_.setValue("geometry", self.saveGeometry())
         settings_.endGroup()
 
-    def lock(self):
-        self.controlGroupBox.setEnabled(False)
-        self.positions_widget.setLocked(True)
-        self.contacts_widget.setLocked(True)
-        self.closeButton.setEnabled(False)
-        self.progressBar.setVisible(True)
-        self.progressBar.setRange(0, 0)
-        self.progressBar.setValue(0)
-
-    def unlock(self):
-        self.controlGroupBox.setEnabled(True)
-        self.positions_widget.setLocked(False)
-        self.contacts_widget.setLocked(False)
-        self.closeButton.setEnabled(True)
-        self.progressBar.setVisible(False)
+    def setLocked(self, state: bool) -> None:
+        if state:
+            self.controlGroupBox.setEnabled(False)
+            self.positions_widget.setLocked(True)
+            self.contacts_widget.setLocked(True)
+            self.closeButton.setEnabled(False)
+            self.progressBar.setVisible(True)
+            self.progressBar.setRange(0, 0)
+            self.progressBar.setValue(0)
+        else:
+            self.controlGroupBox.setEnabled(True)
+            self.positions_widget.setLocked(False)
+            self.contacts_widget.setLocked(False)
+            self.closeButton.setEnabled(True)
+            self.progressBar.setVisible(False)
 
     def setProcess(self, process):
         """Set table process and connect signals."""

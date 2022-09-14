@@ -14,7 +14,7 @@ from ..panels import (
     IVRampElmPanel,
     IVRampPanel,
     SamplePanel,
-    BasicPanel,
+    Panel,
 )
 
 __all__ = ["MeasurementWidget"]
@@ -58,7 +58,7 @@ class PanelStack(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.panelWidgets: List[BasicPanel] = []
+        self.panelWidgets: List[Panel] = []
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -80,7 +80,7 @@ class PanelStack(QtWidgets.QWidget):
 
         self.hide()
 
-    def addPanel(self, panel: BasicPanel) ->  None:
+    def addPanel(self, panel: Panel) ->  None:
         self.panelWidgets.append(panel)
         self.layout().addWidget(panel)
 
@@ -102,9 +102,9 @@ class PanelStack(QtWidgets.QWidget):
 
     def setLocked(self, state: bool) -> None:
         for child in self.panelWidgets:
-            child.lock() if state else child.unlock()
+            child.setLocked(state)
 
-    def get(self, type) -> Optional[BasicPanel]:
+    def get(self, type) -> Optional[Panel]:
         """Get panel by type."""
         for child in self.panelWidgets:
             if child.type == type:

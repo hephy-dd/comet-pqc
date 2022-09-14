@@ -2,7 +2,7 @@ from comet import ui
 from comet.resource import ResourceMixin
 from PyQt5 import QtCore, QtWidgets
 
-from .panel import Panel
+from .panel import MeasurementPanel
 
 __all__ = ["MatrixPanel"]
 
@@ -30,7 +30,7 @@ class MatrixChannelsText(ui.Text):
         self.qt.setText(encode_matrix(value or []))
 
 
-class MatrixPanel(Panel, ResourceMixin):
+class MatrixPanel(MeasurementPanel, ResourceMixin):
     """Base class for matrix switching panels."""
 
     type = "matrix"
@@ -46,21 +46,18 @@ class MatrixPanel(Panel, ResourceMixin):
         self.bind("matrix_enable", self.matrix_enable, True)
         self.bind("matrix_channels", self.matrix_channels, [])
 
-        self.control_tabs.append(ui.Tab(
-            title="Matrix",
-            layout=ui.Column(
-                ui.GroupBox(
-                    title="Matrix",
-                    layout=ui.Column(
-                        self.matrix_enable,
-                        ui.Label(text="Channels"),
-                        ui.Row(
-                            self.matrix_channels,
-                            # ui.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
-                        )
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(0, 1)
-            )
-        ))
+        matrixGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        matrixGroupBox.setTitle("Matrix")
+
+        matrixGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(matrixGroupBox)
+        matrixGroupBoxLayout.addWidget(self.matrix_enable.qt)
+        matrixGroupBoxLayout.addWidget(QtWidgets.QLabel("Channels", self))
+        matrixGroupBoxLayout.addWidget(self.matrix_channels.qt)
+
+        matrixWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        matrixWidgetLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(matrixWidget)
+        matrixWidgetLayout.addWidget(matrixGroupBox)
+        matrixWidgetLayout.addStretch()
+
+        self.controlTabWidget.addTab(matrixWidget, "Matrix")

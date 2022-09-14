@@ -17,21 +17,21 @@ NO_VALUE = "---"
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
-    def register_vsource(self):
+    def register_hvsource(self):
         self.hvsrc_sense_mode = ui.ComboBox(["local", "remote"])
         self.hvsrc_route_terminal = ui.ComboBox(["front", "rear"])
 
         def toggle_hvsrc_filter(enabled):
             self.hvsrc_filter_count.enabled = enabled
-            self.hvsrc_filter_count_label.enabled = enabled
+            self.hvsrcFilterCountLabel.setEnabled(enabled)
             self.hvsrc_filter_type.enabled = enabled
-            self.hvsrc_filter_type_label.enabled = enabled
+            self.hvsrcFilterTypeLabel.setEnabled(enabled)
 
         self.hvsrc_filter_enable = ui.CheckBox(text="Enable", changed=toggle_hvsrc_filter)
         self.hvsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
-        self.hvsrc_filter_count_label = ui.Label(text="Count")
+        self.hvsrcFilterCountLabel = QtWidgets.QLabel("Count", self)
         self.hvsrc_filter_type = ui.ComboBox(["repeat", "moving"])
-        self.hvsrc_filter_type_label = ui.Label(text="Type")
+        self.hvsrcFilterTypeLabel = QtWidgets.QLabel("Type", self)
 
         def toggle_hvsrc_source_voltage_autorange(enabled):
             self.hvsrc_source_voltage_range.enabled = not enabled
@@ -58,63 +58,57 @@ class HVSourceMixin:
         self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
         self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
 
-        self.hvSourceGroupBox = ui.GroupBox(
-            title="HV Source Status",
-            layout=ui.Column(
-                ui.Row(
-                    ui.Column(
-                        ui.Label("Voltage"),
-                        self.status_hvsrc_voltage
-                    ),
-                    ui.Column(
-                        ui.Label("Current"),
-                        self.status_hvsrc_current
-                    ),
-                    ui.Column(
-                        ui.Label("Output"),
-                        self.status_hvsrc_output
-                    )
-                )
-            )
-        )
-        self.statusPanelLayout.addWidget(self.hvSourceGroupBox.qt)
+        statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        statusGroupBox.setTitle("HV Source Status")
 
-        self.control_tabs.append(ui.Tab(
-            title="HV Source",
-            layout=ui.Row(
-                ui.GroupBox(
-                    title="Filter",
-                    layout=ui.Column(
-                        self.hvsrc_filter_enable,
-                        self.hvsrc_filter_count_label,
-                        self.hvsrc_filter_count,
-                        self.hvsrc_filter_type_label,
-                        self.hvsrc_filter_type,
-                        ui.Spacer()
-                    )
-                ),
-                ui.GroupBox(
-                    title="Source Voltage Range",
-                    layout=ui.Column(
-                        self.hvsrc_source_voltage_autorange_enable,
-                        ui.Label(text="Range"),
-                        self.hvsrc_source_voltage_range,
-                        ui.Spacer()
-                    )
-                ),
-                ui.GroupBox(
-                    title="Options",
-                    layout=ui.Column(
-                        ui.Label(text="Sense Mode"),
-                        self.hvsrc_sense_mode,
-                        ui.Label(text="Route Terminal"),
-                        self.hvsrc_route_terminal,
-                        ui.Spacer()
-                    )
-                ),
-                stretch=(1, 1, 1)
-            )
-        ))
+        statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
+        statusGroupBoxLayout.addWidget(self.status_hvsrc_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
+        statusGroupBoxLayout.addWidget(self.status_hvsrc_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
+        statusGroupBoxLayout.addWidget(self.status_hvsrc_output.qt, 1, 2)
+
+        self.statusPanelLayout.addWidget(statusGroupBox)
+
+        filterGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        filterGroupBox.setTitle("Filter")
+
+        filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
+        filterGroupBoxLayout.addWidget(self.hvsrc_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.hvsrcFilterCountLabel)
+        filterGroupBoxLayout.addWidget(self.hvsrc_filter_count.qt)
+        filterGroupBoxLayout.addWidget(self.hvsrcFilterTypeLabel)
+        filterGroupBoxLayout.addWidget(self.hvsrc_filter_type.qt)
+        filterGroupBoxLayout.addStretch()
+
+        voltageRangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        voltageRangeGroupBox.setTitle("Source Voltage Range")
+
+        voltageRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(voltageRangeGroupBox)
+        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_autorange_enable.qt)
+        voltageRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Range", self))
+        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_range.qt)
+        voltageRangeGroupBoxLayout.addStretch()
+
+        optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        optionsGroupBox.setTitle("Options")
+
+        optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Sense Mode", self))
+        optionsGroupBoxLayout.addWidget(self.hvsrc_sense_mode.qt)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Route Terminal", self))
+        optionsGroupBoxLayout.addWidget(self.hvsrc_route_terminal.qt)
+        optionsGroupBoxLayout.addStretch()
+
+        controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        controlWidgetLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(controlWidget)
+        controlWidgetLayout.addWidget(filterGroupBox, 1)
+        controlWidgetLayout.addWidget(voltageRangeGroupBox, 1)
+        controlWidgetLayout.addWidget(optionsGroupBox, 1)
+
+        self.controlTabWidget.addTab(controlWidget, "HV Source")
 
         def handler(state: dict) -> None:
             if "hvsrc_voltage" in state:
@@ -133,7 +127,7 @@ class HVSourceMixin:
 class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
 
-    def register_hvsource(self):
+    def register_vsource(self):
         self.vsrc_sense_mode = ui.ComboBox(["local", "remote"])
 
         def toggle_vsrc_filter(enabled):
@@ -163,53 +157,46 @@ class VSourceMixin:
         self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
         self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
 
-        self.vSourceGroupBox = ui.GroupBox(
-            title="V Source Status",
-            layout=ui.Column(
-                ui.Row(
-                    ui.Column(
-                        ui.Label("Voltage"),
-                        self.status_vsrc_voltage
-                    ),
-                    ui.Column(
-                        ui.Label("Current"),
-                        self.status_vsrc_current
-                    ),
-                    ui.Column(
-                        ui.Label("Output"),
-                        self.status_vsrc_output
-                    )
-                )
-            )
-        )
-        self.statusPanelLayout.addWidget(self.vSourceGroupBox.qt)
+        statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        statusGroupBox.setTitle("V Source Status")
 
-        self.control_tabs.append(ui.Tab(
-            title="V Source",
-            layout=ui.Row(
-                ui.GroupBox(
-                    title="Filter",
-                    layout=ui.Column(
-                        self.vsrc_filter_enable,
-                        self.vsrc_filter_count_label,
-                        self.vsrc_filter_count,
-                        self.vsrc_filter_type_label,
-                        self.vsrc_filter_type,
-                        ui.Spacer()
-                    )
-                ),
-                ui.GroupBox(
-                    title="Options",
-                    layout=ui.Column(
-                        ui.Label(text="Sense Mode"),
-                        self.vsrc_sense_mode,
-                        ui.Spacer()
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(1, 1, 1)
-            )
-        ))
+        statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
+        statusGroupBoxLayout.addWidget(self.status_vsrc_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
+        statusGroupBoxLayout.addWidget(self.status_vsrc_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
+        statusGroupBoxLayout.addWidget(self.status_vsrc_output.qt, 1, 2)
+
+        self.statusPanelLayout.addWidget(statusGroupBox)
+
+        filterGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        filterGroupBox.setTitle("Filter")
+
+        filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_count_label.qt)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_count.qt)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_type_label.qt)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_type.qt)
+        filterGroupBoxLayout.addStretch()
+
+        optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        optionsGroupBox.setTitle("Options")
+
+        optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Sense Mode", self))
+        optionsGroupBoxLayout.addWidget(self.vsrc_sense_mode.qt)
+        optionsGroupBoxLayout.addStretch()
+
+        controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        controlWidgetLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(controlWidget)
+        controlWidgetLayout.addWidget(filterGroupBox, 1)
+        controlWidgetLayout.addWidget(optionsGroupBox, 1)
+        controlWidgetLayout.addStretch(1)
+
+        self.controlTabWidget.addTab(controlWidget, "V Source")
 
         def handler(state: dict) -> None:
             if "vsrc_voltage" in state:
@@ -231,15 +218,15 @@ class ElectrometerMixin:
     def register_electrometer(self):
         def toggle_elm_filter(enabled):
             self.elm_filter_count.enabled = enabled
-            self.elm_filter_count_label.enabled = enabled
+            self.elmFilterCountLabel.setEnabled(enabled)
             self.elm_filter_type.enabled = enabled
-            self.elm_filter_type_label.enabled = enabled
+            self.elmFilterTypeLabel.setEnabled(enabled)
 
         self.elm_filter_enable = ui.CheckBox(text="Enable", changed=toggle_elm_filter)
         self.elm_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
-        self.elm_filter_count_label = ui.Label(text="Count")
+        self.elmFilterCountLabel = QtWidgets.QLabel("Count", self)
         self.elm_filter_type = ui.ComboBox(["repeat", "moving"])
-        self.elm_filter_type_label = ui.Label(text="Type")
+        self.elmFilterTypeLabel = QtWidgets.QLabel("Type", self)
 
         self.elm_zero_correction = ui.CheckBox(text="Zero Correction")
         self.elm_integration_rate = ui.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
@@ -271,68 +258,67 @@ class ElectrometerMixin:
 
         self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
 
-        self.elmGroupBox = ui.GroupBox(
-            title="Electrometer Status",
-            layout=ui.Column(
-                ui.Row(
-                    ui.Column(
-                        ui.Label("Current"),
-                        self.status_elm_current
-                    ),
-                    ui.Spacer(),
-                    stretch=(1, 2)
-                )
-            )
-        )
-        self.statusPanelLayout.addWidget(self.elmGroupBox.qt)
+        statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        statusGroupBox.setTitle("Electrometer Status")
 
-        self.control_tabs.append(ui.Tab(
-            title="Electrometer",
-            layout=ui.Row(
-                ui.GroupBox(
-                    title="Filter",
-                    layout=ui.Column(
-                        self.elm_filter_enable,
-                        self.elm_filter_count_label,
-                        self.elm_filter_count,
-                        self.elm_filter_type_label,
-                        self.elm_filter_type,
-                        ui.Spacer()
-                    )
-                ),
-                ui.Column(
-                    ui.GroupBox(
-                        title="Range",
-                        layout=ui.Column(
-                            ui.Label(text="Current Range"),
-                            self.elm_current_range,
-                        )
-                    ),
-                    ui.GroupBox(
-                        title="Auto Range",
-                        layout=ui.Column(
-                            self.elm_current_autorange_enable,
-                            ui.Label(text="Minimum Current"),
-                            self.elm_current_autorange_minimum,
-                            ui.Label(text="Maximum Current"),
-                            self.elm_current_autorange_maximum,
-                            ui.Spacer()
-                        )
-                    )
-                ),
-                ui.GroupBox(
-                    title="Options",
-                    layout=ui.Column(
-                        self.elm_zero_correction,
-                        ui.Label(text="Integration Rate"),
-                        self.elm_integration_rate,
-                        ui.Spacer()
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(1, 1, 1)
-            )
-        ))
+        statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 0)
+        statusGroupBoxLayout.addWidget(self.status_elm_current.qt, 1, 0)
+        statusGroupBoxLayout.setColumnStretch(0, 1)
+        statusGroupBoxLayout.setColumnStretch(1, 2)
+
+        self.statusPanelLayout.addWidget(statusGroupBox)
+
+        filterGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        filterGroupBox.setTitle("Filter")
+
+        filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
+        filterGroupBoxLayout.addWidget(self.elm_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.elmFilterCountLabel)
+        filterGroupBoxLayout.addWidget(self.elm_filter_count.qt)
+        filterGroupBoxLayout.addWidget(self.elmFilterTypeLabel)
+        filterGroupBoxLayout.addWidget(self.elm_filter_type.qt)
+        filterGroupBoxLayout.addStretch()
+
+        rangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        rangeGroupBox.setTitle("Range")
+
+        rangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(rangeGroupBox)
+        rangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Current Range", self))
+        rangeGroupBoxLayout.addWidget(self.elm_current_range.qt)
+
+        autoRangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        autoRangeGroupBox.setTitle("Auto Range")
+
+        autoRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(autoRangeGroupBox)
+        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_enable.qt)
+        autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Minimum Current", self))
+        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_minimum.qt)
+        autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Maximum Current", self))
+        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_maximum.qt)
+        autoRangeGroupBoxLayout.addStretch()
+
+        rangeLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
+        rangeLayout.addWidget(rangeGroupBox)
+        rangeLayout.addWidget(autoRangeGroupBox)
+
+        optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        optionsGroupBox.setTitle("Options")
+
+        optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
+        optionsGroupBoxLayout.addWidget(self.elm_zero_correction.qt)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Integration Rate", self))
+        optionsGroupBoxLayout.addWidget(self.elm_integration_rate.qt)
+        optionsGroupBoxLayout.addStretch()
+
+        controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        controlWidgetLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(controlWidget)
+        controlWidgetLayout.addWidget(filterGroupBox, 1)
+        controlWidgetLayout.addLayout(rangeLayout, 1)
+        controlWidgetLayout.addWidget(optionsGroupBox, 1)
+
+        self.controlTabWidget.addTab(controlWidget, "Electrometer")
 
         def handler(state: dict) -> None:
             if "elm_current" in state:
@@ -372,54 +358,49 @@ class LCRMixin:
         self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
         self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
 
-        self.lcrGroupBox = ui.GroupBox(
-            title="LCR Status",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Voltage"),
-                    self.status_lcr_voltage
-                ),
-                ui.Column(
-                    ui.Label("Current"),
-                    self.status_lcr_current
-                ),
-                ui.Column(
-                    ui.Label("Output"),
-                    self.status_lcr_output
-                )
-            )
-        )
-        self.statusPanelLayout.addWidget(self.lcrGroupBox.qt)
+        statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        statusGroupBox.setTitle("LCR Status")
 
-        self.control_tabs.append(ui.Tab(
-            title="LCR",
-            layout=ui.Row(
-                ui.GroupBox(
-                    title="Open Correction",
-                    layout=ui.Column(
-                        ui.Label(text="Method"),
-                        self.lcr_open_correction_mode,
-                        ui.Label(text="Channel"),
-                        self.lcr_open_correction_channel,
-                        ui.Spacer()
-                    )
-                ),
-                ui.GroupBox(
-                    title="Options",
-                    layout=ui.Column(
-                        ui.Label(text="Integration Time"),
-                        self.lcr_integration_time,
-                        ui.Label(text="Averaging Rate"),
-                        self.lcr_averaging_rate,
-                        self.lcr_auto_level_control,
-                        self.lcr_soft_filter,
-                        ui.Spacer()
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(1, 1, 1)
-            )
-        ))
+        statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
+        statusGroupBoxLayout.addWidget(self.status_lcr_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
+        statusGroupBoxLayout.addWidget(self.status_lcr_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
+        statusGroupBoxLayout.addWidget(self.status_lcr_output.qt, 1, 2)
+
+        self.statusPanelLayout.addWidget(statusGroupBox)
+
+        openCorrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        openCorrGroupBox.setTitle("Open Correction")
+
+        openCorrGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(openCorrGroupBox)
+        openCorrGroupBoxLayout.addWidget(QtWidgets.QLabel("Method", self))
+        openCorrGroupBoxLayout.addWidget(self.lcr_open_correction_mode.qt)
+        openCorrGroupBoxLayout.addWidget(QtWidgets.QLabel("Channel", self))
+        openCorrGroupBoxLayout.addWidget(self.lcr_open_correction_channel.qt)
+        openCorrGroupBoxLayout.addStretch()
+
+        optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        optionsGroupBox.setTitle("Options")
+
+        optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Integration Time", self))
+        optionsGroupBoxLayout.addWidget(self.lcr_integration_time.qt)
+        optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Averaging Rate", self))
+        optionsGroupBoxLayout.addWidget(self.lcr_averaging_rate.qt)
+        optionsGroupBoxLayout.addWidget(self.lcr_auto_level_control.qt)
+        optionsGroupBoxLayout.addWidget(self.lcr_soft_filter.qt)
+        optionsGroupBoxLayout.addStretch()
+
+        controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        controlWidgetLayout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(controlWidget)
+        controlWidgetLayout.addWidget(openCorrGroupBox, 1)
+        controlWidgetLayout.addWidget(optionsGroupBox, 1)
+        controlWidgetLayout.addStretch(1)
+
+        self.controlTabWidget.addTab(controlWidget, "LCR")
 
         def handler(state: dict) -> None:
             if "lcr_voltage" in state:
@@ -447,26 +428,18 @@ class EnvironmentMixin:
         self.bind("status_env_box_temperature", self.status_env_box_temperature, NO_VALUE)
         self.bind("status_env_box_humidity", self.status_env_box_humidity, NO_VALUE)
 
-        self.environGroupBox = ui.GroupBox(
-            title="Environment Status",
-            layout=ui.Column(
-                ui.Row(
-                    ui.Column(
-                        ui.Label("Chuck temp."),
-                        self.status_env_chuck_temperature
-                    ),
-                    ui.Column(
-                        ui.Label("Box temp."),
-                        self.status_env_box_temperature
-                    ),
-                    ui.Column(
-                        ui.Label("Box humid."),
-                        self.status_env_box_humidity
-                    )
-                )
-            )
-        )
-        self.statusPanelLayout.addWidget(self.environGroupBox.qt)
+        statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        statusGroupBox.setTitle("Environment Status")
+
+        statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Chuck temp.", self), 0, 0)
+        statusGroupBoxLayout.addWidget(self.status_env_chuck_temperature.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box temp.", self), 0, 1)
+        statusGroupBoxLayout.addWidget(self.status_env_box_temperature.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box humid.", self), 0, 2)
+        statusGroupBoxLayout.addWidget(self.status_env_box_humidity.qt, 1, 2)
+
+        self.statusPanelLayout.addWidget(statusGroupBox)
 
         def handler(state: dict) -> None:
             if "env_chuck_temperature" in state:

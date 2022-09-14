@@ -1,62 +1,65 @@
 import math
 
-from comet import ui
 from PyQt5 import QtCore, QtWidgets
 
 from ..components import PositionWidget
 from ..core.position import Position
-from .panel import BasicPanel
+from .panel import Panel
 
 __all__ = ["ContactPanel"]
 
 
-class ContactPanel(BasicPanel):
+class ContactPanel(Panel):
 
     type = "contact"
 
+    moveRequested: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
+    contactRequested: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
+
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self.table_move = None
-        self.table_contact = None
+        self.setTitle("Contact")
+
         self.use_table = False
         self._position_valid = False
-        self.title = "Contact"
+
         self._position_widget = PositionWidget()
         self._position_widget.title = "Contact Position"
-        self._move_button = ui.Button(
-            text="Move",
-            tool_tip="Move table to position with safe Z position.",
-            clicked=self.on_move,
-            enabled=False
-        )
-        self._contact_button = ui.Button(
-            text="Contact",
-            tool_tip="Move table to position and contact with sample.",
-            clicked=self.on_contact,
-            enabled=False
-        )
-        self._table_control = ui.Row(
-            self._position_widget,
-            ui.GroupBox(
-                title="Table Control",
-                layout=ui.Column(
-                    self._move_button,
-                    self._contact_button,
-                )
-            ),
-            ui.Spacer(vertical=False),
-            stretch=(0, 0, 1)
-        )
-        self.rootLayout.addWidget(self._table_control.qt, 0)
-        self.rootLayout.addStretch()
 
-    def update_use_table(self, enabled):
+        self.requestMoveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.requestMoveButton.setText("Move")
+        self.requestMoveButton.setStatusTip("Move table to position with safe Z position.")
+        self.requestMoveButton.setEnabled(False)
+        self.requestMoveButton.clicked.connect(self.requestMove)
+
+        self.requestContactButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.requestContactButton.setText("Contact")
+        self.requestContactButton.setStatusTip("Move table to position and contact with sample.")
+        self.requestContactButton.setEnabled(False)
+        self.requestContactButton.clicked.connect(self.requestContact)
+
+        self.tableControlGroupBox:QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.tableControlGroupBox.setTitle("Table Control")
+
+        tableControlGroupBoxLayout = QtWidgets.QVBoxLayout(self.tableControlGroupBox)
+        tableControlGroupBoxLayout.addWidget(self.requestMoveButton)
+        tableControlGroupBoxLayout.addWidget(self.requestContactButton)
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.addWidget(self._position_widget.qt, 0)
+        layout.addWidget(self.tableControlGroupBox, 0)
+        layout.addStretch(1)
+
+        self.rootLayout.addLayout(layout, 0)
+        self.rootLayout.addStretch(1)
+
+    def updateUseTable(self, enabled: bool) -> None:
         self.use_table = enabled
         isLocked = self.isLocked()
-        self._move_button.enabled = self._position_valid and self.use_table and not isLocked
-        self._contact_button.enabled = self._position_valid and self.use_table and not isLocked
+        self.requestMoveButton.setEnabled(self._position_valid and self.use_table and not isLocked)
+        self.requestContactButton.setEnabled(self._position_valid and self.use_table and not isLocked)
 
-    def update_position(self):
+    def updatePosition(self):
         if self.context is None:
             position = Position()
         else:
@@ -64,30 +67,27 @@ class ContactPanel(BasicPanel):
         self._position_widget.update_position(position)
         self._position_valid = not math.isnan(position.z)
         isLocked = self.isLocked()
-        self._move_button.enabled = self._position_valid and self.use_table and not isLocked
-        self._contact_button.enabled = self._position_valid and self.use_table and not isLocked
+        self.requestMoveButton.setEnabled(self._position_valid and self.use_table and not isLocked)
+        self.requestContactButton.setEnabled(self._position_valid and self.use_table and not isLocked)
 
-    def lock(self):
-        super().lock()
-        self._move_button.enabled = False
-        self._contact_button.enabled = False
-
-    def unlock(self):
-        super().unlock()
-        self._move_button.enabled = True
-        self._contact_button.enabled = True
+    def setLocked(self, state: bool) -> None:
+        super().setLocked(state)
+        self.requestMoveButton.setEnabled(not state)
+        self.requestContactButton.setEnabled(not state)
 
     def mount(self, context):
         """Mount measurement to panel."""
         super().mount(context)
-        self.titleLabel.setText(f"{self.title} &rarr; {context.name}")
+        self.titleLabel.setText(f"{self.title()} &rarr; {context.name}")
         self.descriptionLabel.setText(context.description)
-        self.update_position()
+        self.updatePosition()
 
-    def on_move(self):
-        self._move_button.enabled = False
-        self.emit(self.table_move, self.context)
+    @QtCore.pyqtSlot()
+    def requestMove(self):
+        self.requestMoveButton.setEnabled(False)
+        self.moveRequested.emit(self.context)
 
-    def on_contact(self):
-        self._contact_button.enabled = False
-        self.emit(self.table_contact, self.context)
+    @QtCore.pyqtSlot()
+    def requestContact(self):
+        self.requestContactButton.setEnabled(False)
+        self.contactRequested.emit(self.context)
