@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, Iterable, List, Tuple
 
 import comet
 from comet import ui, SettingsMixin
@@ -8,6 +8,24 @@ from PyQt5 import QtCore, QtWidgets
 from ..utils import stitch_pixmaps
 
 __all__ = ["Panel", "MeasurementPanel"]
+
+
+def encode_matrix(values: Iterable[str]) -> str:
+    return ", ".join(map(format, values))
+
+
+def decode_matrix(value) -> List[str]:
+    return list(map(str.strip, value.split(",")))
+
+
+class MatrixChannelsLineEdit(QtWidgets.QLineEdit):
+    """Overloaded line edit to handle matrix channel list."""
+
+    def channels(self) -> List[str]:
+        return decode_matrix(self.text())
+
+    def setChannels(self, channels: Iterable[str]) -> None:
+        self.setText(encode_matrix(channels or []))
 
 
 class Panel(SettingsMixin, QtWidgets.QWidget):
@@ -140,14 +158,16 @@ class MeasurementPanel(Panel):
                 setattr(element, "values", value)
             elif isinstance(element, ui.ComboBox):
                 setattr(element, "current", value)
-            elif isinstance(element, ui.CheckBox):
-                setattr(element, "checked", value)
+            elif isinstance(element, QtWidgets.QCheckBox):
+                element.setChecked(value)
             elif isinstance(element, ui.Text):
                 setattr(element, "value", value)
             elif isinstance(element, ui.Label):
                 setattr(element, "text", format(value))
             elif isinstance(element, ui.Metric):
                 setattr(element, "value", value)
+            elif isinstance(element, MatrixChannelsLineEdit):
+                element.setChannels(value)
             else:
                 setattr(element, "value", value)
         self.load_analysis()
@@ -177,14 +197,16 @@ class MeasurementPanel(Panel):
                     value = getattr(element, "values")
                 elif isinstance(element, ui.ComboBox):
                     value = getattr(element, "current")
-                elif isinstance(element, ui.CheckBox):
-                    value = getattr(element, "checked")
+                elif isinstance(element, QtWidgets.QCheckBox):
+                    value = element.isChecked()
                 elif isinstance(element, ui.Text):
                     value = getattr(element, "value")
                 elif isinstance(element, ui.Label):
                     value = getattr(element, "text")
                 elif isinstance(element, ui.Metric):
                     value = getattr(element, "value")
+                elif isinstance(element, MatrixChannelsLineEdit):
+                    value = element.channels()
                 else:
                     value = getattr(element, "value")
                 if unit is not None:
@@ -205,12 +227,14 @@ class MeasurementPanel(Panel):
                     setattr(element, "values", value)
                 elif isinstance(element, ui.ComboBox):
                     setattr(element, "current", value)
-                elif isinstance(element, ui.CheckBox):
-                    setattr(element, "checked", value)
+                elif isinstance(element, QtWidgets.QCheckBox):
+                    element.setChecked(value)
                 elif isinstance(element, ui.Text):
                     setattr(element, "value", value)
                 elif isinstance(element, ui.Metric):
                     setattr(element, "value", value)
+                elif isinstance(element, MatrixChannelsLineEdit):
+                    element.setChannels(value)
                 else:
                     setattr(element, "value", value)
 

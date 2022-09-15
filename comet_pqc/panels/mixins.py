@@ -27,7 +27,10 @@ class HVSourceMixin:
             self.hvsrc_filter_type.enabled = enabled
             self.hvsrcFilterTypeLabel.setEnabled(enabled)
 
-        self.hvsrc_filter_enable = ui.CheckBox(text="Enable", changed=toggle_hvsrc_filter)
+        self.hvsrc_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.hvsrc_filter_enable.setText("Enable")
+        self.hvsrc_filter_enable.stateChanged.connect(toggle_hvsrc_filter)
+
         self.hvsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.hvsrcFilterCountLabel = QtWidgets.QLabel("Count", self)
         self.hvsrc_filter_type = ui.ComboBox(["repeat", "moving"])
@@ -36,7 +39,10 @@ class HVSourceMixin:
         def toggle_hvsrc_source_voltage_autorange(enabled):
             self.hvsrc_source_voltage_range.enabled = not enabled
 
-        self.hvsrc_source_voltage_autorange_enable = ui.CheckBox(text="Autorange", changed=toggle_hvsrc_source_voltage_autorange)
+        self.hvsrc_source_voltage_autorange_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.hvsrc_source_voltage_autorange_enable.setText("Autorange")
+        self.hvsrc_source_voltage_autorange_enable.stateChanged.connect(toggle_hvsrc_source_voltage_autorange)
+
         self.hvsrc_source_voltage_range = ui.Number(minimum=-1100, maximum=1100, decimals=1, suffix="V")
 
         toggle_hvsrc_filter(False)
@@ -75,7 +81,7 @@ class HVSourceMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.hvsrc_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.hvsrc_filter_enable)
         filterGroupBoxLayout.addWidget(self.hvsrcFilterCountLabel)
         filterGroupBoxLayout.addWidget(self.hvsrc_filter_count.qt)
         filterGroupBoxLayout.addWidget(self.hvsrcFilterTypeLabel)
@@ -86,7 +92,7 @@ class HVSourceMixin:
         voltageRangeGroupBox.setTitle("Source Voltage Range")
 
         voltageRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(voltageRangeGroupBox)
-        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_autorange_enable.qt)
+        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_autorange_enable)
         voltageRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Range", self))
         voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_range.qt)
         voltageRangeGroupBoxLayout.addStretch()
@@ -136,7 +142,10 @@ class VSourceMixin:
             self.vsrc_filter_type.enabled = enabled
             self.vsrc_filter_type_label.enabled = enabled
 
-        self.vsrc_filter_enable = ui.CheckBox(text="Enable", changed=toggle_vsrc_filter)
+        self.vsrc_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.vsrc_filter_enable.setText("Enable")
+        self.vsrc_filter_enable.stateChanged.connect(toggle_vsrc_filter)
+
         self.vsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.vsrc_filter_count_label = ui.Label(text="Count")
         self.vsrc_filter_type = ui.ComboBox(["repeat", "moving"])
@@ -174,7 +183,7 @@ class VSourceMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.vsrc_filter_enable)
         filterGroupBoxLayout.addWidget(self.vsrc_filter_count_label.qt)
         filterGroupBoxLayout.addWidget(self.vsrc_filter_count.qt)
         filterGroupBoxLayout.addWidget(self.vsrc_filter_type_label.qt)
@@ -222,13 +231,18 @@ class ElectrometerMixin:
             self.elm_filter_type.enabled = enabled
             self.elmFilterTypeLabel.setEnabled(enabled)
 
-        self.elm_filter_enable = ui.CheckBox(text="Enable", changed=toggle_elm_filter)
+        self.elm_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.elm_filter_enable.setText("Enable")
+        self.elm_filter_enable.stateChanged.connect(toggle_elm_filter)
+
         self.elm_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
         self.elmFilterCountLabel = QtWidgets.QLabel("Count", self)
         self.elm_filter_type = ui.ComboBox(["repeat", "moving"])
         self.elmFilterTypeLabel = QtWidgets.QLabel("Type", self)
 
-        self.elm_zero_correction = ui.CheckBox(text="Zero Correction")
+        self.elm_zero_correction: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.elm_zero_correction.setText("Zero Correction")
+
         self.elm_integration_rate = ui.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
 
         def toggle_elm_current_autorange(enabled):
@@ -237,7 +251,11 @@ class ElectrometerMixin:
             self.elm_current_autorange_maximum.enabled = enabled
 
         self.elm_current_range = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
-        self.elm_current_autorange_enable = ui.CheckBox(text="Enable", changed=toggle_elm_current_autorange)
+
+        self.elm_current_autorange_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.elm_current_autorange_enable.setText("Enable")
+        self.elm_current_autorange_enable.stateChanged.connect(toggle_elm_current_autorange)
+
         self.elm_current_autorange_minimum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
         self.elm_current_autorange_maximum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
 
@@ -273,7 +291,7 @@ class ElectrometerMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.elm_filter_enable.qt)
+        filterGroupBoxLayout.addWidget(self.elm_filter_enable)
         filterGroupBoxLayout.addWidget(self.elmFilterCountLabel)
         filterGroupBoxLayout.addWidget(self.elm_filter_count.qt)
         filterGroupBoxLayout.addWidget(self.elmFilterTypeLabel)
@@ -291,7 +309,7 @@ class ElectrometerMixin:
         autoRangeGroupBox.setTitle("Auto Range")
 
         autoRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(autoRangeGroupBox)
-        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_enable.qt)
+        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_enable)
         autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Minimum Current", self))
         autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_minimum.qt)
         autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Maximum Current", self))
@@ -306,7 +324,7 @@ class ElectrometerMixin:
         optionsGroupBox.setTitle("Options")
 
         optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
-        optionsGroupBoxLayout.addWidget(self.elm_zero_correction.qt)
+        optionsGroupBoxLayout.addWidget(self.elm_zero_correction)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Integration Rate", self))
         optionsGroupBoxLayout.addWidget(self.elm_integration_rate.qt)
         optionsGroupBoxLayout.addStretch()
@@ -336,8 +354,13 @@ class LCRMixin:
 
         self.lcr_integration_time = ui.ComboBox(["short", "medium", "long"])
         self.lcr_averaging_rate = ui.Number(minimum=1, maximum=256, decimals=0)
-        self.lcr_auto_level_control = ui.CheckBox(text="Auto Level Control")
-        self.lcr_soft_filter = ui.CheckBox(text="Filter STD/mean < 0.005")
+
+        self.lcr_auto_level_control: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.lcr_auto_level_control.setText("Auto Level Control")
+
+        self.lcr_soft_filter: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.lcr_soft_filter.setText("Filter STD/mean < 0.005")
+
         self.lcr_open_correction_mode = ui.ComboBox(["single", "multi"], changed=change_lcr_open_correction_mode)
         self.lcr_open_correction_channel = ui.Number(minimum=0, maximum=127, decimals=0)
 
@@ -389,8 +412,8 @@ class LCRMixin:
         optionsGroupBoxLayout.addWidget(self.lcr_integration_time.qt)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Averaging Rate", self))
         optionsGroupBoxLayout.addWidget(self.lcr_averaging_rate.qt)
-        optionsGroupBoxLayout.addWidget(self.lcr_auto_level_control.qt)
-        optionsGroupBoxLayout.addWidget(self.lcr_soft_filter.qt)
+        optionsGroupBoxLayout.addWidget(self.lcr_auto_level_control)
+        optionsGroupBoxLayout.addWidget(self.lcr_soft_filter)
         optionsGroupBoxLayout.addStretch()
 
         controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)

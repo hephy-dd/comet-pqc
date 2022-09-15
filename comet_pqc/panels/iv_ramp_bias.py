@@ -37,9 +37,14 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.bias_mode = ui.ComboBox(["constant", "offset"])
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
-        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
+
+        self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.hvsrc_accept_compliance.setText("Accept Compliance")
+
         self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
-        self.vsrc_accept_compliance = ui.CheckBox("Accept Compliance")
+
+        self.vsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.vsrc_accept_compliance.setText("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
@@ -74,7 +79,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage.qt)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance", self))
         vsrcBiasGroupBoxLayout.addWidget(self.vsrc_current_compliance.qt)
-        vsrcBiasGroupBoxLayout.addWidget(self.vsrc_accept_compliance.qt)
+        vsrcBiasGroupBoxLayout.addWidget(self.vsrc_accept_compliance)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Mode", self))
         vsrcBiasGroupBoxLayout.addWidget(self.bias_mode.qt)
         vsrcBiasGroupBoxLayout.addStretch()
@@ -85,7 +90,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
         hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
         hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
-        hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance.qt)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance)
         hvsrcGroupBoxLayout.addStretch()
 
         self.generalWidgetLayout.addWidget(hvsrcRampGroupBox, 1)

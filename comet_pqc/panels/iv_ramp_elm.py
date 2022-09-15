@@ -36,7 +36,9 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
-        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
+
+        self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.hvsrc_accept_compliance.setText("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
@@ -67,7 +69,7 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
         hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
         hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
-        hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance.qt)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance)
         hvsrcGroupBoxLayout.addStretch()
 
         self.generalWidgetLayout.addWidget(hvsrcRampGroupBox, 1)
