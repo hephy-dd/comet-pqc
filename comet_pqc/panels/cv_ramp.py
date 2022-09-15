@@ -1,5 +1,4 @@
-import comet
-from comet import ui
+from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
@@ -36,18 +35,44 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
         self.plot2.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
 
-        self.voltage_start = ui.Number(decimals=3, suffix="V")
-        self.voltage_stop = ui.Number(decimals=3, suffix="V")
-        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setRange(-2.1e3, 2.1e3)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setSuffix(" V")
 
-        self.hvsrc_current_compliance = ui.Number(decimals=3, suffix="uA")
+        self.voltage_stop: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setRange(-2.1e3, 2.1e3)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setSuffix(" V")
+
+        self.voltage_step: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setRange(0, 2.1e2)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setSuffix(" V")
+
+        self.waiting_time: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waiting_time.setRange(0, 60)
+        self.waiting_time.setDecimals(2)
+        self.waiting_time.setSuffix(" s")
+
+        self.hvsrc_current_compliance: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.hvsrc_current_compliance.setRange(0, 2.1e6)
+        self.hvsrc_current_compliance.setDecimals(3)
+        self.hvsrc_current_compliance.setSuffix(" uA")
 
         self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrc_accept_compliance.setText("Accept Compliance")
 
-        self.lcr_frequency = ui.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
-        self.lcr_amplitude = ui.Number(minimum=0, decimals=3, suffix="mV")
+        self.lcr_frequency: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.lcr_frequency.setDecimals(3)
+        self.lcr_frequency.setRange(0.020, 20e3)
+        self.lcr_frequency.setValue(1)
+        self.lcr_frequency.setSuffix(" kHz")
+
+        self.lcr_amplitude: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.lcr_amplitude.setDecimals(3)
+        self.lcr_amplitude.setRange(0, 2.1e6)
+        self.lcr_amplitude.setSuffix(" mV")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 100, unit="V")
@@ -63,13 +88,13 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
 
         hvsrcRampGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcRampGroupBox)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time)
         hvsrcRampGroupBoxLayout.addStretch()
 
         hvsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -77,7 +102,7 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
 
         hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
         hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
-        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance)
         hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance)
         hvsrcGroupBoxLayout.addStretch()
 
@@ -86,17 +111,17 @@ class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
 
         frequencyGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(frequencyGroupBox)
         frequencyGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency", self))
-        frequencyGroupBoxLayout.addWidget(self.lcr_frequency.qt)
+        frequencyGroupBoxLayout.addWidget(self.lcr_frequency)
         frequencyGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Amplitude", self))
-        frequencyGroupBoxLayout.addWidget(self.lcr_amplitude.qt)
+        frequencyGroupBoxLayout.addWidget(self.lcr_amplitude)
         frequencyGroupBoxLayout.addStretch()
 
         self.generalWidgetLayout.addWidget(hvsrcRampGroupBox, 1)
         self.generalWidgetLayout.addWidget(hvsrcGroupBox, 1)
         self.generalWidgetLayout.addWidget(frequencyGroupBox, 1)
 
-        fahrad = comet.ureg("F")
-        volt = comet.ureg("V")
+        fahrad = ureg("F")
+        volt = ureg("V")
 
         self.series_transform["lcr"] = lambda x, y: ((x * volt).to("V").m, (y * fahrad).to("pF").m)
 

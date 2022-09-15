@@ -1,7 +1,7 @@
-import comet
-from comet import ui
+from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
+from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
 
@@ -29,19 +29,47 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
-        self.voltage_start = ui.Number(decimals=3, suffix="V")
-        self.voltage_stop = ui.Number(decimals=3, suffix="V")
-        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
-        self.bias_voltage = ui.Number(decimals=3, suffix="V")
-        self.bias_mode = ui.ComboBox(["constant", "offset"])
+        self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setRange(-2.1e3, 2.1e3)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setSuffix(" V")
 
-        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
+        self.voltage_stop: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setRange(-2.1e3, 2.1e3)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setSuffix(" V")
+
+        self.voltage_step: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setRange(0, 2.1e2)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setSuffix(" V")
+
+        self.waiting_time: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waiting_time.setRange(0, 60)
+        self.waiting_time.setDecimals(2)
+        self.waiting_time.setSuffix(" s")
+
+        self.bias_voltage: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.bias_voltage.setRange(-2.1e3, 2.1e3)
+        self.bias_voltage.setDecimals(3)
+        self.bias_voltage.setSuffix(" V")
+
+        self.bias_mode: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self.bias_mode.addItem("constant", "constant")
+        self.bias_mode.addItem("offset", "offset")
+
+        self.hvsrc_current_compliance: Metric = Metric("A", self)
+        self.hvsrc_current_compliance.setPrefixes("mun")
+        self.hvsrc_current_compliance.setDecimals(3)
+        self.hvsrc_current_compliance.setRange(0, 2.1e3)
 
         self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrc_accept_compliance.setText("Accept Compliance")
 
-        self.vsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
+        self.vsrc_current_compliance: Metric = Metric("A", self)
+        self.vsrc_current_compliance.setPrefixes("mun")
+        self.vsrc_current_compliance.setDecimals(3)
+        self.vsrc_current_compliance.setRange(0, 2.1e3)
 
         self.vsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.vsrc_accept_compliance.setText("Accept Compliance")
@@ -62,13 +90,13 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
 
         hvsrcRampGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcRampGroupBox)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time)
         hvsrcRampGroupBoxLayout.addStretch()
 
         vsrcBiasGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -76,12 +104,12 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
 
         vsrcBiasGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(vsrcBiasGroupBox)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage", self))
-        vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage.qt)
+        vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance", self))
-        vsrcBiasGroupBoxLayout.addWidget(self.vsrc_current_compliance.qt)
+        vsrcBiasGroupBoxLayout.addWidget(self.vsrc_current_compliance)
         vsrcBiasGroupBoxLayout.addWidget(self.vsrc_accept_compliance)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Mode", self))
-        vsrcBiasGroupBoxLayout.addWidget(self.bias_mode.qt)
+        vsrcBiasGroupBoxLayout.addWidget(self.bias_mode)
         vsrcBiasGroupBoxLayout.addStretch()
 
         hvsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -89,7 +117,7 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
 
         hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
         hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
-        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance)
         hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance)
         hvsrcGroupBoxLayout.addStretch()
 
@@ -97,8 +125,8 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.generalWidgetLayout.addWidget(vsrcBiasGroupBox, 1)
         self.generalWidgetLayout.addWidget(hvsrcGroupBox, 1)
 
-        ampere = comet.ureg("A")
-        volt = comet.ureg("V")
+        ampere = ureg("A")
+        volt = ureg("V")
 
         self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
         self.series_transform["xfit"] = self.series_transform.get("vsrc")

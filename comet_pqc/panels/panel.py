@@ -1,31 +1,48 @@
 from collections import namedtuple
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Type
 
 import comet
-from comet import ui, SettingsMixin
+from comet import SettingsMixin, ui
 from PyQt5 import QtCore, QtWidgets
 
+from ..components import Metric, PlotWidget
 from ..utils import stitch_pixmaps
 
 __all__ = ["Panel", "MeasurementPanel"]
 
 
-def encode_matrix(values: Iterable[str]) -> str:
-    return ", ".join(map(format, values))
+class Bindings:
 
+    def __init__(self) -> None:
+        self._bindings: Dict[str, Tuple] = {}
+        self._getters: Dict[Type, Callable[[Any], Any]] = {}
+        self._setters: Dict[Type, Callable[[Any, Any], None]] = {}
 
-def decode_matrix(value) -> List[str]:
-    return list(map(str.strip, value.split(",")))
+    def register(self, type: Type, getter: Callable[[Any], Any], setter: Callable[[Any, Any], None]) -> None:
+        if type in self._getters or type in self._setters:
+            raise KeyError(f"Binding type already registered: {type}")
+        self._getters[type] = getter
+        self._setters[type] = setter
 
+    def bind(self, key: str, element, default=None, unit: str = None):
+        if type(element) not in self._getters or type(element) not in self._setters:
+            raise TypeError(f"No binding for: {type(element)}")
+        self._bindings[key] = element, default, unit
 
-class MatrixChannelsLineEdit(QtWidgets.QLineEdit):
-    """Overloaded line edit to handle matrix channel list."""
+    def all(self) -> Dict[str, Tuple]:
+        return self._bindings
 
-    def channels(self) -> List[str]:
-        return decode_matrix(self.text())
+    def getter(self, element: Any) -> Callable[[Any], Any]:
+        getter = self._getters.get(type(element))
+        if getter is None:
+            raise TypeError(f"No binding for: {type(element)}")
+        return getter
 
-    def setChannels(self, channels: Iterable[str]) -> None:
-        self.setText(encode_matrix(channels or []))
+    def setter(self, element: Any) -> Callable[[Any, Any], None]:
+        setter = self._setters.get(type(element))
+        if setter is None:
+            raise TypeError(f"No binding for: {type(element)}")
+        return setter
 
 
 class Panel(SettingsMixin, QtWidgets.QWidget):
@@ -34,6 +51,8 @@ class Panel(SettingsMixin, QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
+
+        self._stateHandlers: List[Callable] = []
 
         self.setTitle("")
 
@@ -82,6 +101,10 @@ class Panel(SettingsMixin, QtWidgets.QWidget):
         self.descriptionLabel.setText("")
         self.descriptionLabel.setVisible(False)
 
+    def updateState(self, state: dict) -> None:
+        for handler in self._stateHandlers:
+            handler(state)
+
 
 class MeasurementPanel(Panel):
     """Base class for measurement panels."""
@@ -90,8 +113,8 @@ class MeasurementPanel(Panel):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self._bindings: Dict[str, Tuple] = {}
-        self.state_handlers: List[Callable] = []
+        self.bindings = Bindings()
+
         self.measurement = None
 
         self.dataPanelLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
@@ -129,15 +152,26 @@ class MeasurementPanel(Panel):
         self.series_transform: Dict[str, object] = {}
         self.series_transform_default = lambda x, y: (x, y)
 
+        self.bindings.register(QtWidgets.QComboBox, lambda element: element.currentData(), lambda element, value: element.itemData(element.findData(value)))
+        self.bindings.register(QtWidgets.QCheckBox, lambda element: element.isChecked(), lambda element, value: element.setChecked(value))
+        self.bindings.register(QtWidgets.QDoubleSpinBox, lambda element: element.value(), lambda element, value: element.setValue(value))
+        self.bindings.register(QtWidgets.QLabel, lambda element: element.text(), lambda element, value: element.setText(format(value)))
+        self.bindings.register(QtWidgets.QLineEdit, lambda element: element.text(), lambda element, value: element.setText(format(value)))
+        self.bindings.register(QtWidgets.QSpinBox, lambda element: element.value(), lambda element, value: element.setValue(value))
+        self.bindings.register(Metric, lambda element: element.value(), lambda element, value: element.setValue(value))
+
     def bind(self, key: str, element, default=None, unit: str = None):
         """Bind measurement parameter to UI element for syncronization on mount
         and store.
 
         >>> # for measurement parameter "value" of unit "V"
-        >>> self.value = ui.Number()
-        >>> self.bind("value", self.value, default=10.0, unit="V")
+        >>> element = QtWidgets.QSpinBox()
+        >>> self.bind("value", element, default=10.0, unit="V")
         """
-        self._bindings[key] = element, default, unit
+        self.bindings.bind(key, element, default, unit)
+
+    def addStateHandler(self, handler: Callable[[dict], None]) -> None:
+        self._stateHandlers.append(handler)
 
     def mount(self, measurement):
         """Mount measurement to panel."""
@@ -148,28 +182,14 @@ class MeasurementPanel(Panel):
         self.measurement = measurement
         # Load parameters to UI
         parameters = self.measurement.parameters
-        for key, item in self._bindings.items():
+        for key, item in self.bindings.all().items():
             element, default, unit = item
             value = parameters.get(key, default)
             if unit is not None:
                 if isinstance(value, comet.ureg.Quantity):
                     value = value.to(unit).m
-            if isinstance(element, ui.List):
-                setattr(element, "values", value)
-            elif isinstance(element, ui.ComboBox):
-                setattr(element, "current", value)
-            elif isinstance(element, QtWidgets.QCheckBox):
-                element.setChecked(value)
-            elif isinstance(element, ui.Text):
-                setattr(element, "value", value)
-            elif isinstance(element, ui.Label):
-                setattr(element, "text", format(value))
-            elif isinstance(element, ui.Metric):
-                setattr(element, "value", value)
-            elif isinstance(element, MatrixChannelsLineEdit):
-                element.setChannels(value)
-            else:
-                setattr(element, "value", value)
+            setter = self.bindings.setter(element)
+            setter(element, value)
         self.load_analysis()
         # Show first tab on mount
         self.dataTabWidget.setCurrentIndex(0)
@@ -180,6 +200,9 @@ class MeasurementPanel(Panel):
             if widget.property("type") == "plot":
                 for series in widget.reflection().series.values():
                     series.qt.setPointsVisible(points_in_plots)
+            if isinstance(widget, PlotWidget):
+                for series in widget.chart.series():
+                    series.setPointsVisible(points_in_plots)
 
     def unmount(self):
         """Unmount measurement from panel."""
@@ -191,24 +214,10 @@ class MeasurementPanel(Panel):
         """Store UI element values to measurement parameters."""
         if self.measurement:
             parameters = self.measurement.parameters
-            for key, item in self._bindings.items():
+            for key, item in self.bindings.all().items():
                 element, default, unit = item
-                if isinstance(element, ui.List):
-                    value = getattr(element, "values")
-                elif isinstance(element, ui.ComboBox):
-                    value = getattr(element, "current")
-                elif isinstance(element, QtWidgets.QCheckBox):
-                    value = element.isChecked()
-                elif isinstance(element, ui.Text):
-                    value = getattr(element, "value")
-                elif isinstance(element, ui.Label):
-                    value = getattr(element, "text")
-                elif isinstance(element, ui.Metric):
-                    value = getattr(element, "value")
-                elif isinstance(element, MatrixChannelsLineEdit):
-                    value = element.channels()
-                else:
-                    value = getattr(element, "value")
+                getter = self.bindings.getter(element)
+                value = getter(element)
                 if unit is not None:
                     value = value * comet.ureg(unit)
                 parameters[key] = value
@@ -217,30 +226,14 @@ class MeasurementPanel(Panel):
         """Restore measurement defaults."""
         if self.measurement:
             default_parameters = self.measurement.default_parameters
-            for key, item in self._bindings.items():
+            for key, item in self.bindings.all().items():
                 element, default, unit = item
                 value = default_parameters.get(key, default)
                 if unit is not None:
                     if isinstance(value, comet.ureg.Quantity):
                         value = value.to(unit).m
-                if isinstance(element, ui.List):
-                    setattr(element, "values", value)
-                elif isinstance(element, ui.ComboBox):
-                    setattr(element, "current", value)
-                elif isinstance(element, QtWidgets.QCheckBox):
-                    element.setChecked(value)
-                elif isinstance(element, ui.Text):
-                    setattr(element, "value", value)
-                elif isinstance(element, ui.Metric):
-                    setattr(element, "value", value)
-                elif isinstance(element, MatrixChannelsLineEdit):
-                    element.setChannels(value)
-                else:
-                    setattr(element, "value", value)
-
-    def state(self, state):
-        for handler in self.state_handlers:
-            handler(state)
+                setter = self.bindings.setter(element)
+                setter(element, value)
 
     def append_reading(self, name, x, y):
         ...
@@ -295,6 +288,9 @@ class MeasurementPanel(Panel):
             self.dataTabWidget.setCurrentIndex(index)
             if widget.property("type") == "plot":
                 widget.reflection().fit()  # type: ignore
+                pixmaps.append(self.dataTabWidget.grab())
+            elif isinstance(widget, PlotWidget):
+                widget.resizeAxes()
                 pixmaps.append(self.dataTabWidget.grab())
             elif widget is self.analysisTreeWidget:
                 if png_analysis:

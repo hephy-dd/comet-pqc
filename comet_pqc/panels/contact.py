@@ -23,8 +23,8 @@ class ContactPanel(Panel):
         self.use_table = False
         self._position_valid = False
 
-        self._position_widget = PositionWidget()
-        self._position_widget.title = "Contact Position"
+        self.positionWidget: PositionWidget = PositionWidget(self)
+        self.positionWidget.setTitle("Contact Position")
 
         self.requestMoveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.requestMoveButton.setText("Move")
@@ -38,7 +38,7 @@ class ContactPanel(Panel):
         self.requestContactButton.setEnabled(False)
         self.requestContactButton.clicked.connect(self.requestContact)
 
-        self.tableControlGroupBox:QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.tableControlGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.tableControlGroupBox.setTitle("Table Control")
 
         tableControlGroupBoxLayout = QtWidgets.QVBoxLayout(self.tableControlGroupBox)
@@ -46,7 +46,7 @@ class ContactPanel(Panel):
         tableControlGroupBoxLayout.addWidget(self.requestContactButton)
 
         layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(self._position_widget.qt, 0)
+        layout.addWidget(self.positionWidget, 0)
         layout.addWidget(self.tableControlGroupBox, 0)
         layout.addStretch(1)
 
@@ -64,7 +64,7 @@ class ContactPanel(Panel):
             position = Position()
         else:
             position = Position(*self.context.position)
-        self._position_widget.update_position(position)
+        self.positionWidget.updatePosition(position)
         self._position_valid = not math.isnan(position.z)
         isLocked = self.isLocked()
         self.requestMoveButton.setEnabled(self._position_valid and self.use_table and not isLocked)

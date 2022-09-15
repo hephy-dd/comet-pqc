@@ -494,21 +494,18 @@ class TablePositionsWidget(QtWidgets.QWidget):
         settings.table_positions = positions
 
     def setLocked(self, state: bool) -> None:
+        self.setProperty("locked", state)
         if state:
             self.addButton.setEnabled(False)
             self.editButton.setEnabled(False)
             self.removeButton.setEnabled(False)
             self.moveButton.setEnabled(False)
-            # Remove event
-            self.positionsTreeWidget.itemDoubleClicked.disconnect(self.positionDoubleClicked)
         else:
             enabled = self.positionsTreeWidget.currentItem() is not None
             self.addButton.setEnabled(True)
             self.editButton.setEnabled(enabled)
             self.removeButton.setEnabled(enabled)
             self.moveButton.setEnabled(enabled)
-            # Restore event
-            self.positionsTreeWidget.itemDoubleClicked.connect(self.positionDoubleClicked)
 
     def positionSelected(self, current, previous) -> None:
         enabled = current is not None
@@ -517,7 +514,8 @@ class TablePositionsWidget(QtWidgets.QWidget):
         self.moveButton.setEnabled(True)
 
     def positionDoubleClicked(self, item, column) -> None:
-        self.moveToPosition()
+        if not self.property("locked"):
+            self.moveToPosition()
 
     def pickPosition(self, callback) -> None:
         self.positionPicked.emit(callback)
@@ -816,15 +814,15 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.contacts_widget.positionPicked.connect(self.pickPosition)
         self.contacts_widget.absoluteMove.connect(self.requestAbsoluteMove)
 
-        self._position_widget = PositionWidget()
+        self.positionWidget: PositionWidget = PositionWidget(self)
 
         self._calibration_widget = CalibrationWidget()
 
-        self.z_limit_label = PositionLabel()
+        self.zLimitLabel: PositionLabel = PositionLabel(self)
 
-        self.x_hard_limit_label = PositionLabel()
-        self.y_hard_limit_label = PositionLabel()
-        self.z_hard_limit_label = PositionLabel()
+        self.xHardLimitLabel: PositionLabel = PositionLabel(self)
+        self.yHardLimitLabel: PositionLabel = PositionLabel(self)
+        self.zHardLimitLabel: PositionLabel = PositionLabel(self)
 
         self.laserLabel: SwitchLabel = SwitchLabel(self)
 
@@ -992,15 +990,15 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.softLimitsGroupBox.setTitle("Soft Limits")
 
         softLimitsGroupBoxLayout = QtWidgets.QFormLayout(self.softLimitsGroupBox)
-        softLimitsGroupBoxLayout.addRow("Z", self.z_limit_label.qt)
+        softLimitsGroupBoxLayout.addRow("Z", self.zLimitLabel)
 
         self.hardLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.hardLimitsGroupBox.setTitle("Hard Limits")
 
         hardLimitsGroupBoxLayout = QtWidgets.QFormLayout(self.hardLimitsGroupBox)
-        hardLimitsGroupBoxLayout.addRow("X", self.x_hard_limit_label.qt)
-        hardLimitsGroupBoxLayout.addRow("Y", self.y_hard_limit_label.qt)
-        hardLimitsGroupBoxLayout.addRow("Z", self.z_hard_limit_label.qt)
+        hardLimitsGroupBoxLayout.addRow("X", self.xHardLimitLabel)
+        hardLimitsGroupBoxLayout.addRow("Y", self.yHardLimitLabel)
+        hardLimitsGroupBoxLayout.addRow("Z", self.zHardLimitLabel)
 
         self.safetyGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.safetyGroupBox.setTitle("Safety")
@@ -1010,7 +1008,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         safetyGroupBoxLayout.addWidget(self.laserLabel)
 
         topRightLayout = QtWidgets.QVBoxLayout()
-        topRightLayout.addWidget(self._position_widget.qt)
+        topRightLayout.addWidget(self.positionWidget)
         topRightLayout.addWidget(self._calibration_widget.qt)
         topRightLayout.addWidget(self.softLimitsGroupBox)
         topRightLayout.addWidget(self.hardLimitsGroupBox)
@@ -1131,9 +1129,9 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
     def reset_position(self):
         self.update_position(Position())
 
-    def update_position(self, position):
+    def update_position(self, position: Position) -> None:
         self.current_position = position
-        self._position_widget.update_position(position)
+        self.positionWidget.updatePosition(position)
         self.update_limits()
         self.update_control_buttons()
         if math.isfinite(position.z):
@@ -1152,10 +1150,10 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     def update_limits(self):
         x, y, z = self.current_position
-        self.z_limit_label.stylesheet = ""
+        self.zLimitLabel.setStyleSheet("")
         if not math.isnan(z):
             if z >= self.z_limit:
-                self.z_limit_label.stylesheet = "QLabel:enabled{color:red;}"
+                self.zLimitLabel.setStyleSheet("QLabel:enabled{color:red;}")
 
     def reset_safety(self):
         self.laserLabel.clear()
@@ -1339,11 +1337,11 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
     def readSettings(self) -> None:
         self.positions_widget.readSettings()
         self.z_limit = float(settings.table_z_limit)
-        self.z_limit_label.value = self.z_limit
+        self.zLimitLabel.setValue(self.z_limit)
         x, y, z = settings.table_probecard_maximum_limits
-        self.x_hard_limit_label.value = x
-        self.y_hard_limit_label.value = y
-        self.z_hard_limit_label.value = z
+        self.xHardLimitLabel.setValue(x)
+        self.yHardLimitLabel.setValue(y)
+        self.zHardLimitLabel.setValue(z)
         self.step_up_delay = self.settings.get("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY)
         self.step_up_multiply = self.settings.get("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY)
         self.lcr_update_interval = self.settings.get("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL)

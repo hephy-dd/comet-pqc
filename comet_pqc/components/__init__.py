@@ -1,18 +1,22 @@
 import math
 import os
+from typing import Optional
 
 from comet import ui
 from comet.settings import SettingsMixin
 from PyQt5 import QtCore, QtWidgets
 
-from .core.position import Position
-from .core.utils import make_path, user_home
-from .settings import settings
-from .utils import (
+from ..core.position import Position
+from ..core.utils import make_path, user_home
+from ..settings import settings
+from ..utils import (
     format_table_unit,
     getcal,
     getrm,
 )
+
+from .metric import Metric
+from .plots import PlotWidget
 
 __all__ = [
     "ToggleButton",
@@ -21,7 +25,9 @@ __all__ = [
     "CalibrationWidget",
     "DirectoryWidget",
     "OperatorComboBox",
-    "PositionsComboBox"
+    "PositionsComboBox",
+    "Metric",
+    "PlotWidget",
 ]
 
 
@@ -38,64 +44,46 @@ class ToggleButton(QtWidgets.QPushButton):
         """)
 
 
-class PositionLabel(ui.Label):
+class PositionLabel(QtWidgets.QLabel):
 
-    def __init__(self, value=None):
-        super().__init__()
-        self.value = value
-        self.qt.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setProperty("value", math.nan)
+        self.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-    @property
-    def value(self):
-        return self.__value
+    def value(self) -> float:
+        return self.property("value")
 
-    @value.setter
-    def value(self, value):
-        self.__value = value
-        if value is None:
-            self.text = format(float("nan"))
+    def setValue(self, value: float) -> None:
+        self.setProperty("value", value)
+        if math.isfinite(value):
+            self.setText(format_table_unit(value))
         else:
-            self.text = format_table_unit(value)
+            self.setText(format(value))
 
 
-class PositionWidget(ui.GroupBox):
+class PositionWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Position"
-        self._pos_x_label = PositionLabel()
-        self._pos_y_label = PositionLabel()
-        self._pos_z_label = PositionLabel()
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label(
-                    text="X",
-                    tool_tip="X axis position."
-                ),
-                ui.Label(
-                    text="Y",
-                    tool_tip="Y axis position."
-                ),
-                ui.Label(
-                    text="Z",
-                    tool_tip="Z axis position."
-                )
-            ),
-            ui.Column(
-                self._pos_x_label,
-                self._pos_y_label,
-                self._pos_z_label
-            ),
-            stretch=(1, 1)
-        )
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setTitle("Position")
 
-    def reset_position(self):
-        self.update_position(Position())
+        self.xPosLabel: PositionLabel = PositionLabel(self)
+        self.yPosLabel: PositionLabel = PositionLabel(self)
+        self.zPosLabel: PositionLabel = PositionLabel(self)
 
-    def update_position(self, position):
-        self._pos_x_label.value = position.x
-        self._pos_y_label.value = position.y
-        self._pos_z_label.value = position.z
+        layout = QtWidgets.QFormLayout(self)
+        layout.addRow("X", self.xPosLabel)
+        layout.addRow("Y", self.yPosLabel)
+        layout.addRow("Z", self.zPosLabel)
+
+    def resetPosition(self)-> None:
+        self.updatePosition(Position())
+
+    def updatePosition(self, position: Position) -> None:
+        self.xPosLabel.setValue(position.x)
+        self.yPosLabel.setValue(position.y)
+        self.zPosLabel.setValue(position.z)
 
 
 class CalibrationLabel(ui.Label):

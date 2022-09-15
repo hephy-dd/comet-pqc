@@ -1,6 +1,6 @@
-from comet import ui
 from PyQt5 import QtCore, QtWidgets
 
+from ..components import Metric
 from ..utils import format_metric, format_switch
 
 __all__ = [
@@ -11,69 +11,91 @@ __all__ = [
     "EnvironmentMixin"
 ]
 
-NO_VALUE = "---"
+NO_VALUE: str = "---"
 
 
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
     def register_hvsource(self):
-        self.hvsrc_sense_mode = ui.ComboBox(["local", "remote"])
-        self.hvsrc_route_terminal = ui.ComboBox(["front", "rear"])
+        senseModeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        senseModeComboBox.addItem("local", "local")
+        senseModeComboBox.addItem("remote", "remote")
 
-        def toggle_hvsrc_filter(enabled):
-            self.hvsrc_filter_count.enabled = enabled
-            self.hvsrcFilterCountLabel.setEnabled(enabled)
-            self.hvsrc_filter_type.enabled = enabled
-            self.hvsrcFilterTypeLabel.setEnabled(enabled)
+        routeTerminalComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        routeTerminalComboBox.addItem("front", "front")
+        routeTerminalComboBox.addItem("rear", "rear")
 
-        self.hvsrc_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.hvsrc_filter_enable.setText("Enable")
-        self.hvsrc_filter_enable.stateChanged.connect(toggle_hvsrc_filter)
+        def toggleFilter(enabled):
+            filterCountSpinBox.setEnabled(enabled)
+            filterCountLabel.setEnabled(enabled)
+            filterTypeComboBox.setEnabled(enabled)
+            filterTypeLabel.setEnabled(enabled)
 
-        self.hvsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
-        self.hvsrcFilterCountLabel = QtWidgets.QLabel("Count", self)
-        self.hvsrc_filter_type = ui.ComboBox(["repeat", "moving"])
-        self.hvsrcFilterTypeLabel = QtWidgets.QLabel("Type", self)
+        filterEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        filterEnableCheckBox.setText("Enable")
+        filterEnableCheckBox.stateChanged.connect(toggleFilter)
 
-        def toggle_hvsrc_source_voltage_autorange(enabled):
-            self.hvsrc_source_voltage_range.enabled = not enabled
+        filterCountSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        filterCountSpinBox.setRange(0, 100)
 
-        self.hvsrc_source_voltage_autorange_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.hvsrc_source_voltage_autorange_enable.setText("Autorange")
-        self.hvsrc_source_voltage_autorange_enable.stateChanged.connect(toggle_hvsrc_source_voltage_autorange)
+        filterCountLabel: QtWidgets.QLabel = QtWidgets.QLabel("Count", self)
 
-        self.hvsrc_source_voltage_range = ui.Number(minimum=-1100, maximum=1100, decimals=1, suffix="V")
+        filterTypeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        filterTypeComboBox.addItem("repeat", "repeat")
+        filterTypeComboBox.addItem("moving", "moving")
 
-        toggle_hvsrc_filter(False)
-        toggle_hvsrc_source_voltage_autorange(False)
+        filterTypeLabel: QtWidgets.QLabel = QtWidgets.QLabel("Type", self)
 
-        self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_terminal", self.hvsrc_route_terminal, "rear")
-        self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
-        self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
-        self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
-        self.bind("hvsrc_source_voltage_autorange_enable", self.hvsrc_source_voltage_autorange_enable, True)
-        self.bind("hvsrc_source_voltage_range", self.hvsrc_source_voltage_range, 20, unit="V")
+        def toggleSourceVoltageAutorange(enabled: bool) -> None:
+            sourceVoltageRangeSpinBox.setEnabled(not enabled)
 
-        self.status_hvsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_hvsrc_current = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_hvsrc_output = ui.Text(value=NO_VALUE, readonly=True)
+        sourceVoltageAutorangeEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        sourceVoltageAutorangeEnableCheckBox.setText("Autorange")
+        sourceVoltageAutorangeEnableCheckBox.stateChanged.connect(toggleSourceVoltageAutorange)
 
-        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, NO_VALUE)
-        self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
-        self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
+        sourceVoltageRangeSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        sourceVoltageRangeSpinBox.setRange(-2.1e3, 2.1e3)
+        sourceVoltageRangeSpinBox.setDecimals(1)
+        sourceVoltageRangeSpinBox.setSuffix(" V")
+
+        toggleFilter(False)
+        toggleSourceVoltageAutorange(False)
+
+        self.bind("hvsrc_sense_mode", senseModeComboBox, "local")
+        self.bind("hvsrc_route_terminal", routeTerminalComboBox, "rear")
+        self.bind("hvsrc_filter_enable", filterEnableCheckBox, False)
+        self.bind("hvsrc_filter_count", filterCountSpinBox, 10)
+        self.bind("hvsrc_filter_type", filterTypeComboBox, "repeat")
+        self.bind("hvsrc_source_voltage_autorange_enable", sourceVoltageAutorangeEnableCheckBox, True)
+        self.bind("hvsrc_source_voltage_range", sourceVoltageRangeSpinBox, 20, unit="V")
+
+        statusVoltageLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusVoltageLineEdit.setReadOnly(True)
+        statusVoltageLineEdit.setText(NO_VALUE)
+
+        statusCurrentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusCurrentLineEdit.setReadOnly(True)
+        statusCurrentLineEdit.setText(NO_VALUE)
+
+        statusOutputLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusOutputLineEdit.setReadOnly(True)
+        statusOutputLineEdit.setText(NO_VALUE)
+
+        self.bind("status_hvsrc_voltage", statusVoltageLineEdit, NO_VALUE)
+        self.bind("status_hvsrc_current", statusCurrentLineEdit, NO_VALUE)
+        self.bind("status_hvsrc_output", statusOutputLineEdit, NO_VALUE)
 
         statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         statusGroupBox.setTitle("HV Source Status")
 
         statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
-        statusGroupBoxLayout.addWidget(self.status_hvsrc_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(statusVoltageLineEdit, 1, 0)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
-        statusGroupBoxLayout.addWidget(self.status_hvsrc_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(statusCurrentLineEdit, 1, 1)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
-        statusGroupBoxLayout.addWidget(self.status_hvsrc_output.qt, 1, 2)
+        statusGroupBoxLayout.addWidget(statusOutputLineEdit, 1, 2)
 
         self.statusPanelLayout.addWidget(statusGroupBox)
 
@@ -81,20 +103,20 @@ class HVSourceMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.hvsrc_filter_enable)
-        filterGroupBoxLayout.addWidget(self.hvsrcFilterCountLabel)
-        filterGroupBoxLayout.addWidget(self.hvsrc_filter_count.qt)
-        filterGroupBoxLayout.addWidget(self.hvsrcFilterTypeLabel)
-        filterGroupBoxLayout.addWidget(self.hvsrc_filter_type.qt)
+        filterGroupBoxLayout.addWidget(filterEnableCheckBox)
+        filterGroupBoxLayout.addWidget(filterCountLabel)
+        filterGroupBoxLayout.addWidget(filterCountSpinBox)
+        filterGroupBoxLayout.addWidget(filterTypeLabel)
+        filterGroupBoxLayout.addWidget(filterTypeComboBox)
         filterGroupBoxLayout.addStretch()
 
         voltageRangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         voltageRangeGroupBox.setTitle("Source Voltage Range")
 
         voltageRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(voltageRangeGroupBox)
-        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_autorange_enable)
+        voltageRangeGroupBoxLayout.addWidget(sourceVoltageAutorangeEnableCheckBox)
         voltageRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Range", self))
-        voltageRangeGroupBoxLayout.addWidget(self.hvsrc_source_voltage_range.qt)
+        voltageRangeGroupBoxLayout.addWidget(sourceVoltageRangeSpinBox)
         voltageRangeGroupBoxLayout.addStretch()
 
         optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -102,9 +124,9 @@ class HVSourceMixin:
 
         optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Sense Mode", self))
-        optionsGroupBoxLayout.addWidget(self.hvsrc_sense_mode.qt)
+        optionsGroupBoxLayout.addWidget(senseModeComboBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Route Terminal", self))
-        optionsGroupBoxLayout.addWidget(self.hvsrc_route_terminal.qt)
+        optionsGroupBoxLayout.addWidget(routeTerminalComboBox)
         optionsGroupBoxLayout.addStretch()
 
         controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
@@ -119,63 +141,79 @@ class HVSourceMixin:
         def handler(state: dict) -> None:
             if "hvsrc_voltage" in state:
                 value = state.get("hvsrc_voltage")
-                self.status_hvsrc_voltage.value = format_metric(value, "V")
+                statusVoltageLineEdit.setText(format_metric(value, "V"))
             if "hvsrc_current" in state:
                 value = state.get("hvsrc_current")
-                self.status_hvsrc_current.value = format_metric(value, "A")
+                statusCurrentLineEdit.setText(format_metric(value, "A"))
             if "hvsrc_output" in state:
                 value = state.get("hvsrc_output")
-                self.status_hvsrc_output.value = format_switch(value, default=NO_VALUE)
+                statusOutputLineEdit.setText(format_switch(value, default=NO_VALUE))
 
-        self.state_handlers.append(handler)
+        self.addStateHandler(handler)
 
 
 class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
 
     def register_vsource(self):
-        self.vsrc_sense_mode = ui.ComboBox(["local", "remote"])
+        senseModeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        senseModeComboBox.addItem("local", "local")
+        senseModeComboBox.addItem("remote", "remote")
 
-        def toggle_vsrc_filter(enabled):
-            self.vsrc_filter_count.enabled = enabled
-            self.vsrc_filter_count_label.enabled = enabled
-            self.vsrc_filter_type.enabled = enabled
-            self.vsrc_filter_type_label.enabled = enabled
+        def toggleFilter(enabled):
+            filterCountSpinBox.setEnabled(enabled)
+            filterCountLabel.setEnabled(enabled)
+            filterTypeComboBox.setEnabled(enabled)
+            filterTypeLabel.setEnabled(enabled)
 
-        self.vsrc_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.vsrc_filter_enable.setText("Enable")
-        self.vsrc_filter_enable.stateChanged.connect(toggle_vsrc_filter)
+        filterEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        filterEnableCheckBox.setText("Enable")
+        filterEnableCheckBox.stateChanged.connect(toggleFilter)
 
-        self.vsrc_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
-        self.vsrc_filter_count_label = ui.Label(text="Count")
-        self.vsrc_filter_type = ui.ComboBox(["repeat", "moving"])
-        self.vsrc_filter_type_label = ui.Label(text="Type")
+        filterCountSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        filterCountSpinBox.setRange(0, 100)
 
-        toggle_vsrc_filter(False)
+        filterCountLabel = QtWidgets.QLabel("Count", self)
 
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
+        filterTypeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        filterTypeComboBox.addItem("repeat", "repeat")
+        filterTypeComboBox.addItem("moving", "moving")
 
-        self.status_vsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_vsrc_current = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_vsrc_output = ui.Text(value=NO_VALUE, readonly=True)
+        filterTypeLabel = QtWidgets.QLabel("Type", self)
 
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, NO_VALUE)
-        self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
-        self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
+        toggleFilter(False)
+
+        self.bind("vsrc_sense_mode", senseModeComboBox, "local")
+        self.bind("vsrc_filter_enable", filterEnableCheckBox, False)
+        self.bind("vsrc_filter_count", filterCountSpinBox, 10)
+        self.bind("vsrc_filter_type", filterTypeComboBox, "repeat")
+
+        statusVoltageLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusVoltageLineEdit.setReadOnly(True)
+        statusVoltageLineEdit.setText(NO_VALUE)
+
+        statusCurrentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusCurrentLineEdit.setReadOnly(True)
+        statusCurrentLineEdit.setText(NO_VALUE)
+
+        statusOutputLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusOutputLineEdit.setReadOnly(True)
+        statusOutputLineEdit.setText(NO_VALUE)
+
+        self.bind("status_vsrc_voltage", statusVoltageLineEdit, NO_VALUE)
+        self.bind("status_vsrc_current", statusCurrentLineEdit, NO_VALUE)
+        self.bind("status_vsrc_output", statusOutputLineEdit, NO_VALUE)
 
         statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         statusGroupBox.setTitle("V Source Status")
 
         statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
-        statusGroupBoxLayout.addWidget(self.status_vsrc_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(statusVoltageLineEdit, 1, 0)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
-        statusGroupBoxLayout.addWidget(self.status_vsrc_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(statusCurrentLineEdit, 1, 1)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
-        statusGroupBoxLayout.addWidget(self.status_vsrc_output.qt, 1, 2)
+        statusGroupBoxLayout.addWidget(statusOutputLineEdit, 1, 2)
 
         self.statusPanelLayout.addWidget(statusGroupBox)
 
@@ -183,11 +221,11 @@ class VSourceMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_enable)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_count_label.qt)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_count.qt)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_type_label.qt)
-        filterGroupBoxLayout.addWidget(self.vsrc_filter_type.qt)
+        filterGroupBoxLayout.addWidget(filterEnableCheckBox)
+        filterGroupBoxLayout.addWidget(filterCountLabel)
+        filterGroupBoxLayout.addWidget(filterCountSpinBox)
+        filterGroupBoxLayout.addWidget(filterTypeLabel)
+        filterGroupBoxLayout.addWidget(filterTypeComboBox)
         filterGroupBoxLayout.addStretch()
 
         optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -195,7 +233,7 @@ class VSourceMixin:
 
         optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Sense Mode", self))
-        optionsGroupBoxLayout.addWidget(self.vsrc_sense_mode.qt)
+        optionsGroupBoxLayout.addWidget(senseModeComboBox)
         optionsGroupBoxLayout.addStretch()
 
         controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
@@ -210,78 +248,99 @@ class VSourceMixin:
         def handler(state: dict) -> None:
             if "vsrc_voltage" in state:
                 value = state.get("vsrc_voltage")
-                self.status_vsrc_voltage.value = format_metric(value, "V")
+                statusVoltageLineEdit.setText(format_metric(value, "V"))
             if "vsrc_current" in state:
                 value = state.get("vsrc_current")
-                self.status_vsrc_current.value = format_metric(value, "A")
+                statusCurrentLineEdit.setText(format_metric(value, "A"))
             if "vsrc_output" in state:
                 value = state.get("vsrc_output")
-                self.status_vsrc_output.value = format_switch(value, default=NO_VALUE)
+                statusOutputLineEdit.setText(format_switch(value, default=NO_VALUE))
 
-        self.state_handlers.append(handler)
+        self.addStateHandler(handler)
 
 
 class ElectrometerMixin:
     """Mixin class providing default controls and status for Electrometer."""
 
     def register_electrometer(self):
-        def toggle_elm_filter(enabled):
-            self.elm_filter_count.enabled = enabled
-            self.elmFilterCountLabel.setEnabled(enabled)
-            self.elm_filter_type.enabled = enabled
-            self.elmFilterTypeLabel.setEnabled(enabled)
+        def toggleFilter(enabled):
+            filterCountSpinBox.setEnabled(enabled)
+            filterCountLabel.setEnabled(enabled)
+            filterTypeComboBox.setEnabled(enabled)
+            filterTypeLabel.setEnabled(enabled)
 
-        self.elm_filter_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.elm_filter_enable.setText("Enable")
-        self.elm_filter_enable.stateChanged.connect(toggle_elm_filter)
+        filterEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        filterEnableCheckBox.setText("Enable")
+        filterEnableCheckBox.stateChanged.connect(toggleFilter)
 
-        self.elm_filter_count = ui.Number(minimum=0, maximum=100, decimals=0)
-        self.elmFilterCountLabel = QtWidgets.QLabel("Count", self)
-        self.elm_filter_type = ui.ComboBox(["repeat", "moving"])
-        self.elmFilterTypeLabel = QtWidgets.QLabel("Type", self)
+        filterCountSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        filterCountSpinBox.setRange(0, 100)
 
-        self.elm_zero_correction: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.elm_zero_correction.setText("Zero Correction")
+        filterCountLabel = QtWidgets.QLabel("Count", self)
 
-        self.elm_integration_rate = ui.Number(minimum=0, maximum=100.0, decimals=2, suffix="Hz")
+        filterTypeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        filterTypeComboBox.addItem("repeat", "repeat")
+        filterTypeComboBox.addItem("moving", "moving")
 
-        def toggle_elm_current_autorange(enabled):
-            self.elm_current_range.enabled = not enabled
-            self.elm_current_autorange_minimum.enabled = enabled
-            self.elm_current_autorange_maximum.enabled = enabled
+        filterTypeLabel = QtWidgets.QLabel("Type", self)
 
-        self.elm_current_range = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
+        zeroCorrectionCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        zeroCorrectionCheckBox.setText("Zero Correction")
 
-        self.elm_current_autorange_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.elm_current_autorange_enable.setText("Enable")
-        self.elm_current_autorange_enable.stateChanged.connect(toggle_elm_current_autorange)
+        integrationRateSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        integrationRateSpinBox.setRange(0, 100)
+        integrationRateSpinBox.setDecimals(2)
+        integrationRateSpinBox.setSuffix(" Hz")
 
-        self.elm_current_autorange_minimum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
-        self.elm_current_autorange_maximum = ui.Metric(minimum=0, decimals=3, prefixes="munp", unit="A")
+        def toggleCurrentAutorange(enabled):
+            currentRangeMetric.setEnabled(not enabled)
+            currentAutorangeMinimumMetric.setEnabled(enabled)
+            currentAutorangeMaximumMetric.setEnabled(enabled)
 
-        toggle_elm_filter(False)
-        toggle_elm_current_autorange(False)
+        currentRangeMetric: Metric = Metric("A", self)
+        currentRangeMetric.setPrefixes("munp")
+        currentRangeMetric.setDecimals(3)
+        currentRangeMetric.setRange(0, 2.1e3)
 
-        self.bind("elm_filter_enable", self.elm_filter_enable, False)
-        self.bind("elm_filter_count", self.elm_filter_count, 10)
-        self.bind("elm_filter_type", self.elm_filter_type, "repeat")
-        self.bind("elm_zero_correction", self.elm_zero_correction, False)
-        self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
-        self.bind("elm_current_range", self.elm_current_range, 20e-12, unit="A")
-        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, False)
-        self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
-        self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
+        currentAutorangeEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        currentAutorangeEnableCheckBox.setText("Enable")
+        currentAutorangeEnableCheckBox.stateChanged.connect(toggleCurrentAutorange)
 
-        self.status_elm_current = ui.Text(value=NO_VALUE, readonly=True)
+        currentAutorangeMinimumMetric: Metric = Metric("A", self)
+        currentAutorangeMinimumMetric.setPrefixes("munp")
+        currentAutorangeMinimumMetric.setDecimals(3)
+        currentAutorangeMinimumMetric.setRange(0, 2.1e3)
 
-        self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
+        currentAutorangeMaximumMetric: Metric = Metric("A", self)
+        currentAutorangeMaximumMetric.setPrefixes("munp")
+        currentAutorangeMaximumMetric.setDecimals(3)
+        currentAutorangeMaximumMetric.setRange(0, 2.1e3)
+
+        toggleFilter(False)
+        toggleCurrentAutorange(False)
+
+        self.bind("elm_filter_enable", filterEnableCheckBox, False)
+        self.bind("elm_filter_count", filterCountSpinBox, 10)
+        self.bind("elm_filter_type", filterTypeComboBox, "repeat")
+        self.bind("elm_zero_correction", zeroCorrectionCheckBox, False)
+        self.bind("elm_integration_rate", integrationRateSpinBox, 50.0)
+        self.bind("elm_current_range", currentRangeMetric, 20e-12, unit="A")
+        self.bind("elm_current_autorange_enable", currentAutorangeEnableCheckBox, False)
+        self.bind("elm_current_autorange_minimum", currentAutorangeMinimumMetric, 2.0E-11, unit="A")
+        self.bind("elm_current_autorange_maximum", currentAutorangeMaximumMetric, 2.0E-2, unit="A")
+
+        statusCurrentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusCurrentLineEdit.setReadOnly(True)
+        statusCurrentLineEdit.setText(NO_VALUE)
+
+        self.bind("status_elm_current", statusCurrentLineEdit, NO_VALUE)
 
         statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         statusGroupBox.setTitle("Electrometer Status")
 
         statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 0)
-        statusGroupBoxLayout.addWidget(self.status_elm_current.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(statusCurrentLineEdit, 1, 0)
         statusGroupBoxLayout.setColumnStretch(0, 1)
         statusGroupBoxLayout.setColumnStretch(1, 2)
 
@@ -291,11 +350,11 @@ class ElectrometerMixin:
         filterGroupBox.setTitle("Filter")
 
         filterGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(filterGroupBox)
-        filterGroupBoxLayout.addWidget(self.elm_filter_enable)
-        filterGroupBoxLayout.addWidget(self.elmFilterCountLabel)
-        filterGroupBoxLayout.addWidget(self.elm_filter_count.qt)
-        filterGroupBoxLayout.addWidget(self.elmFilterTypeLabel)
-        filterGroupBoxLayout.addWidget(self.elm_filter_type.qt)
+        filterGroupBoxLayout.addWidget(filterEnableCheckBox)
+        filterGroupBoxLayout.addWidget(filterCountLabel)
+        filterGroupBoxLayout.addWidget(filterCountSpinBox)
+        filterGroupBoxLayout.addWidget(filterTypeLabel)
+        filterGroupBoxLayout.addWidget(filterTypeComboBox)
         filterGroupBoxLayout.addStretch()
 
         rangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -303,17 +362,17 @@ class ElectrometerMixin:
 
         rangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(rangeGroupBox)
         rangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Current Range", self))
-        rangeGroupBoxLayout.addWidget(self.elm_current_range.qt)
+        rangeGroupBoxLayout.addWidget(currentRangeMetric)
 
         autoRangeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         autoRangeGroupBox.setTitle("Auto Range")
 
         autoRangeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(autoRangeGroupBox)
-        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_enable)
+        autoRangeGroupBoxLayout.addWidget(currentAutorangeEnableCheckBox)
         autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Minimum Current", self))
-        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_minimum.qt)
+        autoRangeGroupBoxLayout.addWidget(currentAutorangeMinimumMetric)
         autoRangeGroupBoxLayout.addWidget(QtWidgets.QLabel("Maximum Current", self))
-        autoRangeGroupBoxLayout.addWidget(self.elm_current_autorange_maximum.qt)
+        autoRangeGroupBoxLayout.addWidget(currentAutorangeMaximumMetric)
         autoRangeGroupBoxLayout.addStretch()
 
         rangeLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
@@ -324,9 +383,9 @@ class ElectrometerMixin:
         optionsGroupBox.setTitle("Options")
 
         optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
-        optionsGroupBoxLayout.addWidget(self.elm_zero_correction)
+        optionsGroupBoxLayout.addWidget(zeroCorrectionCheckBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Integration Rate", self))
-        optionsGroupBoxLayout.addWidget(self.elm_integration_rate.qt)
+        optionsGroupBoxLayout.addWidget(integrationRateSpinBox)
         optionsGroupBoxLayout.addStretch()
 
         controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
@@ -341,56 +400,75 @@ class ElectrometerMixin:
         def handler(state: dict) -> None:
             if "elm_current" in state:
                 value = state.get("elm_current")
-                self.status_elm_current.value = format_metric(value, "A")
-        self.state_handlers.append(handler)
+                statusCurrentLineEdit.setText(format_metric(value, "A"))
+        self.addStateHandler(handler)
 
 
 class LCRMixin:
     """Mixin class providing default controls and status for LCR Meter."""
 
     def register_lcr(self):
-        def change_lcr_open_correction_mode(mode):
-            self.lcr_open_correction_channel.enabled = mode == "multi"
+        integrationTimeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        integrationTimeComboBox.addItem("short", "short")
+        integrationTimeComboBox.addItem("medium", "medium")
+        integrationTimeComboBox.addItem("long", "long")
 
-        self.lcr_integration_time = ui.ComboBox(["short", "medium", "long"])
-        self.lcr_averaging_rate = ui.Number(minimum=1, maximum=256, decimals=0)
+        averagingRateSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        averagingRateSpinBox.setRange(1, 256)
 
-        self.lcr_auto_level_control: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.lcr_auto_level_control.setText("Auto Level Control")
+        autoLevelControlCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        autoLevelControlCheckBox.setText("Auto Level Control")
 
-        self.lcr_soft_filter: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.lcr_soft_filter.setText("Filter STD/mean < 0.005")
+        softFilterCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        softFilterCheckBox.setText("Filter STD/mean < 0.005")
 
-        self.lcr_open_correction_mode = ui.ComboBox(["single", "multi"], changed=change_lcr_open_correction_mode)
-        self.lcr_open_correction_channel = ui.Number(minimum=0, maximum=127, decimals=0)
+        def changeOpenCorrectionMode(index: int) -> None:
+            mode = openCorrectionModeComboBox.itemData(index)
+            openCorrectionChannelSpinBox.setEnabled(mode == "multi")
 
-        change_lcr_open_correction_mode(self.lcr_open_correction_mode.current)
+        openCorrectionModeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        openCorrectionModeComboBox.addItem("single", "single")
+        openCorrectionModeComboBox.addItem("multi", "multi")
+        openCorrectionModeComboBox.currentIndexChanged.connect(changeOpenCorrectionMode)
 
-        self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
-        self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
-        self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
-        self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
-        self.bind("lcr_open_correction_mode", self.lcr_open_correction_mode, "single")
-        self.bind("lcr_open_correction_channel", self.lcr_open_correction_channel, 0)
+        openCorrectionChannelSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        openCorrectionChannelSpinBox.setRange(0, 127)
 
-        self.status_lcr_voltage = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_lcr_current = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_lcr_output = ui.Text(value=NO_VALUE, readonly=True)
+        changeOpenCorrectionMode(0)
 
-        self.bind("status_lcr_voltage", self.status_lcr_voltage, NO_VALUE)
-        self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
-        self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
+        self.bind("lcr_integration_time", integrationTimeComboBox, "medium")
+        self.bind("lcr_averaging_rate", averagingRateSpinBox, 1)
+        self.bind("lcr_auto_level_control", autoLevelControlCheckBox, True)
+        self.bind("lcr_soft_filter", softFilterCheckBox, True)
+        self.bind("lcr_open_correction_mode", openCorrectionModeComboBox, "single")
+        self.bind("lcr_open_correction_channel", openCorrectionChannelSpinBox, 0)
+
+        statusVoltageLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusVoltageLineEdit.setReadOnly(True)
+        statusVoltageLineEdit.setText(NO_VALUE)
+
+        statusCurrentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusCurrentLineEdit.setReadOnly(True)
+        statusCurrentLineEdit.setText(NO_VALUE)
+
+        statusOutputLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusOutputLineEdit.setReadOnly(True)
+        statusOutputLineEdit.setText(NO_VALUE)
+
+        self.bind("status_lcr_voltage", statusVoltageLineEdit, NO_VALUE)
+        self.bind("status_lcr_current", statusCurrentLineEdit, NO_VALUE)
+        self.bind("status_lcr_output", statusOutputLineEdit, NO_VALUE)
 
         statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         statusGroupBox.setTitle("LCR Status")
 
         statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Voltage", self), 0, 0)
-        statusGroupBoxLayout.addWidget(self.status_lcr_voltage.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(statusVoltageLineEdit, 1, 0)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Current", self), 0, 1)
-        statusGroupBoxLayout.addWidget(self.status_lcr_current.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(statusCurrentLineEdit, 1, 1)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Output", self), 0, 2)
-        statusGroupBoxLayout.addWidget(self.status_lcr_output.qt, 1, 2)
+        statusGroupBoxLayout.addWidget(statusOutputLineEdit, 1, 2)
 
         self.statusPanelLayout.addWidget(statusGroupBox)
 
@@ -399,9 +477,9 @@ class LCRMixin:
 
         openCorrGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(openCorrGroupBox)
         openCorrGroupBoxLayout.addWidget(QtWidgets.QLabel("Method", self))
-        openCorrGroupBoxLayout.addWidget(self.lcr_open_correction_mode.qt)
+        openCorrGroupBoxLayout.addWidget(openCorrectionModeComboBox)
         openCorrGroupBoxLayout.addWidget(QtWidgets.QLabel("Channel", self))
-        openCorrGroupBoxLayout.addWidget(self.lcr_open_correction_channel.qt)
+        openCorrGroupBoxLayout.addWidget(openCorrectionChannelSpinBox)
         openCorrGroupBoxLayout.addStretch()
 
         optionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -409,11 +487,11 @@ class LCRMixin:
 
         optionsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(optionsGroupBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Integration Time", self))
-        optionsGroupBoxLayout.addWidget(self.lcr_integration_time.qt)
+        optionsGroupBoxLayout.addWidget(integrationTimeComboBox)
         optionsGroupBoxLayout.addWidget(QtWidgets.QLabel("Averaging Rate", self))
-        optionsGroupBoxLayout.addWidget(self.lcr_averaging_rate.qt)
-        optionsGroupBoxLayout.addWidget(self.lcr_auto_level_control)
-        optionsGroupBoxLayout.addWidget(self.lcr_soft_filter)
+        optionsGroupBoxLayout.addWidget(averagingRateSpinBox)
+        optionsGroupBoxLayout.addWidget(autoLevelControlCheckBox)
+        optionsGroupBoxLayout.addWidget(softFilterCheckBox)
         optionsGroupBoxLayout.addStretch()
 
         controlWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
@@ -428,51 +506,59 @@ class LCRMixin:
         def handler(state: dict) -> None:
             if "lcr_voltage" in state:
                 value = state.get("lcr_voltage")
-                self.status_lcr_voltage.value = format_metric(value, "V")
+                statusVoltageLineEdit.setText(format_metric(value, "V"))
             if "lcr_current" in state:
                 value = state.get("lcr_current")
-                self.status_lcr_current.value = format_metric(value, "A")
+                statusCurrentLineEdit.setText(format_metric(value, "A"))
             if "lcr_output" in state:
                 value = state.get("lcr_output")
-                self.status_lcr_output.value = format_switch(value, default=NO_VALUE)
+                statusOutputLineEdit.setText(format_switch(value, default=NO_VALUE))
 
-        self.state_handlers.append(handler)
+        self.addStateHandler(handler)
 
 
 class EnvironmentMixin:
     """Mixin class providing default controls and status for Environment box."""
 
     def register_environment(self):
-        self.status_env_chuck_temperature = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_env_box_temperature = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_env_box_humidity = ui.Text(value=NO_VALUE, readonly=True)
+        statusChuckTempLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusChuckTempLineEdit.setReadOnly(True)
+        statusChuckTempLineEdit.setText(NO_VALUE)
 
-        self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, NO_VALUE)
-        self.bind("status_env_box_temperature", self.status_env_box_temperature, NO_VALUE)
-        self.bind("status_env_box_humidity", self.status_env_box_humidity, NO_VALUE)
+        statusBoxTempLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusBoxTempLineEdit.setReadOnly(True)
+        statusBoxTempLineEdit.setText(NO_VALUE)
+
+        statusBoxHumidLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        statusBoxHumidLineEdit.setReadOnly(True)
+        statusBoxHumidLineEdit.setText(NO_VALUE)
+
+        self.bind("status_env_chuck_temperature", statusChuckTempLineEdit, NO_VALUE)
+        self.bind("status_env_box_temperature", statusBoxTempLineEdit, NO_VALUE)
+        self.bind("status_env_box_humidity", statusBoxHumidLineEdit, NO_VALUE)
 
         statusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         statusGroupBox.setTitle("Environment Status")
 
         statusGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(statusGroupBox)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Chuck temp.", self), 0, 0)
-        statusGroupBoxLayout.addWidget(self.status_env_chuck_temperature.qt, 1, 0)
+        statusGroupBoxLayout.addWidget(statusChuckTempLineEdit, 1, 0)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box temp.", self), 0, 1)
-        statusGroupBoxLayout.addWidget(self.status_env_box_temperature.qt, 1, 1)
+        statusGroupBoxLayout.addWidget(statusBoxTempLineEdit, 1, 1)
         statusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box humid.", self), 0, 2)
-        statusGroupBoxLayout.addWidget(self.status_env_box_humidity.qt, 1, 2)
+        statusGroupBoxLayout.addWidget(statusBoxHumidLineEdit, 1, 2)
 
         self.statusPanelLayout.addWidget(statusGroupBox)
 
         def handler(state: dict) -> None:
             if "env_chuck_temperature" in state:
                 value = state.get("env_chuck_temperature")
-                self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
+                statusChuckTempLineEdit.setText(format_metric(value, "°C", decimals=2))
             if "env_box_temperature" in state:
                 value = state.get("env_box_temperature")
-                self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
+                statusBoxTempLineEdit.setText(format_metric(value, "°C", decimals=2))
             if "env_box_humidity" in state:
                 value = state.get("env_box_humidity")
-                self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
+                statusBoxHumidLineEdit.setText(format_metric(value, "%rH", decimals=2))
 
-        self.state_handlers.append(handler)
+        self.addStateHandler(handler)

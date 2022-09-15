@@ -328,7 +328,7 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
         self.joystickButton.setStatusTip("Toggle table joystick")
         self.joystickButton.toggled.connect(self.joystickToggled.emit)
 
-        self._position_widget = PositionWidget()
+        self.positionWidget: PositionWidget = PositionWidget(self)
 
         self._calibration_widget = CalibrationWidget()
 
@@ -338,7 +338,7 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
         self.controlButton.clicked.connect(self.controlClicked.emit)
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self._position_widget.qt, 0, 0, 4, 1)
+        layout.addWidget(self.positionWidget, 0, 0, 4, 1)
         layout.addWidget(self._calibration_widget.qt, 0, 1, 4, 1)
         layout.addWidget(self.controlButton, 1, 3)
         layout.addWidget(self.joystickButton, 2, 3)
@@ -353,8 +353,8 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
         with QtCore.QSignalBlocker(self.joystickButton):
             self.joystickButton.setChecked(state)
 
-    def updatePosition(self, position) -> None:
-        self._position_widget.update_position(position)
+    def updatePosition(self, position: Position) -> None:
+        self.positionWidget.updatePosition(position)
         limits = self._joystick_limits
         enabled = position.x <= limits[0] and position.y <= limits[1] and position.z <= limits[2]
         self.joystickButton.setEnabled(enabled and self.isCalibrationValid())
@@ -889,7 +889,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             measure.reading = panel.append_reading
             measure.update = panel.updateReadings
             measure.append_analysis = panel.append_analysis
-            measure.state = panel.state
+            measure.state = panel.updateState
         def hide_measurement(item):
             item.selectable = False
             item[0].color = None

@@ -1,12 +1,11 @@
 import logging
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-
 from comet.settings import SettingsMixin
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core import config
 from ..sequence import SequenceManager
-from ..utils import show_exception, make_path
+from ..utils import make_path, show_exception
 from .panel import Panel
 
 __all__ = ["SamplePanel"]

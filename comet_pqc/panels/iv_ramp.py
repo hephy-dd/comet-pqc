@@ -1,7 +1,7 @@
-import comet
-from comet import ui
+from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
+from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin
 
@@ -28,16 +28,34 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
-        self.voltage_start = ui.Number(decimals=3, suffix="V")
-        self.voltage_stop = ui.Number(decimals=3, suffix="V")
-        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setRange(-2.1e3, +2.1e3)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setSuffix(" V")
 
-        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
+        self.voltage_stop: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setRange(-2.1e3, +2.1e3)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setSuffix(" V")
+
+        self.voltage_step: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setRange(0, 200)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setSuffix(" V")
+
+        self.waiting_time: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waiting_time.setRange(0, 60)
+        self.waiting_time.setDecimals(2)
+        self.waiting_time.setSuffix(" s")
+
+        self.hvsrc_current_compliance: Metric = Metric("A", self)
+        self.hvsrc_current_compliance.setPrefixes("mun")
+        self.hvsrc_current_compliance.setDecimals(3)
+        self.hvsrc_current_compliance.setRange(0, 2.1e3)
 
         self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrc_accept_compliance.setText("Accept Compliance")
-        
+
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
@@ -51,13 +69,13 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
 
         hvsrcRampGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcRampGroupBox)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_start)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_stop)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.voltage_step)
         hvsrcRampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time", self))
-        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time.qt)
+        hvsrcRampGroupBoxLayout.addWidget(self.waiting_time)
         hvsrcRampGroupBoxLayout.addStretch()
 
         hvsrcGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -65,7 +83,7 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
 
         hvsrcGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
         hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance", self))
-        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance.qt)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrc_current_compliance)
         hvsrcGroupBoxLayout.addWidget(self.hvsrc_accept_compliance)
         hvsrcGroupBoxLayout.addStretch()
 
@@ -73,8 +91,8 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.generalWidgetLayout.addWidget(hvsrcGroupBox, 1)
         self.generalWidgetLayout.addStretch(1)
 
-        ampere = comet.ureg("A")
-        volt = comet.ureg("V")
+        ampere = ureg("A")
+        volt = ureg("V")
 
         self.series_transform["hvsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
         self.series_transform["xfit"] = self.series_transform.get("hvsrc")
