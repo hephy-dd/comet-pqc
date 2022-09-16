@@ -232,9 +232,9 @@ class AlternateTableProcess(TableProcess):
     def enable_joystick(self, state) -> Request:
         def request(table):
             if state:
-                x, y, z = settings.table_joystick_maximum_limits
+                x, y, z = settings.tableJoystickMaximumLimits()
             else:
-                x, y, z = settings.table_probecard_maximum_limits
+                x, y, z = settings.tableProbecardMaximumLimits()
             table.limit = (
                 (0, to_table_unit(x)),
                 (0, to_table_unit(y)),

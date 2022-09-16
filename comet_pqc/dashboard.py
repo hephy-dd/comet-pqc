@@ -4,7 +4,7 @@ import math
 import os
 import time
 import webbrowser
-from typing import List
+from typing import List, Tuple
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -318,7 +318,7 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self._joystick_limits: List = [0, 0, 0]
+        self._joystick_limits: Tuple[float, float, float] = (0, 0, 0)
         self._calibration_valid: bool = False
 
         self.setTitle("Table")
@@ -330,7 +330,7 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
 
         self.positionWidget: PositionWidget = PositionWidget(self)
 
-        self._calibration_widget = CalibrationWidget()
+        self.calibrationWidget: CalibrationWidget = CalibrationWidget(self)
 
         self.controlButton = QtWidgets.QPushButton(self)
         self.controlButton.setText("Control...")
@@ -339,7 +339,7 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
 
         layout = QtWidgets.QGridLayout(self)
         layout.addWidget(self.positionWidget, 0, 0, 4, 1)
-        layout.addWidget(self._calibration_widget.qt, 0, 1, 4, 1)
+        layout.addWidget(self.calibrationWidget, 0, 1, 4, 1)
         layout.addWidget(self.controlButton, 1, 3)
         layout.addWidget(self.joystickButton, 2, 3)
         layout.setColumnStretch(2, 1)
@@ -360,13 +360,13 @@ class TableControlWidget(QtWidgets.QGroupBox, comet.SettingsMixin):
         self.joystickButton.setEnabled(enabled and self.isCalibrationValid())
 
     def update_calibration(self, position) -> None:
-        self._calibration_widget.update_calibration(position)
+        self.calibrationWidget.updateCalibration(position)
         self._calibration_valid = caldone_valid(position)
 
     def readSettings(self) -> None:
         use_table = self.settings.get("use_table") or False
         self.setChecked(use_table)
-        self._joystick_limits = settings.table_joystick_maximum_limits
+        self._joystick_limits = settings.tableJoystickMaximumLimits()
 
 
 class EnvironGroupBox(QtWidgets.QGroupBox):
@@ -672,15 +672,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             os.makedirs(output_dir)
         return output_dir
 
-    def write_logfiles(self):
-        return bool(self.settings.get("write_logfiles", True))
-
-    def export_json(self):
-        return bool(self.settings.get("export_json", True))
-
-    def export_txt(self):
-        return bool(self.settings.get("export_txt", True))
-
     # Callbacks
 
     def lock_controls(self):
@@ -866,15 +857,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
-        measure.set("write_logfiles", self.write_logfiles())
+        measure.set("write_logfiles", settings.isWriteLogfiles())
         measure.set("use_environ", self.use_environment())
         measure.set("use_table", self.use_table())
-        measure.set("serialize_json", self.export_json())
-        measure.set("serialize_txt", self.export_txt())
+        measure.set("serialize_json", settings.isExportJson())
+        measure.set("serialize_txt", settings.isExportTxt())
         measure.set("move_to_contact", move_to_contact)
         measure.set("move_to_after_position", move_to_after_position)
-        measure.set("contact_delay", self.settings.get("table_contact_delay") or 0)
-        measure.set("retry_contact_overdrive", settings.retry_contact_overdrive)
+        measure.set("contact_delay", settings.tableContactDelay())
+        measure.set("retry_contact_overdrive", settings.retryContactOverdrive())
         def show_measurement(item):
             item.selectable = True
             item.series.clear()
@@ -909,9 +900,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     def saveToImage(self, item: MeasurementTreeItem, filename: str) -> None:
         """Save item plots to image file if enabled in properties."""
-        plot_png = self.settings.get("png_plots") or False
         panel = self.panels.get(item.type)
-        if panel and plot_png:
+        if panel and settings.isPngPlots():
             panel.saveToImage(filename)
 
     def on_stop(self):

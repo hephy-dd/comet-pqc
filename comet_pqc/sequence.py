@@ -138,7 +138,7 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
             current = self.positionsComboBox.current
             if current:
                 index = self.positionsComboBox.index(current)
-                positions = settings.table_positions
+                positions = settings.tablePositions()
                 if 0 <= index < len(positions):
                     position = positions[index]
                     return position.x, position.y, position.z

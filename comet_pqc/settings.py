@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Tuple, Type
 
 from comet.settings import SettingsMixin
 
@@ -41,46 +41,41 @@ class TablePosition(Position):
 
 class Settings(SettingsMixin):
 
-    @property
-    def table_positions(self):
+    def tablePositions(self) -> List[TablePosition]:
         """List of user defined table positions for movement operations."""
-        positions = []
-        for position in self.settings.get("table_positions") or []:
-            name = position.get("name")
-            x = from_table_unit(position.get("x") or 0)
-            y = from_table_unit(position.get("y") or 0)
-            z = from_table_unit(position.get("z") or 0)
-            comment = position.get("comment")
+        positions: List[TablePosition] = []
+        for position in self.settings.get("table_positions", []):
+            name = position.get("name", "")
+            x = from_table_unit(position.get("x", 0.))
+            y = from_table_unit(position.get("y", 0.))
+            z = from_table_unit(position.get("z", 0.))
+            comment = position.get("comment", "")
             positions.append(TablePosition(name, x, y, z, comment))
         return positions
 
-    @table_positions.setter
-    def table_positions(self, value):
-        positions = []
-        for position in value:
-            positions.append({
+    def setTablePositions(self, positions: Iterable[TablePosition]) -> None:
+        table_positions = []
+        for position in positions:
+            table_positions.append({
                 "name": position.name,
                 "x": to_table_unit(position.x),
                 "y": to_table_unit(position.y),
                 "z": to_table_unit(position.z),
                 "comment": position.comment,
             })
-        self.settings["table_positions"] = positions
+        self.settings["table_positions"] = table_positions
 
-    @property
-    def table_z_limit(self):
+    def tableZLimit(self) -> float:
         """Table Z limit in millimeters."""
-        return from_table_unit(self.settings.get("z_limit_movement") or 0)
+        return from_table_unit(self.settings.get("z_limit_movement", 0))
 
-    @table_z_limit.setter
-    def table_z_limit(self, value):
+    def setTableZLimit(self, value: float) -> None:
         self.settings["z_limit_movement"] = to_table_unit(value)
 
-    @property
-    def table_probecard_maximum_limits(self):
+    def tableProbecardMaximumLimits(self) -> Tuple[float, float, float]:
         default = 0.0, 0.0, 0.0
         try:
-            limits = self.settings.get("table_probecard_maximum_limits") or default
+            limits = self.settings.get("table_probecard_maximum_limits", default)
             return (
                 from_table_unit(limits.get("x", 0.0)),
                 from_table_unit(limits.get("y", 0.0)),
@@ -89,28 +84,24 @@ class Settings(SettingsMixin):
         except Exception:
             return default
 
-    @table_probecard_maximum_limits.setter
-    def table_probecard_maximum_limits(self, value):
-        x, y, z = value
+    def setTableProbecardMaximumLimits(self, position: Tuple[float, float, float]) -> None:
+        x, y, z = position
         self.settings["table_probecard_maximum_limits"] = {
             "x": to_table_unit(x),
             "y": to_table_unit(y),
             "z": to_table_unit(z)
         }
 
-    @property
-    def table_temporary_z_limit(self) -> bool:
-        return self.settings.get("table_temporary_z_limit") or False
+    def tableTemporaryZLimit(self) -> bool:
+        return self.settings.get("table_temporary_z_limit", False)
 
-    @table_temporary_z_limit.setter
-    def table_temporary_z_limit(self, value: bool) -> None:
+    def setTableTemporaryZLimit(self, value: bool) -> None:
         self.settings["table_temporary_z_limit"] = bool(value)
 
-    @property
-    def table_joystick_maximum_limits(self):
+    def tableJoystickMaximumLimits(self) -> Tuple[float, float, float]:
         default = 0.0, 0.0, 0.0
         try:
-            limits = self.settings.get("table_joystick_maximum_limits") or default
+            limits = self.settings.get("table_joystick_maximum_limits", default)
             return (
                 from_table_unit(limits.get("x", 0.0)),
                 from_table_unit(limits.get("y", 0.0)),
@@ -119,8 +110,7 @@ class Settings(SettingsMixin):
         except Exception:
             return default
 
-    @table_joystick_maximum_limits.setter
-    def table_joystick_maximum_limits(self, value):
+    def setTableJoystickMaximumLimits(self, value:Tuple[float, float, float]) -> None:
         x, y, z = value
         self.settings["table_joystick_maximum_limits"] = {
             "x": to_table_unit(x),
@@ -128,84 +118,77 @@ class Settings(SettingsMixin):
             "z": to_table_unit(z)
         }
 
-    default_table_control_update_interval = 1.0
+    DefaultTableControlUpdateInterval: float = 1.0
 
-    @property
-    def table_control_update_interval(self):
-        return safe_float(self.settings.get("table_control_update_interval"), self.default_table_control_update_interval)
+    def tableControlUpdateInterval(self) -> float:
+        return safe_float(self.settings.get("table_control_update_interval"), self.DefaultTableControlUpdateInterval)
 
-    @table_control_update_interval.setter
-    def table_control_update_interval(self, value):
+    def setTableControlUpdateInterval(self, value: float) -> None:
         self.settings["table_control_update_interval"] = float(value)
 
-    default_table_control_dodge_enabled = False
+    DefaultTableControlDodgeEnabled: bool = False
 
-    @property
-    def table_control_dodge_enabled(self):
-        return bool(self.settings.get("table_control_dodge_enabled") or self.default_table_control_dodge_enabled)
+    def tableControlDodgeEnabled(self) -> bool:
+        return safe_bool(self.settings.get("table_control_dodge_enabled"), self.DefaultTableControlDodgeEnabled)
 
-    @table_control_dodge_enabled.setter
-    def table_control_dodge_enabled(self, value):
+    def setTableControlDodgeEnabled(self, value: bool):
         self.settings["table_control_dodge_enabled"] = bool(value)
 
-    default_table_control_dodge_height = 500 # micron
+    DefaultTableControlDodgeHeight: int = 500  # micron
 
-    @property
-    def table_control_dodge_height(self):
-        return from_table_unit(safe_int(self.settings.get("table_control_dodge_height"), self.default_table_control_dodge_height))
+    def tableControlDodgeHeight(self) -> float:
+        return from_table_unit(safe_int(self.settings.get("table_control_dodge_height"), self.DefaultTableControlDodgeHeight))
 
-    @table_control_dodge_height.setter
-    def table_control_dodge_height(self, value):
+    def setTableControlDodgeHeight(self, value: float):
         self.settings["table_control_dodge_height"] = to_table_unit(value)
 
-    @property
-    def operators(self):
-        return list(self.settings.get("operators") or [])
+    def tableContactDelay(self) -> float:
+        return safe_float(self.settings.get("table_contact_delay"), 0)
 
-    @operators.setter
-    def operators(self, value):
-        self.settings["operators"] = list(value)
+    def setTableContactDelay(self, value: float) -> None:
+        self.settings["table_contact_delay"] = float(value)
 
-    @property
-    def current_operator(self):
+    def operators(self) -> List[str]:
+        return list(self.settings.get("operators", []))
+
+    def setOperators(self, operators: List[str]) -> None:
+        self.settings["operators"] = list(operators)
+
+    def currentOperator(self) -> str:
         index = safe_int(self.settings.get("current_operator"), 0)
-        operators = self.operators
+        operators = self.operators()
         if 0 <= index < len(operators):
             return operators[index]
-        return None
+        return ""
 
-    @current_operator.setter
-    def current_operator(self, value):
-        operators = self.operators
+    def setCurrentOperator(self, operator: str) -> None:
+        operators = self.operators()
         index = 0
-        if value in operators:
-            index = operators.index(value)
+        if operator in operators:
+            index = operators.index(operator)
         self.settings["current_operator"] = index
 
-    @property
-    def output_path(self):
-        output_path = self.settings.get("output_path") or []
+    def outputPath(self) -> List[str]:
+        output_path = self.settings.get("output_path", [])
         if isinstance(output_path, str):
             output_path = [output_path] # provide backward compatibility
         return output_path
 
-    @output_path.setter
-    def output_path(self, value):
-        if isinstance(value, str):
-            value = [value] # provide backward compatibility
-        self.settings["output_path"] = value
+    def setOutputPath(self, path: Iterable[str]) -> None:
+        if isinstance(path, str):
+            self.settings["output_path"] = [path]  # provide backward compatibility
+        else:
+            self.settings["output_path"] = path
 
-    @property
-    def current_output_path(self):
+    def currentOutputPath(self) -> str:
         index = safe_int(self.settings.get("current_output_path"), 0)
-        output_path = self.output_path
+        output_path = self.outputPath()
         if 0 <= index < len(output_path):
             return output_path[index]
-        return None
+        return ""
 
-    @current_output_path.setter
-    def current_output_path(self, value):
-        output_path = self.output_path
+    def setCurrentOutputPath(self, value: str) -> None:
+        output_path = self.outputPath()
         index = 0
         if value in output_path:
             index = output_path.index(value)
@@ -224,19 +207,19 @@ class Settings(SettingsMixin):
 
     def instrumentModel(self, name: str) -> str:
         if name == "matrix":
-            return self.settings.get("matrix_instrument") or "K707B"
+            return self.settings.get("matrix_instrument", "K707B")
         if name == "vsrc":
-            return self.settings.get("vsrc_instrument") or "K2657A"
+            return self.settings.get("vsrc_instrument", "K2657A")
         if name == "hvsrc":
-            return self.settings.get("hvsrc_instrument") or "K2410"
+            return self.settings.get("hvsrc_instrument", "K2410")
         if name == "lcr":
-            return self.settings.get("lcr_instrument") or "E4980A"
+            return self.settings.get("lcr_instrument", "E4980A")
         if name == "elm":
-            return self.settings.get("elm_instrument") or "K6517B"
+            return self.settings.get("elm_instrument", "K6517B")
         if name == "environ":
-            return self.settings.get("environ_instrument") or "EnvironmentBox"
+            return self.settings.get("environ_instrument", "EnvironmentBox")
         if name == "table":
-            return self.settings.get("table_instrument") or "Venus1"
+            return self.settings.get("table_instrument", "Venus1")
         raise ValueError(name)
 
     def resources(self) -> Dict[str, Dict[str, Any]]:
@@ -264,57 +247,65 @@ class Settings(SettingsMixin):
             self.settings[f"{name}_instrument"] = resource.get("model", "")
         self.settings["resources"] = resources_
 
-    @property
-    def vsrc_instrument(self):
-        model = self.settings.get("vsrc_instrument") or "K2657A"
-        if model not in ["K2410", "K2470",  "K2657A"]:
-            raise KeyError(f"No such V Source instrument model: {model!r}")
+    def getInstrumentType(self, name: str) -> Type:
+        model = self.instrumentModel(name)
+        if model not in self.instrumentModels(name):
+            raise KeyError(f"No such {name!r} instrument model: {model!r}")
         return get_instrument(model)
 
-    @property
-    def hvsrc_instrument(self):
-        model = self.settings.get("hvsrc_instrument") or "K2410"
-        if model not in ["K2410", "K2470",  "K2657A"]:
-            raise KeyError(f"No such HV Source instrument model: {model!r}")
-        return get_instrument(model)
-
-    @property
-    def elm_instrument(self):
-        model = self.settings.get("elm_instrument") or "K6517B"
-        if model not in ["K6517B"]:
-            raise KeyError(f"No such ELM instrument model: {model!r}")
-        return get_instrument(model)
-
-    @property
-    def lcr_instrument(self):
-        model = self.settings.get("lcr_instrument") or "E4980A"
-        if model not in ["E4980A"]:
-            raise KeyError(f"No such LCR instrument model: {model!r}")
-        return get_instrument(model)
-
-    @property
-    def retry_measurement_count(self):
+    def retryMeasurementCount(self) -> int:
         return safe_int(self.settings.get("retry_measurement_count"), 0)
 
-    @retry_measurement_count.setter
-    def retry_measurement_count(self, value):
+    def setRetryMeasurementCount(self, value: int) -> None:
         self.settings["retry_measurement_count"] = int(value)
 
-    @property
-    def retry_contact_count(self):
+    def retryContactCount(self) -> int:
         return safe_int(self.settings.get("retry_contact_count"), 0)
 
-    @retry_contact_count.setter
-    def retry_contact_count(self, value):
+    def setRetryContactCount(self, value: int) -> None:
         self.settings["retry_contact_count"] = int(value)
 
-    @property
-    def retry_contact_overdrive(self):
-        return from_table_unit(self.settings.get("retry_contact_overdrive") or 0)
+    def retryContactOverdrive(self):
+        return from_table_unit(self.settings.get("retry_contact_overdrive", 0))
 
-    @retry_contact_overdrive.setter
-    def retry_contact_overdrive(self, value):
+    def setRetryContactOverdrive(self, value):
         self.settings["retry_contact_overdrive"] = to_table_unit(value)
+
+    def isPngPlots(self) -> bool:
+        return safe_bool(self.settings.get("png_plots"), False)
+
+    def setPngPlots(self, value: bool):
+        self.settings["png_plots"] = bool(value)
+
+    def isPointsInPlots(self) -> bool:
+        return safe_bool(self.settings.get("points_in_plots"), False)
+
+    def setPointsInPlots(self, value: bool):
+        self.settings["points_in_plots"] = bool(value)
+
+    def isPngAnalysis(self) -> bool:
+        return safe_bool(self.settings.get("png_analysis"), False)
+
+    def setPngAnalysis(self, value: bool):
+        self.settings["png_analysis"] = bool(value)
+
+    def isExportJson(self) -> bool:
+        return safe_bool(self.settings.get("export_json"), True)
+
+    def setExportJson(self, value: bool):
+        self.settings["export_json"] = bool(value)
+
+    def isExportTxt(self) -> bool:
+        return safe_bool(self.settings.get("export_txt"), False)
+
+    def setExportTxt(self, value: bool):
+        self.settings["export_txt"] = bool(value)
+
+    def isWriteLogfiles(self) -> bool:
+        return safe_bool(self.settings.get("write_logfiles"), True)
+
+    def setWriteLogfiles(self, value: bool):
+        self.settings["write_logfiles"] = bool(value)
 
 
 settings = Settings()

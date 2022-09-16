@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def safe_z_position(z: float) -> float:
-    z_limit = settings.table_z_limit
+    z_limit = settings.tableZLimit()
     if z > z_limit:
         QtWidgets.QMessageBox.warning(
             None,
@@ -469,7 +469,7 @@ class TablePositionsWidget(QtWidgets.QWidget):
 
     def readSettings(self) -> None:
         self.positionsTreeWidget.clear()
-        for position in settings.table_positions:
+        for position in settings.tablePositions():
             item = TablePositionItem(
                 name=position.name,
                 position=Position(position.x, position.y, position.z),
@@ -491,7 +491,7 @@ class TablePositionsWidget(QtWidgets.QWidget):
                     z=item.position().z,
                     comment=item.comment()
                 ))
-        settings.table_positions = positions
+        settings.setTablePositions(positions)
 
     def setLocked(self, state: bool) -> None:
         self.setProperty("locked", state)
@@ -816,7 +816,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
         self.positionWidget: PositionWidget = PositionWidget(self)
 
-        self._calibration_widget = CalibrationWidget()
+        self.calibrationWidget: CalibrationWidget = CalibrationWidget(self)
 
         self.zLimitLabel: PositionLabel = PositionLabel(self)
 
@@ -835,7 +835,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.updateIntervalSpinBox.setRange(0.5, 10.0)
         self.updateIntervalSpinBox.setSingleStep(0.25)
         self.updateIntervalSpinBox.setSuffix(" s")
-        self.updateIntervalSpinBox.setValue(settings.table_control_update_interval)
+        self.updateIntervalSpinBox.setValue(settings.tableControlUpdateInterval())
         self.updateIntervalSpinBox.editingFinished.connect(lambda: self.setUpdateInterval(self.updateIntervalSpinBox.value()))
 
         self.intervalGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -1009,7 +1009,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
         topRightLayout = QtWidgets.QVBoxLayout()
         topRightLayout.addWidget(self.positionWidget)
-        topRightLayout.addWidget(self._calibration_widget.qt)
+        topRightLayout.addWidget(self.calibrationWidget)
         topRightLayout.addWidget(self.softLimitsGroupBox)
         topRightLayout.addWidget(self.hardLimitsGroupBox)
         topRightLayout.addWidget(self.safetyGroupBox)
@@ -1139,14 +1139,14 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
             self.lcrChartWidget.setLine(position.z)
 
     def reset_caldone(self):
-        self._calibration_widget.reset_calibration()
+        self.calibrationWidget.resetCalibration()
 
     def update_caldone(self, position):
         self.current_caldone = position
         self.positions_widget.setEnabled(caldone_valid(position))
         self.contacts_widget.setEnabled(caldone_valid(position))
         self.controlGroupBox.setEnabled(caldone_valid(position))
-        self._calibration_widget.update_calibration(position)
+        self.calibrationWidget.updateCalibration(position)
 
     def update_limits(self):
         x, y, z = self.current_position
@@ -1336,9 +1336,9 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
 
     def readSettings(self) -> None:
         self.positions_widget.readSettings()
-        self.z_limit = float(settings.table_z_limit)
+        self.z_limit = settings.tableZLimit()
         self.zLimitLabel.setValue(self.z_limit)
-        x, y, z = settings.table_probecard_maximum_limits
+        x, y, z = settings.tableProbecardMaximumLimits()
         self.xHardLimitLabel.setValue(x)
         self.yHardLimitLabel.setValue(y)
         self.zHardLimitLabel.setValue(z)
@@ -1349,9 +1349,9 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.lcr_matrix_channels = matrix_channels
         self.lcr_process.update_interval = self.lcr_update_interval
         self.lcr_process.matrix_channels = self.lcr_matrix_channels
-        self.update_interval = settings.table_control_update_interval
-        self.dodge_enabled = settings.table_control_dodge_enabled
-        self.dodge_height = settings.table_control_dodge_height
+        self.update_interval = settings.tableControlUpdateInterval()
+        self.dodge_enabled = settings.tableControlDodgeEnabled()
+        self.dodge_height = settings.tableControlDodgeHeight()
         self.lcr_reset_on_move = self.settings.get("tablecontrol_lcr_reset_on_move", True)
 
         settings_ = QtCore.QSettings()
@@ -1365,9 +1365,9 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.settings["tablecontrol_lcr_update_delay"] = self.lcr_update_interval
         self.settings["tablecontrol_lcr_matrix_channels"] = self.lcr_matrix_channels
         self.positions_widget.writeSettings()
-        settings.table_control_update_interval = self.update_interval
-        settings.table_control_dodge_enabled = self.dodge_enabled
-        settings.table_control_dodge_height = self.dodge_height
+        settings.setTableControlUpdateInterval(self.update_interval)
+        settings.setTableControlDodgeEnabled(self.dodge_enabled)
+        settings.setTableControlDodgeHeight(self.dodge_height)
         self.settings["tablecontrol_lcr_reset_on_move"] = self.lcr_reset_on_move
 
         settings_ = QtCore.QSettings()

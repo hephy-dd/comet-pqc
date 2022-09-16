@@ -86,82 +86,64 @@ class PositionWidget(QtWidgets.QGroupBox):
         self.zPosLabel.setValue(position.z)
 
 
-class CalibrationLabel(ui.Label):
+class CalibrationLabel(QtWidgets.QLabel):
 
-    def __init__(self, prefix, value=None):
-        super().__init__()
-        self.prefix = prefix
-        self.value = value
+    def __init__(self, prefix: str, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setPrefix(prefix)
+        self.setValue(math.nan)
 
-    @property
-    def value(self):
-        return self._value
+    def prefix(self) -> str:
+        return self.property("prefix")
 
-    @value.setter
-    def value(self, value):
-        self._value = value or float("nan")
-        self.text = f"{self.prefix} {self._value}"
-        if math.isnan(self._value) or not self._value:
-            self.qt.setStyleSheet("QLabel:enabled{color:red}")
+    def setPrefix(self, prefix: str) -> None:
+        self.setProperty("prefix", prefix)
+
+    def value(self) -> float:
+        return self.property("value")
+
+    def setValue(self, value: float) -> None:
+        self.setProperty("value", value)
+        self.setText(f"{self.prefix()} {value}")
+        if math.isnan(value) or not value:
+            self.setStyleSheet("QLabel:enabled{color:red;}")
         else:
-            self.qt.setStyleSheet("QLabel:enabled{color:green}")
+            self.setStyleSheet("QLabel:enabled{color:green;}")
 
 
-class CalibrationWidget(ui.GroupBox):
+class CalibrationWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Calibration"
-        self._cal_x_label = CalibrationLabel("cal")
-        self._cal_y_label = CalibrationLabel("cal")
-        self._cal_z_label = CalibrationLabel("cal")
-        self._rm_x_label = CalibrationLabel("rm")
-        self._rm_y_label = CalibrationLabel("rm")
-        self._rm_z_label = CalibrationLabel("rm")
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label(
-                    text="X",
-                    tool_tip="X axis calibration state."
-                ),
-                ui.Label(
-                    text="Y",
-                    tool_tip="Y axis calibration state."
-                ),
-                ui.Label(
-                    text="Z",
-                    tool_tip="Z axis calibration state."
-                )
-            ),
-            ui.Column(
-                self._cal_x_label,
-                self._cal_y_label,
-                self._cal_z_label
-            ),
-            ui.Column(
-                self._rm_x_label,
-                self._rm_y_label,
-                self._rm_z_label
-            ),
-            stretch=(1, 1, 1)
-        )
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.setTitle("Calibration")
+        self.xCalLabel = CalibrationLabel("cal", self)
+        self.yCalLabel = CalibrationLabel("cal", self)
+        self.zCalLabel = CalibrationLabel("cal", self)
+        self.xRmLabel = CalibrationLabel("rm", self)
+        self.yRmLabel = CalibrationLabel("rm", self)
+        self.zRmLabel = CalibrationLabel("rm", self)
 
-    def reset_calibration(self):
-        self.update_calibration(Position())
+        layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(self)
+        layout.addWidget(QtWidgets.QLabel("X", self), 0, 0)
+        layout.addWidget(QtWidgets.QLabel("Y", self), 1, 0)
+        layout.addWidget(QtWidgets.QLabel("Z", self), 2, 0)
+        layout.addWidget(self.xCalLabel, 0, 1)
+        layout.addWidget(self.yCalLabel, 1, 1)
+        layout.addWidget(self.zCalLabel, 2, 1)
+        layout.addWidget(self.xRmLabel, 0, 2)
+        layout.addWidget(self.yRmLabel, 1, 2)
+        layout.addWidget(self.zRmLabel, 2, 2)
 
-    def update_calibration(self, position):
-        self._update_cal(position)
-        self._update_rm(position)
+    def resetCalibration(self) -> None:
+        self.updateCalibration(Position())
 
-    def _update_cal(self, position):
-        self._cal_x_label.value = getcal(position.x)
-        self._cal_y_label.value = getcal(position.y)
-        self._cal_z_label.value = getcal(position.z)
-
-    def _update_rm(self, position):
-        self._rm_x_label.value = getrm(position.x)
-        self._rm_y_label.value = getrm(position.y)
-        self._rm_z_label.value = getrm(position.z)
+    def updateCalibration(self, position: Position) -> None:
+        self.xCalLabel.setValue(getcal(position.x))
+        self.yCalLabel.setValue(getcal(position.y))
+        self.zCalLabel.setValue(getcal(position.z))
+        self.xRmLabel.setValue(getrm(position.x))
+        self.yRmLabel.setValue(getrm(position.y))
+        self.zRmLabel.setValue(getrm(position.z))
 
 
 class DirectoryWidget(ui.Row):
@@ -256,18 +238,18 @@ class WorkingDirectoryWidget(DirectoryWidget):
 
     def readSettings(self):
         self.clear_locations()
-        locations = settings.output_path
+        locations = settings.outputPath()
         if not locations:
             locations = [os.path.join(user_home(), "PQC")]
         for location in locations:
             self.append_location(location)
-        self.location_combo_box.current = settings.current_output_path
+        self.location_combo_box.current = settings.currentOutputPath()
         self.update_locations()
 
     def writeSettings(self):
         self.update_locations()
-        settings.output_path = self.locations
-        settings.current_output_path = self.location_combo_box.current
+        settings.setOutputPath(self.locations)
+        settings.setCurrentOutputPath(self.location_combo_box.current)
 
 
 class OperatorComboBox(ui.ComboBox, SettingsMixin):
@@ -278,16 +260,16 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
 
     def readSettings(self):
         self.clear()
-        for operator in settings.operators:
+        for operator in settings.operators():
             self.append(operator)
-        self.current = settings.current_operator
+        self.current = settings.currentOperator()
 
     def writeSettings(self):
-        settings.current_operator = self.current
+        settings.setCurrentOperator(self.current)
         operators = []
         for index in range(len(self)):
             operators.append(self.qt.itemText(index))
-        settings.operators = operators
+        settings.setOperators(operators)
 
 
 class OperatorWidget(ui.Row, SettingsMixin):
@@ -342,7 +324,7 @@ class PositionsComboBox(ui.ComboBox, SettingsMixin):
 
     def readSettings(self):
         self.clear()
-        for position in settings.table_positions:
+        for position in settings.tablePositions():
             self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
         index = self.settings.get("current_table_position") or 0
         if 0 <= index < len(self):

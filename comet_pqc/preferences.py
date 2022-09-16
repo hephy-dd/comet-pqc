@@ -20,23 +20,23 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.webapiWidget = WebAPIWidget(self)
         self.optionsWidget = OptionsWidget(self)
 
-        self.tabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
         self.tabWidget.addTab(self.tableWidget, "Table")
         self.tabWidget.addTab(self.webapiWidget, "Webserver")
         self.tabWidget.addTab(self.optionsWidget, "Options")
 
-        self.buttonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
-        layout = QtWidgets.QVBoxLayout(self)
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.tabWidget, 1)
         layout.addWidget(self.buttonBox, 0)
 
     def readSettings(self) -> None:
-        settings = QtCore.QSettings()
+        settings: QtCore.QSettings = QtCore.QSettings()
         settings.beginGroup("PreferencesDialog")
 
         geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
@@ -49,7 +49,7 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.optionsWidget.readSettings()
 
     def writeSettings(self) -> None:
-        settings = QtCore.QSettings()
+        settings: QtCore.QSettings = QtCore.QSettings()
         settings.beginGroup("PreferencesDialog")
 
         settings.setValue("geometry", self.saveGeometry())
@@ -59,12 +59,6 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.tableWidget.writeSettings()
         self.webapiWidget.writeSettings()
         self.optionsWidget.writeSettings()
-
-        QtWidgets.QMessageBox.information(
-            self,
-            "Restart required",
-            "Application restart required for changes to take effect."
-        )
 
 
 class TableStepDialog(QtWidgets.QDialog):
@@ -137,7 +131,7 @@ class TableStepDialog(QtWidgets.QDialog):
 class ItemDelegate(QtWidgets.QItemDelegate):
     """Item delegate for custom floating point number display."""
 
-    Decimals = 3
+    Decimals: int = 3
 
     def drawDisplay(self, painter, option, rect, text):
         try:
@@ -156,14 +150,14 @@ class TableStepItem(QtWidgets.QTreeWidgetItem):
         self.setZLimit(zLimit)
         self.setStepColor(stepColor)
 
-    def stepSize(self):
+    def stepSize(self) -> float:
         return self.data(0, 0x2000)
 
     def setStepSize(self, value: float):
         self.setData(0, 0x2000, value)
         self.setText(0, format(value))
 
-    def zLimit(self):
+    def zLimit(self) -> float:
         return self.data(1, 0x2000)
 
     def setZLimit(self, value: float):
@@ -395,18 +389,17 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
                 format(item.get("step_color"))
             ))
         self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
-        self.zLimitMovementSpinBox.setValue(settings.table_z_limit)
+        self.zLimitMovementSpinBox.setValue(settings.tableZLimit())
         # Probecard limits
-        x, y, z = settings.table_probecard_maximum_limits
+        x, y, z = settings.tableProbecardMaximumLimits()
         self.setProbecardLimits(x, y, z)
-        temporary_z_limit = settings.table_temporary_z_limit
+        temporary_z_limit = settings.tableTemporaryZLimit()
         self.probecardLimitZCheckBox.setChecked(temporary_z_limit)
         # Joystick limits
-        x, y, z = settings.table_joystick_maximum_limits
+        x, y, z = settings.tableJoystickMaximumLimits()
         self.setJoystickLimits(x, y, z)
-        table_contact_delay = self.settings.get("table_contact_delay") or 0
-        self.probecardContactDelaySpinBox.setValue(table_contact_delay)
-        self.recontactOverdriveNumberSpinBox.setValue(settings.retry_contact_overdrive)
+        self.probecardContactDelaySpinBox.setValue(settings.tableContactDelay())
+        self.recontactOverdriveNumberSpinBox.setValue(settings.retryContactOverdrive())
 
     def writeSettings(self) -> None:
         table_step_sizes = []
@@ -419,16 +412,15 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
                     "step_color": format(item.stepColor()),
                 })
         self.settings["table_step_sizes"] = table_step_sizes
-        settings.table_z_limit = self.zLimitMovementSpinBox.value()
+        settings.setTableZLimit(self.zLimitMovementSpinBox.value())
         # Probecard limits
-        settings.table_probecard_maximum_limits = self.probecardLimits()
+        settings.setTableProbecardMaximumLimits(self.probecardLimits())
         temporary_z_limit = self.probecardLimitZCheckBox.isChecked()
-        settings.table_temporary_z_limit = temporary_z_limit
+        settings.setTableTemporaryZLimit(temporary_z_limit)
         # Joystick limits
-        settings.table_joystick_maximum_limits = self.joystickLimits()
-        table_contact_delay = self.probecardContactDelaySpinBox.value()
-        self.settings["table_contact_delay"] = table_contact_delay
-        settings.retry_contact_overdrive = self.recontactOverdriveNumberSpinBox.value()
+        settings.setTableJoystickMaximumLimits(self.joystickLimits())
+        settings.setTableContactDelay(self.probecardContactDelaySpinBox.value())
+        settings.setRetryContactOverdrive(self.recontactOverdriveNumberSpinBox.value())
 
 
 class WebAPIWidget(QtWidgets.QWidget, SettingsMixin):
@@ -584,33 +576,21 @@ class OptionsWidget(QtWidgets.QWidget, SettingsMixin):
         layout.setRowStretch(3, 1)
 
     def readSettings(self) -> None:
-        png_plots = self.settings.get("png_plots", False)
-        self.pngPlotsCheckBox.setChecked(png_plots)
-        points_in_plots = self.settings.get("points_in_plots", False)
-        self.pointsInPlotsCheckBox.setChecked(points_in_plots)
-        png_analysis = self.settings.get("png_analysis", False)
-        self.pngAnalysisCheckBox.setChecked(png_analysis)
-        export_json = self.settings.get("export_json", False)
-        self.exportJsonCheckBox.setChecked(export_json)
-        export_txt = self.settings.get("export_txt", True)
-        self.exportTxtCheckBox.setChecked(export_txt)
-        write_logfiles = self.settings.get("write_logfiles", True)
-        self.writeLogfilesCheckBox.setChecked(write_logfiles)
-        self.retryMeasurementSpinBox.setValue(settings.retry_measurement_count)
-        self.retryContactSpinBox.setValue(settings.retry_contact_count)
+        self.pngPlotsCheckBox.setChecked(settings.isPngPlots())
+        self.pointsInPlotsCheckBox.setChecked(settings.isPointsInPlots())
+        self.pngAnalysisCheckBox.setChecked(settings.isPngAnalysis())
+        self.exportJsonCheckBox.setChecked(settings.isExportJson())
+        self.exportTxtCheckBox.setChecked(settings.isExportTxt())
+        self.writeLogfilesCheckBox.setChecked(settings.isWriteLogfiles())
+        self.retryMeasurementSpinBox.setValue(settings.retryMeasurementCount())
+        self.retryContactSpinBox.setValue(settings.retryContactCount())
 
     def writeSettings(self) -> None:
-        png_plots = self.pngPlotsCheckBox.isChecked()
-        self.settings["png_plots"] = png_plots
-        points_in_plots = self.pointsInPlotsCheckBox.isChecked()
-        self.settings["points_in_plots"] = points_in_plots
-        png_analysis = self.pngAnalysisCheckBox.isChecked()
-        self.settings["png_analysis"] = png_analysis
-        export_json = self.exportJsonCheckBox.isChecked()
-        self.settings["export_json"] = export_json
-        export_txt = self.exportTxtCheckBox.isChecked()
-        self.settings["export_txt"] = export_txt
-        write_logfiles = self.writeLogfilesCheckBox.isChecked()
-        self.settings["write_logfiles"] = write_logfiles
-        settings.retry_measurement_count = self.retryMeasurementSpinBox.value()
-        settings.retry_contact_count = self.retryContactSpinBox.value()
+        settings.setPngPlots(self.pngPlotsCheckBox.isChecked())
+        settings.setPointsInPlots(self.pointsInPlotsCheckBox.isChecked())
+        settings.setPngAnalysis(self.pngAnalysisCheckBox.isChecked())
+        settings.setExportJson(self.exportJsonCheckBox.isChecked())
+        settings.setExportTxt(self.exportTxtCheckBox.isChecked())
+        settings.setWriteLogfiles(self.writeLogfilesCheckBox.isChecked())
+        settings.setRetryMeasurementCount(self.retryMeasurementSpinBox.value())
+        settings.setRetryContactCount(self.retryContactSpinBox.value())

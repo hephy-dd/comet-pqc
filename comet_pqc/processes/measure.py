@@ -70,7 +70,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         return os.path.join(self.get("output_dir"), measurement.sample_name, filename)
 
     def safe_initialize_hvsrc(self, resource):
-        context = settings.hvsrc_instrument(resource)
+        context = settings.getInstrumentType("hvsrc")(resource)
         if context.get_output() == context.OUTPUT_ON:
             self.emit("message", "Ramping down HV Source...")
             start_voltage = context.get_source_voltage()
@@ -83,7 +83,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.emit("message", "Initialized HVSource.")
 
     def safe_initialize_vsrc(self, resource):
-        context = settings.vsrc_instrument(resource)
+        context = settings.getInstrumentType("vsrc")(resource)
         if context.get_output() == context.OUTPUT_ON:
             self.emit("message", "Ramping down V Source...")
             start_voltage = context.get_source_voltage()
@@ -292,8 +292,8 @@ class MeasureProcess(BaseProcess):
                         measurement.serialize_txt(fp)
 
     def process_contact(self, contact_item):
-        retry_contact_count = settings.retry_contact_count
-        retry_measurement_count = settings.retry_measurement_count
+        retry_contact_count = settings.retryContactCount()
+        retry_measurement_count = settings.retryMeasurementCount()
         # Queue of measurements for the retry loops.
         measurement_items = [item for item in contact_item.children if item.enabled]
         # Auto retry table contact

@@ -81,7 +81,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
     def measure(self):
         with self.resources.get("lcr") as lcr_res:
-            lcr = LCRInstrument(settings.lcr_instrument(lcr_res))
+            lcr = LCRInstrument(settings.getInstrumentType("lcr")(lcr_res))
             lcr.reset()
             lcr.quick_setup_cp_rp()
             while self.running:

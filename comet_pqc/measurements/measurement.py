@@ -15,6 +15,7 @@ from comet.resource import ResourceMixin
 
 from .. import __version__
 from ..core.formatter import PQCFormatter
+from ..settings import settings
 
 __all__ = ["Measurement"]
 
@@ -336,7 +337,7 @@ class MeasurementRunner:
         with contextlib.ExitStack() as es:
             kwargs = {}
             for key in type(measurement).required_instruments:
-                create = getattr(measurement, f"{key}_create")
+                create = settings.getInstrumentType(key)
                 resource = measurement.resources.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:

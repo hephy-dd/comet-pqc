@@ -6,6 +6,7 @@ from comet import SettingsMixin, ui
 from PyQt5 import QtCore, QtWidgets
 
 from ..components import Metric, PlotWidget
+from ..settings import settings
 from ..utils import stitch_pixmaps
 
 __all__ = ["Panel", "MeasurementPanel"]
@@ -194,15 +195,15 @@ class MeasurementPanel(Panel):
         # Show first tab on mount
         self.dataTabWidget.setCurrentIndex(0)
         # Update plot series style
-        points_in_plots = self.settings.get("points_in_plots") or False
+        pointsInPlots = settings.isPointsInPlots()
         for index in range(self.dataTabWidget.count()):
             widget = self.dataTabWidget.widget(index)
             if widget.property("type") == "plot":
                 for series in widget.reflection().series.values():
-                    series.qt.setPointsVisible(points_in_plots)
+                    series.qt.setPointsVisible(pointsInPlots)
             if isinstance(widget, PlotWidget):
                 for series in widget.chart.series():
-                    series.setPointsVisible(points_in_plots)
+                    series.setPointsVisible(pointsInPlots)
 
     def unmount(self):
         """Unmount measurement from panel."""
@@ -282,7 +283,6 @@ class MeasurementPanel(Panel):
         """Save screenshots of data tabs to stitched image."""
         currentIndex: int = self.dataTabWidget.currentIndex()
         pixmaps: List = []
-        png_analysis = self.settings.get("png_analysis") or False
         for index in range(self.dataTabWidget.count()):
             widget = self.dataTabWidget.widget(index)
             self.dataTabWidget.setCurrentIndex(index)
@@ -293,7 +293,7 @@ class MeasurementPanel(Panel):
                 widget.resizeAxes()
                 pixmaps.append(self.dataTabWidget.grab())
             elif widget is self.analysisTreeWidget:
-                if png_analysis:
+                if settings.isPngAnalysis():
                     pixmaps.append(self.dataTabWidget.grab())
         self.dataTabWidget.setCurrentIndex(currentIndex)
         if pixmaps:

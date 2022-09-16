@@ -153,7 +153,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                if self.voltage_start.value > self.voltage_stop.value:
+                if self.voltage_start.value() > self.voltage_stop.value():
                     self.plot.axes.get("x").qt.setReverse(True)
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
