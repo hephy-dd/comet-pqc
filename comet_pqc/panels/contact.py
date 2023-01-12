@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -11,12 +12,12 @@ __all__ = ["ContactPanel"]
 
 class ContactPanel(Panel):
 
-    type = "contact"
+    type_name = "contact"
 
     moveRequested: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
     contactRequested: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Contact")
 

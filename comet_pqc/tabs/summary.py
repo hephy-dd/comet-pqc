@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 
 from PyQt5 import QtGui, QtWidgets
 
@@ -9,7 +10,7 @@ class SummaryWidget(QtWidgets.QWidget):
 
     Header = ["Time", "Sample", "Type", "Contact", "Measurement", "Result"]
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.treeWidget = QtWidgets.QTreeWidget(self)

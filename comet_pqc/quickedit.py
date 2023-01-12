@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -7,7 +7,7 @@ __all__ = ["QuickEditDialog", "QuickEditItem"]
 
 class QuickEditItem(QtCore.QObject):
 
-    def __init__(self, parent: QtCore.QObject = None) -> None:
+    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
 
         self.enabledCheckBox = QtWidgets.QCheckBox()
@@ -104,7 +104,7 @@ class QuickEditItem(QtCore.QObject):
 
 class QuickEditDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent: QtWidgets.QWidget = None):
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Quick Edit Samples"))
         self.setMinimumSize(640, 240)

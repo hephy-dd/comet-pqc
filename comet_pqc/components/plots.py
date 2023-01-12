@@ -1,9 +1,11 @@
+from typing import Optional
+
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 
 
 class PlotWidget(QtWidgets.QWidget):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.chart: QtChart.QChart = QtChart.QChart()

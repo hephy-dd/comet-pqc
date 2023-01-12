@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from comet.settings import SettingsMixin
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -13,11 +14,11 @@ __all__ = ["SamplePanel"]
 
 class SamplePanel(Panel, SettingsMixin):
 
-    type = "sample"
+    type_name = "sample"
 
     sampleChanged: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Sample")
 

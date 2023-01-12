@@ -17,7 +17,7 @@ NO_VALUE: str = "---"
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
-    def register_hvsource(self):
+    def register_hvsource(self) -> None:
         senseModeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         senseModeComboBox.addItem("local", "local")
         senseModeComboBox.addItem("remote", "remote")
@@ -26,7 +26,7 @@ class HVSourceMixin:
         routeTerminalComboBox.addItem("front", "front")
         routeTerminalComboBox.addItem("rear", "rear")
 
-        def toggleFilter(enabled):
+        def toggleFilter(enabled) -> None:
             filterCountSpinBox.setEnabled(enabled)
             filterCountLabel.setEnabled(enabled)
             filterTypeComboBox.setEnabled(enabled)
@@ -155,12 +155,12 @@ class HVSourceMixin:
 class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
 
-    def register_vsource(self):
+    def register_vsource(self) -> None:
         senseModeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         senseModeComboBox.addItem("local", "local")
         senseModeComboBox.addItem("remote", "remote")
 
-        def toggleFilter(enabled):
+        def toggleFilter(enabled) -> None:
             filterCountSpinBox.setEnabled(enabled)
             filterCountLabel.setEnabled(enabled)
             filterTypeComboBox.setEnabled(enabled)
@@ -262,8 +262,8 @@ class VSourceMixin:
 class ElectrometerMixin:
     """Mixin class providing default controls and status for Electrometer."""
 
-    def register_electrometer(self):
-        def toggleFilter(enabled):
+    def register_electrometer(self) -> None:
+        def toggleFilter(enabled) -> None:
             filterCountSpinBox.setEnabled(enabled)
             filterCountLabel.setEnabled(enabled)
             filterTypeComboBox.setEnabled(enabled)
@@ -292,7 +292,7 @@ class ElectrometerMixin:
         integrationRateSpinBox.setDecimals(2)
         integrationRateSpinBox.setSuffix(" Hz")
 
-        def toggleCurrentAutorange(enabled):
+        def toggleCurrentAutorange(enabled) -> None:
             currentRangeMetric.setEnabled(not enabled)
             currentAutorangeMinimumMetric.setEnabled(enabled)
             currentAutorangeMaximumMetric.setEnabled(enabled)
@@ -407,7 +407,7 @@ class ElectrometerMixin:
 class LCRMixin:
     """Mixin class providing default controls and status for LCR Meter."""
 
-    def register_lcr(self):
+    def register_lcr(self) -> None:
         integrationTimeComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         integrationTimeComboBox.addItem("short", "short")
         integrationTimeComboBox.addItem("medium", "medium")
@@ -520,7 +520,7 @@ class LCRMixin:
 class EnvironmentMixin:
     """Mixin class providing default controls and status for Environment box."""
 
-    def register_environment(self):
+    def register_environment(self) -> None:
         statusChuckTempLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         statusChuckTempLineEdit.setReadOnly(True)
         statusChuckTempLineEdit.setText(NO_VALUE)

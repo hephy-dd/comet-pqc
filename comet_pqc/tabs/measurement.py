@@ -24,7 +24,7 @@ class MeasurementWidget(QtWidgets.QWidget):
 
     restore: QtCore.pyqtSignal = QtCore.pyqtSignal()
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.panels: PanelStack = PanelStack(self)
@@ -56,7 +56,7 @@ class PanelStack(QtWidgets.QWidget):
 
     sampleChanged: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.panelWidgets: List[Panel] = []
 
@@ -104,9 +104,9 @@ class PanelStack(QtWidgets.QWidget):
         for child in self.panelWidgets:
             child.setLocked(state)
 
-    def get(self, type) -> Optional[Panel]:
-        """Get panel by type."""
+    def get(self, type_name: str) -> Optional[Panel]:
+        """Get panel by type name."""
         for child in self.panelWidgets:
-            if child.type == type:
+            if child.type_name == type_name:
                 return child
         return None

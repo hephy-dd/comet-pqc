@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -65,7 +65,7 @@ class ResourceItem(QtWidgets.QTreeWidgetItem):
 
 class ResourcesDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Edit Resources")
 

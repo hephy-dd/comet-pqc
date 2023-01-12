@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from comet.resource import ResourceMixin
 from PyQt5 import QtCore, QtWidgets
@@ -29,9 +29,9 @@ class MatrixChannelsLineEdit(QtWidgets.QLineEdit):
 class MatrixPanel(MeasurementPanel, ResourceMixin):
     """Base class for matrix switching panels."""
 
-    type = "matrix"
+    type_name = "matrix"
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.matrix_enable: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)

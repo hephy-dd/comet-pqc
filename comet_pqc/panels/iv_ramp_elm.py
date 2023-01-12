@@ -1,3 +1,5 @@
+from typing import Optional
+
 from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
@@ -11,9 +13,9 @@ __all__ = ["IVRampElmPanel"]
 class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
     """Panel for IV ramp with electrometer measurements."""
 
-    type = "iv_ramp_elm"
+    type_name = "iv_ramp_elm"
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("IV Ramp Elm")
 

@@ -56,7 +56,7 @@ def format_metric(value: Optional[float], unit: str, decimals: int = 3) -> str:
     return f"{value:.{decimals}f} {unit}"
 
 
-def format_switch(value: Optional[bool], default: str = None) -> str:
+def format_switch(value: Optional[bool], default: Optional[str] = None) -> str:
     """Pretty format for instrument output states.
 
     >>> format_switch(False)

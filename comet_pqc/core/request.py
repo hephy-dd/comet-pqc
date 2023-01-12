@@ -27,7 +27,7 @@ class Request:
         finally:
             self._ready.set()
 
-    def get(self, timeout: float = None) -> Any:
+    def get(self, timeout: Optional[float] = None) -> Any:
         if timeout is None:
             timeout = self.timeout
         if self._ready.wait(timeout=timeout):

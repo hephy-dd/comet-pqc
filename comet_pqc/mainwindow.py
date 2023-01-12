@@ -1,5 +1,6 @@
 import logging
 import webbrowser
+from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -21,7 +22,7 @@ APP_DECRIPTION: str = """Process Quality Control (PQC) for CMS Tracker."""
 
 class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         # Actions

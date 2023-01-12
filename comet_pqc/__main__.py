@@ -3,6 +3,7 @@ import logging
 import os
 from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 
 from . import __version__
 from .application import Application
@@ -42,7 +43,7 @@ def add_rotating_file_handle(logger: logging.Logger, filename: str) -> None:
     logger.addHandler(file_handler)
 
 
-def configure_logger(logger: logging.Logger, debug: bool = False, filename: str = None) -> None:
+def configure_logger(logger: logging.Logger, debug: bool = False, filename: Optional[str] = None) -> None:
     level = logging.DEBUG if debug else logging.INFO
     logger.setLevel(level)
 

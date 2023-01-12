@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -10,9 +10,9 @@ class StatusWidget(QtWidgets.QWidget):
     LightStates = {True: "ON", False: "OFF", None: "n/a"}
     DoorStates = {True: "OPEN", False: "CLOSED", None: "n/a"}
 
-    reload = QtCore.pyqtSignal()
+    reloadClicked = QtCore.pyqtSignal()
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.matrixModelLineEdit = QtWidgets.QLineEdit(self)
@@ -44,7 +44,7 @@ class StatusWidget(QtWidgets.QWidget):
 
         self.reloadButton = QtWidgets.QPushButton(self)
         self.reloadButton.setText("&Reload")
-        self.reloadButton.clicked.connect(self.reload.emit)
+        self.reloadButton.clicked.connect(self.reloadClicked.emit)
 
         self.matrixGroupBox = QtWidgets.QGroupBox(self)
         self.matrixGroupBox.setTitle("Matrix")

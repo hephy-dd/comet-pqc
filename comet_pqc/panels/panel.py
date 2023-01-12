@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 
 import comet
 from comet import SettingsMixin, ui
@@ -25,7 +25,7 @@ class Bindings:
         self._getters[type] = getter
         self._setters[type] = setter
 
-    def bind(self, key: str, element, default=None, unit: str = None):
+    def bind(self, key: str, element, default=None, unit: Optional[str] = None):
         if type(element) not in self._getters or type(element) not in self._setters:
             raise TypeError(f"No binding for: {type(element)}")
         self._bindings[key] = element, default, unit
@@ -48,9 +48,9 @@ class Bindings:
 
 class Panel(SettingsMixin, QtWidgets.QWidget):
 
-    type: str = ""
+    type_name: str = ""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self._stateHandlers: List[Callable] = []
@@ -110,9 +110,9 @@ class Panel(SettingsMixin, QtWidgets.QWidget):
 class MeasurementPanel(Panel):
     """Base class for measurement panels."""
 
-    type = "measurement"
+    type_name = "measurement"
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.bindings = Bindings()
 
@@ -161,7 +161,7 @@ class MeasurementPanel(Panel):
         self.bindings.register(QtWidgets.QSpinBox, lambda element: element.value(), lambda element, value: element.setValue(value))
         self.bindings.register(Metric, lambda element: element.value(), lambda element, value: element.setValue(value))
 
-    def bind(self, key: str, element, default=None, unit: str = None):
+    def bind(self, key: str, element, default=None, unit: Optional[str] = None):
         """Bind measurement parameter to UI element for syncronization on mount
         and store.
 

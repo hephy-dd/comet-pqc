@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import List
+from typing import List, Optional
 
 from PyQt5 import QtWidgets
 from comet import ui
@@ -17,7 +17,7 @@ class EnvironmentWidget(QtWidgets.QWidget):
 
     SampleCount = 60 * 60 * 12
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         # Data series

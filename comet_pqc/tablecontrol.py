@@ -140,7 +140,7 @@ class TableContactsWidget(QtWidgets.QWidget):
     positionPicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
     absoluteMove: QtCore.pyqtSignal = QtCore.pyqtSignal(Position)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.contacts_tree = QtWidgets.QTreeWidget(self)
@@ -199,7 +199,7 @@ class TableContactsWidget(QtWidgets.QWidget):
     def contactSelected(self, current, previous):
         self.updateButtonStates(current)
 
-    def updateButtonStates(self, item: QtWidgets.QTreeWidgetItem = None) -> None:
+    def updateButtonStates(self, item: Optional[QtWidgets.QTreeWidgetItem] = None) -> None:
         if item is None:
             item = self.contacts_tree.currentItem()
         if isinstance(item, TableContactItem):
@@ -213,8 +213,8 @@ class TableContactsWidget(QtWidgets.QWidget):
             self.calculateButton.setEnabled(True)
             self.resetButton.setEnabled(False)
 
-    def pickPosition(self):
-        item: Optional[TableContactItem] = self.contacts_tree.currentItem()
+    def pickPosition(self) -> None:
+        item = self.contacts_tree.currentItem()
         if isinstance(item, TableContactItem):
             def callback(x, y, z):
                 item.setPosition((x, y, z))
@@ -222,14 +222,14 @@ class TableContactsWidget(QtWidgets.QWidget):
                     self.contacts_tree.resizeColumnToContents(index)
             self.positionPicked.emit(callback)
 
-    def resetCurrentPosition(self):
-        item: Optional[TableContactItem] = self.contacts_tree.currentItem()
+    def resetCurrentPosition(self) -> None:
+        item = self.contacts_tree.currentItem()
         if isinstance(item, TableContactItem):
             item.setPosition((float("nan"), float("nan"), float("nan")))
             for index in range(self.contacts_tree.columnCount()):
                 self.contacts_tree.resizeColumnToContents(index)
 
-    def resetAllPositions(self):
+    def resetAllPositions(self) -> None:
         result = QtWidgets.QMessageBox.question(
             self,
             "Reset Positions?",
@@ -242,8 +242,8 @@ class TableContactsWidget(QtWidgets.QWidget):
             for index in range(self.contacts_tree.columnCount()):
                 self.contacts_tree.resizeColumnToContents(index)
 
-    def moveToPosition(self):
-        current_item: Optional[TableContactItem] = self.contacts_tree.currentItem()
+    def moveToPosition(self) -> None:
+        current_item = self.contacts_tree.currentItem()
         if isinstance(current_item, TableContactItem):
             if current_item.hasPosition():
                 result = QtWidgets.QMessageBox.question(
@@ -285,7 +285,7 @@ class TableContactsWidget(QtWidgets.QWidget):
 
 class TablePositionItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, name: str, position: Position, comment: str = None):
+    def __init__(self, name: str, position: Position, comment: Optional[str] = None) -> None:
         super().__init__()
         self.setName(name)
         self.setPosition(position)
@@ -320,7 +320,7 @@ class PositionDialog(QtWidgets.QDialog):
 
     positionPicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.nameLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
@@ -426,7 +426,7 @@ class TablePositionsWidget(QtWidgets.QWidget):
     positionPicked: QtCore.pyqtSignal = QtCore.pyqtSignal(object)
     absoluteMove: QtCore.pyqtSignal = QtCore.pyqtSignal(Position)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.positionsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
@@ -583,7 +583,7 @@ class LCRChartWidget(QtWidgets.QWidget):
 
     MaxPoints: int = 1000
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setMinimumSize(160, 60)
 
@@ -683,7 +683,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
     microscopeLightToggled: QtCore.pyqtSignal = QtCore.pyqtSignal(bool)
     boxLightToggled: QtCore.pyqtSignal = QtCore.pyqtSignal(bool)
 
-    def __init__(self, process, lcr_process, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, process, lcr_process, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.process = None
         self.maximum_z_step_size: float = 0.025 # mm
@@ -1456,7 +1456,7 @@ class SwitchLabel(QtWidgets.QLabel):
 
 class KeypadButton(QtWidgets.QPushButton):
 
-    def __init__(self, text: str, parent: QtWidgets.QWidget = None):
+    def __init__(self, text: str, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
         self.setFixedSize(32, 32)
         self.setText(text)

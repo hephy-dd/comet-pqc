@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -64,7 +64,7 @@ class Metric(QtWidgets.QWidget):
     valueChanged = QtCore.pyqtSignal(float)
     editingFinished = QtCore.pyqtSignal()
 
-    def __init__(self, unit: str, parent: QtWidgets.QWidget = None):
+    def __init__(self, unit: str, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
 
         self.valueSpinBox = QtWidgets.QDoubleSpinBox(self)

@@ -2,10 +2,9 @@ import copy
 import logging
 import math
 import os
-from typing import List
+from typing import Dict, List, Optional
 
-from PyQt5 import QtCore, QtWidgets
-import qutie as ui
+from PyQt5 import QtCore, QtGui, QtWidgets
 import yaml
 
 from comet.settings import SettingsMixin
@@ -40,10 +39,46 @@ def load_all_sequences(settings):
     return configs
 
 
+def appendItem(item, key, value):
+    """Recursively append items to tree."""
+    if isinstance(value, dict):
+        child = QtWidgets.QTreeWidgetItem()
+        child.setData(0, QtCore.Qt.DisplayRole, key)
+        if isinstance(item, QtWidgets.QTreeWidgetItem):
+            item.addChild(child)
+        else:
+            item.addTopLevelItem(child)
+        for key, value in value.items():
+            appendItem(child, key, value)
+    elif isinstance(value, list):
+        child = QtWidgets.QTreeWidgetItem()
+        child.setData(0, QtCore.Qt.DisplayRole, key)
+        if isinstance(item, QtWidgets.QTreeWidgetItem):
+            item.addChild(child)
+        else:
+            item.addTopLevelItem(child)
+        for i, obj in enumerate(value):
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    appendItem(child, key, value)
+            else:
+                appendItem(child, f"[{i}]", obj)
+        child.setExpanded(True)
+    else:
+        child = QtWidgets.QTreeWidgetItem()
+        child.setData(0, QtCore.Qt.DisplayRole, key)
+        child.setData(1, QtCore.Qt.DisplayRole, value)
+        if isinstance(item, QtWidgets.QTreeWidgetItem):
+            item.addChild(child)
+        else:
+            item.addTopLevelItem(child)
+        child.setExpanded(True)
+
+
 class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
     """Start sequence dialog."""
 
-    def __init__(self, context, table_enabled, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, context, table_enabled, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Start Sequence")
 
@@ -61,12 +96,12 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         self.positionCheckBox.setEnabled(table_enabled)
         self.positionCheckBox.toggled.connect(self.setPositionsEnabled)
 
-        self.positionsComboBox = PositionsComboBox()
-        self.positionsComboBox.qt.setEnabled(False)
+        self.positionsComboBox = PositionsComboBox(self)
+        self.positionsComboBox.setEnabled(False)
 
-        self.operatorComboBox = OperatorWidget()
+        self.operatorComboBox = OperatorWidget(self)
 
-        self.outputComboBox = WorkingDirectoryWidget()
+        self.outputComboBox = WorkingDirectoryWidget(self)
 
         self.tableGroupBox = QtWidgets.QGroupBox(self)
         self.tableGroupBox.setTitle("Table")
@@ -88,14 +123,14 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         tableLayout = QtWidgets.QGridLayout(self.tableGroupBox)
         tableLayout.addWidget(self.contactCheckBox, 0, 0, 1, 2)
         tableLayout.addWidget(self.positionCheckBox, 1, 0)
-        tableLayout.addWidget(self.positionsComboBox.qt, 1, 1)
+        tableLayout.addWidget(self.positionsComboBox, 1, 1)
         tableLayout.setRowStretch(2, 1)
 
         operatorLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
-        operatorLayout.addWidget(self.operatorComboBox.qt)
+        operatorLayout.addWidget(self.operatorComboBox)
 
         outputLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
-        outputLayout.addWidget(self.outputComboBox.qt)
+        outputLayout.addWidget(self.outputComboBox)
 
         bottomLayout = QtWidgets.QHBoxLayout()
         bottomLayout.addWidget(self.operatorGroupBox, 2)
@@ -126,7 +161,7 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
     # Callbacks
 
     def setPositionsEnabled(self, state: bool) -> None:
-        self.positionsComboBox.qt.setEnabled(state)
+        self.positionsComboBox.setEnabled(state)
 
     # Methods
 
@@ -135,7 +170,7 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
 
     def isMoveToPosition(self):
         if self.isMoveToContact() and self.positionCheckBox.isChecked():
-            current = self.positionsComboBox.current
+            current = self.positionsComboBox.currentText()
             if current:
                 index = self.positionsComboBox.index(current)
                 positions = settings.tablePositions()
@@ -156,28 +191,27 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         return ""
 
 
-class SequenceManagerTreeItem(ui.TreeItem):
+class SequenceManagerTreeItem(QtWidgets.QTreeWidgetItem):
 
     def __init__(self, sequence, filename, builtin) -> None:
         super().__init__([sequence.name, "(built-in)" if builtin else filename])
         self.sequence = sequence
-        self.sequence.builtin = builtin
-        self.qt.setToolTip(1, filename)
+        self.builtin = builtin
+        self.setToolTip(1, filename)
 
 
 class SequenceManager(QtWidgets.QDialog, SettingsMixin):
     """Dialog for managing custom sequence configuration files."""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Sequence Manager")
         self.resize(640, 480)
 
-        self._sequence_tree = ui.Tree(
-            header=("Name", "Filename"),
-            indentation=0,
-            selected=self.loadSequencePreview
-        )
+        self.sequenceTreeWidget = QtWidgets.QTreeWidget(self)
+        self.sequenceTreeWidget.setHeaderLabels(["Name", "Filename"])
+        self.sequenceTreeWidget.setRootIsDecorated(False)
+        self.sequenceTreeWidget.currentItemChanged.connect(self.loadSequencePreview)
 
         self.addButton = QtWidgets.QPushButton(self)
         self.addButton.setText("&Add")
@@ -188,7 +222,9 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
         self.removeButton.setEnabled(False)
         self.removeButton.clicked.connect(self.removeSequenceItem)
 
-        self._preview_tree = ui.Tree(header=["Key", "Value"])
+        self.previewTreeWidget = QtWidgets.QTreeWidget(self)
+        self.previewTreeWidget.setHeaderLabels(["Key", "Value"])
+        self.previewTreeWidget.header().setStretchLastSection(True)
 
         self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
@@ -197,8 +233,8 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
         self.buttonBox.rejected.connect(self.reject)
 
         leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self._sequence_tree.qt, 3)
-        leftLayout.addWidget(self._preview_tree.qt, 4)
+        leftLayout.addWidget(self.sequenceTreeWidget, 3)
+        leftLayout.addWidget(self.previewTreeWidget, 4)
 
         rightLayout = QtWidgets.QVBoxLayout()
         rightLayout.addWidget(self.addButton, 0)
@@ -213,15 +249,17 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
 
     def currentSequence(self):
         """Return selected sequence object or None if nothing selected."""
-        item = self._sequence_tree.current
-        if item is not None:
+        item = self.sequenceTreeWidget.currentItem()
+        if isinstance(item, SequenceManagerTreeItem):
             return item.sequence
         return None
 
     def sequenceFilenames(self):
         filenames = []
-        for sequence_item in self._sequence_tree:
-            filenames.append(sequence_item.sequence.filename)
+        for index in range(self.sequenceTreeWidget.topLevelItemCount()):
+            item = self.sequenceTreeWidget.topLevelItem(index)
+            if isinstance(item, SequenceManagerTreeItem):
+                filenames.append(item.sequence.filename)
         return filenames
 
     # Settings
@@ -237,7 +275,7 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
 
     def readSettingsSequences(self):
         """Load all built-in and custom sequences from settings."""
-        self._sequence_tree.clear()
+        self.sequenceTreeWidget.clear()
         for name, filename, builtin in load_all_sequences(self.settings):
             try:
                 sequence = load_sequence(filename)
@@ -246,10 +284,10 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
                 logger.error("failed to load sequence: %s", filename)
             else:
                 item = SequenceManagerTreeItem(sequence, filename, builtin)
-                self._sequence_tree.append(item)
-        self._sequence_tree.fit()
-        if len(self._sequence_tree):
-            self._sequence_tree.current = self._sequence_tree[0]
+                self.sequenceTreeWidget.addTopLevelItem(item)
+        self.sequenceTreeWidget.resizeColumnToContents(0)
+        if self.sequenceTreeWidget.topLevelItemCount():
+            self.sequenceTreeWidget.setCurrentItem(self.sequenceTreeWidget.topLevelItem(0))
 
     def writeSettings(self):
         settings = QtCore.QSettings()
@@ -262,47 +300,36 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
     def writeSettingsSequences(self):
         """Store custom sequences to settings."""
         sequences = []
-        for item in self._sequence_tree:
+        for index in range(self.sequenceTreeWidget.topLevelItemCount()):
+            item = self.sequenceTreeWidget.topLevelItem(index)
             if isinstance(item, SequenceManagerTreeItem):
-                if not item.sequence.builtin:
+                if not item.builtin:
                     sequences.append(item.sequence.filename)
         self.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
 
-    def loadSequencePreview(self, item):
+    def loadSequencePreview(self, current, previous):
         """Load sequence config preview."""
         self.removeButton.setEnabled(False)
-        self._preview_tree.clear()
-        if isinstance(item, SequenceManagerTreeItem):
-            self.removeButton.setEnabled(not item.sequence.builtin)
-            if os.path.exists(item.sequence.filename):
-                with open(item.sequence.filename) as f:
+        self.previewTreeWidget.clear()
+        if isinstance(current, SequenceManagerTreeItem):
+            sequence = current.sequence
+            self.removeButton.setEnabled(not current.builtin)
+            if os.path.exists(sequence.filename):
+                with open(sequence.filename) as f:
                     data = yaml.safe_load(f)
-                    def append(item, key, value):
-                        """Recursively append items."""
-                        if isinstance(value, dict):
-                            child = item.append([key])
-                            for key, value in value.items():
-                                append(child, key, value)
-                        elif isinstance(value, list):
-                            child = item.append([key])
-                            for i, obj in enumerate(value):
-                                if isinstance(obj, dict):
-                                    for key, value in obj.items():
-                                        append(child, key, value)
-                                else:
-                                    append(child, f"[{i}]", obj)
-                            child.expanded = True
-                        else:
-                            item.append([key, value])
-                            item.expanded = True
-                    for key, value in data.items():
-                        append(self._preview_tree, key, value)
-                    self._preview_tree.fit()
+                for key, value in data.items():
+                    appendItem(self.previewTreeWidget, key, value)
+                self.previewTreeWidget.resizeColumnToContents(0)
 
     def addSequenceItem(self) -> None:
-        filename = ui.filename_open(filter="YAML files (*.yml, *.yaml);;All files (*)")
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Open Sequence",
+            "",
+            "YAML files (*.yml, *.yaml);;All files (*)",
+        )
         if filename:
             try:
                 sequence = load_sequence(filename)
@@ -311,62 +338,44 @@ class SequenceManager(QtWidgets.QDialog, SettingsMixin):
             else:
                 if filename not in self.sequenceFilenames():
                     item = SequenceManagerTreeItem(sequence, filename, False)
-                    self._sequence_tree.append(item)
-                    self._sequence_tree.current = item
+                    self.sequenceTreeWidget.addTopLevelItem(item)
+                    self.sequenceTreeWidget.setCurrentItem(item)
+                    self.sequenceTreeWidget.resizeColumnToContents(0)
 
     def removeSequenceItem(self) -> None:
-        item = self._sequence_tree.current
+        item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, SequenceManagerTreeItem):
-            if not item.sequence.builtin:
+            if not item.builtin:
                 result = QtWidgets.QMessageBox.question(
                     self,
                     "Remove Sequence",
                     f"Do yo want to remove sequence {item.sequence.name!r}?"
                 )
                 if result == QtWidgets.QMessageBox.Yes:
-                    self._sequence_tree.remove(item)
-                    self.removeButton.setEnabled(len(self._sequence_tree) > 0)
-
-
-class SequenceTree(ui.Tree):
-    """Sequence tree containing sample, contact and measurement items."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.expands_on_double_click = False
-        self.header = ["Name", "Pos", "State"]
-        # Qt5 Tweaks
-        self.qt.header().setMinimumSectionSize(32)
-        self.qt.header().resizeSection(1, 32)
-
-    # Methods
-
-    def setLocked(self, state: bool) -> None:
-        for contact in self:
-            contact.setLocked(state)
-
-    def reset(self):
-        for contact in self:
-            contact.reset()
+                    index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+                    self.sequenceTreeWidget.takeTopLevelItem(index)
+                    count = self.sequenceTreeWidget.topLevelItemCount()
+                    self.removeButton.setEnabled(count > 0)
 
 
 class SamplesItem:
     """Virtual item holding multiple samples to be executed."""
 
-    def __init__(self, iterable):
+    def __init__(self, iterable) -> None:
         self.children: List = []
         self.extend(iterable)
 
-    def append(self, item):
+    def append(self, item) -> None:
         self.children.append(item)
 
-    def extend(self, iterable):
+    def extend(self, iterable) -> None:
         for item in iterable:
             self.append(item)
 
 
-class SequenceTreeItem(ui.TreeItem):
+class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
 
+    IdleState = ""
     ProcessingState = "Processing..."
     ActiveState = "Active"
     SuccessState = "Success"
@@ -376,11 +385,31 @@ class SequenceTreeItem(ui.TreeItem):
     StoppedState = "Stopped"
     AnalysisErrorState = "AnalysisError"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self) -> None:
+        super().__init__()
+        self.type_name: str = ""
         self.checkable = True
 
     # Properties
+
+    @property
+    def children(self):
+        items = []
+        for index in range(self.childCount()):
+            item = self.child(index)
+        return items
+
+    @property
+    def checkable(self) -> bool:
+        return self.flags() & QtCore.Qt.ItemIsUserCheckable != 0
+
+    @checkable.setter
+    def checkable(self, value: bool) -> None:
+        if value:
+            flags = self.flags() | QtCore.Qt.ItemIsUserCheckable
+        else:
+            flags = self.flags() & ~QtCore.Qt.ItemIsUserCheckable
+        self.setFlags(flags)
 
     @property
     def has_position(self):
@@ -388,51 +417,64 @@ class SequenceTreeItem(ui.TreeItem):
 
     @property
     def selectable(self):
-        return self.qt.flags() & QtCore.Qt.ItemIsSelectable != 0
+        return self.flags() & QtCore.Qt.ItemIsSelectable != 0
 
     @selectable.setter
     def selectable(self, value):
-        flags = self.qt.flags()
+        flags = self.flags()
         if value:
             flags |= QtCore.Qt.ItemIsSelectable
         else:
             flags &= ~QtCore.Qt.ItemIsSelectable
-        self.qt.setFlags(flags)
+        self.setFlags(flags)
 
     @property
-    def name(self):
-        return self[0].value
+    def name(self) -> str:
+        return self.text(0)
 
     @name.setter
-    def name(self, value):
-        self[0].value = value
+    def name(self, name: str) -> None:
+        self.setText(0, name)
 
     @property
     def enabled(self):
-        return self[0].checked
+        return self.checkState(0) == QtCore.Qt.Checked
 
     @enabled.setter
-    def enabled(self, enabled):
-        self[0].checked = enabled
+    def enabled(self, enabled: bool) -> None:
+        self.setCheckState(0, QtCore.Qt.Checked if enabled else QtCore.Qt.Unchecked)
 
     @property
-    def state(self):
-        return self[2].value
+    def state(self) -> str:
+        return self.text(2)
 
     @state.setter
-    def state(self, value):
-        self[0].bold = (value in (self.ActiveState, self.ProcessingState))
-        self[0].color = None
-        if value == self.SuccessState:
-            self[2].color = "green"
-        elif value in (self.ActiveState, self.ProcessingState):
-            self[0].color = "blue"
-            self[2].color = "blue"
+    def state(self, state: str) -> None:
+        if state in (self.ActiveState, self.ProcessingState):
+            self.setNameColor(QtGui.QColor("blue"))
         else:
-            self[2].color = "red"
-        self[2].value = value
+            self.setNameColor(QtGui.QColor())
+
+        if state == self.SuccessState:
+            self.setStateColor(QtGui.QColor("green"))
+        elif state in (self.ActiveState, self.ProcessingState):
+            self.setStateColor(QtGui.QColor("blue"))
+        else:
+            self.setStateColor(QtGui.QColor("blue"))
+
+        self.setText(2, state)
 
     # Methods
+
+    def setNameColor(self, color: QtGui.QColor) -> None:
+        brush = self.foreground(0)
+        brush.setColor(color)
+        self.setForeground(0, brush)
+
+    def setStateColor(self, color: QtGui.QColor) -> None:
+        brush = self.foreground(2)
+        brush.setColor(color)
+        self.setForeground(2, brush)
 
     def setLocked(self, state: bool) -> None:
         self.checkable = not state
@@ -440,8 +482,8 @@ class SequenceTreeItem(ui.TreeItem):
         for child in self.children:
             child.setLocked(state)
 
-    def reset(self):
-        self.state = None
+    def reset(self) -> None:
+        self.state = type(self).IdleState
         for child in self.children:
             child.reset()
 
@@ -449,11 +491,10 @@ class SequenceTreeItem(ui.TreeItem):
 class SampleTreeItem(SequenceTreeItem):
     """Sample (halfmoon) item of sequence tree."""
 
-    type = "sample"
-
     def __init__(self, name_prefix=None, name_infix=None, name_suffix=None,
-                 sample_type=None, sample_position=None, enabled=False, comment=None):
+                 sample_type=None, sample_position=None, enabled=False, comment=None) -> None:
         super().__init__()
+        self.type_name = "sample"
         self._name_prefix = name_prefix or ""
         self._name_infix = name_infix or ""
         self._name_suffix = name_suffix or ""
@@ -515,13 +556,13 @@ class SampleTreeItem(SequenceTreeItem):
         self.update_name()
 
     @property
-    def sample_position(self):
+    def sample_position(self) -> str:
         return self._sample_position
 
     @sample_position.setter
-    def sample_position(self, value):
+    def sample_position(self, value: str) -> None:
         self._sample_position = value.strip()
-        self[1].value = value.strip()
+        self.setText(1, value.strip())
 
     @property
     def comment(self):
@@ -583,7 +624,7 @@ class SampleTreeItem(SequenceTreeItem):
 
     def update_name(self):
         tokens = self.name, self.sample_type
-        self[0].value = "/".join((token for token in tokens if token))
+        self.setText(0, "/".join((token for token in tokens if token)))
 
     def reset_positions(self):
         for contact_item in self.children:
@@ -595,11 +636,12 @@ class SampleTreeItem(SequenceTreeItem):
         for contact_item in self.children:
             if contact_item.has_position:
                 contact_positions[contact_item.id] = contact_item.position
-        while len(self.children):
-            self.qt.takeChild(0)
+        while self.children:
+            self.takeChild(0)
         self.sequence = sequence
         for contact in sequence.contacts:
-            item = self.append(ContactTreeItem(self, contact))
+            item = ContactTreeItem(self, contact)
+            self.addChild(item)
         # Restore contact positions
         for contact_item in self.children:
             if contact_item.id in contact_positions:
@@ -609,10 +651,9 @@ class SampleTreeItem(SequenceTreeItem):
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""
 
-    type = "contact"
-
-    def __init__(self, sample, contact):
-        super().__init__([contact.name, None])
+    def __init__(self, sample, contact) -> None:
+        super().__init__()
+        self.type_name = "contact"
         self.sample = sample
         self.id = contact.id
         self.name = contact.name
@@ -621,7 +662,7 @@ class ContactTreeItem(SequenceTreeItem):
         self.description = contact.description
         self.reset_position()
         for measurement in contact.measurements:
-            self.append(MeasurementTreeItem(self, measurement))
+            self.addChild(MeasurementTreeItem(self, measurement))
 
     # Properties
 
@@ -633,34 +674,35 @@ class ContactTreeItem(SequenceTreeItem):
     def position(self, position):
         x, y, z = position
         self.__position = x, y, z
-        self[1].value = {False: "", True: "OK"}.get(self.has_position)
+        text = value = {False: "", True: "OK"}.get(self.has_position)
+        self.setText(1, text)
 
     @property
-    def has_position(self):
+    def has_position(self) -> bool:
         return any((not math.isnan(value) for value in self.__position))
 
     # Methods
 
-    def reset_position(self):
+    def reset_position(self) -> None:
         self.position = float("nan"), float("nan"), float("nan")
 
 
 class MeasurementTreeItem(SequenceTreeItem):
     """Measurement item of sequence tree."""
 
-    def __init__(self, contact, measurement):
-        super().__init__([measurement.name, None])
+    def __init__(self, contact, measurement) -> None:
+        super().__init__()
         self.contact = contact
         self.id = measurement.id
         self.name = measurement.name
-        self.type = measurement.type
+        self.type_name = measurement.type
         self.enabled = measurement.enabled
         self.parameters = copy.deepcopy(measurement.parameters)
         self.default_parameters = copy.deepcopy(measurement.default_parameters)
         self.tags = measurement.tags
         self.description = measurement.description
-        self.series = {}
-        self.analysis = {}
+        self.series: Dict = {}
+        self.analysis: Dict = {}
 
     def reset(self) -> None:
         super().reset()
@@ -668,15 +710,49 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.analysis.clear()
 
 
+class SequenceTree(QtWidgets.QTreeWidget):
+    """Sequence tree containing sample, contact and measurement items."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setHeaderLabels(["Name", "Pos", "State"])
+        self.header().setMinimumSectionSize(32)
+        self.header().resizeSection(1, 32)
+        self.setExpandsOnDoubleClick(False)
+
+    # Methods
+
+    def sampleItems(self) -> List[SampleTreeItem]:
+        items = []
+        for index in range(self.topLevelItemCount()):
+            item = self.topLevelItem(index)
+            if isinstance(item, SampleTreeItem):
+                items.append(item)
+        return items
+
+    def setLocked(self, state: bool) -> None:
+        for item in self.sampleItems():
+            item.setLocked(state)
+
+    def reset(self) -> None:
+        for item in self.sampleItems():
+            item.reset()
+
+    def resizeColumnsToContent(self) -> None:
+        self.resizeColumnToContents(0)
+        self.resizeColumnToContents(1)
+        self.resizeColumnToContents(2)
+
+
 class EditSamplesDialog(SettingsMixin):
     """Quick edit all samples at once dialog."""
 
-    def __init__(self, sequence_tree, sequences):
-        self.sequence_tree = sequence_tree
+    def __init__(self, samples, sequences):
+        self.samples = samples
         self.sequences = sequences
 
     def populateDialog(self, dialog):
-        for sample_item in self.sequence_tree:
+        for sample_item in self.samples:
             item = QuickEditItem()
             item.setEnabled(sample_item.enabled)
             item.setPrefix(sample_item.name_prefix)

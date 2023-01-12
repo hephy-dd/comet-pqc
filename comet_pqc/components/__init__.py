@@ -2,9 +2,7 @@ import math
 import os
 from typing import Optional
 
-from comet import ui
-from comet.settings import SettingsMixin
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core.position import Position
 from ..core.utils import make_path, user_home
@@ -34,7 +32,7 @@ __all__ = [
 class ToggleButton(QtWidgets.QPushButton):
     """Colored checkable button."""
 
-    def __init__(self, text: str, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, text: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setText(text)
         self.setCheckable(True)
@@ -46,7 +44,7 @@ class ToggleButton(QtWidgets.QPushButton):
 
 class PositionLabel(QtWidgets.QLabel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setProperty("value", math.nan)
         self.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -64,7 +62,7 @@ class PositionLabel(QtWidgets.QLabel):
 
 class PositionWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Position")
 
@@ -88,7 +86,7 @@ class PositionWidget(QtWidgets.QGroupBox):
 
 class CalibrationLabel(QtWidgets.QLabel):
 
-    def __init__(self, prefix: str, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, prefix: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setPrefix(prefix)
         self.setValue(math.nan)
@@ -113,7 +111,7 @@ class CalibrationLabel(QtWidgets.QLabel):
 
 class CalibrationWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Calibration")
         self.xCalLabel = CalibrationLabel("cal", self)
@@ -146,190 +144,207 @@ class CalibrationWidget(QtWidgets.QGroupBox):
         self.zRmLabel.setValue(getrm(position.z))
 
 
-class DirectoryWidget(ui.Row):
+class FocusComboBox(QtWidgets.QComboBox):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.location_combo_box = ui.ComboBox(
-            editable=True,
-            focus_out=self.update_locations,
-            changed=self.on_location_changed,
-        )
-        self.location_combo_box.duplicates_enabled = False
-        self.select_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "search.svg"),
-            tool_tip="Select a directory.",
-            clicked=self.on_select_clicked
-        )
-        self.remove_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "delete.svg"),
-            tool_tip="Remove directory from list.",
-            clicked=self.on_remove_clicked
-        )
-        self.append(self.location_combo_box)
-        self.append(self.select_button)
-        self.append(self.remove_button)
+    focusOut = QtCore.pyqtSignal()
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.focusOut.emit()
+
+
+class DirectoryWidget(QtWidgets.QWidget):
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.locationComboBox = FocusComboBox(self)
+        self.locationComboBox.setEditable(True)
+        self.locationComboBox.setDuplicatesEnabled(False)
+        self.locationComboBox.focusOut.connect(self.updateLocations)
+        self.locationComboBox.currentTextChanged.connect(self.updateButtons)
+
+        self.selectButton = QtWidgets.QToolButton(self)
+        self.selectButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "search.svg")))
+        self.selectButton.setToolTip("Select a directory.")
+        self.selectButton.clicked.connect(self.selectLocation)
+
+        self.removeButton = QtWidgets.QToolButton(self)
+        self.removeButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
+        self.removeButton.setToolTip("Remove directory from list.")
+        self.removeButton.clicked.connect(self.removeOperator)
+
+        layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.locationComboBox)
+        layout.addWidget(self.selectButton)
+        layout.addWidget(self.removeButton)
 
     def currentLocation(self) -> str:
-        return self.location_combo_box.qt.currentText().strip()
+        return self.locationComboBox.currentText().strip()
 
     @property
     def locations(self):
         locations = []
-        self.update_locations()
-        for i in range(len(self.location_combo_box)):
-            location = self.location_combo_box.qt.itemText(i).strip()
-            locations.append(self.location_combo_box.qt.itemText(i).strip())
+        self.updateLocations()
+        for index in range(self.locationComboBox.count()):
+            location = self.locationComboBox.itemText(index).strip()
+            locations.append(self.locationComboBox.itemText(index).strip())
         return locations
 
-    def clear_locations(self):
-        changed = self.location_combo_box.changed
-        self.location_combo_box.changed = None
-        self.location_combo_box.clear()
-        self.update_locations()
-        self.location_combo_box.changed = changed
+    def clearLocations(self):
+        with QtCore.QSignalBlocker(self.locationComboBox):
+            self.locationComboBox.clear()
+            self.updateLocations()
 
-    def append_location(self, value):
-        self.location_combo_box.append(value)
+    def addLocation(self, value):
+        self.locationComboBox.addItem(value)
 
-    def on_location_changed(self, _):
-        self.remove_button.enabled = len(self.location_combo_box) > 1
+    def updateButtons(self, text):
+        self.removeButton.setEnabled(self.locationComboBox.count())
 
-    def on_select_clicked(self):
-        value = ui.directory_open(
-            title="Select directory",
-            path=self.currentLocation()
+    def selectLocation(self):
+        value = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select directory",
+            self.currentLocation(),
         )
         if value:
-            for i in range(self.location_combo_box.qt.count()):
-                location = self.location_combo_box.qt.itemText(i).strip()
+            for index in range(self.locationComboBox.count()):
+                location = self.locationComboBox.itemText(index).strip()
                 if location == value:
-                    self.location_combo_box.qt.setCurrentIndex(i)
+                    self.locationComboBox.setCurrentIndex(index)
                     return
-            self.update_locations()
-            self.location_combo_box.qt.insertItem(0, value)
-            self.location_combo_box.qt.setCurrentIndex(0)
+            self.updateLocations()
+            self.locationComboBox.insertItem(0, value)
+            self.locationComboBox.setCurrentIndex(0)
 
-    def on_remove_clicked(self):
-        self.update_locations()
-        if len(self.location_combo_box) > 1:
-            index = self.location_combo_box.qt.currentIndex()
+    def removeOperator(self):
+        self.updateLocations()
+        if self.locationComboBox.count() > 1:
+            index = self.locationComboBox.currentIndex()
             if index >= 0:
                 result = QtWidgets.QMessageBox.question(
-                    self.qt,
+                    self,
                     "Remove directory",
-                    f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
+                    f"Do you want to remove directory {self.locationComboBox.currentText()!r} from the list?"
                 )
                 if result == QtWidgets.QMessageBox.Yes:
-                    self.location_combo_box.qt.removeItem(index)
+                    self.locationComboBox.removeItem(index)
 
-    def update_locations(self):
-        self.remove_button.enabled = len(self.location_combo_box) > 1
-        current_text = self.location_combo_box.qt.currentText().strip()
-        for i in range(self.location_combo_box.qt.count()):
-            if self.location_combo_box.qt.itemText(i).strip() == current_text:
+    def updateLocations(self):
+        self.removeButton.setEnabled(self.locationComboBox.count() > 1)
+        current_text = self.locationComboBox.currentText().strip()
+        for index in range(self.locationComboBox.count()):
+            if self.locationComboBox.itemText(index).strip() == current_text:
                 return
         if current_text:
-            self.location_combo_box.qt.insertItem(0, current_text)
-            self.location_combo_box.qt.setCurrentIndex(0)
+            self.locationComboBox.insertItem(0, current_text)
+            self.locationComboBox.setCurrentIndex(0)
 
 
 class WorkingDirectoryWidget(DirectoryWidget):
 
     def readSettings(self):
-        self.clear_locations()
+        self.clearLocations()
         locations = settings.outputPath()
         if not locations:
             locations = [os.path.join(user_home(), "PQC")]
         for location in locations:
-            self.append_location(location)
-        self.location_combo_box.current = settings.currentOutputPath()
-        self.update_locations()
+            self.addLocation(location)
+        self.locationComboBox.setCurrentText(settings.currentOutputPath())
+        self.updateLocations()
 
     def writeSettings(self):
-        self.update_locations()
+        self.updateLocations()
         settings.setOutputPath(self.locations)
-        settings.setCurrentOutputPath(self.location_combo_box.current)
+        settings.setCurrentOutputPath(self.locationComboBox.currentText())
 
 
-class OperatorComboBox(ui.ComboBox, SettingsMixin):
+class OperatorComboBox(QtWidgets.QComboBox):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.duplicates_enabled = False
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setDuplicatesEnabled(False)
 
-    def readSettings(self):
+    def readSettings(self) -> None:
         self.clear()
         for operator in settings.operators():
-            self.append(operator)
-        self.current = settings.currentOperator()
+            self.addItem(operator)
+        self.setCurrentText(settings.currentOperator())
 
     def writeSettings(self):
-        settings.setCurrentOperator(self.current)
+        settings.setCurrentOperator(self.currentText())
         operators = []
-        for index in range(len(self)):
-            operators.append(self.qt.itemText(index))
+        for index in range(self.count()):
+            operators.append(self.itemText(index))
         settings.setOperators(operators)
 
 
-class OperatorWidget(ui.Row, SettingsMixin):
+class OperatorWidget(QtWidgets.QWidget):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.operator_combo_box = OperatorComboBox()
-        self.add_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "add.svg"),
-            tool_tip="Add new operator.",
-            clicked=self.on_add_clicked
-        )
-        self.remove_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "delete.svg"),
-            tool_tip="Remove current operator from list.",
-            clicked=self.on_remove_clicked
-        )
-        self.append(self.operator_combo_box)
-        self.append(self.add_button)
-        self.append(self.remove_button)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.operatorComboBox = OperatorComboBox(self)
 
-    def on_add_clicked(self):
-        operator = ui.get_text(
-            text="",
-            title="Add operator",
-            label="Enter name of operator to add."
-        )
-        if operator:
-            if operator not in self.operator_combo_box:
-                self.operator_combo_box.append(operator)
-            self.operator_combo_box.current = operator
+        self.addButton = QtWidgets.QToolButton(self)
+        self.addButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
+        self.addButton.setToolTip("Add new operator.")
+        self.addButton.clicked.connect(self.addOperator)
 
-    def on_remove_clicked(self):
-        index = self.operator_combo_box.qt.currentIndex()
+        self.removeButton = QtWidgets.QToolButton(self)
+        self.removeButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
+        self.removeButton.setToolTip("Remove current operator from list.")
+        self.removeButton.clicked.connect(self.removeOperator)
+
+        layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.operatorComboBox)
+        layout.addWidget(self.addButton)
+        layout.addWidget(self.removeButton)
+
+    def currentOperator(self) -> str:
+        return self.operatorComboBox.currentText()
+
+    def addOperator(self) -> None:
+        operator, success = QtWidgets.QInputDialog.getText(
+            self,
+            "Add operator",
+            "Enter name of operator to add.",
+        )
+        if success:
+            # Add only if not already in list
+            index = self.operatorComboBox.findText(operator)
+            if index < 0:
+                self.operatorComboBox.addItem(operator)
+            self.operatorComboBox.setCurrentText(operator)
+
+    def removeOperator(self) -> None:
+        index = self.operatorComboBox.currentIndex()
         if index >= 0:
             result = QtWidgets.QMessageBox.question(
-                self.qt,
+                self,
                 "Remove operator",
-                f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
+                f"Do you want to remove operator {self.currentOperator()!r} from the list?"
             )
             if result == QtWidgets.QMessageBox.Yes:
-                self.operator_combo_box.qt.removeItem(index)
+                self.operatorComboBox.removeItem(index)
 
-    def readSettings(self):
-        self.operator_combo_box.readSettings()
+    def readSettings(self) -> None:
+        self.operatorComboBox.readSettings()
 
-    def writeSettings(self):
-        self.operator_combo_box.writeSettings()
+    def writeSettings(self) -> None:
+        self.operatorComboBox.writeSettings()
 
 
-class PositionsComboBox(ui.ComboBox, SettingsMixin):
+class PositionsComboBox(QtWidgets.QComboBox):
 
     def readSettings(self):
         self.clear()
         for position in settings.tablePositions():
             self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
-        index = self.settings.get("current_table_position") or 0
+        index = settings.settings.get("current_table_position") or 0
         if 0 <= index < len(self):
             self.current = self[index]
 
     def writeSettings(self):
         index = self.index(self.current or 0)
-        self.settings["current_table_position"] = index
+        settings.settings["current_table_position"] = index

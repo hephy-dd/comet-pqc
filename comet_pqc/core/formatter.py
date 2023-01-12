@@ -82,7 +82,7 @@ class CSVFormatter(Formatter):
 
 class PQCHeaderItem:
 
-    def __init__(self, name: str, unit: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None) -> None:
         self.name: str = name
         self.unit: Optional[str] = unit
 

@@ -232,7 +232,7 @@ class MeasureProcess(BaseProcess):
         write_logfiles = self.get("write_logfiles")
         # TODO
         measurement = measurement_factory(
-            measurement_item.type,
+            measurement_item.type_name,
             process=self,
             sample_name=sample_name,
             sample_type=sample_type,

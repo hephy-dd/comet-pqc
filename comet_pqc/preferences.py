@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -12,7 +12,7 @@ __all__ = ["PreferencesDialog"]
 
 class PreferencesDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Preferences")
 
@@ -63,7 +63,7 @@ class PreferencesDialog(QtWidgets.QDialog):
 
 class TableStepDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.stepSizeLabel = QtWidgets.QLabel(self)
@@ -175,7 +175,7 @@ class TableStepItem(QtWidgets.QTreeWidgetItem):
 class TableWidget(QtWidgets.QWidget, SettingsMixin):
     """Table limits tab for preferences dialog."""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.stepsTreeWidget = QtWidgets.QTreeWidget(self)
@@ -426,7 +426,7 @@ class TableWidget(QtWidgets.QWidget, SettingsMixin):
 class WebAPIWidget(QtWidgets.QWidget, SettingsMixin):
     """Web API settings tab for preferences dialog."""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         self.enabledCheckBox = QtWidgets.QCheckBox(self)
@@ -489,7 +489,7 @@ class WebAPIWidget(QtWidgets.QWidget, SettingsMixin):
 class OptionsWidget(QtWidgets.QWidget, SettingsMixin):
     """Options tab for preferences dialog."""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
         # Plots
