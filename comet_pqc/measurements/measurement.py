@@ -55,7 +55,7 @@ class ParameterType:
 class Measurement(ResourceMixin, ProcessMixin):
     """Base measurement class."""
 
-    type: str = ""
+    type_name: str = ""
 
     required_instruments: List[str] = []
 
@@ -254,7 +254,7 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("sample_comment", self.sample_comment)
         self.set_meta("contact_name", self.measurement_item.contact.name)
         self.set_meta("measurement_name", self.measurement_item.name)
-        self.set_meta("measurement_type", self.type)
+        self.set_meta("measurement_type", self.type_name)
         self.set_meta("measurement_tags", self.tags)
         self.set_meta("table_position", tuple(self.table_position))
         self.set_meta("start_timestamp", self.timestamp_iso)
@@ -291,16 +291,16 @@ class MeasurementRunner:
 
     def handle_state(self, name, methods):
         def handle_state(kwargs):
-            logger.info("%s %s...", name, self.measurement.type)
+            logger.info("%s %s...", name, self.measurement.type_name)
             try:
                 for method in methods:
                     getattr(self.measurement, method)(**kwargs)
             except Exception as exc:
                 logger.exception(exc)
-                logger.error("%s %s... failed.", name, self.measurement.type)
+                logger.error("%s %s... failed.", name, self.measurement.type_name)
                 raise
             else:
-                logger.info("%s %s... done.", name, self.measurement.type)
+                logger.info("%s %s... done.", name, self.measurement.type_name)
         return handle_state
 
     def initialize(self, kwargs):

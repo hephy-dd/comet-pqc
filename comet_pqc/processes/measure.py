@@ -242,6 +242,7 @@ class MeasureProcess(BaseProcess):
             operator=operator,
             tags=tags
         )
+        logger.warning(measurement)
         measurement.measurement_item = measurement_item
         log_filename = self.create_filename(measurement, suffix=".log") if write_logfiles else None
         plot_filename = self.create_filename(measurement, suffix=".png")

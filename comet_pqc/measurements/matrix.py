@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class MatrixMeasurement(Measurement):
     """Base measurement class wrapping code into matrix configuration."""
 
-    type = "matrix"
+    type_name = "matrix"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

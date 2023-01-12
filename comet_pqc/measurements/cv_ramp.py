@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class CVRampMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """CV ramp measurement."""
 
-    type = "cv_ramp"
+    type_name = "cv_ramp"
 
     required_instruments = ["hvsrc", "lcr"]
 

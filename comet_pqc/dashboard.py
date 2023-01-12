@@ -658,7 +658,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     def operator(self):
         """Return current operator."""
-        return self.operatorWidget.operator_combo_box.qt.currentText().strip()
+        return self.operatorWidget.currentOperator().strip()
 
     def output_dir(self):
         """Return output base path."""

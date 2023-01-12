@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class IVRampBiasElmMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
 
-    type = "iv_ramp_bias_elm"
+    type_name = "iv_ramp_bias_elm"
 
     required_instruments = ["hvsrc", "vsrc", "elm"]
 

@@ -61,15 +61,7 @@ class ResourceProcess(Process, ResourceMixin):
     def serve(self):
         logger.info("start serving %s", self.name)
         try:
-            r = self.resources.get(self.name)
-            logger.warning(r)
-            logger.warning([r.resource_name,
-                r.visa_library,
-                r.options])
-            with r as x:
-                logger.warning(x)
             with self.resources.get(self.name) as resource:
-                logger.warning(resource)
                 driver = type(self).Driver(resource)
                 t = Timer()
                 while True:

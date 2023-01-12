@@ -28,7 +28,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
     In case of compliance, stop requests or errors ramps to zero before exit.
     """
 
-    type = "iv_ramp"
+    type_name = "iv_ramp"
 
     required_instruments = ["hvsrc"]
 

@@ -16,7 +16,7 @@ def measurement_factory(key, *args, **kwargs):
     >>> meas()
     """
     for cls in globals().values():
-        if hasattr(cls, "type"):
+        if hasattr(cls, "type_name"):
             if cls.type_name == key:
                 return cls(*args, **kwargs)
     raise KeyError(f"no such measurement type: {key}")

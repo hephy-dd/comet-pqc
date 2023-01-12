@@ -34,7 +34,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
     In case of compliance, stop requests or errors ramps to zero before exit.
     """
 
-    type = "iv_ramp_elm"
+    type_name = "iv_ramp_elm"
 
     required_instruments = ["hvsrc", "elm"]
 

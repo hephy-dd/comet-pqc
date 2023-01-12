@@ -28,7 +28,7 @@ class IVRamp4WireMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, 
     In case of compliance, stop requests or errors ramps to zero before exit.
     """
 
-    type = "iv_ramp_4_wire"
+    type_name = "iv_ramp_4_wire"
 
     required_instruments = ["vsrc"]
 

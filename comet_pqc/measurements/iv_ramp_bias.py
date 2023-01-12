@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """Bias IV ramp measurement."""
 
-    type = "iv_ramp_bias"
+    type_name = "iv_ramp_bias"
 
     required_instruments = ["hvsrc", "vsrc"]
 

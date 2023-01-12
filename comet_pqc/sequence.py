@@ -172,7 +172,7 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         if self.isMoveToContact() and self.positionCheckBox.isChecked():
             current = self.positionsComboBox.currentText()
             if current:
-                index = self.positionsComboBox.index(current)
+                index = self.positionsComboBox.findText(current)
                 positions = settings.tablePositions()
                 if 0 <= index < len(positions):
                     position = positions[index]
@@ -396,7 +396,7 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def children(self):
         items = []
         for index in range(self.childCount()):
-            item = self.child(index)
+            items.append(self.child(index))
         return items
 
     @property
@@ -460,20 +460,18 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
         elif state in (self.ActiveState, self.ProcessingState):
             self.setStateColor(QtGui.QColor("blue"))
         else:
-            self.setStateColor(QtGui.QColor("blue"))
+            self.setStateColor(QtGui.QColor("red"))
 
         self.setText(2, state)
 
     # Methods
 
     def setNameColor(self, color: QtGui.QColor) -> None:
-        brush = self.foreground(0)
-        brush.setColor(color)
+        brush = QtGui.QBrush(color)
         self.setForeground(0, brush)
 
     def setStateColor(self, color: QtGui.QColor) -> None:
-        brush = self.foreground(2)
-        brush.setColor(color)
+        brush = QtGui.QBrush(color)
         self.setForeground(2, brush)
 
     def setLocked(self, state: bool) -> None:

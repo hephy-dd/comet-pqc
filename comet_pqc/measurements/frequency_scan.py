@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, EnvironmentMixin, AnalysisMixin):
     """Frequency scan."""
 
-    type = "frequency_scan"
+    type_name = "frequency_scan"
 
     required_instruments = ["hvsrc", "lcr"]
 

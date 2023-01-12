@@ -340,11 +340,11 @@ class PositionsComboBox(QtWidgets.QComboBox):
     def readSettings(self):
         self.clear()
         for position in settings.tablePositions():
-            self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
+            self.addItem(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
         index = settings.settings.get("current_table_position") or 0
-        if 0 <= index < len(self):
-            self.current = self[index]
+        if 0 <= index < self.count():
+            self.setCurrentText(self.itemText(index))
 
     def writeSettings(self):
-        index = self.index(self.current or 0)
+        index = self.currentIndex()
         settings.settings["current_table_position"] = index
