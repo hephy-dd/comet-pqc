@@ -18,8 +18,9 @@ from .processes import (
     StatusProcess,
     WebAPIProcess,
 )
-from .settings import settings
+from .core.resource import resource_registry
 from .core.utils import make_path
+from .settings import settings
 
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
 GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
@@ -27,9 +28,9 @@ GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 logger = logging.getLogger(__name__)
 
 
-class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
+class Application(comet.ProcessMixin):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.app = QtWidgets.QApplication(sys.argv)
         self.app.setApplicationName("comet-pqc")
         self.app.setApplicationVersion(__version__)
@@ -38,108 +39,124 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.app.setApplicationDisplayName(f"PQC {__version__}")
         self.app.setWindowIcon(QtGui.QIcon(make_path("assets", "icons", "pqc.ico")))
         self.app.lastWindowClosed.connect(self.app.quit)
+        self.app.aboutToQuit.connect(self.shutdown)
 
         # TODO for SettingsMixin
         self.app.reflection = lambda: self.app
         self.app.name = self.app.applicationName()
         self.app.organization = self.app.organizationName()
 
-        self._setup_resources()
-        self._setup_processes()
+        self._setupResources()
+        self._setupProcesses()
+
+        self._loadResourceSettings()
 
         self.window = MainWindow()
         self.window.setProperty("contentsUrl", CONTENTS_URL)
         self.window.setProperty("githubUrl", GITHUB_URL)
 
-        self.dashboard = self.window.dashboard
-        self.dashboard.messageChanged.connect(self.on_message)
-        self.dashboard.progressChanged.connect(self.on_progress)
+        self.dashboard = self.window.dashboard  # TODO
+        self.dashboard.messageChanged.connect(self.updateMessage)
+        self.dashboard.progressChanged.connect(self.updateProgress)
 
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
-    def _setup_resources(self):
-        self.resources.add("matrix", comet.Resource(
+    def _setupResources(self) -> None:
+        resource_registry["matrix"] = comet.Resource(
             resource_name="TCPIP::10.0.0.2::5025::SOCKET",
             encoding="latin1",
             read_termination="\n",
             write_termination="\n"
-        ))
-        self.resources.add("hvsrc", comet.Resource(
+        )
+        resource_registry["hvsrc"] = comet.Resource(
             resource_name="TCPIP::10.0.0.5::10002::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=4000
-        ))
-        self.resources.add("vsrc", comet.Resource(
+        )
+        resource_registry["vsrc"] = comet.Resource(
             resource_name="TCPIP::10.0.0.3::5025::SOCKET",
             encoding="latin1",
             read_termination="\n",
             write_termination="\n"
-        ))
-        self.resources.add("lcr", comet.Resource(
+        )
+        resource_registry["lcr"] = comet.Resource(
             resource_name="TCPIP::10.0.0.4::5025::SOCKET",
             read_termination="\n",
             write_termination="\n",
             timeout=8000
-        ))
-        self.resources.add("elm", comet.Resource(
+        )
+        resource_registry["elm"] = comet.Resource(
             resource_name="TCPIP::10.0.0.5::10001::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=8000
-        ))
-        self.resources.add("table", comet.Resource(
+        )
+        resource_registry["table"] = comet.Resource(
             resource_name="TCPIP::10.0.0.6::23::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=8000
-        ))
-        self.resources.add("environ", comet.Resource(
+        )
+        resource_registry["environ"] = comet.Resource(
             resource_name="TCPIP::10.0.0.8::10001::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n"
-        ))
-        self.resources.load_settings()
+        )
 
-    def _setup_processes(self):
+    def _loadResourceSettings(self) -> None:
+        # Load settings TODO
+        resource_settings = settings.resources()
+        for name, resource in resource_registry.items():
+            if name in resource_settings:
+                if "address" in resource_settings[name]:
+                    resource.resource_name = resource_settings[name]["address"]
+                resource.visa_library = "@py"
+                if "termination" in resource_settings[name]:
+                    resource.options["read_termination"] = resource_settings[name]["termination"]
+                    resource.options["write_termination"] = resource_settings[name]["termination"]
+                if "timeout" in resource_settings[name]:
+                    resource.options["timeout"] = resource_settings[name]["timeout"] * 1e3  # to millisconds
+
+    def _setupProcesses(self) -> None:
         self.processes.add("environ", EnvironmentProcess(
             name="environ",
-            failed=self.on_show_error
+            failed=self.showException
         ))
         self.processes.add("status", StatusProcess(
-            failed=self.on_show_error,
-            message=self.on_message,
-            progress=self.on_progress
+            failed=self.showException,
+            message=self.updateMessage,
+            progress=self.updateProgress
         ))
         self.processes.add("table", AlternateTableProcess(
-            failed=self.on_show_error
+            failed=self.showException
         ))
         self.processes.add("measure", MeasureProcess(
-            failed=self.on_show_error,
-            message=self.on_message,
-            progress=self.on_progress,
+            failed=self.showException,
+            message=self.updateMessage,
+            progress=self.updateProgress,
         ))
         self.processes.add("contact_quality", ContactQualityProcess(
-            failed=self.on_show_error
+            failed=self.showException
         ))
         self.processes.add("webapi", WebAPIProcess(
-            failed=self.on_show_error
+            failed=self.showException
         ))
 
-    def readSettings(self):
+    def readSettings(self) -> None:
         self.window.readSettings()
 
-    def writeSettings(self):
+    def writeSettings(self) -> None:
         self.window.writeSettings()
 
-    def eventLoop(self):
+    def eventLoop(self) -> None:
         # Sync environment controls
-        if self.dashboard.use_environment():
+        if self.dashboard.use_environment():  # TODO
             self.dashboard.environ_process.start()
             self.dashboard.sync_environment_controls()
 
-        if self.dashboard.use_table():
+        if self.dashboard.use_table():  # TODO
             self.dashboard.table_process.start()
             self.dashboard.sync_table_controls()
             self.dashboard.table_process.enable_joystick(False)
@@ -159,27 +176,26 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
         self.window.show()
 
-        try:
-            return self.app.exec()
-        finally:
-            # Stop processes
-            self.processes.stop()
-            self.processes.join()
+        self.app.exec()
 
-    def on_show_error(self, exc, tb):
+    def shutdown(self) -> None:
+        self.processes.stop()
+        self.processes.join()
+
+    def showException(self, exc: Exception, tb) -> None:
         logger.exception(exc)
         self.window.showMessage("Exception occured!")
         self.window.hideProgress()
         self.window.showException(exc)
 
-    def on_message(self, message: Optional[str]) -> None:
+    def updateMessage(self, message: Optional[str]) -> None:
         if message is None:
             self.window.hideMessage()
         else:
             self.window.showMessage(message)
 
-    def on_progress(self, value: int, maximum: int) -> None:
-        minimum = 0
+    def updateProgress(self, value: int, maximum: int) -> None:
+        minimum: int = 0
         if value == maximum:
             self.window.hideProgress()
         else:

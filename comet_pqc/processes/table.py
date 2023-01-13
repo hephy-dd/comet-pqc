@@ -7,12 +7,11 @@ import traceback
 import queue
 
 import comet
-from comet.driver.corvus import Venus1
-from comet.resource import ResourceMixin
 
 from comet_pqc.utils import from_table_unit, to_table_unit
 from comet_pqc.core.timer import Timer
 
+from ..core.resource import resource_registry
 from ..core.request import Request
 from ..core.position import Position
 from ..settings import settings
@@ -103,7 +102,7 @@ class TableErrorHandler:
             raise TableCalibrationError("Table requires calibration.")
 
 
-class TableProcess(comet.Process, ResourceMixin):
+class TableProcess(comet.Process):
     """Table process base class."""
 
     def __init__(self, **kwargs):
@@ -113,8 +112,8 @@ class TableProcess(comet.Process, ResourceMixin):
         while self.running:
             logger.info("start serving table...")
             try:
-                with self.resources.get("table") as resource:
-                    context = Venus1(resource)
+                with resource_registry.get("table") as resource:
+                    context = settings.getInstrumentType("table")(resource)
                     try:
                         self.initialize(context)
                         self.event_loop(context)

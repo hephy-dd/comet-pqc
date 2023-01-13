@@ -11,11 +11,11 @@ import analysis_pqc
 import comet
 import numpy as np
 from comet.process import ProcessMixin
-from comet.resource import ResourceMixin
 
 from .. import __version__
 from ..core.formatter import PQCFormatter
 from ..settings import settings
+from ..core.resource import resource_registry
 
 __all__ = ["Measurement"]
 
@@ -52,7 +52,7 @@ class ParameterType:
         self.required = required
 
 
-class Measurement(ResourceMixin, ProcessMixin):
+class Measurement(ProcessMixin):
     """Base measurement class."""
 
     type_name: str = ""
@@ -338,7 +338,7 @@ class MeasurementRunner:
             kwargs = {}
             for key in type(measurement).required_instruments:
                 create = settings.getInstrumentType(key)
-                resource = measurement.resources.get(key)
+                resource = resource_registry.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:
                 self.initialize(kwargs)

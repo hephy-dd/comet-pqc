@@ -2,8 +2,8 @@ import logging
 import time
 
 import comet
-from comet.driver.keithley import K707B
 
+from ..core.resource import resource_registry
 from ..settings import settings
 
 __all__ = ["ContactQualityProcess"]
@@ -46,7 +46,7 @@ class LCRInstrument:
         return prim, sec
 
 
-class ContactQualityProcess(comet.Process, comet.ResourceMixin):
+class ContactQualityProcess(comet.Process):
 
     def __init__(self, update_interval=.250, matrix_channels=None, reading=None, **kwargs):
         super().__init__(**kwargs)
@@ -60,8 +60,8 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
     def close_matrix(self, channels):
         try:
-            with self.resources.get("matrix") as matrix_res:
-                matrix = K707B(matrix_res)
+            with resource_registry.get("matrix") as matrix_res:
+                matrix = settings.getInstrumentType("matrix")(matrix_res)
                 matrix.channel.close(channels)
                 closed_channels = matrix.channel.getclose()
                 if sorted(closed_channels) != sorted(channels):
@@ -72,15 +72,15 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
     def open_matrix(self):
         try:
-            with self.resources.get("matrix") as matrix_res:
-                matrix = K707B(matrix_res)
+            with resource_registry.get("matrix") as matrix_res:
+                matrix = settings.getInstrumentType("matrix")(matrix_res)
                 matrix.channel.open()  # open all
             logger.info("Matrix: opened all channels")
         except Exception as exc:
             raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc
 
     def measure(self):
-        with self.resources.get("lcr") as lcr_res:
+        with resource_registry.get("lcr") as lcr_res:
             lcr = LCRInstrument(settings.getInstrumentType("lcr")(lcr_res))
             lcr.reset()
             lcr.quick_setup_cp_rp()

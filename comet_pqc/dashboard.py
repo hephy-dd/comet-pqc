@@ -21,7 +21,6 @@ from .components import (
 )
 from .core import config
 from .core.position import Position
-from .core.formatter import CSVFormatter
 from .core.utils import make_path, user_home
 from .sequence import (
     ContactTreeItem,
@@ -40,11 +39,9 @@ from .tabs.environment import EnvironmentWidget
 from .tabs.summary import SummaryWidget
 from .tabs.loggingwidget import LoggingWidget
 from .tabs.status import StatusWidget
-from .utils import caldone_valid, handle_exception
+from .utils import caldone_valid, handle_exception, append_summary
 
 logger = logging.getLogger(__name__)
-
-SUMMARY_FILENAME = "summary.csv"
 
 
 class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
@@ -515,7 +512,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         # Working directory
 
-        self.outputWidget = WorkingDirectoryWidget()
+        self.outputWidget = WorkingDirectoryWidget(self)
 
         self.outputGroupBox = QtWidgets.QGroupBox(self)
         self.outputGroupBox.setTitle("Output Directory")
@@ -774,10 +771,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
     @handle_exception
     def on_start_all(self):
         sample_items = SamplesItem(self.sequenceTree.sampleItems())
-        dialog = StartSequenceDialog(
-            context=sample_items,
-            table_enabled=self.use_table()
-        )
+        dialog = StartSequenceDialog(sample_items, self)
+        dialog.setTableEnabled(self.use_table())
         self.operatorWidget.writeSettings()
         self.outputWidget.writeSettings()
         dialog.readSettings()
@@ -808,10 +803,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
                 return
             self._on_start(current_item)
         elif isinstance(current_item, ContactTreeItem):
-            dialog = StartSequenceDialog(
-                context=current_item,
-                table_enabled=self.use_table()
-            )
+            dialog = StartSequenceDialog(current_item, self)
+            dialog.setTableEnabled(self.use_table())
             self.operatorWidget.writeSettings()
             self.outputWidget.writeSettings()
             dialog.readSettings()
@@ -826,10 +819,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
                     move_to_after_position=dialog.isMoveToPosition()
                 )
         elif isinstance(current_item, SampleTreeItem):
-            dialog = StartSequenceDialog(
-                context=current_item,
-                table_enabled=self.use_table()
-            )
+            dialog = StartSequenceDialog(current_item, self)
+            dialog.setTableEnabled(self.use_table())
             self.operatorWidget.writeSettings()
             self.outputWidget.writeSettings()
             dialog.readSettings()
@@ -1131,13 +1122,5 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         data = self.summaryWidget.appendResult(*args)
         output_path = self.outputWidget.currentLocation()
         if output_path and os.path.exists(output_path):
-            filename = os.path.join(output_path, SUMMARY_FILENAME)
-            has_header = os.path.exists(filename)
-            with open(filename, "a") as fp:
-                header = self.summaryWidget.Header
-                fmt = CSVFormatter(fp)
-                for key in data.keys():
-                    fmt.add_column(key)
-                if not has_header:
-                    fmt.write_header()
-                fmt.write_row(data)
+            filename = os.path.join(output_path, settings.summaryFilename())
+            append_summary(data, filename)

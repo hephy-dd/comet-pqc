@@ -1,6 +1,5 @@
 from typing import Iterable, List, Optional
 
-from comet.resource import ResourceMixin
 from PyQt5 import QtCore, QtWidgets
 
 from .panel import MeasurementPanel
@@ -26,7 +25,7 @@ class MatrixChannelsLineEdit(QtWidgets.QLineEdit):
         self.setText(encode_channels(channels or []))
 
 
-class MatrixPanel(MeasurementPanel, ResourceMixin):
+class MatrixPanel(MeasurementPanel):
     """Base class for matrix switching panels."""
 
     type_name = "matrix"

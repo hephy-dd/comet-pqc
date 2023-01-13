@@ -1,5 +1,6 @@
 import math
 import os
+import traceback
 from typing import Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -175,6 +176,7 @@ class DirectoryWidget(QtWidgets.QWidget):
         self.removeButton.clicked.connect(self.removeOperator)
 
         layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.locationComboBox)
         layout.addWidget(self.selectButton)
         layout.addWidget(self.removeButton)
@@ -297,6 +299,7 @@ class OperatorWidget(QtWidgets.QWidget):
         self.removeButton.clicked.connect(self.removeOperator)
 
         layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.operatorComboBox)
         layout.addWidget(self.addButton)
         layout.addWidget(self.removeButton)

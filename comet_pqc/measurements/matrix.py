@@ -1,6 +1,7 @@
 import logging
 
-from comet.driver.keithley import K707B
+from ..core.resource import resource_registry
+from ..settings import settings
 
 from .measurement import Measurement
 
@@ -27,8 +28,8 @@ class MatrixMeasurement(Measurement):
             matrix_channels = self.get_parameter("matrix_channels")
             logger.info("Matrix close channels: %s", matrix_channels)
             try:
-                with self.resources.get("matrix") as matrix_res:
-                    matrix = K707B(matrix_res)
+                with resource_registry.get("matrix") as matrix_res:
+                    matrix = settings.getInstrumentType("matrix")(matrix_res)
                     closed_channels = matrix.channel.getclose()
                     if closed_channels:
                         raise RuntimeError("Some matrix channels are still closed, " \
@@ -46,8 +47,8 @@ class MatrixMeasurement(Measurement):
         matrix_enable = self.get_parameter("matrix_enable")
         if matrix_enable:
             try:
-                with self.resources.get("matrix") as matrix_res:
-                    matrix = K707B(matrix_res)
+                with resource_registry.get("matrix") as matrix_res:
+                    matrix = settings.getInstrumentType("matrix")(matrix_res)
                     matrix.channel.open() # open all
             except Exception as exc:
                 raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc

@@ -78,7 +78,7 @@ def appendItem(item, key, value):
 class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
     """Start sequence dialog."""
 
-    def __init__(self, context, table_enabled, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, context, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Start Sequence")
 
@@ -88,12 +88,10 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         self.contactCheckBox = QtWidgets.QCheckBox(self)
         self.contactCheckBox.setText("Move table and contact with Probe Card")
         self.contactCheckBox.setChecked(True)
-        self.contactCheckBox.setEnabled(table_enabled)
 
         self.positionCheckBox = QtWidgets.QCheckBox(self)
         self.positionCheckBox.setText("Move table after measurements")
         self.positionCheckBox.setChecked(False)
-        self.positionCheckBox.setEnabled(table_enabled)
         self.positionCheckBox.toggled.connect(self.setPositionsEnabled)
 
         self.positionsComboBox = PositionsComboBox(self)
@@ -164,6 +162,9 @@ class StartSequenceDialog(QtWidgets.QDialog, SettingsMixin):
         self.positionsComboBox.setEnabled(state)
 
     # Methods
+
+    def setTableEnabled(self, enabled: bool) -> None:
+        self.tableGroupBox.setEnabled(enabled)
 
     def isMoveToContact(self) -> bool:
         return self.contactCheckBox.isChecked()

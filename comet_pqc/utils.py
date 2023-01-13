@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import traceback
 from typing import Callable, Iterable, Optional, Union
 
@@ -7,6 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from comet import ureg
 
+from .core.formatter import CSVFormatter
 from .core.utils import make_path
 
 __all__ = [
@@ -131,13 +133,7 @@ def handle_exception(func: Callable) -> Callable:
 
 
 def show_exception(exc):
-    tb = traceback.format_exc()
-    dialog = QtWidgets.QMessageBox()
-    dialog.setWindowTitle("Exception occured")
-    dialog.setIcon(QtWidgets.QMessageBox.Critical)
-    dialog.setText(format(exc))
-    dialog.setDetailedText(format(tb))
-    dialog.exec()
+    ExceptionDialog(exc).exec()
 
 
 def getcal(value: float) -> Union[int, float]:
@@ -154,3 +150,34 @@ def getrm(value: float) -> Union[int, float]:
 
 def caldone_valid(position: Iterable) -> bool:
     return all(getcal(value) == 1 and getrm(value) == 1 for value in position)
+
+
+def append_summary(data: dict, filename: str) -> None:
+    has_header = os.path.exists(filename)
+    with open(filename, "a") as fp:
+        fmt = CSVFormatter(fp)
+        for key in data.keys():
+            fmt.add_column(key)
+        if not has_header:
+            fmt.write_header()
+        fmt.write_row(data)
+
+
+class ExceptionDialog(QtWidgets.QMessageBox):
+
+    def __init__(self, exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Exception occured")
+        self.setIcon(QtWidgets.QMessageBox.Critical)
+        self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+        # Fix message box width
+        spacer = QtWidgets.QSpacerItem(448, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.layout().addItem(spacer, self.layout().rowCount(), 0, 1, self.layout().columnCount())
+        # Set exception
+        self.setException(exc)
+
+    def setException(self, exc: Exception) -> None:
+        details = "".join(traceback.format_tb(exc.__traceback__))
+        self.setText(format(exc))
+        self.setDetailedText(details)

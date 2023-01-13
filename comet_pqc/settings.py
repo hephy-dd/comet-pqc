@@ -307,5 +307,8 @@ class Settings(SettingsMixin):
     def setWriteLogfiles(self, value: bool):
         self.settings["write_logfiles"] = bool(value)
 
+    def summaryFilename(self) -> str:
+        return self.settings.get("summary_filename", "summary.csv")
+
 
 settings = Settings()

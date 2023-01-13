@@ -6,10 +6,10 @@ import traceback
 
 import comet
 import pyvisa
-from comet.driver.keithley import K707B
 from comet.process import ProcessMixin
-from comet.resource import ResourceError, ResourceMixin
+from comet.resource import ResourceError
 
+from ..core.resource import resource_registry
 from ..measurements import measurement_factory
 from ..measurements.measurement import ComplianceError, MeasurementRunner
 from ..measurements.mixins import AnalysisError
@@ -63,7 +63,7 @@ class LogFileHandler:
         return False
 
 
-class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
+class BaseProcess(comet.Process, ProcessMixin):
 
     def create_filename(self, measurement, suffix=""):
         filename = comet.safe_filename(f"{measurement.basename}{suffix}")
@@ -102,7 +102,7 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
 
     def initialize_matrix(self, resource):
         self.emit("message", "Open all matrix channels...")
-        matrix = K707B(resource)
+        matrix = settings.getInstrumentType("matrix")(resource)
         matrix.identification
         logger.info("matrix: open all channels.")
         matrix.channel.open()
@@ -118,13 +118,13 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         except Exception:
             logger.error("unable to connect with environment box (test LED ON)")
         try:
-            with self.resources.get("hvsrc") as hvsrc:
+            with resource_registry.get("hvsrc") as hvsrc:
                 self.safe_initialize_hvsrc(hvsrc)
         except Exception:
             logger.error("unable to connect with HVSource")
             raise RuntimeError("Failed to connect with HVSource")
         try:
-            with self.resources.get("vsrc") as vsrc:
+            with resource_registry.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
             logger.error("unable to connect with VSource")
@@ -135,22 +135,22 @@ class BaseProcess(comet.Process, ResourceMixin, ProcessMixin):
         except Exception:
             logger.error("unable to connect with environment box (discharge decoupling)")
         try:
-            with self.resources.get("matrix") as matrix:
+            with resource_registry.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
         except Exception:
             logger.error("unable to connect with Matrix")
             raise RuntimeError("Failed to connect with Matrix")
 
     def safe_finalize(self):
-        with self.resources.get("hvsrc") as hvsrc:
+        with resource_registry.get("hvsrc") as hvsrc:
             self.safe_initialize_hvsrc(hvsrc)
         try:
-            with self.resources.get("vsrc") as vsrc:
+            with resource_registry.get("vsrc") as vsrc:
                 self.safe_initialize_vsrc(vsrc)
         except Exception:
             logger.error("unable to connect with VSource")
         try:
-            with self.resources.get("matrix") as matrix:
+            with resource_registry.get("matrix") as matrix:
                 self.initialize_matrix(matrix)
         except Exception:
             logger.error("unable to connect with: Matrix")

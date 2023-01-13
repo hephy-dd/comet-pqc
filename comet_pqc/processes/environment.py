@@ -1,7 +1,5 @@
 import logging
 
-from comet.driver.hephy import EnvironmentBox
-
 from .resource import ResourceProcess
 
 __all__ = ["EnvironmentProcess"]
@@ -11,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class EnvironmentProcess(ResourceProcess):
 
-    Driver = EnvironmentBox
+    instrument: str = "environ"
 
     update_monitoring_interval: float = 2.0
 

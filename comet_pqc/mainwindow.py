@@ -15,7 +15,7 @@ from .utils import show_exception
 __all__ = ["MainWindow"]
 
 APP_TITLE: str = "PQC"
-APP_COPY: str = "Copyright &copy; 2020-2022 HEPHY"
+APP_COPY: str = "Copyright &copy; 2020-2023 HEPHY"
 APP_LICENSE: str = "This software is licensed under the GNU General Public License v3.0"
 APP_DECRIPTION: str = """Process Quality Control (PQC) for CMS Tracker."""
 

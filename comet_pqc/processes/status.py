@@ -1,12 +1,14 @@
 import comet
-from comet.driver.keithley import K707B
 from comet.process import ProcessMixin
-from comet.resource import ResourceError, ResourceMixin
+from comet.resource import ResourceError
+
+from ..core.resource import resource_registry
+from ..settings import settings
 
 __all__ = ["StatusProcess"]
 
 
-class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
+class StatusProcess(comet.Process, ProcessMixin):
     """Reload instruments status."""
 
     def __init__(self, message=None, progress=None, **kwargs):
@@ -18,8 +20,8 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.set("matrix_model", "")
         self.set("matrix_channels", "")
         try:
-            with self.resources.get("matrix") as matrix_res:
-                matrix = K707B(matrix_res)
+            with resource_registry.get("matrix") as matrix_res:
+                matrix = settings.getInstrumentType("matrix")(matrix_res)
                 model = matrix.identification
                 self.set("matrix_model", model)
                 channels = matrix.channel.getclose()
@@ -30,7 +32,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_hvsrc(self):
         self.set("hvsrc_model", "")
         try:
-            with self.resources.get("hvsrc") as hvsrc_res:
+            with resource_registry.get("hvsrc") as hvsrc_res:
                 model = hvsrc_res.query("*IDN?")
                 self.set("hvsrc_model", model)
         except (ResourceError, OSError):
@@ -39,7 +41,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_vsrc(self):
         self.set("vsrc_model", "")
         try:
-            with self.resources.get("vsrc") as vsrc_res:
+            with resource_registry.get("vsrc") as vsrc_res:
                 model = vsrc_res.query("*IDN?")
                 self.set("vsrc_model", model)
         except (ResourceError, OSError):
@@ -48,7 +50,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_lcr(self):
         self.set("lcr_model", "")
         try:
-            with self.resources.get("lcr") as lcr_res:
+            with resource_registry.get("lcr") as lcr_res:
                 model = lcr_res.query("*IDN?")
                 self.set("lcr_model", model)
         except (ResourceError, OSError):
@@ -57,7 +59,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
     def read_elm(self):
         self.set("elm_model", "")
         try:
-            with self.resources.get("elm") as elm_res:
+            with resource_registry.get("elm") as elm_res:
                 model = elm_res.query("*IDN?")
                 self.set("elm_model", model)
         except (ResourceError, OSError):

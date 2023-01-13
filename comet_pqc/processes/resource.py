@@ -4,12 +4,12 @@ import threading
 import time
 # import traceback
 
-from comet.driver import Driver as DefaultDriver
 from comet.process import Process
-from comet.resource import ResourceMixin
 
+from ..core.resource import resource_registry
 from ..core.request import Request
 from ..core.timer import Timer
+from ..settings import settings
 
 __all__ = ["ResourceProcess", "async_request"]
 
@@ -22,9 +22,9 @@ def async_request(method):
     return async_request
 
 
-class ResourceProcess(Process, ResourceMixin):
+class ResourceProcess(Process):
 
-    Driver = DefaultDriver
+    instrument: str = ""
 
     throttle_time: float = 0.001
 
@@ -61,8 +61,8 @@ class ResourceProcess(Process, ResourceMixin):
     def serve(self):
         logger.info("start serving %s", self.name)
         try:
-            with self.resources.get(self.name) as resource:
-                driver = type(self).Driver(resource)
+            with resource_registry.get(self.name) as resource:
+                driver = settings.getInstrumentType(type(self).instrument)(resource)
                 t = Timer()
                 while True:
                     if not self.running:
