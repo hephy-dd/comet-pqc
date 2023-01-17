@@ -5,9 +5,11 @@ import comet
 from comet import SettingsMixin, ui
 from PyQt5 import QtCore, QtWidgets
 
-from ..components import Metric, PlotWidget
-from ..settings import settings
-from ..utils import stitch_pixmaps
+from comet_pqc.settings import settings
+from comet_pqc.utils import stitch_pixmaps
+
+from ..metric import Metric
+from ..plots import PlotWidget
 
 __all__ = ["Panel", "MeasurementPanel"]
 

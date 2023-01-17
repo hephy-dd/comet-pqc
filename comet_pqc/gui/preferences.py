@@ -4,8 +4,8 @@ from PyQt5 import QtCore, QtWidgets
 
 from comet import SettingsMixin
 
-from .settings import settings
-from .utils import from_table_unit, to_table_unit
+from ..settings import settings
+from ..utils import from_table_unit, to_table_unit
 
 __all__ = ["PreferencesDialog"]
 

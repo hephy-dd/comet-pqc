@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional
 
 from . import __version__
-from .application import Application
+from .gui.application import Application
 
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 

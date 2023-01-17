@@ -1,7 +1,8 @@
 from PyQt5 import QtCore, QtWidgets
 
-from ..components import Metric
-from ..utils import format_metric, format_switch
+from comet_pqc.utils import format_metric, format_switch
+
+from .panel import Metric
 
 __all__ = [
     "HVSourceMixin",

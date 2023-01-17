@@ -14,9 +14,6 @@ from ..utils import (
     getrm,
 )
 
-from .metric import Metric
-from .plots import PlotWidget
-
 __all__ = [
     "ToggleButton",
     "PositionLabel",
@@ -25,8 +22,6 @@ __all__ = [
     "DirectoryWidget",
     "OperatorComboBox",
     "PositionsComboBox",
-    "Metric",
-    "PlotWidget",
 ]
 
 

@@ -13,7 +13,7 @@ from ..core.resource import resource_registry
 from ..measurements import measurement_factory
 from ..measurements.measurement import ComplianceError, MeasurementRunner
 from ..measurements.mixins import AnalysisError
-from ..sequence import (
+from ..gui.sequence import (
     ContactTreeItem,
     MeasurementTreeItem,
     SamplesItem,
@@ -283,7 +283,14 @@ class MeasureProcess(BaseProcess):
             finally:
                 self.emit(self.measurement_state, measurement_item, state)
                 self.emit("save_to_image", measurement_item, plot_filename)
-                self.emit("push_summary", measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
+                self.emit("on_summary", {
+                    "timestamp": measurement.timestamp,
+                    "sample_name": sample_name,
+                    "sample_type": sample_type,
+                    "contact_name": measurement_item.contact.name,
+                    "measurement_name": measurement_item.name,
+                    "measurement_state": state,
+                })
                 if self.get("serialize_json"):
                     with open(self.create_filename(measurement, suffix=".json"), "w") as fp:
                         measurement.serialize_json(fp)

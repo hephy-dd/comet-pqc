@@ -8,19 +8,23 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import analysis_pqc
 import comet
 
-from . import __version__
-from .mainwindow import MainWindow
-from .processes import (
+from .. import __version__
+from ..processes import (
     AlternateTableProcess,
     ContactQualityProcess,
     EnvironmentProcess,
     MeasureProcess,
     StatusProcess,
-    WebAPIProcess,
 )
-from .core.resource import resource_registry
-from .core.utils import make_path
-from .settings import settings
+from ..core.resource import resource_registry
+from ..core.utils import make_path
+from ..settings import settings
+from ..plugins import PluginSystem
+from ..plugins.webapi import WebAPIPlugin
+from ..plugins.quickedit import QuickEditPlugin
+from ..plugins.summary import SummaryPlugin
+
+from .mainwindow import MainWindow
 
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
 GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
@@ -38,8 +42,12 @@ class Application(comet.ProcessMixin):
         self.app.setOrganizationDomain("hephy.at")
         self.app.setApplicationDisplayName(f"PQC {__version__}")
         self.app.setWindowIcon(QtGui.QIcon(make_path("assets", "icons", "pqc.ico")))
-        self.app.lastWindowClosed.connect(self.app.quit)
-        self.app.aboutToQuit.connect(self.shutdown)
+
+        # Register interupt signal handler
+        def signal_handler(signum, frame):
+            if signum == signal.SIGINT:
+                self.app.quit()
+        signal.signal(signal.SIGINT, signal_handler)
 
         # TODO for SettingsMixin
         self.app.reflection = lambda: self.app
@@ -59,8 +67,18 @@ class Application(comet.ProcessMixin):
         self.dashboard.messageChanged.connect(self.updateMessage)
         self.dashboard.progressChanged.connect(self.updateProgress)
 
+        self.plugins = PluginSystem(self.window)
+        self.plugins.addPlugin(WebAPIPlugin())
+        self.plugins.addPlugin(QuickEditPlugin())
+        self.plugins.addPlugin(SummaryPlugin())
+
+        self.app.lastWindowClosed.connect(self.app.quit)
+        self.app.aboutToQuit.connect(self.shutdown)
+
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
+
+        self.plugins.installPlugins()
 
     def _setupResources(self) -> None:
         resource_registry["matrix"] = comet.Resource(
@@ -140,9 +158,6 @@ class Application(comet.ProcessMixin):
         self.processes.add("contact_quality", ContactQualityProcess(
             failed=self.showException
         ))
-        self.processes.add("webapi", WebAPIProcess(
-            failed=self.showException
-        ))
 
     def readSettings(self) -> None:
         self.window.readSettings()
@@ -163,12 +178,6 @@ class Application(comet.ProcessMixin):
 
         self.processes.get("webapi").start()
 
-        # Register interupt signal handler
-        def signal_handler(signum, frame):
-            if signum == signal.SIGINT:
-                self.app.quit()
-        signal.signal(signal.SIGINT, signal_handler)
-
         # Run timer to process interrupt signals
         timer = QtCore.QTimer()
         timer.timeout.connect(lambda: None)
@@ -179,6 +188,7 @@ class Application(comet.ProcessMixin):
         self.app.exec()
 
     def shutdown(self) -> None:
+        self.plugins.uninstallPlugins()
         self.processes.stop()
         self.processes.join()
 

@@ -4,30 +4,29 @@ from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
 from .matrix import MatrixPanel
-from .mixins import (ElectrometerMixin, EnvironmentMixin, HVSourceMixin,
-                     VSourceMixin)
+from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
+from .panel import Metric
 
-__all__ = ["IVRampBiasElmPanel"]
+__all__ = ["IVRampBiasPanel"]
 
 
-class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
     """Panel for bias IV ramp measurements."""
 
-    type_name = "iv_ramp_bias_elm"
+    type_name = "iv_ramp_bias"
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.setTitle("IV Ramp Bias Elm")
+        self.setTitle("Bias + IV Ramp")
 
         self.register_hvsource()
         self.register_vsource()
-        self.register_electrometer()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V]")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
@@ -61,18 +60,18 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.bias_mode.addItem("constant", "constant")
         self.bias_mode.addItem("offset", "offset")
 
-        self.hvsrc_current_compliance: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.hvsrc_current_compliance.setRange(0, 2.1e6)
+        self.hvsrc_current_compliance: Metric = Metric("A", self)
+        self.hvsrc_current_compliance.setPrefixes("mun")
         self.hvsrc_current_compliance.setDecimals(3)
-        self.hvsrc_current_compliance.setSuffix(" uA")
+        self.hvsrc_current_compliance.setRange(0, 2.1e3)
 
         self.hvsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrc_accept_compliance.setText("Accept Compliance")
 
-        self.vsrc_current_compliance: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.vsrc_current_compliance.setRange(0, 2.1e6)
+        self.vsrc_current_compliance: Metric = Metric("A", self)
+        self.vsrc_current_compliance.setPrefixes("mun")
         self.vsrc_current_compliance.setDecimals(3)
-        self.vsrc_current_compliance.setSuffix(" uA")
+        self.vsrc_current_compliance.setRange(0, 2.1e3)
 
         self.vsrc_accept_compliance: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
         self.vsrc_accept_compliance.setText("Accept Compliance")
@@ -83,9 +82,9 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
         self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
-        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="uA")
+        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
         self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
-        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="uA")
+        self.bind("vsrc_current_compliance", self.vsrc_current_compliance, 0, unit="A")
         self.bind("vsrc_accept_compliance", self.vsrc_accept_compliance, False)
 
         hvsrcRampGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
@@ -131,8 +130,8 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         ampere = ureg("A")
         volt = ureg("V")
 
-        self.series_transform["elm"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
-        self.series_transform["xfit"] = self.series_transform.get("elm")
+        self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("vsrc")
 
     def mount(self, measurement):
         super().mount(measurement)

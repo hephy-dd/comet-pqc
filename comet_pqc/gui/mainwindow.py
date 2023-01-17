@@ -6,11 +6,12 @@ from PyQt5 import QtCore, QtWidgets
 
 from comet import ProcessMixin
 
+from ..settings import settings
+from ..utils import show_exception
+
 from .dashboard import Dashboard
 from .preferences import PreferencesDialog
 from .resources import ResourcesDialog
-from .settings import settings
-from .utils import show_exception
 
 __all__ = ["MainWindow"]
 

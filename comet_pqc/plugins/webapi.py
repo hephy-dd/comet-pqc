@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 
 import analysis_pqc
 import bottle
@@ -8,7 +9,9 @@ from waitress.server import TcpWSGIServer
 
 from .. import __version__
 
-__all__ = ["WebAPIProcess"]
+from . import Plugin
+
+__all__ = ["WebAPIPlugin"]
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,19 @@ def metric(value, unit):
     """Return metric dictionary."""
     if value is None:
         return None
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return None  # do not return `NaN` not supported by JSON
     return {"value": value, "unit": unit}
+
+
+class WebAPIPlugin(Plugin):
+
+    def install(self, window):
+        # TODO migrate preferences
+        window.processes.add("webapi", WebAPIProcess(
+            failed=window.showException
+        ))
 
 
 class WSGIServer(TcpWSGIServer):
@@ -86,9 +101,9 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         @app.route("/table")
         def table():
-            enabled = self._table_enabled()
-            position = self._table_position()
-            contact_quality = self._contact_quality()
+            enabled = self.table_enabled()
+            position = self.table_position()
+            contact_quality = self.contact_quality()
             return {
                 "table": {
                     "enabled": enabled,
@@ -103,13 +118,13 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
         self.server = None
         logger.info("stopped serving webapi")
 
-    def _table_enabled(self):
+    def table_enabled(self):
         table_process = self.processes.get("table")
         if table_process:
             return table_process.enabled
         return False
 
-    def _table_position(self):
+    def table_position(self):
         x, y, z = None, None, None
         table_process = self.processes.get("table")
         if table_process and table_process.running:
@@ -121,7 +136,7 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             "z": metric(z, "mm")
         }
 
-    def _contact_quality(self):
+    def contact_quality(self):
         cp, rp = None, None
         contact_quality_process = self.processes.get("contact_quality")
         if contact_quality_process and contact_quality_process.running:

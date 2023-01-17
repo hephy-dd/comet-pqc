@@ -3,9 +3,9 @@ from typing import Optional
 from comet import ui, ureg
 from PyQt5 import QtChart, QtCore, QtWidgets
 
-from ..components import PlotWidget
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin
+from .panel import Metric, PlotWidget
 
 __all__ = ["IVRamp4WirePanel"]
 

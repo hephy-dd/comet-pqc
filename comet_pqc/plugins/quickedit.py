@@ -2,7 +2,45 @@ from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-__all__ = ["QuickEditDialog", "QuickEditItem"]
+from comet import SettingsMixin
+
+from ..gui.sequence import load_all_sequences, load_sequence
+from . import Plugin
+
+__all__ = ["QuickEditPlugin"]
+
+
+class QuickEditPlugin(Plugin):
+
+    def install(self, window):
+        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton()
+        self.editButton.setText("Edit")
+        self.editButton.setStatusTip("Quick edit properties of sequence items.")
+        self.editButton.clicked.connect(self.editSequence)
+        self.window = window
+        widget = window.dashboard.sequence_widget
+        index = widget.bottomLayout.indexOf(widget.resetButton)
+        widget.bottomLayout.insertWidget(index + 1, self.editButton)
+        widget.lockedStateChanged.connect(self.setLocked)
+
+    def uninstall(self, window):
+        widget = window.dashboard.sequence_widget
+        widget.lockedStateChanged.disconnect(self.setLocked)
+        index = widget.bottomLayout.indexOf(self.editButton)
+        widget.bottomLayout.takeAt(index)
+
+    def setLocked(self, state):
+        self.editButton.setEnabled(not state)
+
+    def editSequence(self):
+        dashboard = self.window.dashboard
+        try:
+            sequences = load_all_sequences(dashboard.settings)
+            dialog = EditSamplesDialog(dashboard.sequenceTree.sampleItems(), sequences)
+            dialog.exec()
+            dashboard.on_tree_selected(dashboard.sequenceTree.currentItem())
+        except Exception as exc:
+            self.window.showException(exc)
 
 
 class QuickEditItem(QtCore.QObject):
@@ -190,3 +228,50 @@ class QuickEditDialog(QtWidgets.QDialog):
 
     def items(self) -> List[QuickEditItem]:
         return list(self._items)
+
+
+class EditSamplesDialog(SettingsMixin):
+    """Quick edit all samples at once dialog."""
+
+    def __init__(self, samples, sequences):
+        self.samples = samples
+        self.sequences = sequences
+
+    def populateDialog(self, dialog):
+        for sample_item in self.samples:
+            item = QuickEditItem()
+            item.setEnabled(sample_item.enabled)
+            item.setPrefix(sample_item.name_prefix)
+            item.setInfix(sample_item.name_infix)
+            item.setSuffix(sample_item.name_suffix)
+            item.setType(sample_item.sample_type)
+            item.setPosition(sample_item.sample_position)
+            for name, filename, builtin in self.sequences:
+                item.addSequence(name)
+            if sample_item.sequence is not None:
+                item.setCurrentSequence(sample_item.sequence.name)
+            item.setProperty("sample_item", sample_item)
+            dialog.addItem(item)
+
+    def updateSamplesFromDialog(self, dialog):
+        for item in dialog.items():
+            sample_item = item.property("sample_item")
+            sample_item.enabled = item.isEnabled()
+            sample_item.name_prefix = item.prefix()
+            sample_item.name_infix = item.infix()
+            sample_item.name_suffix = item.suffix()
+            sample_item.sample_type = item.type()
+            sample_item.sample_position = item.position()
+            for name, filename, builtin in self.sequences:
+                if item.currentSequence() == name:
+                    sequence = load_sequence(filename)
+                    sample_item.load_sequence(sequence)
+
+    def exec(self):
+        dialog = QuickEditDialog()
+        dialog.readSettings()
+        self.populateDialog(dialog)
+        dialog.exec()
+        if dialog.result() == dialog.Accepted:
+            self.updateSamplesFromDialog(dialog)
+        dialog.writeSettings()

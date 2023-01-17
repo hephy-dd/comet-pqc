@@ -8,15 +8,16 @@ from comet import ureg
 from comet.settings import SettingsMixin
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 
+from ..core.position import Position
+from ..settings import TablePosition, settings
+from ..utils import format_metric, caldone_valid, format_switch, handle_exception
+
 from .components import (
     CalibrationWidget,
     PositionLabel,
     PositionWidget,
     ToggleButton,
 )
-from .core.position import Position
-from .settings import TablePosition, settings
-from .utils import format_metric, caldone_valid, format_switch, handle_exception
 
 __all__ = ["TableControlDialog"]
 

@@ -152,17 +152,6 @@ def caldone_valid(position: Iterable) -> bool:
     return all(getcal(value) == 1 and getrm(value) == 1 for value in position)
 
 
-def append_summary(data: dict, filename: str) -> None:
-    has_header = os.path.exists(filename)
-    with open(filename, "a") as fp:
-        fmt = CSVFormatter(fp)
-        for key in data.keys():
-            fmt.add_column(key)
-        if not has_header:
-            fmt.write_header()
-        fmt.write_row(data)
-
-
 class ExceptionDialog(QtWidgets.QMessageBox):
 
     def __init__(self, exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -> None:

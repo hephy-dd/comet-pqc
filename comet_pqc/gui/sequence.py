@@ -14,10 +14,9 @@ from .components import (
     PositionsComboBox,
     WorkingDirectoryWidget,
 )
-from .core.config import SEQUENCE_DIR, list_configs, load_sequence
-from .quickedit import QuickEditDialog, QuickEditItem
-from .settings import settings
-from .utils import from_table_unit, to_table_unit, show_exception
+from ..core.config import SEQUENCE_DIR, list_configs, load_sequence
+from ..settings import settings
+from ..utils import from_table_unit, to_table_unit, show_exception
 
 __all__ = ["StartSequenceDialog", "SequenceManager", "SequenceTree"]
 
@@ -741,58 +740,3 @@ class SequenceTree(QtWidgets.QTreeWidget):
         self.resizeColumnToContents(0)
         self.resizeColumnToContents(1)
         self.resizeColumnToContents(2)
-
-
-class EditSamplesDialog(SettingsMixin):
-    """Quick edit all samples at once dialog."""
-
-    def __init__(self, samples, sequences):
-        self.samples = samples
-        self.sequences = sequences
-
-    def populateDialog(self, dialog):
-        for sample_item in self.samples:
-            item = QuickEditItem()
-            item.setEnabled(sample_item.enabled)
-            item.setPrefix(sample_item.name_prefix)
-            item.setInfix(sample_item.name_infix)
-            item.setSuffix(sample_item.name_suffix)
-            item.setType(sample_item.sample_type)
-            item.setPosition(sample_item.sample_position)
-            for name, filename, builtin in self.sequences:
-                item.addSequence(name)
-            if sample_item.sequence is not None:
-                item.setCurrentSequence(sample_item.sequence.name)
-            item.setProperty("sample_item", sample_item)
-            dialog.addItem(item)
-
-    def updateSamplesFromDialog(self, dialog):
-        for item in dialog.items():
-            sample_item = item.property("sample_item")
-            sample_item.enabled = item.isEnabled()
-            sample_item.name_prefix = item.prefix()
-            sample_item.name_infix = item.infix()
-            sample_item.name_suffix = item.suffix()
-            sample_item.sample_type = item.type()
-            sample_item.sample_position = item.position()
-            for name, filename, builtin in self.sequences:
-                if item.currentSequence() == name:
-                    sequence = load_sequence(filename)
-                    sample_item.load_sequence(sequence)
-
-    def readSettings(self, dialog):
-        width, height = self.settings.get("quick_edit_dialog_size", (800, 480))
-        dialog.resize(width, height)
-
-    def writeSettings(self, dialog):
-        width, height = dialog.width(), dialog.height()
-        self.settings["quick_edit_dialog_size"] = width, height
-
-    def run(self):
-        dialog = QuickEditDialog()
-        self.readSettings(dialog)
-        self.populateDialog(dialog)
-        dialog.exec()
-        if dialog.result() == dialog.Accepted:
-            self.updateSamplesFromDialog(dialog)
-        self.writeSettings(dialog)

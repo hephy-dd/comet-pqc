@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-from ..panels import (
+from .panels import (
     ContactPanel,
     CVRampAltPanel,
     CVRampHVPanel,

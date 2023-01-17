@@ -3,8 +3,9 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
+from comet_pqc.core.position import Position
+
 from ..components import PositionWidget
-from ..core.position import Position
 from .panel import Panel
 
 __all__ = ["ContactPanel"]

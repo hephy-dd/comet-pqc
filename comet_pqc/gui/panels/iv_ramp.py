@@ -3,47 +3,45 @@ from typing import Optional
 from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
 
-from ..components import Metric
 from .matrix import MatrixPanel
-from .mixins import ElectrometerMixin, EnvironmentMixin, HVSourceMixin
+from .mixins import EnvironmentMixin, HVSourceMixin
+from .panel import Metric
 
-__all__ = ["IVRampElmPanel"]
+__all__ = ["IVRampPanel"]
 
 
-class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
-    """Panel for IV ramp with electrometer measurements."""
+class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
+    """Panel for IV ramp measurements."""
 
-    type_name = "iv_ramp_elm"
+    type_name = "iv_ramp"
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.setTitle("IV Ramp Elm")
+        self.setTitle("IV Ramp")
 
         self.register_hvsource()
-        self.register_electrometer()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
-        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.plot.qt.setProperty("type", "plot")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_start.setRange(-2.1e3, 2.1e3)
+        self.voltage_start.setRange(-2.1e3, +2.1e3)
         self.voltage_start.setDecimals(3)
         self.voltage_start.setSuffix(" V")
 
         self.voltage_stop: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_stop.setRange(-2.1e3, 2.1e3)
+        self.voltage_stop.setRange(-2.1e3, +2.1e3)
         self.voltage_stop.setDecimals(3)
         self.voltage_stop.setSuffix(" V")
 
         self.voltage_step: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_step.setRange(0, 2.1e2)
+        self.voltage_step.setRange(0, 200)
         self.voltage_step.setDecimals(3)
         self.voltage_step.setSuffix(" V")
 
@@ -64,10 +62,9 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
+
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
         self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
-
-        # Instruments status
 
         hvsrcRampGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         hvsrcRampGroupBox.setTitle("HV Source Ramp")
@@ -99,9 +96,8 @@ class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentM
         ampere = ureg("A")
         volt = ureg("V")
 
-        self.series_transform["elm"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
-        self.series_transform["hvsrc"] = self.series_transform.get("elm")
-        self.series_transform["xfit"] = self.series_transform.get("elm")
+        self.series_transform["hvsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("hvsrc")
 
     def mount(self, measurement):
         super().mount(measurement)
