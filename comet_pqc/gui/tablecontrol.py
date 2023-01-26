@@ -144,9 +144,9 @@ class TableContactsWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.contacts_tree = QtWidgets.QTreeWidget(self)
-        self.contacts_tree.setHeaderLabels(["Contact", "Pos", "X", "Y", "Z", ""])
-        self.contacts_tree.currentItemChanged.connect(self.contactSelected)
+        self.contactsTreeWidget = QtWidgets.QTreeWidget(self)
+        self.contactsTreeWidget.setHeaderLabels(["Contact", "Pos", "X", "Y", "Z", ""])
+        self.contactsTreeWidget.currentItemChanged.connect(self.contactSelected)
 
         self.pickButton = QtWidgets.QPushButton(self)
         self.pickButton.setText("Assign &Position")
@@ -175,7 +175,7 @@ class TableContactsWidget(QtWidgets.QWidget):
         self.resetAllButton.clicked.connect(self.resetAllPositions)
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.contacts_tree, 0, 0, 6, 1)
+        layout.addWidget(self.contactsTreeWidget, 0, 0, 6, 1)
         layout.addWidget(self.pickButton, 0, 1)
         layout.addWidget(self.moveButton, 1, 1)
         layout.addWidget(self.calculateButton, 2, 1)
@@ -186,13 +186,13 @@ class TableContactsWidget(QtWidgets.QWidget):
 
     def appendSampleItem(self, sample_item):
         item = TableSampleItem(sample_item)
-        self.contacts_tree.addTopLevelItem(item)
+        self.contactsTreeWidget.addTopLevelItem(item)
         item.setExpanded(True)
 
     def allSampleItems(self) -> List[TableSampleItem]:
         items: List[TableSampleItem] = []
-        for index in range(self.contacts_tree.topLevelItemCount()):
-            item = self.contacts_tree.topLevelItem(index)
+        for index in range(self.contactsTreeWidget.topLevelItemCount()):
+            item = self.contactsTreeWidget.topLevelItem(index)
             if isinstance(item, TableSampleItem):
                 items.append(item)
         return items
@@ -202,7 +202,7 @@ class TableContactsWidget(QtWidgets.QWidget):
 
     def updateButtonStates(self, item: Optional[QtWidgets.QTreeWidgetItem] = None) -> None:
         if item is None:
-            item = self.contacts_tree.currentItem()
+            item = self.contactsTreeWidget.currentItem()
         if isinstance(item, TableContactItem):
             self.pickButton.setEnabled(True)
             self.moveButton.setEnabled(item.hasPosition())
@@ -215,20 +215,20 @@ class TableContactsWidget(QtWidgets.QWidget):
             self.resetButton.setEnabled(False)
 
     def pickPosition(self) -> None:
-        item = self.contacts_tree.currentItem()
+        item = self.contactsTreeWidget.currentItem()
         if isinstance(item, TableContactItem):
             def callback(x, y, z):
                 item.setPosition((x, y, z))
-                for index in range(self.contacts_tree.columnCount()):
-                    self.contacts_tree.resizeColumnToContents(index)
+                for index in range(self.contactsTreeWidget.columnCount()):
+                    self.contactsTreeWidget.resizeColumnToContents(index)
             self.positionPicked.emit(callback)
 
     def resetCurrentPosition(self) -> None:
-        item = self.contacts_tree.currentItem()
+        item = self.contactsTreeWidget.currentItem()
         if isinstance(item, TableContactItem):
             item.setPosition((float("nan"), float("nan"), float("nan")))
-            for index in range(self.contacts_tree.columnCount()):
-                self.contacts_tree.resizeColumnToContents(index)
+            for index in range(self.contactsTreeWidget.columnCount()):
+                self.contactsTreeWidget.resizeColumnToContents(index)
 
     def resetAllPositions(self) -> None:
         result = QtWidgets.QMessageBox.question(
@@ -240,37 +240,37 @@ class TableContactsWidget(QtWidgets.QWidget):
             for sample_item in self.allSampleItems():
                 for contact_item in sample_item.allContactItems():
                     contact_item.setPosition((float("nan"), float("nan"), float("nan")))
-            for index in range(self.contacts_tree.columnCount()):
-                self.contacts_tree.resizeColumnToContents(index)
+            for index in range(self.contactsTreeWidget.columnCount()):
+                self.contactsTreeWidget.resizeColumnToContents(index)
 
     def moveToPosition(self) -> None:
-        current_item = self.contacts_tree.currentItem()
-        if isinstance(current_item, TableContactItem):
-            if current_item.hasPosition():
+        item = self.contactsTreeWidget.currentItem()
+        if isinstance(item, TableContactItem):
+            if item.hasPosition():
                 result = QtWidgets.QMessageBox.question(
                     self,
                     "Move Table?",
-                    f"Do you want to move table to contact {current_item.name()}?"
+                    f"Do you want to move table to contact {item.name()}?"
                 )
                 if result == QtWidgets.QMessageBox.Yes:
-                    x, y, z = current_item.position()
+                    x, y, z = item.position()
                     self.absoluteMove.emit(Position(x, y, z))
 
     def calculatePositions(self) -> None:
-        current_item = self.contacts_tree.currentItem()
-        if isinstance(current_item, TableSampleItem):
-            current_item.calculatePositions()
+        item = self.contactsTreeWidget.currentItem()
+        if isinstance(item, TableSampleItem):
+            item.calculatePositions()
 
     def loadSamples(self, sample_items) -> None:
-        self.contacts_tree.clear()
-        for sample_item in sample_items:
-            self.appendSampleItem(sample_item)
-        for index in range(self.contacts_tree.columnCount()):
-            self.contacts_tree.resizeColumnToContents(index)
+        self.contactsTreeWidget.clear()
+        for item in sample_items:
+            self.appendSampleItem(item)
+        for index in range(self.contactsTreeWidget.columnCount()):
+            self.contactsTreeWidget.resizeColumnToContents(index)
 
     def updateSamples(self) -> None:
-        for sample_item in self.allSampleItems():
-            sample_item.updateContacts()
+        for item in self.allSampleItems():
+            item.updateContacts()
 
     def setLocked(self, state: bool) -> None:
         if state:

@@ -60,6 +60,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
 
         self.sequenceTree = SequenceTree(self)
         self.sequenceTree.currentItemChanged.connect(lambda current, previous: self.treeSelected.emit(current))
+        self.sequenceTree.currentItemChanged.connect(self.updateControls)
         self.sequenceTree.itemDoubleClicked.connect(self.handleDoubleClick)
         self.sequenceTree.setMinimumWidth(360)
 
@@ -200,6 +201,9 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
     def stop(self):
         self.stopButton.setEnabled(False)
 
+    def updateControls(self, current, previous):
+        self.removeSampleButton.setEnabled(isinstance(current, SampleTreeItem))
+
     @handle_exception
     def on_reload_config_clicked(self, state):
         result = QtWidgets.QMessageBox.question(
@@ -224,7 +228,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
             enabled=False
         )
         self.sequenceTree.addTopLevelItem(item)
-        self.sequenceTree.resizeColumnsToContents()
+        self.sequenceTree.resizeColumnsToContent()
         self.sequenceTree.setCurrentItem(item)
 
     @handle_exception
@@ -237,7 +241,8 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
                 f"Do you want to remove {item.name!r}?"
             )
             if result == QtWidgets.QMessageBox.Yes:
-                self.sequenceTree.takeTopLevelItem(item)
+                index = self.sequenceTree.indexOfTopLevelItem(item)
+                self.sequenceTree.takeTopLevelItem(index)
 
     @handle_exception
     def on_open_clicked(self, state):
@@ -274,7 +279,7 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
             for item in self.sequenceTree.sampleItems():
                 self.sequenceTree.setCurrentItem(item)
                 break
-            self.sequenceTree.resizeColumnsToContents()
+            self.sequenceTree.resizeColumnsToContent()
 
     @handle_exception
     def on_save_clicked(self, state):
