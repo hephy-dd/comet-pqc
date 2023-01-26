@@ -10,7 +10,7 @@ license = "GPLv3"
 
 # Paths
 comet_root = os.path.join(os.path.dirname(comet.__file__))
-comet_icon = os.path.join(comet_root, "assets", "icons", "comet.ico")
+comet_icon = os.path.join(os.path.dirname(comet_pqc.__file__), "assets", "icons", "pqc.ico")
 
 # Windows version info template
 version_info = """
@@ -71,8 +71,8 @@ a = Analysis(["entry_point.pyw"],
     ],
     binaries=[],
     datas=[
-        (os.path.join(comet_root, "assets", "icons", "*.svg"), os.path.join("comet", "assets", "icons")),
-        (os.path.join(comet_root, "assets", "icons", "*.ico"), os.path.join("comet", "assets", "icons")),
+        (os.path.join("comet_pqc", "assets", "icons", "*.svg"), os.path.join("comet", "assets", "icons")),
+        (os.path.join("comet_pqc", "assets", "icons", "*.ico"), os.path.join("comet", "assets", "icons")),
         (os.path.join("comet_pqc", "assets", "config", "chuck", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "chuck")),
         (os.path.join("comet_pqc", "assets", "config", "sequence", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sequence")),
         (os.path.join("comet_pqc", "assets", "config", "sample", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sample")),
