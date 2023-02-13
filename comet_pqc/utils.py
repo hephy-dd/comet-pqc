@@ -1,9 +1,9 @@
 import logging
 import math
+import os
 import traceback
-from typing import Callable, Iterable, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
-from comet import ui
 from comet import ureg
 from PyQt5 import QtCore, QtGui
 
@@ -13,18 +13,16 @@ __all__ = [
     "make_path",
     "format_metric",
     "format_switch",
-    "stitch_pixmaps",
-    "create_icon",
-    "handle_exception",
     "format_table_unit",
     "from_table_unit",
-    "to_table_unit"
+    "to_table_unit",
+    "create_dir",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def format_metric(value: float, unit: str, decimals: int = 3) -> str:
+def format_metric(value: Optional[float], unit: str, decimals: int = 3) -> str:
     """Pretty format metric units.
 
     >>> format_metric(.0042, "A")
@@ -57,13 +55,15 @@ def format_metric(value: float, unit: str, decimals: int = 3) -> str:
     return f"{value:.{decimals}f} {unit}"
 
 
-def format_switch(value: bool, default: str = None) -> str:
+def format_switch(value: Optional[bool], default: Optional[str] = None) -> str:
     """Pretty format for instrument output states.
 
     >>> format_switch(False)
     'OFF'
     """
-    return {False: "OFF", True: "ON"}.get(value) or (default or "")
+    if value is None:
+        return default or ""
+    return "ON" if value else "OFF"
 
 
 def format_table_unit(value: float) -> str:
@@ -81,55 +81,6 @@ def to_table_unit(value: float) -> float:
     return round((value * ureg("mm")).to("um").m, 0)
 
 
-def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> QtGui.QPixmap:
-    """Stitch together multiple QPixmaps to a single QPixmap."""
-    # Calculate size of stitched image
-    if vertical:
-        width = max([pixmap.width() for pixmap in pixmaps])
-        height = sum([pixmap.height() for pixmap in pixmaps])
-    else:
-        width = sum([pixmap.width() for pixmap in pixmaps])
-        height = max([pixmap.height() for pixmap in pixmaps])
-    canvas = QtGui.QPixmap(width, height)
-    canvas.fill(QtCore.Qt.white)
-    painter = QtGui.QPainter(canvas)
-    offset = 0
-    for pixmap in pixmaps:
-        if vertical:
-            painter.drawPixmap(0, offset, pixmap)
-            offset += pixmap.height()
-        else:
-            painter.drawPixmap(offset, 0, pixmap)
-            offset += pixmap.height()
-    painter.end()
-    return canvas
-
-
-def create_icon(size: int, color: str) -> ui.Icon:
-    """Return circular colored icon."""
-    pixmap = QtGui.QPixmap(size, size)
-    pixmap.fill(QtGui.QColor("transparent"))
-    painter = QtGui.QPainter(pixmap)
-    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-    painter.setPen(QtGui.QColor(color))
-    painter.setBrush(QtGui.QColor(color))
-    painter.drawEllipse(1, 1, size - 2, size - 2)
-    del painter
-    return ui.Icon(qt=pixmap)
-
-
-def handle_exception(func: Callable) -> Callable:
-    def catch_exception_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exc:
-            tb = traceback.format_exc()
-            logger.error(exc)
-            logger.error(tb)
-            ui.show_exception(exc, tb)
-    return catch_exception_wrapper
-
-
 def getcal(value: float) -> Union[int, float]:
     if not math.isnan(value):
         return int(value) & 0x1
@@ -144,3 +95,29 @@ def getrm(value: float) -> Union[int, float]:
 
 def caldone_valid(position: Iterable) -> bool:
     return all(getcal(value) == 1 and getrm(value) == 1 for value in position)
+
+
+def create_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        return True
+    return False
+
+
+def safe_value(type: Callable, value: Any, default: Any) -> Any:
+    try:
+        return type(value)
+    except (ValueError, TypeError):
+        return type(default)
+
+
+def safe_bool(value, default: bool = False) -> bool:
+    return safe_value(bool, value, default)
+
+
+def safe_int(value, default: int = 0) -> int:
+    return safe_value(int, value, default)
+
+
+def safe_float(value, default: float = 0) -> float:
+    return safe_value(float, value, default)

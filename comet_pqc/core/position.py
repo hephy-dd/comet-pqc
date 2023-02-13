@@ -1,4 +1,5 @@
 import math
+from typing import Dict, Optional
 
 __all__ = ["Position"]
 
@@ -6,7 +7,7 @@ __all__ = ["Position"]
 class Position:
     """Three-dimensional Cartesian coordinate."""
 
-    def __init__(self, x: float = None, y: float = None, z: float = None):
+    def __init__(self, x: Optional[float] = None, y: Optional[float] = None, z: Optional[float] = None) -> None:
         self._x: float = math.nan if x is None else float(x)
         self._y: float = math.nan if y is None else float(y)
         self._z: float = math.nan if z is None else float(z)
@@ -27,7 +28,7 @@ class Position:
     def is_valid(self) -> bool:
         return all((not math.isnan(value) for value in self))
 
-    def asdict(self) -> dict:
+    def asdict(self) -> Dict[str, float]:
         return {"x": self.x, "y": self.y, "z": self.z}
 
     def __iter__(self):
@@ -48,5 +49,5 @@ class Position:
     def __le__(self, rhs):
         return tuple(self) <= tuple(rhs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.x:.3f}, {self.y:.3f}, {self.z:.3f})"

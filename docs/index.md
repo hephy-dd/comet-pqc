@@ -34,7 +34,7 @@ Process Quality Control for CMS tracker
 Install using pip in a virtual environment.
 
 ```bash
-pip install git+https://github.com/hephy-dd/comet-pqc.git@<version>
+pip install git+https://github.com/hephy-dd/comet-pqc.git@{version}
 ```
 
 ### Run

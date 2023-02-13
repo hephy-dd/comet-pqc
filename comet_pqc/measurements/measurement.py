@@ -5,6 +5,7 @@ import logging
 import math
 import time
 import uuid
+from typing import List, Optional
 
 import analysis_pqc
 import comet
@@ -35,7 +36,7 @@ class InstrumentError(RuntimeError):
     """Generic instrument error."""
 
 
-def format_estimate(est):
+def format_estimate(est) -> str:
     """Format estimation message without milliseconds."""
     elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
     remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
@@ -43,7 +44,7 @@ def format_estimate(est):
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
 
-def annotate_step(name):
+def annotate_step(name: str):
     def annotate_step(method):
         def annotate_step(self, *args, **kwargs):
             logger.info("%s %s...", name, self.type)
@@ -75,7 +76,7 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     type: str = ""
 
-    required_instruments = []
+    required_instruments: List[str] = []
 
     measurement_item = None # HACK
 

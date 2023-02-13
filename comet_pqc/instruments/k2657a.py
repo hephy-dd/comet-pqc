@@ -22,7 +22,7 @@ class K2657AInstrument(SMUInstrument):
 
     def get_error(self) -> Tuple[int, str]:
         if self.context.errorqueue.count:
-            code, message = self.context.errorqueue.next()
+            code, message = self.context.errorqueue.next()[:2]
             return code, message
         return 0, "no error"
 

@@ -1,5 +1,4 @@
 import comet
-from comet.driver.keithley import K707B
 from comet.process import ProcessMixin
 from comet.resource import ResourceError, ResourceMixin
 
@@ -19,7 +18,7 @@ class StatusProcess(comet.Process, ResourceMixin, ProcessMixin):
         self.set("matrix_channels", "")
         try:
             with self.resources.get("matrix") as matrix_res:
-                matrix = K707B(matrix_res)
+                matrix = self.get("matrix_instrument")(matrix_res)
                 model = matrix.identification
                 self.set("matrix_model", model)
                 channels = matrix.channel.getclose()

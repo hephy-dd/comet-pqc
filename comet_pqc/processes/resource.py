@@ -2,7 +2,6 @@ import logging
 import queue
 import threading
 import time
-# import traceback
 
 from comet.driver import Driver as DefaultDriver
 from comet.process import Process
@@ -10,6 +9,10 @@ from comet.resource import ResourceMixin
 
 from ..core.request import Request
 from ..core.timer import Timer
+
+# import traceback
+
+
 
 __all__ = ["ResourceProcess", "async_request"]
 

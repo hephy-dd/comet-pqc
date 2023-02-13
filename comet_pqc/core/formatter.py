@@ -49,7 +49,7 @@ class CSVFormatter(Formatter):
             raise ValueError(f"column name already exists: {name}")
         if format_spec is None:
             format_spec = ""
-        self._writer.fieldnames.append(name)
+        self._writer.fieldnames.append(name)  # type: ignore
         self._format_specs[name] = format_spec
 
     def write_header(self) -> None:
@@ -82,7 +82,7 @@ class CSVFormatter(Formatter):
 
 class PQCHeaderItem:
 
-    def __init__(self, name: str, unit: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None) -> None:
         self.name: str = name
         self.unit: Optional[str] = unit
 
@@ -95,7 +95,7 @@ class PQCHeaderItem:
     def __str__(self) -> str:
         if self.unit is not None:
             return f"{self.name}[{self.unit}]"
-        return self.name
+        return f"{self.name}"
 
 
 class PQCFormatter(CSVFormatter):

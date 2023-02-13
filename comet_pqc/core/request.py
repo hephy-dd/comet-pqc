@@ -11,7 +11,7 @@ class RequestTimeout(Exception):
 
 class Request:
 
-    timeout: float = 4.0
+    default_timeout: float = 4.0
 
     def __init__(self, target: Callable) -> None:
         self._target: Callable = target
@@ -27,9 +27,9 @@ class Request:
         finally:
             self._ready.set()
 
-    def get(self, timeout: float = None) -> Any:
+    def get(self, timeout: Optional[float] = None) -> Any:
         if timeout is None:
-            timeout = self.timeout
+            timeout = self.default_timeout
         if self._ready.wait(timeout=timeout):
             if self._exc is not None:
                 raise self._exc

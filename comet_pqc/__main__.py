@@ -5,7 +5,12 @@ from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
 
 from . import __version__
-from .application import Application
+from .plugins import PluginManager
+from .plugins.logwidget import LogWidgetPlugin
+from .plugins.quickedit import QuickEditPlugin
+from .plugins.summary import SummaryPlugin
+from .plugins.webapi import WebAPIPlugin
+from .view.application import Application
 
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 
@@ -58,9 +63,18 @@ def main() -> None:
     configure_logger(logging.getLogger(), debug=args.debug, filename=args.logfile)
 
     app = Application()
-    app.load_settings()
-    app.event_loop()
-    app.store_settings()
+
+    plugins = PluginManager(app.window)
+    plugins.register(LogWidgetPlugin())
+    plugins.register(SummaryPlugin())
+    plugins.register(QuickEditPlugin())
+    plugins.register(WebAPIPlugin())
+
+    app.readSettings()
+    plugins.install()
+    app.eventLoop()
+    plugins.uninstall()
+    app.writeSettings()
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import copy
 import glob
 import os
 import re
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import comet
 import jsonschema
@@ -37,7 +37,7 @@ def make_id(name: str) -> str:
     return re.sub(r"[^\w\-]+", "_", name.strip()).strip("_")
 
 
-def load_schema(name: str) -> dict:
+def load_schema(name: str) -> Dict:
     """Loads a YAML validation schema from the schema directory.
 
     >>> load_schema("sample")
@@ -47,13 +47,13 @@ def load_schema(name: str) -> dict:
         return yaml.safe_load(f.read())
 
 
-def validate_config(data: dict, schema: str) -> None:
+def validate_config(data: Dict, schema: str) -> None:
     """Validate config data using schema name."""
     schema_data = load_schema(schema)
     jsonschema.validate(data, schema_data)
 
 
-def load_config(filename: str, schema: str = None) -> dict:
+def load_config(filename: str, schema: Optional[str] = None) -> Dict:
     """Loads a YAML configuration file and optionally validates the content
     using the provided schema.
 
@@ -112,7 +112,7 @@ def list_configs(directory: str) -> List[Tuple[str, str]]:
 class Chuck:
     """Chuck configuration."""
 
-    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, positions: List = None, filename: str = None) -> None:
+    def __init__(self, id: str, name: str, enabled: bool = True, description: Optional[str] = None, positions: Optional[List] = None, filename: Optional[str] = None) -> None:
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
@@ -127,7 +127,7 @@ class Chuck:
 class ChuckSamplePosition:
     """Chuck sample position."""
 
-    def __init__(self, id: str, name: str, pos, enabled: bool = True, description: str = None):
+    def __init__(self, id: str, name: str, pos, enabled: bool = True, description: Optional[str] = None):
         self.id: str = id
         self.name: str = name
         self.pos: Position = Position(**pos)
@@ -138,12 +138,12 @@ class ChuckSamplePosition:
 class Sample:
     """Silicon sample."""
 
-    def __init__(self, id: str, name: str, enabled=True, description="", contacts=None, filename=None):
+    def __init__(self, id: str, name: str, enabled: bool = True, description: Optional[str] = "", contacts: Optional[List] = None, filename: Optional[str] = None) -> None:
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
-        self.description: str = description
-        self.contacts: List = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
+        self.description: str = description or ""
+        self.contacts: List[SampleContact] = list(map(lambda kwargs: SampleContact(**kwargs), contacts or []))
         self.filename: str = filename or ""
 
     def __str__(self) -> str:
@@ -153,7 +153,7 @@ class Sample:
 class SampleContact:
     """Sample contact geometry."""
 
-    def __init__(self, id: str, name: str, pos, type: str = None, enabled: bool = True, description: str = None):
+    def __init__(self, id: str, name: str, pos, type: Optional[str] = None, enabled: bool = True, description: Optional[str] = None) -> None:
         self.id: str = id
         self.name: str = name
         self.type: str = type or ""
@@ -165,12 +165,12 @@ class SampleContact:
 class Sequence:
     """Sequence configuration."""
 
-    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, contacts: List = None, filename: str = None):
+    def __init__(self, id: str, name: str, enabled: bool = True, description: Optional[str] = None, contacts: Optional[List] = None, filename: Optional[str] = None) -> None:
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
         self.description: str = description or ""
-        self.contacts: List = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
+        self.contacts: List[SequenceContact] = list(map(lambda kwargs: SequenceContact(**kwargs), contacts or []))
         self.filename: str = filename or ""
 
     def __str__(self) -> str:
@@ -186,13 +186,13 @@ class Sequence:
 class SequenceContact:
     """Sequence contact point."""
 
-    def __init__(self, name: str, contact_id: str, id: str = None, enabled: bool = True, description: str = None, measurements: List = None):
+    def __init__(self, name: str, contact_id: str, id: Optional[str] = None, enabled: bool = True, description: Optional[str] = None, measurements: Optional[List] = None) -> None:
         self.id: str = id or make_id(name)
         self.name: str = name
         self.contact_id: str = contact_id
         self.enabled: bool = enabled
         self.description: str = description or ""
-        self.measurements: List = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements or []))
+        self.measurements: List[SequenceMeasurement] = list(map(lambda kwargs: SequenceMeasurement(**kwargs), measurements or []))
 
     def __iter__(self) -> Iterable:
         return iter(self.measurements)
@@ -206,14 +206,14 @@ class SequenceMeasurement:
 
     key_ignorelist = ["matrix_enable", "matrix_channels", "analyze_function"]
 
-    def __init__(self, name: str, type: str, id: str = None, enabled: bool = True, tags: List = None, description: str = None, parameters: Dict = None):
+    def __init__(self, name: str, type: str, id: Optional[str] = None, enabled: bool = True, tags: Optional[List] = None, description: Optional[str] = None, parameters: Optional[Dict] = None) -> None:
         self.id: str = id or make_id(name)
         self.name: str = name
         self.type: str = type
         self.enabled: bool = enabled
-        self.tags: List = list(map(format, tags or []))
+        self.tags: List[str] = list(map(format, tags or []))
         self.description: str = description or ""
-        self.parameters: Dict = {}
+        self.parameters: Dict[str, Any] = {}
         for key, value in (parameters or {}).items():
             if key not in self.key_ignorelist:
                 if isinstance(value, str):

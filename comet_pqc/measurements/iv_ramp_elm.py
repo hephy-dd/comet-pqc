@@ -10,12 +10,8 @@ from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .mixins import (
-    AnalysisMixin,
-    ElectrometerMixin,
-    EnvironmentMixin,
-    HVSourceMixin,
-)
+from .mixins import (AnalysisMixin, ElectrometerMixin, EnvironmentMixin,
+                     HVSourceMixin)
 
 __all__ = ["IVRampElmMeasurement"]
 
