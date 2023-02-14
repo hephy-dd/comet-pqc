@@ -134,7 +134,7 @@ class WebAPIProcess(comet.Process):
         return self.context.table_enabled()
 
     def _table_position(self):
-        x, y, z = self.context.table_process.get_position()
+        x, y, z = self.context.table_process.get_position()  # TODO read from context cache
         return {
             "x": metric(x, "mm"),
             "y": metric(y, "mm"),
@@ -143,7 +143,7 @@ class WebAPIProcess(comet.Process):
 
     def _contact_quality(self):
         cp, rp = None, None
-        contact_quality_process = self.context.processes.get("contact_quality")
+        contact_quality_process = self.context.processes.get("contact_quality")  # TODO read from context cache
         if contact_quality_process and contact_quality_process.running:
             cp, rp = contact_quality_process.cached_reading()
         return {

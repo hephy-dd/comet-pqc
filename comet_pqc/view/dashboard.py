@@ -832,6 +832,9 @@ class Dashboard(QtWidgets.QWidget):
             dialog.microscopeLightToggled.connect(self.on_microscope_light_toggled)
             dialog.boxLightToggled.connect(self.on_box_light_toggled)
         dialog.exec()
+        self.context.contact_quality_process.finished = None  # TODO
+        self.context.contact_quality_process.failed = None
+        self.context.contact_quality_process.reading = None
         self.context.contact_quality_process.stop()
         self.context.contact_quality_process.join()
         dialog.writeSettings()

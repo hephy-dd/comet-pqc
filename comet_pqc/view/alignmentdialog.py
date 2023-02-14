@@ -639,36 +639,36 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Control
 
-        self.xUpButton = QtWidgets.QPushButton("+X", self)
+        self.xUpButton: QtWidgets.QPushButton = QtWidgets.QPushButton("+X", self)
         self.xUpButton.setFixedSize(32, 32)
         self.xUpButton.clicked.connect(self.on_add_x)
 
-        self.xDownButton = QtWidgets.QPushButton("-X", self)
+        self.xDownButton: QtWidgets.QPushButton = QtWidgets.QPushButton("-X", self)
         self.xDownButton.setFixedSize(32, 32)
         self.xDownButton.clicked.connect(self.on_sub_x)
 
-        self.yUpButton = QtWidgets.QPushButton("+Y", self)
+        self.yUpButton: QtWidgets.QPushButton = QtWidgets.QPushButton("+Y", self)
         self.yUpButton.setFixedSize(32, 32)
         self.yUpButton.clicked.connect(self.on_add_y)
 
-        self.yDownButton = QtWidgets.QPushButton("-Y", self)
+        self.yDownButton: QtWidgets.QPushButton = QtWidgets.QPushButton("-Y", self)
         self.yDownButton.setFixedSize(32, 32)
         self.yDownButton.clicked.connect(self.on_sub_y)
 
-        self.zUpButton = QtWidgets.QPushButton("+Z", self)
+        self.zUpButton: QtWidgets.QPushButton = QtWidgets.QPushButton("+Z", self)
         self.zUpButton.setFixedSize(32, 32)
         self.zUpButton.clicked.connect(self.on_add_z)
 
-        self.zDownButton = QtWidgets.QPushButton("-Z", self)
+        self.zDownButton: QtWidgets.QPushButton = QtWidgets.QPushButton("-Z", self)
         self.zDownButton.setFixedSize(32, 32)
         self.zDownButton.clicked.connect(self.on_sub_z)
 
-        self.stepUpButton = QtWidgets.QPushButton("↑⇵", self)
+        self.stepUpButton: QtWidgets.QPushButton = QtWidgets.QPushButton("↑⇵", self)
         self.stepUpButton.setFixedSize(32, 32)
         self.stepUpButton.setToolTip("Step up, move single step up then double step down and double step up (experimental).")
         self.stepUpButton.clicked.connect(self.on_step_up)
 
-        self.control_buttons = (
+        self.controlButtons: List = [
             self.xUpButton,
             self.xDownButton,
             self.yUpButton,
@@ -676,12 +676,12 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.zUpButton,
             self.zDownButton,
             self.stepUpButton
-        )
+        ]
 
-        self.controlGroupBox = QtWidgets.QGroupBox(self)
+        self.controlGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.controlGroupBox.setTitle("Control")
 
-        controlGroupBoxLayout = QtWidgets.QGridLayout(self.controlGroupBox)
+        controlGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(self.controlGroupBox)
         controlGroupBoxLayout.addWidget(self.yDownButton, 2, 1)
         controlGroupBoxLayout.addWidget(self.xDownButton, 1, 2)
         controlGroupBoxLayout.addWidget(self.xUpButton, 3, 2)
@@ -696,47 +696,47 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Step size
 
-        self.stepSizeGroupBox = QtWidgets.QGroupBox(self)
+        self.stepSizeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.stepSizeGroupBox.setTitle("Step Size")
 
-        self.stepSizeGroupBoxLayout = QtWidgets.QVBoxLayout(self.stepSizeGroupBox)
+        self.stepSizeGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.stepSizeGroupBox)
 
         # Create movement radio buttons
-        self.step_width_buttons: List[StepSizeButton] = []
+        self.stepSizeButtons: List[StepSizeButton] = []
         for item in self.load_table_step_sizes():
             step_size = (item.get("step_size") * comet.ureg("um")).to("mm").m
             step_color = item.get("step_color", "black")
             button = StepSizeButton(self)
             button.setStepSize(step_size)
             button.setStepColor(step_color)
-            button.setChecked(len(self.step_width_buttons) == 0)
+            button.setChecked(len(self.stepSizeButtons) == 0)
             button.toggled.connect(self.onStepToggled)
-            self.step_width_buttons.append(button)
+            self.stepSizeButtons.append(button)
             self.stepSizeGroupBoxLayout.addWidget(button)
         self.stepSizeGroupBoxLayout.addStretch()
 
         # LCR readings
 
-        self.lcrPrimLabel = QtWidgets.QLabel("Cp", self)
+        self.lcrPrimLabel: QtWidgets.QLabel = QtWidgets.QLabel("Cp", self)
 
-        self.lcrPrimLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrPrimLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self.lcrPrimLineEdit.setReadOnly(True)
 
-        self.lcrSecLabel = QtWidgets.QLabel("Rp", self)
+        self.lcrSecLabel: QtWidgets.QLabel = QtWidgets.QLabel("Rp", self)
 
-        self.lcrSecLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrSecLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self.lcrSecLineEdit.setReadOnly(True)
 
         self.lcrWidget = ContactQualityWidget(self)
         self.lcrWidget.setMinimumSize(320, 100)
 
-        self.lcrGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.lcrGroupBox.setTitle("Contact Quality (LCR)")
         self.lcrGroupBox.setCheckable(True)
         self.lcrGroupBox.setChecked(False)
         self.lcrGroupBox.toggled.connect(self.setLCREnabled)
 
-        lcrGroupBoxLayout = QtWidgets.QGridLayout(self.lcrGroupBox)
+        lcrGroupBoxLayout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(self.lcrGroupBox)
         lcrGroupBoxLayout.addWidget(self.lcrPrimLabel)
         lcrGroupBoxLayout.addWidget(self.lcrPrimLineEdit, 0, 1)
         lcrGroupBoxLayout.addWidget(self.lcrSecLabel)
@@ -763,10 +763,10 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.boxLightButton.setEnabled(False)
         self.boxLightButton.toggled.connect(self.boxLightToggled.emit)
 
-        self.lightsGroupBox = QtWidgets.QGroupBox(self)
+        self.lightsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
         self.lightsGroupBox.setTitle("Lights")
 
-        lightsGroupBoxLayout = QtWidgets.QVBoxLayout(self.lightsGroupBox)
+        lightsGroupBoxLayout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.lightsGroupBox)
         lightsGroupBoxLayout.addWidget(self.probecardLightButton)
         lightsGroupBoxLayout.addWidget(self.microscopeLightButton)
         lightsGroupBoxLayout.addWidget(self.boxLightButton)
@@ -1026,94 +1026,78 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.process.calibration_finished.connect(self.on_calibration_finished)
         self.process.stopped.connect(self.on_calibration_finished)
 
-        self.updateIntervalSpinBox.valueChanged.connect(self.setUpdateInterval)  # TODO
+        self.updateIntervalSpinBox.valueChanged.connect(self.onUpdateIntervalChange)  # TODO
 
     def step_width(self) -> float:
         """Current selected step size in mm."""
-        for button in self.step_width_buttons:
+        for button in self.stepSizeButtons:
             if button.isChecked():
                 return abs(button.stepSize())
         return 0.
 
     def step_color(self) -> str:
         """Color for current selected step size."""
-        for button in self.step_width_buttons:
+        for button in self.stepSizeButtons:
             if button.isChecked():
                 return button.stepColor()
         return "black"
 
-    @property
-    def update_interval(self):
+    def updateInterval(self) -> float:
         return self.updateIntervalSpinBox.value()
 
-    @update_interval.setter
-    def update_interval(self, value):
-        self.updateIntervalSpinBox.setValue(value)
+    def setUpdateInterval(self, interval: float) -> None:
+        self.updateIntervalSpinBox.setValue(interval)
 
-    @property
-    def dodge_enabled(self):
+    def isDodgeEnabled(self) -> bool:
         return self.dodgeGroupBox.isChecked()
 
-    @dodge_enabled.setter
-    def dodge_enabled(self, value):
-        self.dodgeGroupBox.setChecked(value)
+    def setDodgeEnabled(self, enabled: bool) -> None:
+        self.dodgeGroupBox.setChecked(enabled)
 
-    @property
-    def dodge_height(self):
+    def dodgeHeight(self) -> float:
         return (self.dodgeHeightSpinBox.value() * comet.ureg("um")).to("mm").m
 
-    @dodge_height.setter
-    def dodge_height(self, value):
-        self.dodgeHeightSpinBox.setValue((value * comet.ureg("mm")).to("um").m)
+    def setDodgeHeight(self, height: float) -> None:
+        self.dodgeHeightSpinBox.setValue((height * comet.ureg("mm")).to("um").m)
 
-    @property
-    def lcr_reset_on_move(self):
+    def isLcrResetOnMove(self) -> bool:
         return self.lcrResetOnMoveCheckBox.isChecked()
 
-    @lcr_reset_on_move.setter
-    def lcr_reset_on_move(self, value):
-        self.lcrResetOnMoveCheckBox.setChecked(value)
+    def setLcrResetOnMove(self, enabled: bool) -> None:
+        self.lcrResetOnMoveCheckBox.setChecked(enabled)
 
-    @property
-    def step_up_delay(self):
+    def stepUpDelay(self) -> float:
         """Return step up delay in seconds."""
         return (self.stepUpDelaySpinBox.value() * comet.ureg("ms")).to("s").m
 
-    @step_up_delay.setter
-    def step_up_delay(self, value):
-        self.stepUpDelaySpinBox.setValue((value * comet.ureg("s")).to("ms").m)
+    def setStepUpDelay(self, delay: float) -> None:
+        self.stepUpDelaySpinBox.setValue((delay * comet.ureg("s")).to("ms").m)
 
-    @property
-    def step_up_multiply(self):
+    def stepUpMultiply(self) -> int:
         """Return step up delay in seconds."""
         return int(self.stepUpMultiplySpinBox.value())
 
-    @step_up_multiply.setter
-    def step_up_multiply(self, value):
-        self.stepUpMultiplySpinBox.setValue(value)
+    def setStepUpMultiply(self, count: int) -> None:
+        self.stepUpMultiplySpinBox.setValue(count)
 
-    @property
-    def lcr_update_interval(self):
+    def lcrUpdateInterval(self) -> float:
         """LCR update interval in seconds."""
         return (self.lcrUpdateIntervalSpinBox.value() * comet.ureg("ms")).to("s").m
 
-    @lcr_update_interval.setter
-    def lcr_update_interval(self, value):
-        self.lcrUpdateIntervalSpinBox.setValue((value * comet.ureg("s")).to("ms").m)
+    def setLcrUpdateInterval(self, interval: float) -> None:
+        self.lcrUpdateIntervalSpinBox.setValue((interval * comet.ureg("s")).to("ms").m)
 
-    @property
-    def lcr_matrix_channels(self):
+    def lcrMatrixChannels(self) -> List[str]:
         """Matrix channels used for LCR readings."""
-        tokens = []
+        tokens: List[str] = []
         for token in self.lcrMatrixChannelsLineEdit.text().split(","):
             token = token.strip()
             if token:
                 tokens.append(token)
         return tokens
 
-    @lcr_matrix_channels.setter
-    def lcr_matrix_channels(self, value):
-        self.lcrMatrixChannelsLineEdit.setText(", ".join([token for token in value]))
+    def setLcrMatrixChannels(self, channels: List[str]) -> None:
+        self.lcrMatrixChannelsLineEdit.setText(", ".join([token for token in channels]))
 
     def load_table_step_sizes(self):
         return settings.value("table_step_sizes", self.default_steps, list)
@@ -1155,7 +1139,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.update_x_buttons(x)
         self.update_y_buttons(y)
         self.update_z_buttons(z)
-        for button in self.control_buttons:
+        for button in self.controlButtons:
             color = self.step_color()
             button.setStyleSheet(f"QPushButton:enabled{{color:{color}}}")
 
@@ -1188,7 +1172,7 @@ class AlignmentDialog(QtWidgets.QDialog):
     def relative_move_xy(self, x, y):
         # Dodge on X/Y movements.
         if self.dodge_enabled:
-            dodge_height = self.dodge_height
+            dodge_height = self.dodgeHeight()
             current_position = self.current_position
             if current_position.z < dodge_height:
                 dodge_height = max(0, current_position.z)
@@ -1196,11 +1180,11 @@ class AlignmentDialog(QtWidgets.QDialog):
         else:
             vector = [(x, y, 0)]
         # Clear contact quality graph on X/Y movements.
-        if self.lcr_reset_on_move:
+        if self.isLcrResetOnMove():
             self.lcrWidget.clear()
         self.process.relative_move_vector(vector)
         # Clear contact quality graph on X/Y movements.
-        if self.lcr_reset_on_move:
+        if self.isLcrResetOnMove():
             self.lcrWidget.clear()
 
     def on_add_x(self):
@@ -1230,13 +1214,13 @@ class AlignmentDialog(QtWidgets.QDialog):
     def on_step_up(self):
         self.setLocked(True)
         step_width = self.step_width()
-        multiply = self.step_up_multiply
+        multiply = self.stepUpMultiply()
         vector = (
             [0, 0, +step_width],
             [0, 0, -step_width * multiply],
             [0, 0, +step_width * multiply],
         )
-        self.process.relative_move_vector(vector, delay=self.step_up_delay)
+        self.process.relative_move_vector(vector, delay=self.stepUpDelay())
 
     @QtCore.pyqtSlot()
     def onStepToggled(self) -> None:
@@ -1279,8 +1263,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.progressBar.setVisible(True)
 
     @QtCore.pyqtSlot(float)
-    def setUpdateInterval(self, value: float) -> None:
-        self.process.update_interval = value
+    def onUpdateIntervalChange(self, interval: float) -> None:
+        self.process.update_interval = interval
 
     @QtCore.pyqtSlot(object)
     def assignPosition(self, callback) -> None:
@@ -1323,17 +1307,17 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.xHardLimitLabel.setValue(x)
         self.yHardLimitLabel.setValue(y)
         self.zHardLimitLabel.setValue(z)
-        self.step_up_delay = settings.value("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY, float)
-        self.step_up_multiply = settings.value("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY, int)
-        self.lcr_update_interval = settings.value("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL, float)
+        self.setStepUpDelay(settings.value("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY, float))
+        self.setStepUpMultiply(settings.value("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY, int))
+        self.setLcrUpdateInterval(settings.value("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL, float))
         matrix_channels = settings.value("tablecontrol_lcr_matrix_channels", DEFAULT_MATRIX_CHANNELS, list)
-        self.lcr_matrix_channels = matrix_channels
-        self.lcr_process.update_interval = self.lcr_update_interval
-        self.lcr_process.matrix_channels = self.lcr_matrix_channels
-        self.update_interval = settings.table_control_update_interval
-        self.dodge_enabled = settings.table_control_dodge_enabled
-        self.dodge_height = settings.table_control_dodge_height
-        self.lcr_reset_on_move = settings.value("tablecontrol_lcr_reset_on_move", True, bool)
+        self.setLcrMatrixChannels(matrix_channels)
+        self.lcr_process.update_interval = self.lcrUpdateInterval()
+        self.lcr_process.matrix_channels = self.lcrMatrixChannels()
+        self.setUpdateInterval(settings.value("table_control_update_interval", 1.0, float))
+        self.setDodgeEnabled(settings.value("table_control_dodge_enabled", False, bool))
+        self.setDodgeHeight(settings.tableControlDodgeHeight())
+        self.setLcrResetOnMove(settings.value("tablecontrol_lcr_reset_on_move", True, bool))
 
         _settings = QtCore.QSettings()
         _settings.beginGroup("AlignmentDialog")
@@ -1344,14 +1328,15 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.resize(800, 600)
 
     def writeSettings(self) -> None:
-        settings.setValue("tablecontrol_step_up_multiply", self.step_up_multiply)
-        settings.setValue("tablecontrol_lcr_update_delay", self.lcr_update_interval)
-        settings.setValue("tablecontrol_lcr_matrix_channels", self.lcr_matrix_channels)
+        settings.setValue("tablecontrol_step_up_delay", self.stepUpDelay())
+        settings.setValue("tablecontrol_step_up_multiply", self.stepUpMultiply())
+        settings.setValue("tablecontrol_lcr_update_delay", self.lcrUpdateInterval())
+        settings.setValue("tablecontrol_lcr_matrix_channels", self.lcrMatrixChannels())
         self.positionsWidget.writeSettings()
-        settings.table_control_update_interval = self.update_interval
-        settings.table_control_dodge_enabled = self.dodge_enabled
-        settings.table_control_dodge_height = self.dodge_height
-        settings.setValue("tablecontrol_lcr_reset_on_move", self.lcr_reset_on_move)
+        settings.setValue("table_control_update_interval", self.updateInterval())
+        settings.setValue("table_control_dodge_enabled", self.isDodgeEnabled())
+        settings.setTableControlDodgeHeight(self.dodgeHeight())
+        settings.setValue("tablecontrol_lcr_reset_on_move", self.isLcrResetOnMove())
 
         geometry = self.saveGeometry()
         _settings = QtCore.QSettings()
@@ -1377,8 +1362,8 @@ class AlignmentDialog(QtWidgets.QDialog):
             if enabled:
                 self.lcrWidget.clear()
                 self.lcr_process.set("matrix_instrument", settings.matrix_instrument)
-                self.lcr_process.update_interval = self.lcr_update_interval
-                self.lcr_process.matrix_channels = self.lcr_matrix_channels
+                self.lcr_process.update_interval = self.lcrUpdateInterval()
+                self.lcr_process.matrix_channels = self.lcrMatrixChannels()
                 self.lcr_process.start()
             else:
                 self.lcr_process.stop()

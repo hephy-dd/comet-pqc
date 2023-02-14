@@ -111,28 +111,10 @@ class Settings(SettingsMixin):
             "z": to_table_unit(z)
         })
 
-    @property
-    def table_control_update_interval(self) -> float:
-        return safe_float(self.value("table_control_update_interval", 1.0, float))
-
-    @table_control_update_interval.setter
-    def table_control_update_interval(self, value: float):
-        self.setValue("table_control_update_interval", float(value))
-
-    @property
-    def table_control_dodge_enabled(self):
-        return self.value("table_control_dodge_enabled", False, bool)
-
-    @table_control_dodge_enabled.setter
-    def table_control_dodge_enabled(self, value):
-        self.setValue("table_control_dodge_enabled", bool(value))
-
-    @property
-    def table_control_dodge_height(self):
+    def tableControlDodgeHeight(self) -> float:
         return from_table_unit(safe_int(self.value("table_control_dodge_height", 500, float)))  # from micron
 
-    @table_control_dodge_height.setter
-    def table_control_dodge_height(self, value):
+    def setTableControlDodgeHeight(self, value: float) -> None:
         self.setValue("table_control_dodge_height", to_table_unit(value))
 
     def operators(self) -> List[str]:
@@ -213,5 +195,6 @@ class Settings(SettingsMixin):
 
     def set_use_environ(self, enabled: bool) -> None:
         self.setValue("use_environ", safe_bool(enabled))
+
 
 settings = Settings()

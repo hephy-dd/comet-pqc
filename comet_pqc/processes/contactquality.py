@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import List, Optional, Tuple
 
 import comet
 
@@ -50,17 +51,20 @@ class LCRInstrument:
 
 class ContactQualityProcess(comet.Process, comet.ResourceMixin):
 
-    def __init__(self, update_interval=.250, matrix_channels=None, reading=None, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.update_interval = update_interval
-        self.matrix_channels = matrix_channels or []
-        self.reading = reading
+        self.update_interval: float = 0.250  # seconds
+        self.matrix_channels: List[str] = []
+        self.reading = None
+        self._cached_reading: Tuple = (None, None)
+
+    def clear_cache(self) -> None:
         self._cached_reading = None, None
 
-    def cached_reading(self):
+    def cached_reading(self) -> Tuple:
         return self._cached_reading
 
-    def close_matrix(self, channels):
+    def close_matrix(self, channels: List[str]) -> None:
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = self.get("matrix_instrument")(matrix_res)
@@ -72,7 +76,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
         except Exception as exc:
             raise RuntimeError(f"Failed to close matrix channels {channels}, {exc.args}") from exc
 
-    def open_matrix(self):
+    def open_matrix(self) -> None:
         try:
             with self.resources.get("matrix") as matrix_res:
                 matrix = self.get("matrix_instrument")(matrix_res)
@@ -81,7 +85,7 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
         except Exception as exc:
             raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc
 
-    def measure(self):
+    def measure(self) -> None:
         with self.resources.get("lcr") as lcr_res:
             lcr = LCRInstrument(lcr_res)
             lcr.reset()
@@ -92,11 +96,11 @@ class ContactQualityProcess(comet.Process, comet.ResourceMixin):
                 self._cached_reading = prim, sec
                 time.sleep(self.update_interval)
 
-    def run(self):
-        self._cached_reading = None, None
+    def run(self) -> None:
+        self.clear_cache()
         try:
             self.close_matrix(self.matrix_channels)
             self.measure()
         finally:
-            self._cached_reading = None, None
+            self.clear_cache()
             self.open_matrix()
