@@ -1,5 +1,8 @@
 comet @ git+https://github.com/hephy-dd/comet.git@0.13.2
 analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.7.1
+PyVISA==1.11.*
+PyVISA-py==0.5.*
+PyVISA-sim==0.4.*
 PyQt5==5.15.*
 PyQtChart==5.15.*
 PyYAML==6.0.*

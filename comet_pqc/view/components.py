@@ -63,15 +63,19 @@ def createIcon(size: int, color: str) -> QtGui.QIcon:
     painter.end()
     return QtGui.QIcon(pixmap)
 
+def showInfo(text: str, title: Optional[str] = None, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    title = "" if title is None else title
+    QtWidgets.QMessageBox.information(parent, title, text)
+
 
 def showQuestion(text: str, title: Optional[str] = None, parent: Optional[QtWidgets.QWidget] = None) -> bool:
     title = "" if title is None else title
     return QtWidgets.QMessageBox.question(parent, title, text) == QtWidgets.QMessageBox.Yes
 
 
-def showWarning(text: str, title: Optional[str] = None, parent: Optional[QtWidgets.QWidget] = None) -> bool:
+def showWarning(text: str, title: Optional[str] = None, parent: Optional[QtWidgets.QWidget] = None) -> None:
     title = "" if title is None else title
-    return QtWidgets.QMessageBox.warning(parent, title, text) == QtWidgets.QMessageBox.Yes
+    QtWidgets.QMessageBox.warning(parent, title, text)
 
 
 def showException(exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -> None:

@@ -40,9 +40,7 @@ class MetricUnits:
     def get(cls, value: float) -> MetricUnit:
         for metric_unit in cls.metric_units:
             if value >= metric_unit.base:
-                print("FOUND", metric_unit.base, "for", value)
                 return metric_unit
-        print("FAILED","for", value)
         return cls.default_metric_unit
 
 

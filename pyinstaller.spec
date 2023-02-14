@@ -1,5 +1,4 @@
 import os
-import comet
 import comet_pqc
 
 # Metadata
@@ -9,7 +8,6 @@ version = comet_pqc.__version__
 license = "GPLv3"
 
 # Paths
-comet_root = os.path.join(os.path.dirname(comet.__file__))
 comet_icon = os.path.join(os.path.dirname(comet_pqc.__file__), "assets", "icons", "pqc.ico")
 
 # Windows version info template

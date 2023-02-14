@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional
 
 import analysis_pqc
 import bottle
@@ -9,6 +10,8 @@ from waitress.server import TcpWSGIServer
 
 from .. import __version__
 from ..settings import settings
+from ..view.preferences.preferencesdialog import PreferencesWidget
+
 from . import Plugin
 
 __all__ = ["WebAPIPlugin"]
@@ -26,30 +29,19 @@ def metric(value, unit):
 class WebAPIPlugin(Plugin):
 
     def install(self, window):
-        self.window = window
-
-        self.process = WebAPIProcess(self.window.context)
+        self.process = WebAPIProcess(window.context)
         self.process.start()
-
-        # self.preferencesAction = QtWidgets.QAction()
-        # self.preferencesAction.setText("WebAPI...")
-        # self.preferencesAction.triggered.connect(self.showPreferences)
-
-        # self.window.editMenu.addAction(self.preferencesAction)
+        if self.beforePreferences not in window.beforePreferences:
+            window.beforePreferences.append(self.beforePreferences)
 
     def uninstall(self, window):
         self.process.stop()
-        # self.window.editMenu.removeAction(self.preferencesAction)
-        del self.window
+        if self.beforePreferences in window.beforePreferences:
+            window.beforePreferences.remove(self.beforePreferences)
 
-    # def showPreferences(self):
-    #     dialog = WebAPIDialog(self.window)
-    #     dialog.readSettings()
-    #     dialog.exec()
-    #     if dialog.result() == WebAPIDialog.Accepted:
-    #         dialog.writeSettings()
-    #         QtWidgets.QMessageBox.information(self.window, "Restart Required", "Application restart required for changes to take effect.")
-
+    def beforePreferences(self, dialog):
+        widget = WebAPIPreferencesWidget()
+        dialog.addTab(widget, "Webserver")
 
 
 class WSGIServer(TcpWSGIServer):
@@ -160,46 +152,37 @@ class WebAPIProcess(comet.Process):
         }
 
 
-class WebAPIDialog(QtWidgets.QDialog):
-    """Web API preferences dialog."""
+class WebAPIPreferencesWidget(PreferencesWidget):
+    """Web API settings tab for preferences dialog."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("WebAPI")
 
-        self.enabledCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
-        self.enabledCheckBox.setText("Enable Server")
+        self.serverEnabledCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.serverEnabledCheckBox.setText("Enable Server")
 
         self.hostLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
 
         self.portSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
         self.portSpinBox.setRange(0, 99999)
-        self.portSpinBox.setSingleStep(1)
 
         self.groupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
-        self.groupBox.setTitle("Webserver")
+        self.groupBox.setTitle("JSON API")
 
-        groupBoxLayout: QtWidgets.QFormLayou = QtWidgets.QFormLayout(self.groupBox)
-        groupBoxLayout.addWidget(self.enabledCheckBox)
+        groupBoxLayout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(self.groupBox)
+        groupBoxLayout.addWidget(self.serverEnabledCheckBox)
         groupBoxLayout.addRow("Host", self.hostLineEdit)
         groupBoxLayout.addRow("Port", self.portSpinBox)
-
-        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
-        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
-        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
 
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.groupBox)
         layout.addStretch()
-        layout.addWidget(self.buttonBox)
 
     def isServerEnabled(self) -> bool:
-        return self.enabledCheckBox.isChecked()
+        return self.serverEnabledCheckBox.isChecked()
 
     def setServerEnabled(self, enabled: bool) -> None:
-        self.enabledCheckBox.setChecked(enabled)
+        self.serverEnabledCheckBox.setChecked(enabled)
 
     def host(self) -> str:
         return self.hostLineEdit.text().strip()
@@ -208,7 +191,7 @@ class WebAPIDialog(QtWidgets.QDialog):
         self.hostLineEdit.setText(host)
 
     def port(self) -> int:
-        return self.portSpinBox.value()
+        return int(self.portSpinBox.value())
 
     def setPort(self, port: int) -> None:
         self.portSpinBox.setValue(port)
@@ -216,9 +199,9 @@ class WebAPIDialog(QtWidgets.QDialog):
     def readSettings(self) -> None:
         enabled = settings.value("webapi_enabled", False, bool)
         self.setServerEnabled(enabled)
-        host = settings.value("webapi_host", "localhost", str)
+        host = settings.value("webapi_host", "0.0.0.0", str)
         self.setHost(host)
-        port = settings.value("webapi_port", 9000, int)
+        port = int(settings.value("webapi_port", 9000, int))
         self.setPort(port)
 
     def writeSettings(self) -> None:

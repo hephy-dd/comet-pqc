@@ -261,12 +261,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
         dialog = PreferencesDialog(self)
-        dialog.readSettings()
         for callback in self.beforePreferences:
-            callback(dialog)
+            callback(dialog._dialog)
+        dialog.readSettings()
         dialog.exec()
         for callback in self.afterPreferences:
-            callback(dialog)
+            callback(dialog._dialog)
         dialog.writeSettings()
 
         # Update state
