@@ -7,9 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.42.2
+
+### Fixed
+- Fixed Z movement after calibration.
+
 ## 0.42.1
 
-### Added
+### Changed
 - Migrated to analysis-pqc version 0.7.1.
 - Miggrated to comet version 0.13.2.
 - New application icon.
