@@ -429,6 +429,9 @@ class AlternateTableProcess(TableProcess):
                     self.emit("message_changed", "Calibration aborted.")
                     raise comet.StopRequest()
 
+            def table_is_moving():
+                return (table.status & 0x1) == 0x1
+
             def update_status(x, y, z):
                 x, y, z = [from_table_unit(v) for v in (x, y, z)]
                 self._cached_position = x, y, z
@@ -547,7 +550,7 @@ class AlternateTableProcess(TableProcess):
             table.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
             for i in range(retries):
                 time.sleep(delay)
-                if not table.status & 0x1:
+                if not table_is_moving():
                     break
                 handle_abort()
                 update_status(*table.pos)
@@ -564,7 +567,7 @@ class AlternateTableProcess(TableProcess):
             table.rmove(x_offset, y_offset, 0)
             for i in range(retries):
                 time.sleep(delay)
-                if not table.status & 0x1:
+                if not table_is_moving():
                     break
                 handle_abort()
                 update_status(*table.pos)
@@ -606,10 +609,12 @@ class AlternateTableProcess(TableProcess):
             error_handler.handle_error()
 
             # Move Z axis down
-            table.rmove(0, 0, -AXIS_OFFSET)
+            x_offset = 52000
+            y_offset = 0
+            table.move(x_offset, y_offset, 0)
             for i in range(retries):
                 time.sleep(delay)
-                if not table.status & 0x1:
+                if not table_is_moving():
                     break
                 handle_abort()
                 update_status(*table.pos)
@@ -628,7 +633,7 @@ class AlternateTableProcess(TableProcess):
             table.move(0, 0, 0)
             for i in range(retries):
                 time.sleep(delay)
-                if not table.status & 0x1:
+                if not table_is_moving():
                     break
                 handle_abort()
                 update_status(*table.pos)
