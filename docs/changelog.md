@@ -7,10 +7,15 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.42.3
+
+### Fixed
+- Step size sorting in table preferences.
+
 ## 0.42.2
 
 ### Fixed
-- Fixed Z movement after calibration.
+- Z movement after calibration.
 
 ## 0.42.1
 

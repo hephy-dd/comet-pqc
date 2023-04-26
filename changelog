@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.42.3] - 2023-04-26
+### Fixed
+- Step size sorting in table preferences.
+
 ## [0.42.2] - 2023-04-26
 ### Fixed
-- Fixed Z movement after calibration.
+- Z movement after calibration.
 
 ## [0.42.1] - 2023-01-26
 ### Changed

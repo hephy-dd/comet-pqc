@@ -141,7 +141,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
     def _setup_preferences(self):
         self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
-        self.preferences_dialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
+        self.preferences_dialog.table_tab.table_widget.temporaryZLimitChanged.connect(self.dashboard.on_toggle_temporary_z_limit)
 
     def load_settings(self):
         # Restore window size
