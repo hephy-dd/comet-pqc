@@ -544,12 +544,11 @@ class AlternateTableProcess(TableProcess):
             # Moving into limit switches generates error 1004
             table.rmove(-AXIS_OFFSET, -AXIS_OFFSET, 0)
             for i in range(retries):
-                handle_abort()
-                current_pos = table.pos
-                update_status(*current_pos)
-                if current_pos[:2] == (0, 0):
-                    break
                 time.sleep(delay)
+                if not table.status & 0x1:
+                    break
+                handle_abort()
+                update_status(*table.pos)
             # Verify table position
             current_pos = table.pos
             if current_pos[:2] != (0, 0):
@@ -562,12 +561,11 @@ class AlternateTableProcess(TableProcess):
             y_offset = 0
             table.rmove(x_offset, y_offset, 0)
             for i in range(retries):
-                handle_abort()
-                current_pos = table.pos
-                update_status(*current_pos)
-                if current_pos[:2] == (x_offset, y_offset):
-                    break
                 time.sleep(delay)
+                if not table.status & 0x1:
+                    break
+                handle_abort()
+                update_status(*table.pos)
             # Verify table position
             current_pos = table.pos
             if current_pos[:2] != (x_offset, y_offset):
@@ -605,14 +603,33 @@ class AlternateTableProcess(TableProcess):
             error_handler.handle_machine_error()
             error_handler.handle_error()
 
+            # Move Z axis down
+            table.rmove(0, 0, -AXIS_OFFSET)
+            for i in range(retries):
+                time.sleep(delay)
+                if not table.status & 0x1:
+                    break
+                handle_abort()
+                update_status(*table.pos)
+            # Verify table position
+            current_pos = table.pos
+            if current_pos[2] != 0:
+                raise RuntimeError(f"failed to relative move, current pos: {current_pos}")
+
+            handle_abort()
+            update_caldone()
+
+            error_handler.handle_machine_error()
+            error_handler.handle_error()
+
+            # Move to default position
             table.move(0, 0, 0)
             for i in range(retries):
-                handle_abort()
-                current_pos = table.pos
-                update_status(*current_pos)
-                if current_pos == (0, 0, 0):
-                    break
                 time.sleep(delay)
+                if not table.status & 0x1:
+                    break
+                handle_abort()
+                update_status(*table.pos)
             # Verify table position
             current_pos = table.pos
             if current_pos != (0, 0, 0):

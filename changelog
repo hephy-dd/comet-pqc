@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Generic instrument drivers (#186).
 
+## [0.42.2] - 2023-04-26
+### Fixed
+- Fixed Z movement after calibration.
+
+## [0.42.1] - 2023-01-26
+### Changed
+- Miggrated to analysis-pqc version 0.7.1 (#187).
+- Miggrated to comet version 0.13.2.
+- New application icon (#188).
+
 ## [0.42.0] - 2022-08-24
 ### Added
 - Command line arguments for debug mode and custom logfile.
@@ -345,7 +355,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.42.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.43.0...HEAD
+[0.43.0]: https://github.com/hephy-dd/comet-pqc/compare/0.42.2...0.43.0
+[0.42.2]: https://github.com/hephy-dd/comet-pqc/compare/0.42.1...0.42.2
+[0.42.1]: https://github.com/hephy-dd/comet-pqc/compare/0.42.0...0.42.1
 [0.42.0]: https://github.com/hephy-dd/comet-pqc/compare/0.41.1...0.42.0
 [0.41.1]: https://github.com/hephy-dd/comet-pqc/compare/0.41.0...0.41.1
 [0.41.0]: https://github.com/hephy-dd/comet-pqc/compare/0.40.1...0.41.0
