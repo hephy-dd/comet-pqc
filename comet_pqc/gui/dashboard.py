@@ -59,7 +59,11 @@ class SequenceWidget(QtWidgets.QGroupBox, SettingsMixin):
         self.setTitle("Sequence")
 
         self.sequenceTree = SequenceTree(self)
-        self.sequenceTree.currentItemChanged.connect(lambda current, previous: self.treeSelected.emit(current))
+        def handleSelection():
+            items = self.sequenceTree.selectedItems()
+            if items:
+                self.treeSelected.emit(items[0])
+        self.sequenceTree.itemSelectionChanged.connect(handleSelection)
         self.sequenceTree.currentItemChanged.connect(self.updateControls)
         self.sequenceTree.itemDoubleClicked.connect(self.handleDoubleClick)
         self.sequenceTree.setMinimumWidth(360)

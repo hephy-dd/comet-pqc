@@ -392,6 +392,7 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
         super().__init__()
         self.type_name: str = ""
         self.setCheckable(True)
+        self.setSelectable(True)
 
     # Properties
 
