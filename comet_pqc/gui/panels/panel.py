@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 import comet
 from comet import SettingsMixin, ui
 from PyQt5 import QtCore, QtWidgets
+from QCharted import ChartView
 
 from comet_pqc.settings import settings
 from comet_pqc.utils import stitch_pixmaps
@@ -152,6 +153,8 @@ class MeasurementPanel(Panel):
         self.dataTabWidget.insertTab(0, self.analysisTreeWidget, "Analysis")
 
         # Plots
+        self.series: Dict[str, object] = {}
+
         self.series_transform: Dict[str, object] = {}
         self.series_transform_default = lambda x, y: (x, y)
 
@@ -200,11 +203,11 @@ class MeasurementPanel(Panel):
         pointsInPlots = settings.isPointsInPlots()
         for index in range(self.dataTabWidget.count()):
             widget = self.dataTabWidget.widget(index)
-            if widget.property("type") == "plot":
-                for series in widget.reflection().series.values():
-                    series.qt.setPointsVisible(pointsInPlots)
             if isinstance(widget, PlotWidget):
                 for series in widget.chart.series():
+                    series.setPointsVisible(pointsInPlots)
+            elif isinstance(widget, ChartView):
+                for series in widget.chart().series():
                     series.setPointsVisible(pointsInPlots)
 
     def unmount(self):
@@ -288,11 +291,11 @@ class MeasurementPanel(Panel):
         for index in range(self.dataTabWidget.count()):
             widget = self.dataTabWidget.widget(index)
             self.dataTabWidget.setCurrentIndex(index)
-            if widget.property("type") == "plot":
-                widget.reflection().fit()  # type: ignore
-                pixmaps.append(self.dataTabWidget.grab())
-            elif isinstance(widget, PlotWidget):
+            if isinstance(widget, PlotWidget):
                 widget.resizeAxes()
+                pixmaps.append(self.dataTabWidget.grab())
+            elif isinstance(widget, ChartView):
+                widget.chart().fit()
                 pixmaps.append(self.dataTabWidget.grab())
             elif widget is self.analysisTreeWidget:
                 if settings.isPngAnalysis():

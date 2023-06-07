@@ -1,7 +1,8 @@
 from typing import Optional
 
-from comet import ui, ureg
+from comet import ureg
 from PyQt5 import QtCore, QtWidgets
+from QCharted import Chart, ChartView
 
 from .matrix import MatrixPanel
 from .mixins import (
@@ -28,13 +29,30 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.register_electrometer()
         self.register_environment()
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V]")
-        self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.plot.qt.setProperty("type", "plot")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
+        self.chart = Chart()
+        self.chart.legend().setAlignment(QtCore.Qt.AlignRight)
+
+        self.xAxis = self.chart.addValueAxis(QtCore.Qt.AlignBottom)
+        self.xAxis.setTitleText("Voltage [V]")
+
+        self.yAxis = self.chart.addValueAxis(QtCore.Qt.AlignRight)
+        self.yAxis.setTitleText("Current [uA]")
+
+        self.elmSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.elmSeries.setName("Electrometer")
+        self.elmSeries.setPen(QtCore.Qt.blue)
+        self.series["elm"] = self.elmSeries
+
+        self.xfitSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.xfitSeries.setName("Fit")
+        self.xfitSeries.setPen(QtCore.Qt.magenta)
+        self.series["xfit"] = self.xfitSeries
+
+        self.chartView = ChartView(self)
+        self.chartView.setChart(self.chart)
+        self.chartView.setMaximumHeight(300)
+
+        self.dataTabWidget.insertTab(0, self.chartView, "IV Curve")
 
         self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.voltage_start.setRange(-2.1e3, 2.1e3)
@@ -141,45 +159,46 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
-            if name in self.plot.series:
-                if name in self.plot.series:
-                    self.plot.series.clear()
+            series = self.series.get(name)
+            if series is not None:
+                series.data().clear()
                 tr = self.series_transform.get(name, self.series_transform_default)
                 if points[0][0] > points[-1][0]:
-                    self.plot.axes.get("x").qt.setReverse(True)
+                    self.xAxis.setReverse(True)
                 else:
-                    self.plot.axes.get("x").qt.setReverse(False)
+                    self.xAxis.setReverse(False)
                 for x, y in points:
-                    self.plot.series.get(name).append(*tr(x, y))
+                    series.data().append(*tr(x, y))
         self.updateReadings()
 
     def append_reading(self, name, x, y):
         if self.measurement:
-            if name in self.plot.series:
+            series = self.series.get(name)
+            if series is not None:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
                 if self.voltage_start.value() > self.voltage_stop.value():
-                    self.plot.axes.get("x").qt.setReverse(True)
+                    self.xAxes.setReverse(True)
                 else:
-                    self.plot.axes.get("x").qt.setReverse(False)
+                    self.xAxes.setReverse(False)
                 tr = self.series_transform.get(name, self.series_transform_default)
-                self.plot.series.get(name).append(*tr(x, y))
-                self.plot.series.get(name).qt.setVisible(True)
+                series.data().append(*tr(x, y))
+                series.setVisible(True)
 
     def updateReadings(self):
         if self.measurement:
-            if self.plot.zoomed:
-                self.plot.update("x")
+            if self.chart.isZoomed():
+                self.chart.updateAxis(self.xAxis, self.xAxis.min(), self.xAxis.max())
             else:
-                self.plot.fit()
+                self.chart.fit()
 
     def clearReadings(self):
         super().clearReadings()
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for series in self.plot.series.values():
-            series.clear()
+        self.xfitSeries.setVisible(False)
+        for series in self.series.values():
+            series.data().clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.chart.fit()

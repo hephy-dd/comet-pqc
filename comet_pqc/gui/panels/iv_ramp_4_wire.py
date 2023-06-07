@@ -1,7 +1,8 @@
 from typing import Optional
 
-from comet import ui, ureg
+from comet import ureg
 from PyQt5 import QtChart, QtCore, QtWidgets
+from QCharted import Chart, ChartView
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin
@@ -22,32 +23,30 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.register_vsource()
         self.register_environment()
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
-        self.plot.add_axis("y", align="right", text="Voltage [V]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.plot.qt.setProperty("type", "plot")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
+        self.chart = Chart()
+        self.chart.legend().setAlignment(QtCore.Qt.AlignRight)
 
-        self.plotWidget = PlotWidget(self)
-        self.dataTabWidget.insertTab(0, self.plotWidget, "IV Curve (New)")
+        self.xAxis = self.chart.addValueAxis(QtCore.Qt.AlignBottom)
+        self.xAxis.setTitleText("Current [uA] (abs)")
 
-        xAxis = self.plotWidget.addValueAxis(title="Current [uA] (abs)", alignment=QtCore.Qt.AlignBottom)
-        yAxis = self.plotWidget.addValueAxis(title="Voltage [V]", alignment=QtCore.Qt.AlignRight)
+        self.yAxis = self.chart.addValueAxis(QtCore.Qt.AlignRight)
+        self.yAxis.setTitleText("Voltage [V]")
 
-        self.vsrcSeries = self.plotWidget.addLineSeries(name="V Source", color="blue")
-        self.vsrcSeries.attachAxis(xAxis)
-        self.vsrcSeries.attachAxis(yAxis)
+        self.vsrcSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.vsrcSeries.setName("V Source")
+        self.vsrcSeries.setPen(QtCore.Qt.blue)
+        self.series["vsrc"] = self.vsrcSeries
 
-        self.xfitSeries = self.plotWidget.addLineSeries(name="Fit", color="magenta")
-        self.xfitSeries.attachAxis(xAxis)
-        self.xfitSeries.attachAxis(yAxis)
+        self.xfitSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.xfitSeries.setName("Fit")
+        self.xfitSeries.setPen(QtCore.Qt.magenta)
+        self.series["xfit"] = self.xfitSeries
 
-        self.dataSeries = {
-            "vsrc": self.vsrcSeries,
-            "xfit": self.xfitSeries
-        }
+        self.chartView = ChartView(self)
+        self.chartView.setChart(self.chart)
+        self.chartView.setMaximumHeight(300)
+
+        self.dataTabWidget.insertTab(0, self.chartView, "IV Curve")
 
         self.current_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.current_start.setRange(-2.1e6, 2.1e6)
@@ -119,57 +118,39 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for name, points in measurement.series.items():
-            if name in self.plot.series:
-                self.plot.series.clear()
-            tr = self.series_transform.get(name, self.series_transform_default)
-            for x, y in points:
-                self.plot.series.get(name).append(*tr(x, y))
-            self.plot.series.get(name).qt.setVisible(True)
-
         self.xfitSeries.setVisible(False)
-
-        for name, series in self.dataSeries.items():
-            series.clear()
-            points = measurement.series.get(name)
-            if points is not None:
+        for name, points in measurement.series.items():
+            series = self.series.get(name)
+            if series is not None:
+                series.data().clear()
                 tr = self.series_transform.get(name, self.series_transform_default)
                 for x, y in points:
-                    x, v = tr(x, y)
-                    series.append(x, v)
+                    series.data().append(*tr(x, y))
                 series.setVisible(True)
+
+        self.xfitSeries.setVisible(False)
 
         self.updateReadings()
 
     def append_reading(self, name, x, y):
         if self.measurement:
-            if name not in self.measurement.series:
-                self.measurement.series[name] = []
-            self.measurement.series[name].append((x, y))
-
-            if name in self.plot.series:
-                tr = self.series_transform.get(name, self.series_transform_default)
-                self.plot.series.get(name).append(*tr(x, y))
-                self.plot.series.get(name).qt.setVisible(True)
-
-            series = self.dataSeries.get(name)
+            series = self.series.get(name)
             if series is not None:
+                if name not in self.measurement.series:
+                    self.measurement.series[name] = []
+                self.measurement.series[name].append((x, y))
                 tr = self.series_transform.get(name, self.series_transform_default)
-                x, y = tr(x, y)
-                series.append(x, y)
+                series.data().append(*tr(x, y))
                 series.setVisible(True)
 
     def updateReadings(self):
         super().updateReadings()
         if self.measurement:
-            if self.plot.zoomed:
-                self.plot.update("x")
+            if self.chart.isZoomed():
+                self.chart.updateAxis(self.xAxis, self.xAxis.min(), self.xAxis.max())
             else:
-                self.plot.qt.chart().zoomOut() # HACK
-                self.plot.fit()
-
-        self.plotWidget.resizeAxes()
+                self.chart.zoomOut() # HACK
+                self.chart.fit()
 
     def clearReadings(self):
         super().clearReadings()
@@ -178,11 +159,7 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
 
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for series in self.plot.series.values():
-            series.clear()
-        self.plot.fit()
-
         self.xfitSeries.setVisible(False)
-        for series in self.dataSeries.values():
-            series.clear()
+        for series in self.series.values():
+            series.data().clear()
+        self.chart.fit()

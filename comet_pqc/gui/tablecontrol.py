@@ -96,7 +96,7 @@ class TableSampleItem(QtWidgets.QTreeWidgetItem):
         self._sample_item = sample_item
         self.setName("/".join([item for item in (sample_item.name, sample_item.sample_type) if item]))
         self.setPosition(sample_item.sample_position)
-        for contact_item in sample_item.children:
+        for contact_item in sample_item.children():
             child = TableContactItem(contact_item)
             self.addChild(child)
 

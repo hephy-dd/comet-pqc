@@ -2,8 +2,8 @@ import logging
 import math
 from typing import List, Optional
 
-from PyQt5 import QtWidgets
-from comet import ui
+from PyQt5 import QtCore, QtWidgets
+from QCharted import Chart, ChartView
 
 __all__ = ["EnvironmentWidget"]
 
@@ -26,13 +26,34 @@ class EnvironmentWidget(QtWidgets.QWidget):
         self.box_humidity_series: List = []
 
         # Plot
-        self.plot = ui.Plot(legend="right")
-        self.plot.add_axis("x", align="bottom", type="datetime")
-        self.plot.add_axis("y1", align="left", text="Temperature [°C]", color="red")
-        self.plot.add_axis("y2", align="right", text="Humidity [%rH]", color="blue")
-        self.plot.add_series("box_temperature", "x", "y1", text="Box Temperature", color="red")
-        self.plot.add_series("chuck_temperature", "x", "y1", text="Chuck Temperature", color="magenta")
-        self.plot.add_series("box_humidity", "x", "y2", text="Box Humidity", color="blue")
+        self.chart = Chart()
+        self.chart.legend().setAlignment(QtCore.Qt.AlignRight)
+
+        self.xAxis = self.chart.addDateTimeAxis(QtCore.Qt.AlignBottom)
+        self.xAxis.setTitleText("Time")
+
+        self.y1Axis = self.chart.addValueAxis(QtCore.Qt.AlignLeft)
+        self.y1Axis.setTitleText("Temperature [°C]")
+        self.y1Axis.setLinePen(QtCore.Qt.red)
+
+        self.y2Axis = self.chart.addValueAxis(QtCore.Qt.AlignRight)
+        self.y2Axis.setTitleText("Humidity [%rH]")
+        self.y2Axis.setLinePen(QtCore.Qt.blue)
+
+        self.boxTemperatureSeries = self.chart.addLineSeries(self.xAxis, self.y1Axis)
+        self.boxTemperatureSeries.setName("Box Temperature")
+        self.boxTemperatureSeries.setPen(QtCore.Qt.red)
+
+        self.chucktemperatureSeries = self.chart.addLineSeries(self.xAxis, self.y1Axis)
+        self.chucktemperatureSeries.setName("Chuck Temperature")
+        self.chucktemperatureSeries.setPen(QtCore.Qt.magenta)
+
+        self.boxHumiditySeries = self.chart.addLineSeries(self.xAxis, self.y2Axis)
+        self.boxHumiditySeries.setName("Box Humidity")
+        self.boxHumiditySeries.setPen(QtCore.Qt.blue)
+
+        self.chartView = ChartView(self)
+        self.chartView.setChart(self.chart)
 
         # Inputs
         self.boxTemperatureSpinBox = QtWidgets.QDoubleSpinBox(self)
@@ -66,7 +87,7 @@ class EnvironmentWidget(QtWidgets.QWidget):
         self.boxDoorLineEdit.setReadOnly(True)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.plot.qt)
+        layout.addWidget(self.chartView)
         layout.addWidget(QtWidgets.QLabel("Box Temperature"))
         layout.addWidget(self.boxTemperatureSpinBox)
         layout.addWidget(QtWidgets.QLabel("Box Humidity"))
@@ -102,15 +123,15 @@ class EnvironmentWidget(QtWidgets.QWidget):
             self.updatePlot()
 
     def updatePlot(self) -> None:
-        self.plot.series.get("box_temperature").replace(self.box_temperature_series)
-        self.plot.series.get("chuck_temperature").replace(self.chuck_temperature_series)
-        self.plot.series.get("box_humidity").replace(self.box_humidity_series)
+        self.boxTemperatureSeries.data().replace(self.box_temperature_series)
+        self.chucktemperatureSeries.data().replace(self.chuck_temperature_series)
+        self.boxHumiditySeries.data().replace(self.box_humidity_series)
         # Suppress invalid float crashes
         try:
-            if self.plot.zoomed:
-                self.plot.update("x")
+            if self.chart.isZoomed():
+                self.chart.updateAxis(self.xAxis, self.xAxis.min(), self.xAxis.max())
             else:
-                self.plot.fit()
+                self.chart.fit()
         except Exception as exc:
             logger.error("failed to resize plot.")
             logger.exception(exc)

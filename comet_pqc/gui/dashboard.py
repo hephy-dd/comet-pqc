@@ -852,7 +852,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         measure.set("contact_delay", settings.tableContactDelay())
         measure.set("retry_contact_overdrive", settings.retryContactOverdrive())
         def show_measurement(item):
-            item.selectable = True
+            item.setSelectable(True)
             item.series.clear()
             brush = item.foreground(0)  # TODO
             brush.setColor(QtGui.QColor("blue"))
@@ -869,7 +869,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             measure.append_analysis = panel.append_analysis
             measure.state = panel.updateState
         def hide_measurement(item):
-            item.selectable = False
+            item.setSelectable(False)
             brush = item.foreground(0)  # TODO
             brush.setColor(QtGui.QColor())
             item.setForeground(0, brush)

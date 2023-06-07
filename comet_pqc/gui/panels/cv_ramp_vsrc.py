@@ -2,6 +2,7 @@ from typing import Optional
 
 from comet import ui, ureg
 from PyQt5 import QtCore, QtWidgets
+from QCharted import Chart, ChartView
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, LCRMixin, VSourceMixin
@@ -22,20 +23,46 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
         self.register_lcr()
         self.register_environment()
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
-        self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
-        self.plot.qt.setProperty("type", "plot")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
+        self.chart = Chart()
+        self.chart.legend().setAlignment(QtCore.Qt.AlignRight)
 
-        self.plot2 = ui.Plot(height=300, legend="right")
-        self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
-        self.plot2.axes.get("y").qt.setLabelFormat("%G")
-        self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
-        self.plot2.qt.setProperty("type", "plot")
-        self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
+        self.xAxis = self.chart.addValueAxis(QtCore.Qt.AlignBottom)
+        self.xAxis.setTitleText("Voltage [V] (abs)")
+
+        self.yAxis = self.chart.addValueAxis(QtCore.Qt.AlignRight)
+        self.yAxis.setTitleText("Capacitance [pF]")
+
+        self.lcrSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.lcrSeries.setName("LCR Cp")
+        self.lcrSeries.setPen(QtCore.Qt.blue)
+        self.series["lcr"] = self.lcrSeries
+
+        self.chartView = ChartView(self)
+        self.chartView.setChart(self.chart)
+        self.chartView.setMaximumHeight(300)
+
+        self.dataTabWidget.insertTab(0, self.chartView, "CV Curve")
+
+        self.chart2 = Chart()
+        self.chart2.legend().setAlignment(QtCore.Qt.AlignRight)
+
+        self.xAxis2 = self.chart2.addValueAxis(QtCore.Qt.AlignBottom)
+        self.xAxis2.setTitleText("Voltage [V] (abs)")
+
+        self.yAxis2 = self.chart2.addValueAxis(QtCore.Qt.AlignRight)
+        self.yAxis2.setTitleText("1/Capacitance² [1/F²]")
+        self.yAxis2.setLabelFormat("%G")
+
+        self.lcr2Series = self.chart2.addLineSeries(self.xAxis2, self.yAxis2)
+        self.lcr2Series.setName("LCR Cp")
+        self.lcr2Series.setPen(QtCore.Qt.blue)
+        self.series["lcr2"] = self.lcr2Series
+
+        self.chartView2 = ChartView(self)
+        self.chartView2.setChart(self.chart2)
+        self.chartView2.setMaximumHeight(300)
+
+        self.dataTabWidget.insertTab(1, self.chartView2, "1/C² Curve")
 
         self.voltage_start: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.voltage_start.setRange(-2.1e3, 2.1e3)
@@ -129,50 +156,43 @@ class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
 
     def mount(self, measurement):
         super().mount(measurement)
-        for series in self.plot.series.values():
-            series.clear()
-        for series in self.plot2.series.values():
-            series.clear()
+        for series in self.series.values():
+            series.data().clear()
         for name, points in measurement.series.items():
-            tr = self.series_transform.get(name, self.series_transform_default)
-            if name == "lcr":
+            series = self.series.get(name)
+            if series is not None:
+                tr = self.series_transform.get(name, self.series_transform_default)
                 for x, y in points:
-                    self.plot.series.get(name).append(*tr(x, y))
-            elif name == "lcr2":
-                for x, y in points:
-                    self.plot2.series.get(name).append(*tr(x, y))
-        self.plot.fit()
-        self.plot2.fit()
+                    series.data().append(*tr(x, y))
+        self.chart.fit()
+        self.chart2.fit()
 
     def append_reading(self, name, x, y):
         if self.measurement:
-            tr = self.series_transform.get(name, self.series_transform_default)
-            if name == "lcr":
+            series = self.series.get(name)
+            if series is not None:
+                tr = self.series_transform.get(name, self.series_transform_default)
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(*tr(x, y))
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
-            elif name == "lcr2":
-                if name not in self.measurement.series:
-                    self.measurement.series[name] = []
-                self.measurement.series[name].append((x, y))
-                self.plot2.series.get(name).append(*tr(x, y))
-                if self.plot2.zoomed:
-                    self.plot2.update("x")
-                else:
-                    self.plot2.fit()
+                series.data().append(*tr(x, y))
+                if name == "lcr":
+                    if self.chart.isZoomed():
+                        self.chart.updateAxis(self.xAxis, self.xAxis.min(), self.xAxis.max())
+                    else:
+                        self.chart.fit()
+                elif name == "lcr2":
+                    if self.chart2.isZoomed():
+                        self.chart2.updateAxis(self.xAxis2, self.xAxis2.min(), self.xAxis2.max())
+                    else:
+                        self.chart2.fit()
 
     def clearReadings(self):
         super().clearReadings()
-        for series in self.plot.series.values():
-            series.clear()
-        for series in self.plot2.series.values():
-            series.clear()
+        for series in self.series.values():
+            series.data().clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.chart.fit()
+        self.chart2.fit()

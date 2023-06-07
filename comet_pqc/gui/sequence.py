@@ -362,11 +362,14 @@ class SamplesItem:
     """Virtual item holding multiple samples to be executed."""
 
     def __init__(self, iterable) -> None:
-        self.children: List = []
+        self._children: List = []
         self.extend(iterable)
 
+    def children(self):
+        return self._children
+
     def append(self, item) -> None:
-        self.children.append(item)
+        self._children.append(item)
 
     def extend(self, iterable) -> None:
         for item in iterable:
@@ -388,23 +391,20 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def __init__(self) -> None:
         super().__init__()
         self.type_name: str = ""
-        self.checkable = True
+        self.setCheckable(True)
 
     # Properties
 
-    @property
     def children(self):
         items = []
         for index in range(self.childCount()):
             items.append(self.child(index))
         return items
 
-    @property
-    def checkable(self) -> bool:
+    def isCheckable(self) -> bool:
         return self.flags() & QtCore.Qt.ItemIsUserCheckable != 0
 
-    @checkable.setter
-    def checkable(self, value: bool) -> None:
+    def setCheckable(self, value: bool) -> None:
         if value:
             flags = self.flags() | QtCore.Qt.ItemIsUserCheckable
         else:
@@ -415,12 +415,10 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def has_position(self):
         return False
 
-    @property
-    def selectable(self):
+    def isSelectable(self) -> bool:
         return self.flags() & QtCore.Qt.ItemIsSelectable != 0
 
-    @selectable.setter
-    def selectable(self, value):
+    def setSelectable(self, value: bool) -> None:
         flags = self.flags()
         if value:
             flags |= QtCore.Qt.ItemIsSelectable
@@ -475,14 +473,14 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
         self.setForeground(2, brush)
 
     def setLocked(self, state: bool) -> None:
-        self.checkable = not state
-        self.selectable = not state
-        for child in self.children:
+        self.setCheckable(not state)
+        self.setSelectable(not state)
+        for child in self.children():
             child.setLocked(state)
 
     def reset(self) -> None:
         self.state = type(self).IdleState
-        for child in self.children:
+        for child in self.children():
             child.reset()
 
 
@@ -587,7 +585,7 @@ class SampleTreeItem(SequenceTreeItem):
             self.load_sequence(sequence)
         default_position = float("nan"), float("nan"), float("nan")
         for contact_position in kwargs.get("sample_contacts") or []:
-            for contact in self.children:
+            for contact in self.children():
                 if contact.id == contact_position.get("id"):
                     try:
                         x, y, z = tuple(map(from_table_unit, contact_position.get("position")))
@@ -600,7 +598,7 @@ class SampleTreeItem(SequenceTreeItem):
 
     def to_settings(self):
         sample_contacts = []
-        for contact in self.children:
+        for contact in self.children():
             if contact.has_position:
                 sample_contacts.append({
                     "id": contact.id,
@@ -625,23 +623,23 @@ class SampleTreeItem(SequenceTreeItem):
         self.setText(0, "/".join((token for token in tokens if token)))
 
     def reset_positions(self):
-        for contact_item in self.children:
+        for contact_item in self.children():
             contact_item.reset_position()
 
     def load_sequence(self, sequence):
         # Store contact positions
         contact_positions = {}
-        for contact_item in self.children:
+        for contact_item in self.children():
             if contact_item.has_position:
                 contact_positions[contact_item.id] = contact_item.position
-        while self.children:
+        while self.children():
             self.takeChild(0)
         self.sequence = sequence
         for contact in sequence.contacts:
             item = ContactTreeItem(self, contact)
             self.addChild(item)
         # Restore contact positions
-        for contact_item in self.children:
+        for contact_item in self.children():
             if contact_item.id in contact_positions:
                 contact_item.position = contact_positions.get(contact_item.id)
 

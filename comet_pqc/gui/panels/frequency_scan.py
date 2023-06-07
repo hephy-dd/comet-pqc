@@ -1,7 +1,8 @@
 from typing import Optional
 
-from comet import ui, ureg
+from comet import ureg
 from PyQt5 import QtCore, QtWidgets
+from QCharted import Chart, ChartView
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, LCRMixin
@@ -22,12 +23,25 @@ class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin)
         self.register_lcr()
         self.register_environment()
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
-        self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
-        self.plot.qt.setProperty("type", "plot")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
+        self.chart = Chart()
+        self.chart.legend().setAlignment(QtCore.Qt.AlignRight)
+
+        self.xAxis = self.chart.addValueAxis(QtCore.Qt.AlignBottom)
+        self.xAxis.setTitleText("Voltage [V] (abs)")
+
+        self.yAxis = self.chart.addValueAxis(QtCore.Qt.AlignRight)
+        self.yAxis.setTitleText("Capacitance [pF]")
+
+        self.lcrSeries = self.chart.addLineSeries(self.xAxis, self.yAxis)
+        self.lcrSeries.setName("LCR")
+        self.lcrSeries.setPen(QtCore.Qt.blue)
+        self.series["lcr"] = self.lcrSeries
+
+        self.chartView = ChartView(self)
+        self.chartView.setChart(self.chart)
+        self.chartView.setMaximumHeight(300)
+
+        self.dataTabWidget.insertTab(0, self.chartView, "CV Curve")
 
         self.bias_voltage: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.bias_voltage.setRange(-2.1e3, +2.1e3)

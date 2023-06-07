@@ -303,7 +303,7 @@ class MeasureProcess(BaseProcess):
         retry_contact_count = settings.retryContactCount()
         retry_measurement_count = settings.retryMeasurementCount()
         # Queue of measurements for the retry loops.
-        measurement_items = [item for item in contact_item.children if item.enabled]
+        measurement_items = [item for item in contact_item.children() if item.enabled]
         # Auto retry table contact
         for retry_contact in range(retry_contact_count + 1):
             if not measurement_items:
@@ -379,12 +379,12 @@ class MeasureProcess(BaseProcess):
         self.emit("message", "Process sample...")
         self.emit(self.measurement_state, sample_item, sample_item.ProcessingState)
         # Check contact positions
-        for contact_item in sample_item.children:
+        for contact_item in sample_item.children():
             if contact_item.enabled:
                 if not contact_item.has_position:
                     raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
         results = []
-        for contact_item in sample_item.children:
+        for contact_item in sample_item.children():
             if not self.running:
                 break
             if not contact_item.enabled:
@@ -410,13 +410,13 @@ class MeasureProcess(BaseProcess):
     def process_samples(self, samples_item):
         self.emit("message", "Process samples...")
         # Check contact positions
-        for sample_item in samples_item.children:
+        for sample_item in samples_item.children():
             if sample_item.enabled:
-                for contact_item in sample_item.children:
+                for contact_item in sample_item.children():
                     if contact_item.enabled:
                         if not contact_item.has_position:
                             raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name}")
-        for sample_item in samples_item.children:
+        for sample_item in samples_item.children():
             if not self.running:
                 break
             if not sample_item.enabled:
