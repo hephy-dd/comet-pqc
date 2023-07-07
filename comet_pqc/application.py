@@ -23,6 +23,7 @@ from .core.utils import make_path
 
 from .plugins import PluginManager
 from .plugins.logger import LoggerPlugin
+from .plugins.notify import NotifyPlugin
 from .plugins.summary import SummaryPlugin
 
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
@@ -70,6 +71,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.preferences_dialog = self.window.preferences_dialog
 
         self.plugin_manager = PluginManager()
+        self.plugin_manager.register_pugin(NotifyPlugin(self.window))
         self.plugin_manager.register_pugin(LoggerPlugin(self.dashboard))
         self.plugin_manager.register_pugin(SummaryPlugin(self.dashboard))
 
