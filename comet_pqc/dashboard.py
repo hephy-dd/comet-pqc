@@ -21,9 +21,7 @@ from .components import (
 )
 from .core import config
 from .core.position import Position
-from .core.formatter import CSVFormatter
 from .core.utils import make_path, user_home
-from .logwindow import LogWidget
 from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
@@ -36,12 +34,10 @@ from .sequence import (
 )
 from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
-from .tabs import EnvironmentTab, MeasurementTab, StatusTab, SummaryTab
+from .tabs import EnvironmentTab, MeasurementTab, StatusTab
 from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
-
-SUMMARY_FILENAME = "summary.csv"
 
 
 class SequenceWidget(ui.GroupBox, SettingsMixin):
@@ -614,18 +610,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.measurement_tab = MeasurementTab(restore=self.on_measure_restore)
         self.environment_tab = EnvironmentTab()
         self.status_tab = StatusTab(reload=self.on_status_start)
-        self.summary_tab = SummaryTab()
 
         self.panels = self.measurement_tab.panels
         self.panels.sample_changed = self.on_sample_changed
-
-        self.log_widget = LogWidget()
-        self.log_widget.add_logger(logging.getLogger())
-
-        self.logging_tab = ui.Tab(
-            title="Logs",
-            layout=self.log_widget
-        )
 
         # Tabs
 
@@ -633,8 +620,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             self.measurement_tab,
             self.environment_tab,
             self.status_tab,
-            self.logging_tab,
-            self.summary_tab
         )
 
         # Layout
@@ -975,6 +960,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         measure.show_measurement = show_measurement
         measure.hide_measurement = hide_measurement
         measure.push_summary = self.on_push_summary
+        measure.measurements_finished = self.on_measurements_finished
         measure.start()
 
     def on_measurement_state(self, item, state=None):
@@ -1201,18 +1187,10 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.sync_table_controls()
 
     @handle_exception
-    def on_push_summary(self, *args):
-        """Push result to summary and write to summary file (experimantal)."""
-        item = self.summary_tab.append_result(*args)
-        output_path = self.output_widget.current_location
-        if output_path and os.path.exists(output_path):
-            filename = os.path.join(output_path, SUMMARY_FILENAME)
-            has_header = os.path.exists(filename)
-            with open(filename, "a") as fp:
-                header = self.summary_tab.header()
-                fmt = CSVFormatter(fp)
-                for key in header:
-                    fmt.add_column(key)
-                if not has_header:
-                    fmt.write_header()
-                fmt.write_row({header[i]: item[i].value for i in range(len(header))})
+    def on_push_summary(self, data: dict) -> None:
+        self.plugin_manager.handle("summary", data=data)
+
+    @handle_exception
+    def on_measurements_finished(self) -> None:
+        message = "PQC measurements finished!"
+        self.plugin_manager.handle("notification", message=message)

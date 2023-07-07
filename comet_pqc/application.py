@@ -21,6 +21,10 @@ from .processes import (
 from .settings import settings
 from .core.utils import make_path
 
+from .plugins import PluginManager
+from .plugins.logger import LoggerPlugin
+from .plugins.summary import SummaryPlugin
+
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
 GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 
@@ -53,7 +57,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.dashboard = Dashboard(
             lock_state_changed=self.on_lock_state_changed,
             message_changed=self.on_message,
-            progress_changed=self.on_progress
+            progress_changed=self.on_progress,
         )
         self.central_widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(self.central_widget)
@@ -65,8 +69,11 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
         self.preferences_dialog = self.window.preferences_dialog
 
-        logger.info("PQC version %s", __version__)
-        logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
+        self.plugin_manager = PluginManager()
+        self.plugin_manager.register_pugin(LoggerPlugin(self.dashboard))
+        self.plugin_manager.register_pugin(SummaryPlugin(self.dashboard))
+
+        self.dashboard.plugin_manager = self.plugin_manager
 
         self._setup_preferences()
 
@@ -162,6 +169,11 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.settings["preferences_dialog_size"] = width, height
 
     def event_loop(self):
+        self.plugin_manager.install_plugins()
+
+        logger.info("PQC version %s", __version__)
+        logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
+
         # Sync environment controls
         if self.dashboard.use_environment():
             self.dashboard.environ_process.start()
@@ -194,6 +206,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             # Stop processes
             self.processes.stop()
             self.processes.join()
+            self.plugin_manager.uninstall_plugins()
 
     def on_show_error(self, exc, tb):
         self.on_message("Exception occured!")
