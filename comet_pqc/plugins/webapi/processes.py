@@ -4,9 +4,10 @@ import logging
 import analysis_pqc
 import bottle
 import comet
+from PyQt5 import QtCore
 from waitress.server import TcpWSGIServer
 
-from .. import __version__
+from comet_pqc import __version__
 
 __all__ = ["WebAPIProcess"]
 
@@ -60,9 +61,12 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             server.shutdown()
 
     def run(self):
-        self.enabled = self.settings.get("webapi_enabled") or type(self).enabled
-        self.host = self.settings.get("webapi_host") or type(self).host
-        self.port = int(self.settings.get("webapi_port") or type(self).port)
+        settings = QtCore.QSettings()
+        settings.beginGroup("plugin.webapi")
+        self.enabled = settings.value("enabled", type(self).enabled, bool)
+        self.host = settings.value("hostname",  type(self).host, str)
+        self.port = settings.value("port", type(self).port, int)
+        settings.endGroup()
 
         if not self.enabled:
             return

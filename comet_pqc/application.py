@@ -15,14 +15,14 @@ from .processes import (
     ContactQualityProcess,
     EnvironmentProcess,
     MeasureProcess,
-    StatusProcess,
-    WebAPIProcess,
 )
 from .settings import settings
 from .core.utils import make_path
 
 from .plugins import PluginManager
+from .plugins.status import StatusPlugin
 from .plugins.logger import LoggerPlugin
+from .plugins.webapi import WebAPIPlugin
 from .plugins.notify import NotifyPlugin
 from .plugins.summary import SummaryPlugin
 
@@ -67,13 +67,16 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         # Initialize main window
         self.window = MainWindow()
         self.window.setCentralWidget(self.central_widget)
+        self.window.dashboard = self.dashboard
 
         self.preferences_dialog = self.window.preferences_dialog
 
         self.plugin_manager = PluginManager()
-        self.plugin_manager.register_pugin(NotifyPlugin(self.window))
+        self.plugin_manager.register_pugin(StatusPlugin(self.window))
         self.plugin_manager.register_pugin(LoggerPlugin(self.dashboard))
+        self.plugin_manager.register_pugin(WebAPIPlugin(self.window))
         self.plugin_manager.register_pugin(SummaryPlugin(self.dashboard))
+        self.plugin_manager.register_pugin(NotifyPlugin(self.window))
 
         self.dashboard.plugin_manager = self.plugin_manager
 
@@ -128,11 +131,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             name="environ",
             failed=self.on_show_error
         ))
-        self.processes.add("status", StatusProcess(
-            failed=self.on_show_error,
-            message=self.on_message,
-            progress=self.on_progress
-        ))
+
         self.processes.add("table", AlternateTableProcess(
             failed=self.on_show_error
         ))
@@ -142,9 +141,6 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             progress=self.on_progress,
         ))
         self.processes.add("contact_quality", ContactQualityProcess(
-            failed=self.on_show_error
-        ))
-        self.processes.add("webapi", WebAPIProcess(
             failed=self.on_show_error
         ))
 

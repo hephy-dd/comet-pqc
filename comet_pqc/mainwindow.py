@@ -5,7 +5,7 @@ from PyQt5 import QtCore, QtWidgets
 from comet import ui, ProcessMixin
 from comet.ui.preferences import PreferencesDialog
 
-from .preferences import OptionsTab, TableTab, WebAPITab
+from .preferences import OptionsTab, TableTab
 
 __all__ = ["MainWindow"]
 
@@ -76,10 +76,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         table_tab = TableTab()
         self.preferences_dialog.tab_widget.append(table_tab)
         self.preferences_dialog.table_tab = table_tab
-
-        webapi_tab = WebAPITab()
-        self.preferences_dialog.tab_widget.append(webapi_tab)
-        self.preferences_dialog.webapi_tab = webapi_tab
 
         options_tab = OptionsTab()
         self.preferences_dialog.tab_widget.append(options_tab)

@@ -1,9 +1,9 @@
 from comet import ui
 
-__all__ = ["StatusTab"]
+__all__ = ["StatusWidget"]
 
 
-class StatusTab(ui.Tab):
+class StatusWidget(ui.Tab):
 
     LightStates = {True: "ON", False: "OFF", None: "n/a"}
     DoorStates = {True: "OPEN", False: "CLOSED", None: "n/a"}

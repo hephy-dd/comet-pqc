@@ -34,7 +34,7 @@ from .sequence import (
 )
 from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
-from .tabs import EnvironmentTab, MeasurementTab, StatusTab
+from .tabs import EnvironmentTab, MeasurementTab
 from .utils import caldone_valid, handle_exception
 
 logger = logging.getLogger(__name__)
@@ -609,7 +609,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         self.measurement_tab = MeasurementTab(restore=self.on_measure_restore)
         self.environment_tab = EnvironmentTab()
-        self.status_tab = StatusTab(reload=self.on_status_start)
 
         self.panels = self.measurement_tab.panels
         self.panels.sample_changed = self.on_sample_changed
@@ -619,7 +618,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.tab_widget = ui.Tabs(
             self.measurement_tab,
             self.environment_tab,
-            self.status_tab,
         )
 
         # Layout
@@ -638,9 +636,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         self.environ_process = self.processes.get("environ")
         self.environ_process.pc_data_updated = self.on_pc_data_updated
-
-        self.status_process = self.processes.get("status")
-        self.status_process.finished = self.on_status_finished
 
         self.table_process = self.processes.get("table")
         self.table_process.joystick_changed = self.on_table_joystick_changed
@@ -752,7 +747,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
         self.measurement_tab.lock()
-        self.status_tab.lock()
+        self.plugin_manager.handle("lock_controls", True)
         self.lock_state_changed(True)
 
     def unlock_controls(self):
@@ -763,7 +758,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
         self.measurement_tab.unlock()
-        self.status_tab.unlock()
+        self.plugin_manager.handle("lock_controls", False)
         self.lock_state_changed(False)
 
     def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
@@ -1019,19 +1014,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         measurement = self.sequence_tree.current
         panel = self.panels.get(measurement.type)
         panel.restore()
-
-    def on_status_start(self):
-        self.lock_controls()
-        self.status_tab.reset()
-        self.status_process.set("use_environ", self.use_environment())
-        self.status_process.set("use_table", self.use_table())
-        self.status_process.start()
-        # Fix: stay in status tab
-        self.tab_widget.current = self.status_tab
-
-    def on_status_finished(self):
-        self.unlock_controls()
-        self.status_tab.update_status(self.status_process)
 
     # Table calibration
 

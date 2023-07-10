@@ -26,6 +26,33 @@ class NotifyWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.webhookUrlLabel = QtWidgets.QLabel()
+        self.webhookUrlLabel.setText("Slack Webhook URL")
+
+        self.webhookUrlLineEdit = QtWidgets.QLineEdit()
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.webhookUrlLabel)
+        layout.addWidget(self.webhookUrlLineEdit)
+        layout.addStretch(1)
+
+    def reflection(self):  # TODO
+        return self
+
+    def load(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("plugin.notify")
+        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
+        settings.endGroup()
+        self.webhookUrlLineEdit.setText(slack_webhook_url)
+
+    def store(self):
+        slack_webhook_url = self.webhookUrlLineEdit.text()
+        settings = QtCore.QSettings()
+        settings.beginGroup("plugin.notify")
+        settings.setValue("slackWebhookUrl", slack_webhook_url)
+        settings.endGroup()
+
 
 class NotifyPlugin(Plugin):
 
@@ -43,8 +70,8 @@ class NotifyPlugin(Plugin):
 
     def handle_notification(self, message: str) -> None:
         settings = QtCore.QSettings()
-        settings.beginGroup("plugins.notify")
-        webhook_url = settings.value("webhook_url", "", str)
+        settings.beginGroup("plugin.notify")
+        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
         settings.endGroup()
-        if webhook_url:
-            send_slack_message(webhook_url, message)
+        if slack_webhook_url:
+            send_slack_message(slack_webhook_url, message)
