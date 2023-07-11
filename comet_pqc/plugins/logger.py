@@ -6,9 +6,22 @@ from datetime import datetime
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from . import Plugin
-
 __all__ = ["LoggerPlugin"]
+
+
+class LoggerPlugin:
+
+    def __init__(self, window):
+        self.window = window
+
+    def install(self):
+        self.logWidget = LogTreeWidget()
+        self.logWidget.add_logger(logging.getLogger())
+        self.window.addPage(self.logWidget, "Logging")
+
+    def uninstall(self):
+        self.window.removePage(self.logWidget)
+        self.logWidget.deleteLater()
 
 
 def format_time(seconds: float) -> str:
@@ -122,20 +135,3 @@ class LogTreeWidget(QtWidgets.QTreeWidget):
             scroll_bar = self.verticalScrollBar()
             if scroll_bar.value() >= scroll_bar.maximum():
                 self.scrollToItem(item)
-
-
-
-class LoggerPlugin(Plugin):
-
-    def __init__(self, window):
-        self.window = window
-
-    def install(self):
-        self.log_widget = LogTreeWidget()
-        self.log_widget.add_logger(logging.getLogger())
-        self.window.tab_widget.qt.addTab(self.log_widget, "Logging")
-
-    def uninstall(self):
-        index = self.window.tab_widget.qt.indexOf(self.log_widget)
-        self.window.tab_widget.qt.removeTab(index)
-        self.log_widget.deleteLater()

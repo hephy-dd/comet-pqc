@@ -4,9 +4,30 @@ import urllib.request
 
 from PyQt5 import QtCore, QtWidgets
 
-from . import Plugin
+__all__ = ["NotificationPlugin"]
 
-__all__ = ["NotiftPlugin"]
+
+class NotificationPlugin:
+
+    def __init__(self, window):
+        self.window = window
+
+    def install(self):
+        self.preferencesWidget = PreferencesWidget()
+        self.window.preferences_dialog.tab_widget.qt.addTab(self.preferencesWidget, "Notifications")
+
+    def uninstall(self):
+        index = self.window.preferences_dialog.tab_widget.qt.indexOf(self.preferencesWidget)
+        self.window.preferences_dialog.tab_widget.qt.removeTab(index)
+        self.preferencesWidget.deleteLater()
+
+    def on_notification(self, message: str) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup("plugin.notify")
+        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
+        settings.endGroup()
+        if slack_webhook_url:
+            send_slack_message(slack_webhook_url, message)
 
 
 def send_slack_message(webhook_url: str, message: str) -> None:
@@ -21,7 +42,7 @@ def send_slack_message(webhook_url: str, message: str) -> None:
     logging.info(response.read().decode("utf8"))
 
 
-class NotifyWidget(QtWidgets.QWidget):
+class PreferencesWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,26 +73,3 @@ class NotifyWidget(QtWidgets.QWidget):
         settings.beginGroup("plugin.notify")
         settings.setValue("slackWebhookUrl", slack_webhook_url)
         settings.endGroup()
-
-
-class NotifyPlugin(Plugin):
-
-    def __init__(self, window):
-        self.window = window
-
-    def install(self):
-        self.notify_widget = NotifyWidget()
-        self.window.preferences_dialog.tab_widget.qt.addTab(self.notify_widget, "Notifications")
-
-    def uninstall(self):
-        index = self.window.preferences_dialog.tab_widget.qt.indexOf(self.notify_widget)
-        self.window.preferences_dialog.tab_widget.qt.removeTab(index)
-        self.notify_widget.deleteLater()
-
-    def handle_notification(self, message: str) -> None:
-        settings = QtCore.QSettings()
-        settings.beginGroup("plugin.notify")
-        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
-        settings.endGroup()
-        if slack_webhook_url:
-            send_slack_message(slack_webhook_url, message)

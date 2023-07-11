@@ -4,7 +4,6 @@ from datetime import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core.formatter import CSVFormatter
-from . import Plugin
 
 __all__ = ["SummaryPlugin"]
 
@@ -30,7 +29,7 @@ class SummaryWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.tree_widget)
 
-    def append_result(self, data: dict):
+    def appendResult(self, data: dict):
         item = QtWidgets.QTreeWidgetItem()
         item.setText(0, datetime.fromtimestamp(data.get("timestamp", 0)).isoformat())
         item.setText(1, data.get("sample_name", ""))
@@ -49,24 +48,23 @@ class SummaryWidget(QtWidgets.QWidget):
         return item
 
 
-class SummaryPlugin(Plugin):
+class SummaryPlugin:
 
     def __init__(self, window):
         self.window = window
 
     def install(self):
-        self.summary_widget = SummaryWidget()
-        self.window.tab_widget.qt.addTab(self.summary_widget, "Summary")
+        self.summaryWidget = SummaryWidget()
+        self.window.addPage(self.summaryWidget, "Summary")
 
     def uninstall(self):
-        index = self.window.tab_widget.qt.indexOf(self.summary_widget)
-        self.window.tab_widget.qt.removeTab(index)
-        self.summary_widget.deleteLater()
+        self.window.removePage(self.summaryWidget)
+        self.summaryWidget.deleteLater()
 
-    def handle_summary(self, data: dict) -> None:
+    def on_summary(self, data: dict) -> None:
         """Push result to summary and write to summary file (experimantal)."""
-        item = self.summary_widget.append_result(data)
-        output_path = self.window.output_dir()
+        item = self.summaryWidget.appendResult(data)
+        output_path = self.window.dashboard.output_dir()
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)

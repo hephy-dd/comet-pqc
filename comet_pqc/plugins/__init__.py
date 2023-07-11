@@ -1,30 +1,26 @@
-class Plugin:
-
-    def install(self):
-        ...
-
-    def uninstall(self):
-        ...
+__all__ = ["PluginManager"]
 
 
 class PluginManager:
 
-    def __init__(self):
-        self.plugins = []
+    def __init__(self) -> None:
+        self.plugins: list = []
 
-    def register_pugin(self, plugin):
+    def register_pugin(self, plugin: object) -> None:
         self.plugins.append(plugin)
 
-    def install_plugins(self):
+    def install_plugins(self) -> None:
         for plugin in self.plugins:
-            plugin.install()
+            if hasattr(plugin, "install"):
+                plugin.install()
 
-    def uninstall_plugins(self):
+    def uninstall_plugins(self) -> None:
         for plugin in self.plugins:
-            plugin.uninstall()
+            if hasattr(plugin, "uninstall"):
+                plugin.uninstall()
 
-    def handle(self, event, *args, **kwargs):
-        attr_name = f"handle_{event}"
+    def handle(self, event_name: str, *args, **kwargs) -> None:
+        attr_name = f"on_{event_name}"
         for plugin in self.plugins:
             if hasattr(plugin, attr_name):
                 getattr(plugin, attr_name)(*args, **kwargs)

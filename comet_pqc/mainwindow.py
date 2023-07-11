@@ -136,6 +136,19 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.show_message("Error")
         self.hide_progress()
 
+    def pages(self) -> list:
+        widgets = []
+        for index in range(self.dashboard.tab_widget.qt.count()):
+            widgets.append(elf.dashboard.tab_widget.qt.widget(index))
+        return widgets
+
+    def addPage(self, widget: QtWidgets.QWidget, label: str) -> None:
+        self.dashboard.tab_widget.qt.addTab(widget, label)
+
+    def removePage(self, widget: QtWidgets.QWidget) -> None:
+        index = self.dashboard.tab_widget.qt.indexOf(widget)
+        self.dashboard.tab_widget.qt.removeTab(index)
+
     def closeEvent(self, event):
         result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
         if result == QtWidgets.QMessageBox.Yes:

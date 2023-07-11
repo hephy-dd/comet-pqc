@@ -1,47 +1,172 @@
-from comet_pqc.plugins import Plugin
+from typing import Optional
 
-from .widgets import StatusWidget
+from PyQt5 import QtCore, QtWidgets
+
+from comet import ui
+
 from .process import StatusProcess
 
 __all__ = ["StatusPlugin"]
 
 
-class StatusPlugin(Plugin):
+class StatusPlugin:
 
-    def __init__(self, window):
+    def __init__(self, window) -> None:
         self.window = window
-        self.status_process = StatusProcess(
+        self.process = StatusProcess(
             failed=self.window.show_exception,
             message=self.window.show_message,
             progress=self.window.show_progress,
+            finished = self.worker_finished,
         )
-        self.status_process.finished = self.on_status_finished
-        self.window.processes.add("status", self.status_process)
+        self.window.processes.add("status", self.process)
 
-    def install(self):
-        self.status_widget = StatusWidget(reload=self.on_status_start)
-        self.window.dashboard.tab_widget.qt.addTab(self.status_widget.qt, "Status")
+    def install(self) -> None:
+        self.statusWidget = StatusWidget()
+        self.statusWidget.reloadClicked.connect(self.start_worker)
+        self.window.dashboard.tab_widget.qt.addTab(self.statusWidget, "Status")
 
-    def uninstall(self):
-        index = self.window.dashboard.tab_widget.qt.indexOf(self.status_widget.qt)
+    def uninstall(self) -> None:
+        index = self.window.dashboard.tab_widget.qt.indexOf(self.statusWidget)
         self.window.dashboard.tab_widget.qt.removeTab(index)
-        self.status_widget.qt.deleteLater()
+        self.statusWidget.deleteLater()
 
-    def handle_lock_controls(self, enabled):
-        if enabled:
-            self.status_widget.lock()
-        else:
-            self.status_widget.unlock()
+    def on_lock_controls(self, state: bool) -> None:
+        self.statusWidget.setLocked(state)
 
-    def on_status_start(self):
+    def start_worker(self) -> None:
         self.window.dashboard.lock_controls()
-        self.status_widget.reset()
-        self.status_process.set("use_environ", self.window.dashboard.use_environment())
-        self.status_process.set("use_table", self.window.dashboard.use_table())
-        self.status_process.start()
+        self.statusWidget.clearStatus()
+        self.process.set("use_environ", self.window.dashboard.use_environment())
+        self.process.set("use_table", self.window.dashboard.use_table())
+        self.process.start()
         # Fix: stay in status tab
-        self.window.dashboard.tab_widget.qt.setCurrentWidget(self.status_widget.qt)
+        self.window.dashboard.tab_widget.qt.setCurrentWidget(self.statusWidget)
 
-    def on_status_finished(self):
+    def worker_finished(self) -> None:
+        self.statusWidget.updateStatus(self.process)
+        self.statusWidget.setLocked(False)
         self.window.dashboard.unlock_controls()
-        self.status_widget.update_status(self.status_process)
+
+
+class StatusWidget(QtWidgets.QWidget):
+
+    LightStates = {True: "ON", False: "OFF", None: "n/a"}
+    DoorStates = {True: "OPEN", False: "CLOSED", None: "n/a"}
+
+    reloadClicked = QtCore.pyqtSignal()
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.matrixModelLineEdit = QtWidgets.QLineEdit()
+        self.matrixModelLineEdit.setReadOnly(True)
+
+        self.matrixChannelsLineEdit = QtWidgets.QLineEdit()
+        self.matrixChannelsLineEdit.setReadOnly(True)
+
+        self.hvSourceModelLineEdit = QtWidgets.QLineEdit()
+        self.hvSourceModelLineEdit.setReadOnly(True)
+
+        self.vSourceModelLineEdit = QtWidgets.QLineEdit()
+        self.vSourceModelLineEdit.setReadOnly(True)
+
+        self.lcrModelLineEdit = QtWidgets.QLineEdit()
+        self.lcrModelLineEdit.setReadOnly(True)
+
+        self.elmModelLineEdit = QtWidgets.QLineEdit()
+        self.elmModelLineEdit.setReadOnly(True)
+
+        self.tableModelLineEdit = QtWidgets.QLineEdit()
+        self.tableModelLineEdit.setReadOnly(True)
+
+        self.table_state_text = QtWidgets.QLineEdit()
+        self.table_state_text.setReadOnly(True)
+
+        self.envModelLineEdit = QtWidgets.QLineEdit()
+        self.envModelLineEdit.setReadOnly(True)
+
+        self.reloadButton = QtWidgets.QPushButton()
+        self.reloadButton.setText("&Reload")
+        self.reloadButton.clicked.connect(self.reloadClicked.emit)
+
+        matrixGroupBox = QtWidgets.QGroupBox()
+        matrixGroupBox.setTitle("Matrix")
+
+        matrixGroupBoxLayout = QtWidgets.QFormLayout(matrixGroupBox)
+        matrixGroupBoxLayout.addRow("Model", self.matrixModelLineEdit)
+        matrixGroupBoxLayout.addRow("Closed channels", self.matrixChannelsLineEdit)
+
+        hvSourceGroupBox = QtWidgets.QGroupBox()
+        hvSourceGroupBox.setTitle("HVSource")
+
+        hvSourceGroupBoxLayout = QtWidgets.QFormLayout(hvSourceGroupBox)
+        hvSourceGroupBoxLayout.addRow("Model", self.hvSourceModelLineEdit)
+
+        vSourceGroupBox = QtWidgets.QGroupBox()
+        vSourceGroupBox.setTitle("VSource")
+
+        vSourceGroupBoxLayout = QtWidgets.QFormLayout(vSourceGroupBox)
+        vSourceGroupBoxLayout.addRow("Model", self.vSourceModelLineEdit)
+
+        lcrGroupBox = QtWidgets.QGroupBox()
+        lcrGroupBox.setTitle("LCRMeter")
+
+        lcrGroupBoxLayout = QtWidgets.QFormLayout(lcrGroupBox)
+        lcrGroupBoxLayout.addRow("Model", self.lcrModelLineEdit)
+
+        elmGroupBox = QtWidgets.QGroupBox()
+        elmGroupBox.setTitle("Electrometer")
+
+        elmGroupBoxLayout = QtWidgets.QFormLayout(elmGroupBox)
+        elmGroupBoxLayout.addRow("Model", self.elmModelLineEdit)
+
+        tableGroupBox = QtWidgets.QGroupBox()
+        tableGroupBox.setTitle("Table")
+
+        tableGroupBoxLayout = QtWidgets.QFormLayout(tableGroupBox)
+        tableGroupBoxLayout.addRow("Model", self.tableModelLineEdit)
+        tableGroupBoxLayout.addRow("State", self.table_state_text)
+
+        environGroupBox = QtWidgets.QGroupBox()
+        environGroupBox.setTitle("Environment Box")
+
+        environGroupBoxLayout = QtWidgets.QFormLayout(environGroupBox)
+        environGroupBoxLayout.addRow("Model", self.envModelLineEdit)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(matrixGroupBox)
+        layout.addWidget(hvSourceGroupBox)
+        layout.addWidget(vSourceGroupBox)
+        layout.addWidget(lcrGroupBox)
+        layout.addWidget(elmGroupBox)
+        layout.addWidget(tableGroupBox)
+        layout.addWidget(environGroupBox)
+        layout.addStretch(1)
+        layout.addWidget(self.reloadButton)
+
+    def clearStatus(self):
+        self.matrixModelLineEdit.clear()
+        self.matrixChannelsLineEdit.clear()
+        self.hvSourceModelLineEdit.clear()
+        self.vSourceModelLineEdit.clear()
+        self.lcrModelLineEdit.clear()
+        self.elmModelLineEdit.clear()
+        self.tableModelLineEdit.clear()
+        self.table_state_text.clear()
+        self.envModelLineEdit.clear()
+
+    def updateStatus(self, data: dict):
+        default = "n/a"
+        self.matrixModelLineEdit.setText(data.get("matrix_model") or default)
+        self.matrixChannelsLineEdit.setText(data.get("matrix_channels") or "")
+        self.hvSourceModelLineEdit.setText(data.get("hvsrc_model") or default)
+        self.vSourceModelLineEdit.setText(data.get("vsrc_model") or default)
+        self.lcrModelLineEdit.setText(data.get("lcr_model") or default)
+        self.elmModelLineEdit.setText(data.get("elm_model") or default)
+        self.tableModelLineEdit.setText(data.get("table_model") or default)
+        self.table_state_text.setText(data.get("table_state") or default)
+        self.envModelLineEdit.setText(data.get("env_model") or default)
+
+    def setLocked(self, state: bool) -> None:
+        self.reloadButton.setEnabled(False)
