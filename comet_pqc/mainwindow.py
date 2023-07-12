@@ -10,7 +10,7 @@ from .preferences import OptionsTab, TableTab
 __all__ = ["MainWindow"]
 
 APP_TITLE = "PQC"
-APP_COPY = "Copyright &copy; 2020-2022 HEPHY"
+APP_COPY = "Copyright &copy; 2020-2023 HEPHY"
 APP_LICENSE = "This software is licensed under the GNU General Public License v3.0"
 APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 
@@ -139,7 +139,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def pages(self) -> list:
         widgets = []
         for index in range(self.dashboard.tab_widget.qt.count()):
-            widgets.append(elf.dashboard.tab_widget.qt.widget(index))
+            widgets.append(self.dashboard.tab_widget.qt.widget(index))
         return widgets
 
     def addPage(self, widget: QtWidgets.QWidget, label: str) -> None:

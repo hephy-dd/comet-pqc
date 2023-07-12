@@ -1,18 +1,19 @@
 include README.md
 include LICENSE
+include changelog
 include requirements.txt
 include tox.ini
 include windows_app.spec
 recursive-include tests *.py
 
 include docs/_config.yml
-recursive-include docs *.md
+recursive-include docs *.md *.png
 
 recursive-include comet_pqc/assets/config/chuck *.yaml
 recursive-include comet_pqc/assets/config/sample *.yaml
 recursive-include comet_pqc/assets/config/sequence *.yaml
 
-recursive-include comet_pqc/assets/icons *.svg
+recursive-include comet_pqc/assets/icons *.svg *.ico
 
 include comet_pqc/assets/schema/chuck.yaml
 include comet_pqc/assets/schema/sample.yaml
