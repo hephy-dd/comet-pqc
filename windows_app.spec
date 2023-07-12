@@ -1,16 +1,15 @@
 # PyInstaller specification for Windows application.
 
 import os
-from pathlib import Path
 from pyinstaller_versionfile import create_versionfile
 
 import comet_pqc
 
 # Application configurations
-app_root = Path(comet_pqc.__file__).parent
-app_icon = app_root / "assets" / "icons" / "pqc.ico"
+app_root = os.path.abspath(os.path.dirname(comet_pqc.__file__))
 app_version = comet_pqc.__version__
 app_filename = f"pqc-{app_version}.exe"
+app_icon = os.path.join(app_root, "assets", "icons", "pqc.ico")
 app_title = "PQC"
 app_description = "Process Quality Control for CMS outer tracker"
 app_copyright = "Copyright © 2021-2023 HEPHY"
@@ -21,12 +20,12 @@ launcher_code = "from comet_pqc.__main__ import main; main()"
 
 # Data files to be included in the output executable
 datas = [
-    (app_root / "assets" / "icons" / "*.svg", "comet_pqc/assets/icons"),
-    (app_root / "assets" / "icons" / "*.ico", "comet_pqc/assets/icons"),
-    (app_root / "assets" / "config" / "chuck", "*.yaml", "comet_pqc/assets/config/chuck"),
-    (app_root / "assets" / "config" / "sequence", "*.yaml", "comet_pqc/assets/config/sequence"),
-    (app_root / "assets" / "config" / "sample", "*.yaml", "comet_pqc/assets/config/sample"),
-    (app_root / "assets" / "schema" / "*.yaml", "comet_pqc/assets/schema"),
+    (os.path.join(app_root, "assets", "icons", "*.svg"), "comet_pqc/assets/icons"),
+    (os.path.join(app_root, "assets", "icons", "*.ico"), "comet_pqc/assets/icons"),
+    (os.path.join(app_root, "assets", "config", "chuck", "*.yaml"), "comet_pqc/assets/config/chuck"),
+    (os.path.join(app_root, "assets", "config", "sequence", "*.yaml"), "comet_pqc/assets/config/sequence"),
+    (os.path.join(app_root, "assets", "config", "sample", "*.yaml"), "comet_pqc/assets/config/sample"),
+    (os.path.join(app_root, "assets", "schema", "*.yaml"), "comet_pqc/assets/schema"),
 ]
 
 # Hidden imports are modules that PyInstaller cannot detect
