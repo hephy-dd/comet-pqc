@@ -1,59 +1,71 @@
-# PyInstaller specification for creating a windows application
+# PyInstaller specification for Windows application.
 
 import os
-import comet
-import comet_pqc
+from pathlib import Path
 from pyinstaller_versionfile import create_versionfile
 
-version = comet_pqc.__version__
-filename = f"pqc-{version}.exe"
+import comet_pqc
+
+# Application configurations
+app_root = Path(comet_pqc.__file__).parent
+app_icon = app_root / "assets" / "icons" / "pqc.ico"
+app_version = comet_pqc.__version__
+app_filename = f"pqc-{app_version}.exe"
+app_title = "PQC"
+app_description = "Process Quality Control for CMS outer tracker"
+app_copyright = "Copyright © 2021-2023 HEPHY"
+app_organization = "HEPHY"
+
+# Entry point for the application
+launcher_code = "from comet_pqc.__main__ import main; main()"
+
+# Data files to be included in the output executable
+datas = [
+    (app_root / "assets" / "icons" / "*.svg", "comet_pqc/assets/icons"),
+    (app_root / "assets" / "icons" / "*.ico", "comet_pqc/assets/icons"),
+    (app_root / "assets" / "config" / "chuck", "*.yaml", "comet_pqc/assets/config/chuck"),
+    (app_root / "assets" / "config" / "sequence", "*.yaml", "comet_pqc/assets/config/sequence"),
+    (app_root / "assets" / "config" / "sample", "*.yaml", "comet_pqc/assets/config/sample"),
+    (app_root / "assets" / "schema" / "*.yaml", "comet_pqc/assets/schema"),
+]
+
+# Hidden imports are modules that PyInstaller cannot detect
+hiddenimports = [
+    "pyvisa",
+    "pyvisa_py",
+    "pyvisa_sim",
+    "pyserial",
+    "pyusb",
+    "PyQt5.sip",
+]
+
+# Console will be displayed when the application is run
 console = False
 
-entry_point = "entry_point.pyw"
+launcher = "launcher.pyw"
 version_info = "version_info.txt"
 
-# Paths
-package_root = os.path.join(os.path.dirname(comet_pqc.__file__))
-package_icon = os.path.join(package_root, "assets", "icons", "pqc.ico")
-
 # Create entry point
-def create_entrypoint(output_file):
-    with open(output_file, "wt") as fp:
-        fp.write("from comet_pqc.__main__ import main; main()")
-
-create_entrypoint(output_file=entry_point)
+with open(launcher, "wt") as fp:
+    fp.write(launcher_code)
 
 # Create windows version info
 create_versionfile(
     output_file=version_info,
-    version=f"{version}.0",
-    company_name="HEPHY",
-    file_description="Process Quality Control for CMS outer tracker",
-    internal_name="PQC",
-    legal_copyright="Copyright 2021-2023 HEPHY. This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions; see the LICENSE file for details.",
-    original_filename=filename,
-    product_name="PQC",
+    version=f"{app_version}.0",
+    company_name=app_organization,
+    file_description=app_description,
+    internal_name=app_title,
+    legal_copyright=app_copyright,
+    original_filename=app_filename,
+    product_name=app_title,
 )
 
-a = Analysis([entry_point],
+a = Analysis([launcher],
     pathex=[os.getcwd()],
     binaries=[],
-    datas=[
-        (os.path.join("comet_pqc", "assets", "icons", "*.svg"), os.path.join("comet_pqc", "assets", "icons")),
-        (os.path.join("comet_pqc", "assets", "icons", "*.ico"), os.path.join("comet_pqc", "assets", "icons")),
-        (os.path.join("comet_pqc", "assets", "config", "chuck", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "chuck")),
-        (os.path.join("comet_pqc", "assets", "config", "sequence", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sequence")),
-        (os.path.join("comet_pqc", "assets", "config", "sample", "*.yaml"), os.path.join("comet_pqc", "assets", "config", "sample")),
-        (os.path.join("comet_pqc", "assets", "schema", "*.yaml"), os.path.join("comet_pqc", "assets", "schema"))
-    ],
-    hiddenimports=[
-        "pyvisa",
-        "pyvisa_py",
-        "pyvisa_sim",
-        "pyserial",
-        "pyusb",
-        "PyQt5.sip"
-    ],
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
@@ -76,7 +88,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name=filename,
+    name=app_filename,
     version=version_info,
     debug=False,
     bootloader_ignore_signals=False,
@@ -85,5 +97,5 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=console,
-    icon=package_icon,
+    icon=app_icon,
 )
