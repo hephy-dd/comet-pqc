@@ -1,9 +1,10 @@
 import json
 import logging
+import math
 
 import analysis_pqc
-import bottle
 import comet
+from flask import Flask, jsonify
 from PyQt5 import QtCore
 from waitress.server import TcpWSGIServer
 
@@ -39,14 +40,6 @@ class WSGIServer(TcpWSGIServer):
         return True
 
 
-class JSONErrorBottle(bottle.Bottle):
-    """Custom bollte application with default JSON error handling."""
-
-    def default_error_handler(self, res):
-        bottle.response.content_type = "application/json"
-        return json.dumps({"error": res.body, "status_code": res.status_code})
-
-
 class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
     host = "localhost"
@@ -73,37 +66,31 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
         logger.info("start serving webapi... %s:%s", self.host, self.port)
 
-        app = JSONErrorBottle()
-
-        # Fix Cross-Origin Request Blocked error on client side
-        def apply_cors():
-            bottle.response.headers["Access-Control-Allow-Origin"] = "*"
-        app.add_hook("after_request", apply_cors)
+        app = Flask(__name__)
 
         @app.route("/")
         def index():
-            return {
+            return jsonify({
                 "pqc_version": __version__,
                 "comet_version": comet.__version__,
                 "analyze_pqc_version": analysis_pqc.__version__,
-            }
+            })
 
         @app.route("/table")
         def table():
             enabled = self._table_enabled()
             position = self._table_position()
             contact_quality = self._contact_quality()
-            return {
+            return jsonify({
                 "table": {
                     "enabled": enabled,
                     "position": position,
                     "contact_quality": contact_quality
                 }
-            }
+            })
 
         self.server = WSGIServer(app, host=self.host, port=self.port)
-        while self.running:
-            self.server.run()
+        self.server.run()
         self.server = None
         logger.info("stopped serving webapi")
 

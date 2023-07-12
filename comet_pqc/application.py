@@ -182,8 +182,6 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
             self.dashboard.sync_table_controls()
             self.dashboard.table_process.enable_joystick(False)
 
-        self.processes.get("webapi").start()
-
         # Register interupt signal handler
         def signal_handler(signum, frame):
             if signum == signal.SIGINT:
