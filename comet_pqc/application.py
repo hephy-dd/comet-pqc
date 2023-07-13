@@ -73,43 +73,43 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
 
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
-            resource_name="TCPIP::10.0.0.2::5025::SOCKET",
+            resource_name="TCPIP::localhost::11001::SOCKET",
             encoding="latin1",
             read_termination="\n",
             write_termination="\n"
         ))
         self.resources.add("hvsrc", comet.Resource(
-            resource_name="TCPIP::10.0.0.5::10002::SOCKET",
+            resource_name="TCPIP::localhost::11002::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=4000
         ))
         self.resources.add("vsrc", comet.Resource(
-            resource_name="TCPIP::10.0.0.3::5025::SOCKET",
+            resource_name="TCPIP::localhost::11003::SOCKET",
             encoding="latin1",
             read_termination="\n",
             write_termination="\n"
         ))
         self.resources.add("lcr", comet.Resource(
-            resource_name="TCPIP::10.0.0.4::5025::SOCKET",
+            resource_name="TCPIP::localhost::11004::SOCKET",
             read_termination="\n",
             write_termination="\n",
             timeout=8000
         ))
         self.resources.add("elm", comet.Resource(
-            resource_name="TCPIP::10.0.0.5::10001::SOCKET",
+            resource_name="TCPIP::localhost::11005::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=8000
         ))
         self.resources.add("table", comet.Resource(
-            resource_name="TCPIP::10.0.0.6::23::SOCKET",
+            resource_name="TCPIP::localhost::11006::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n",
             timeout=8000
         ))
         self.resources.add("environ", comet.Resource(
-            resource_name="TCPIP::10.0.0.8::10001::SOCKET",
+            resource_name="TCPIP::localhost::11007::SOCKET",
             read_termination="\r\n",
             write_termination="\r\n"
         ))

@@ -168,4 +168,4 @@ class StatusWidget(QtWidgets.QWidget):
         self.envModelLineEdit.setText(data.get("env_model") or default)
 
     def setLocked(self, state: bool) -> None:
-        self.reloadButton.setEnabled(state)
+        self.reloadButton.setEnabled(not state)

@@ -114,7 +114,7 @@ class Panel(BasicPanel):
         and store.
 
         >>> # for measurement parameter "value" of unit "V"
-        >>> self.value = ui.Number()
+        >>> self.value = QtWidgets.QDoubleSpinBox()
         >>> self.bind("value", self.value, default=10.0, unit="V")
         """
         self._bindings[key] = element, default, unit
@@ -127,8 +127,7 @@ class Panel(BasicPanel):
         self.measurement = measurement
         # Load parameters to UI
         parameters = self.measurement.parameters
-        for key, item in self._bindings.items():
-            element, default, unit = item
+        for key, (element, default, unit) in self._bindings.items():
             value = parameters.get(key, default)
             if unit is not None:
                 if isinstance(value, comet.ureg.Quantity):
@@ -167,8 +166,7 @@ class Panel(BasicPanel):
         """Store UI element values to measurement parameters."""
         if self.measurement:
             parameters = self.measurement.parameters
-            for key, item in self._bindings.items():
-                element, default, unit = item
+            for key, (element, default, unit) in self._bindings.items():
                 if isinstance(element, ui.List):
                     value = getattr(element, "values")
                 elif isinstance(element, ui.ComboBox):
@@ -191,8 +189,7 @@ class Panel(BasicPanel):
         """Restore measurement defaults."""
         if self.measurement:
             default_parameters = self.measurement.default_parameters
-            for key, item in self._bindings.items():
-                element, default, unit = item
+            for key, (element, default, unit) in self._bindings.items():
                 value = default_parameters.get(key, default)
                 if unit is not None:
                     if isinstance(value, comet.ureg.Quantity):
