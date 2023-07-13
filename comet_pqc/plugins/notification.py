@@ -14,11 +14,11 @@ class NotificationPlugin:
 
     def install(self):
         self.preferencesWidget = PreferencesWidget()
-        self.window.preferences_dialog.tab_widget.qt.addTab(self.preferencesWidget, "Notifications")
+        self.window.preferencesDialog.tab_widget.qt.addTab(self.preferencesWidget, "Notifications")
 
     def uninstall(self):
-        index = self.window.preferences_dialog.tab_widget.qt.indexOf(self.preferencesWidget)
-        self.window.preferences_dialog.tab_widget.qt.removeTab(index)
+        index = self.window.preferencesDialog.tab_widget.qt.indexOf(self.preferencesWidget)
+        self.window.preferencesDialog.tab_widget.qt.removeTab(index)
         self.preferencesWidget.deleteLater()
 
     def on_notification(self, message: str) -> None:

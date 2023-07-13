@@ -58,9 +58,9 @@ def main() -> None:
     configure_logger(logging.getLogger(), debug=args.debug, filename=args.logfile)
 
     app = Application()
-    app.load_settings()
-    app.event_loop()
-    app.store_settings()
+    app.readSettings()
+    app.eventLoop()
+    app.writeSettings()
 
 
 if __name__ == "__main__":

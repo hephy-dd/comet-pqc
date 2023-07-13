@@ -13,7 +13,7 @@ from .components import (
     PositionsComboBox,
     WorkingDirectoryWidget,
 )
-from .core.config import SEQUENCE_DIR, list_configs, load_sequence
+from .core.config import list_configs, load_sequence
 from .quickedit import QuickEditDialog
 from .settings import settings
 from .utils import from_table_unit, to_table_unit
@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 def load_all_sequences(settings):
     configs = []
-    for name, filename in list_configs(SEQUENCE_DIR):
-        configs.append((name, filename, True))
     for filename in list(set(settings.get("custom_sequences") or [])):
         if os.path.exists(filename):
             try:
@@ -34,7 +32,7 @@ def load_all_sequences(settings):
             except Exception:
                 ...
             else:
-                configs.append((sequence.name, filename, False))
+                configs.append((sequence.name, filename))
     return configs
 
 
@@ -99,19 +97,19 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
 
     # Settings
 
-    def load_settings(self):
+    def readSettings(self):
         self._contact_checkbox.checked = bool(self.settings.get("move_to_contact") or False)
         self._position_checkbox.checked = bool(self.settings.get("move_on_success") or False)
-        self._positions_combobox.load_settings()
-        self._operator_combobox.load_settings()
-        self._output_combobox.load_settings()
+        self._positions_combobox.readSettings()
+        self._operator_combobox.readSettings()
+        self._output_combobox.readSettings()
 
-    def store_settings(self):
+    def writeSettings(self):
         self.settings["move_to_contact"] = self._contact_checkbox.checked
         self.settings["move_on_success"] = self._position_checkbox.checked
-        self._positions_combobox.store_settings()
-        self._operator_combobox.store_settings()
-        self._output_combobox.store_settings()
+        self._positions_combobox.writeSettings()
+        self._operator_combobox.writeSettings()
+        self._output_combobox.writeSettings()
 
     # Callbacks
 
@@ -210,7 +208,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     # Settings
 
-    def load_settings(self):
+    def readSettings(self):
         self.load_settings_dialog_size()
         self.load_settings_sequences()
 
@@ -222,12 +220,11 @@ class SequenceManager(ui.Dialog, SettingsMixin):
     def load_settings_sequences(self):
         """Load all built-in and custom sequences from settings."""
         self._sequence_tree.clear()
-        for name, filename, builtin in load_all_sequences(self.settings):
+        for name, filename in load_all_sequences(self.settings):
             try:
                 sequence = load_sequence(filename)
-                item = self._sequence_tree.append([sequence.name, "(built-in)" if builtin else filename])
+                item = self._sequence_tree.append([sequence.name, filename])
                 item.sequence = sequence
-                item.sequence.builtin = builtin
                 item.qt.setToolTip(1, filename)
             except Exception as exc:
                 logger.error("failed to load sequence: %s", filename)
@@ -235,7 +232,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
 
-    def store_settings(self):
+    def writeSettings(self):
         self.store_settings_dialog_size()
         self.store_settings_sequences()
 
@@ -247,8 +244,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         """Store custom sequences to settings."""
         sequences = []
         for item in self._sequence_tree:
-            if not item.sequence.builtin:
-                sequences.append(item.sequence.filename)
+            sequences.append(item.sequence.filename)
         self.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
@@ -258,7 +254,7 @@ class SequenceManager(ui.Dialog, SettingsMixin):
         self._remove_button.enabled = False
         self._preview_tree.clear()
         if item is not None:
-            self._remove_button.enabled = not item.sequence.builtin
+            self._remove_button.enabled = True
             if os.path.exists(item.sequence.filename):
                 with open(item.sequence.filename) as f:
                     data = yaml.safe_load(f)
@@ -296,12 +292,11 @@ class SequenceManager(ui.Dialog, SettingsMixin):
                     item = self._sequence_tree.append([sequence.name, filename])
                     item.qt.setToolTip(1, filename)
                     item.sequence = sequence
-                    item.sequence.builtin = False
                     self._sequence_tree.current = item
 
     def on_remove_sequence(self):
         item = self._sequence_tree.current
-        if item and not item.sequence.builtin:
+        if item:
             if ui.show_question(
                 title="Remove Sequence",
                 text=f"Do yo want to remove sequence {item.sequence.name!r}?"
@@ -323,13 +318,9 @@ class SequenceTree(ui.Tree):
 
     # Methods
 
-    def lock(self):
+    def setLocked(self, locked: bool) -> None:
         for contact in self:
-            contact.lock()
-
-    def unlock(self):
-        for contact in self:
-            contact.unlock()
+            contact.setLocked(locked)
 
     def reset(self):
         for contact in self:
@@ -420,17 +411,11 @@ class SequenceTreeItem(ui.TreeItem):
 
     # Methods
 
-    def lock(self):
-        self.checkable = False
-        self.selectable = False
+    def setLocked(self, locked: bool) -> None:
+        self.checkable = not locked
+        self.selectable = not locked
         for child in self.children:
-            child.lock()
-
-    def unlock(self):
-        self.checkable = True
-        self.selectable = True
-        for child in self.children:
-            child.unlock()
+            child.setLocked(locked)
 
     def reset(self):
         self.state = None
@@ -672,7 +657,7 @@ class EditSamplesDialog(SettingsMixin):
             item.setSuffix(sample_item.name_suffix)
             item.setType(sample_item.sample_type)
             item.setPosition(sample_item.sample_position)
-            for name, filename, builtin in self.sequences:
+            for name, filename in self.sequences:
                 item.addSequence(name)
             if sample_item.sequence is not None:
                 item.setCurrentSequence(sample_item.sequence.name)
@@ -687,24 +672,16 @@ class EditSamplesDialog(SettingsMixin):
             sample_item.name_suffix = item.suffix()
             sample_item.sample_type = item.type()
             sample_item.sample_position = item.position()
-            for name, filename, builtin in self.sequences:
+            for name, filename in self.sequences:
                 if item.currentSequence() == name:
                     sequence = load_sequence(filename)
                     sample_item.load_sequence(sequence)
 
-    def load_settings(self, dialog):
-        width, height = self.settings.get("quick_edit_dialog_size", (800, 480))
-        dialog.resize(width, height)
-
-    def store_settings(self, dialog):
-        width, height = dialog.width(), dialog.height()
-        self.settings["quick_edit_dialog_size"] = width, height
-
     def run(self):
         dialog = QuickEditDialog()
-        self.load_settings(dialog)
+        dialog.readSettings()
         self._populate_dialog(dialog)
         dialog.exec()
         if dialog.result() == dialog.Accepted:
             self._update_samples(dialog)
-        self.store_settings(dialog)
+        dialog.writeSettings()

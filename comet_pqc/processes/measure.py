@@ -168,7 +168,7 @@ class MeasureProcess(BaseProcess):
 
     context = None
 
-    def __init__(self, message, progress, measurement_state=None,
+    def __init__(self, message=None, progress=None, measurement_state=None,
                  measurement_reset=None, reading=None, save_to_image=None,
                  push_summary=None, **kwargs):
         super().__init__(**kwargs)

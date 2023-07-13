@@ -14,9 +14,9 @@ class StatusPlugin:
     def __init__(self, window) -> None:
         self.window = window
         self.process = StatusProcess(
-            failed=self.window.show_exception,
-            message=self.window.show_message,
-            progress=self.window.show_progress,
+            failed=self.window.showException,
+            message=self.window.showMessage,
+            progress=self.window.showProgress,
             finished = self.worker_finished,
         )
         self.window.processes.add("status", self.process)
@@ -24,11 +24,10 @@ class StatusPlugin:
     def install(self) -> None:
         self.statusWidget = StatusWidget()
         self.statusWidget.reloadClicked.connect(self.start_worker)
-        self.window.dashboard.tab_widget.qt.addTab(self.statusWidget, "Status")
+        self.window.addPage(self.statusWidget, "Status")
 
     def uninstall(self) -> None:
-        index = self.window.dashboard.tab_widget.qt.indexOf(self.statusWidget)
-        self.window.dashboard.tab_widget.qt.removeTab(index)
+        self.window.removePage(self.statusWidget)
         self.statusWidget.deleteLater()
 
     def on_lock_controls(self, state: bool) -> None:
@@ -41,7 +40,7 @@ class StatusPlugin:
         self.process.set("use_table", self.window.dashboard.use_table())
         self.process.start()
         # Fix: stay in status tab
-        self.window.dashboard.tab_widget.qt.setCurrentWidget(self.statusWidget)
+        self.window.dashboard.tabWidget.setCurrentWidget(self.statusWidget)
 
     def worker_finished(self) -> None:
         self.statusWidget.updateStatus(self.process)
@@ -169,4 +168,4 @@ class StatusWidget(QtWidgets.QWidget):
         self.envModelLineEdit.setText(data.get("env_model") or default)
 
     def setLocked(self, state: bool) -> None:
-        self.reloadButton.setEnabled(False)
+        self.reloadButton.setEnabled(state)

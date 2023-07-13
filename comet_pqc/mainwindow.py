@@ -5,6 +5,7 @@ from PyQt5 import QtCore, QtWidgets
 from comet import ui, ProcessMixin
 from comet.ui.preferences import PreferencesDialog
 
+from .dashboard import Dashboard
 from .preferences import OptionsTab, TableTab
 
 __all__ = ["MainWindow"]
@@ -22,158 +23,183 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         # Actions
 
-        self.quit_action = QtWidgets.QAction(self)
-        self.quit_action.setText("&Quit")
-        self.quit_action.setShortcut("Ctrl+Q")
-        self.quit_action.triggered.connect(self.close)
+        self.quitAction = QtWidgets.QAction(self)
+        self.quitAction.setText("&Quit")
+        self.quitAction.setShortcut("Ctrl+Q")
+        self.quitAction.triggered.connect(self.close)
 
-        self.preferences_action = QtWidgets.QAction(self)
-        self.preferences_action.setText("Prefere&nces")
-        self.preferences_action.triggered.connect(self.show_preferences)
+        self.preferencesAction = QtWidgets.QAction(self)
+        self.preferencesAction.setText("Prefere&nces")
+        self.preferencesAction.triggered.connect(self.showPreferences)
 
-        self.contents_action = QtWidgets.QAction(self)
-        self.contents_action.setText("&Contents")
-        self.contents_action.setShortcut("F1")
-        self.contents_action.triggered.connect(self.show_contents)
+        self.contentsAction = QtWidgets.QAction(self)
+        self.contentsAction.setText("&Contents")
+        self.contentsAction.setShortcut("F1")
+        self.contentsAction.triggered.connect(self.showContents)
 
-        self.github_action = QtWidgets.QAction(self)
-        self.github_action.setText("&GitHub")
-        self.github_action.triggered.connect(self.show_github)
+        self.githubAction = QtWidgets.QAction(self)
+        self.githubAction.setText("&GitHub")
+        self.githubAction.triggered.connect(self.showGithub)
 
-        self.about_qt_action = QtWidgets.QAction(self)
-        self.about_qt_action.setText("About Qt")
-        self.about_qt_action.triggered.connect(self.show_about_qt)
+        self.aboutQtAction = QtWidgets.QAction(self)
+        self.aboutQtAction.setText("About Qt")
+        self.aboutQtAction.triggered.connect(self.showAboutQt)
 
-        self.about_action = QtWidgets.QAction(self)
-        self.about_action.setText("&About")
-        self.about_action.triggered.connect(self.show_about)
+        self.aboutAction = QtWidgets.QAction(self)
+        self.aboutAction.setText("&About")
+        self.aboutAction.triggered.connect(self.showAbout)
 
         # Menus
-        self.file_menu = self.menuBar().addMenu("&File")
-        self.file_menu.addAction(self.quit_action)
+        self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(self.quitAction)
 
-        self.edit_menu = self.menuBar().addMenu("&Edit")
-        self.edit_menu.addAction(self.preferences_action)
+        self.editMenu = self.menuBar().addMenu("&Edit")
+        self.editMenu.addAction(self.preferencesAction)
 
-        self.help_menu = self.menuBar().addMenu("&Help")
-        self.help_menu.addAction(self.contents_action)
-        self.help_menu.addAction(self.github_action)
-        self.help_menu.addSeparator()
-        self.help_menu.addAction(self.about_qt_action)
-        self.help_menu.addAction(self.about_action)
+        self.helpMenu = self.menuBar().addMenu("&Help")
+        self.helpMenu.addAction(self.contentsAction)
+        self.helpMenu.addAction(self.githubAction)
+        self.helpMenu.addSeparator()
+        self.helpMenu.addAction(self.aboutQtAction)
+        self.helpMenu.addAction(self.aboutAction)
 
         # Setup status bar widgets
-        self.message_label = QtWidgets.QLabel(self)
-        self.statusBar().addPermanentWidget(self.message_label)
-        self.progress_bar = QtWidgets.QProgressBar(self)
-        self.progress_bar.setFixedWidth(600)
-        self.statusBar().addPermanentWidget(self.progress_bar)
+        self.messageLabel = QtWidgets.QLabel(self)
+        self.statusBar().addPermanentWidget(self.messageLabel)
+        self.progressBar = QtWidgets.QProgressBar(self)
+        self.progressBar.setFixedWidth(600)
+        self.statusBar().addPermanentWidget(self.progressBar)
 
         # Dialogs
-        self.preferences_dialog = PreferencesDialog()
-        self.preferences_dialog.hide()
+        self.preferencesDialog = PreferencesDialog()
+        self.preferencesDialog.hide()
 
         table_tab = TableTab()
-        self.preferences_dialog.tab_widget.append(table_tab)
-        self.preferences_dialog.table_tab = table_tab
+        self.preferencesDialog.tab_widget.append(table_tab)
+        self.preferencesDialog.table_tab = table_tab
 
         options_tab = OptionsTab()
-        self.preferences_dialog.tab_widget.append(options_tab)
-        self.preferences_dialog.options_tab = options_tab
+        self.preferencesDialog.tab_widget.append(options_tab)
+        self.preferencesDialog.options_tab = options_tab
 
-        # Events
-        self.hide_message()
-        self.hide_progress()
+        self.hideMessage()
+        self.hideProgress()
 
-    def show_preferences(self):
+        self.dashboard = Dashboard()
+        self.dashboard.lockStateChanged.connect(lambda state: self.preferencesAction.setEnabled(not state))
+        self.dashboard.messageChanged.connect(self.showMessage)
+        self.dashboard.progressChanged.connect(self.showProgress)
+        self.dashboard.failed.connect(self.showException)
+        self.setCentralWidget(self.dashboard)
+
+        self.preferencesDialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
+
+    def readSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("mainwindow")
+        geometry = settings.value("geometry", None)
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+        state = settings.value("state", None)
+        if state is not None:
+            self.restoreState(state)
+        settings.endGroup()
+        settings.beginGroup("preferences")
+        geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        if not geometry.isEmpty():
+            self.preferencesDialog.qt.restoreGeometry(geometry)
+        settings.endGroup()
+        self.dashboard.readSettings()
+
+    def writeSettings(self):
+        self.dashboard.writeSettings()
+        settings = QtCore.QSettings()
+        settings.beginGroup("mainwindow")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("state", self.saveState())
+        settings.endGroup()
+        settings.beginGroup("preferences")
+        settings.setValue("geometry", self.preferencesDialog.qt.saveGeometry())
+        settings.endGroup()
+
+    def showPreferences(self) -> None:
         """Show modal preferences dialog."""
-        self.preferences_dialog.run()
+        self.preferencesDialog.run()
 
-    def show_contents(self):
+    def showContents(self) -> None:
         """Open local webbrowser with contents URL."""
         contents_url = QtWidgets.QApplication.instance().property("contentsUrl")
         if isinstance(contents_url, str):
             webbrowser.open(contents_url)
 
-    def show_github(self):
+    def showGithub(self) -> None:
         """Open local webbrowser with GitHub URL."""
         github_url = QtWidgets.QApplication.instance().property("githubUrl")
         if isinstance(github_url, str):
             webbrowser.open(github_url)
 
-    def show_about_qt(self) -> None:
+    def showAboutQt(self) -> None:
         QtWidgets.QMessageBox.aboutQt(self, "About Qt")
 
-    def show_about(self) -> None:
+    def showAbout(self) -> None:
         version = QtWidgets.QApplication.applicationVersion()
         QtWidgets.QMessageBox.about(self, "About", f"<h1>{APP_TITLE}</h1><p>Version {version}</p><p>{APP_DECRIPTION}</p><p>{APP_COPY}</p><p>{APP_LICENSE}</p>")
 
-    def show_message(self, message):
+    def showMessage(self, message: str) -> None:
         """Show status message."""
-        self.message_label.setText(message)
-        self.message_label.show()
+        self.messageLabel.setText(message)
+        self.messageLabel.setVisible(len(message) > 0)
 
-    def hide_message(self):
+    def hideMessage(self) -> None:
         """Hide status message."""
-        self.message_label.clear()
-        self.message_label.hide()
+        self.messageLabel.clear()
+        self.messageLabel.hide()
 
-    def show_progress(self, value, maximum):
+    def showProgress(self, value: int, maximum: int) -> None:
         """Show progress bar."""
-        self.progress_bar.setRange(0, maximum)
-        self.progress_bar.setValue(value)
-        self.progress_bar.show()
+        self.progressBar.setRange(0, maximum)
+        self.progressBar.setValue(value)
+        self.progressBar.setVisible(value != maximum)
 
-    def hide_progress(self):
+    def hideProgress(self) -> None:
         """Hide progress bar."""
-        self.progress_bar.setRange(0, 0)
-        self.progress_bar.setValue(0)
-        self.progress_bar.hide()
+        self.progressBar.setRange(0, 0)
+        self.progressBar.setValue(0)
+        self.progressBar.hide()
 
-    def show_exception(self, exception, tb=None):
+    def showException(self, exception: Exception, tb=None) -> None:
         """Raise message box showing exception information."""
         ui.show_exception(exception, tb)
-        self.show_message("Error")
-        self.hide_progress()
+        self.showMessage("Error")
+        self.hideProgress()
 
     def pages(self) -> list:
         widgets = []
-        for index in range(self.dashboard.tab_widget.qt.count()):
-            widgets.append(self.dashboard.tab_widget.qt.widget(index))
+        for index in range(self.dashboard.tabWidget.count()):
+            widgets.append(self.dashboard.tabWidget.widget(index))
         return widgets
 
     def addPage(self, widget: QtWidgets.QWidget, label: str) -> None:
-        self.dashboard.tab_widget.qt.addTab(widget, label)
+        self.dashboard.tabWidget.addTab(widget, label)
 
     def removePage(self, widget: QtWidgets.QWidget) -> None:
-        index = self.dashboard.tab_widget.qt.indexOf(widget)
-        self.dashboard.tab_widget.qt.removeTab(index)
+        index = self.dashboard.tabWidget.indexOf(widget)
+        self.dashboard.tabWidget.removeTab(index)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QtCore.QEvent) -> None:
         result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
         if result == QtWidgets.QMessageBox.Yes:
             if self.processes:
-                dialog = ProcessDialog(self)
+                dialog = QtWidgets.QProgressDialog(self)
+                dialog.setRange(0, 0)
+                dialog.setCancelButton(None)
+                dialog.setLabelText("Stopping active threads...")
+                def shutdown():
+                    self.processes.stop()
+                    self.processes.join()
+                    dialog.close()
+                QtCore.QTimer.singleShot(250, shutdown)
                 dialog.exec()
             event.accept()
         else:
             event.ignore()
-
-
-class ProcessDialog(QtWidgets.QProgressDialog, ProcessMixin):
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setRange(0, 0)
-        self.setValue(0)
-        self.setCancelButton(None)
-        self.setLabelText("Stopping active threads...")
-
-    def close(self):
-        self.processes.stop()
-        self.processes.join()
-        super().close()
-
-    def exec(self):
-        QtCore.QTimer.singleShot(250, self.close)
-        return super().exec()

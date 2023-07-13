@@ -9,7 +9,6 @@ from comet import ui
 from .mainwindow import MainWindow
 
 from . import __version__
-from .dashboard import Dashboard
 from .processes import (
     AlternateTableProcess,
     ContactQualityProcess,
@@ -51,25 +50,17 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.app.name = self.app.applicationName()
         self.app.organization = self.app.organizationName()
 
+        # Register interupt signal handler
+        def signal_handler(signum, frame):
+            if signum == signal.SIGINT:
+                self.app.quit()
+
+        signal.signal(signal.SIGINT, signal_handler)
+
         self._setup_resources()
         self._setup_processes()
 
-        # Dashboard
-        self.dashboard = Dashboard(
-            lock_state_changed=self.on_lock_state_changed,
-            message_changed=self.on_message,
-            progress_changed=self.on_progress,
-        )
-        self.central_widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(self.central_widget)
-        layout.addWidget(self.dashboard.qt)
-
-        # Initialize main window
         self.window = MainWindow()
-        self.window.setCentralWidget(self.central_widget)
-        self.window.dashboard = self.dashboard
-
-        self.preferences_dialog = self.window.preferences_dialog
 
         self.plugin_manager = PluginManager()
         self.plugin_manager.register_pugin(StatusPlugin(self.window))
@@ -78,9 +69,7 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.plugin_manager.register_pugin(SummaryPlugin(self.window))
         self.plugin_manager.register_pugin(NotificationPlugin(self.window))
 
-        self.dashboard.plugin_manager = self.plugin_manager
-
-        self._setup_preferences()
+        self.window.dashboard.plugin_manager = self.plugin_manager
 
     def _setup_resources(self):
         self.resources.add("matrix", comet.Resource(
@@ -127,100 +116,46 @@ class Application(comet.ResourceMixin, comet.ProcessMixin, comet.SettingsMixin):
         self.resources.load_settings()
 
     def _setup_processes(self):
-        self.processes.add("environ", EnvironmentProcess(
-            name="environ",
-            failed=self.on_show_error
-        ))
+        self.processes.add("environ", EnvironmentProcess(name="environ"))
+        self.processes.add("table", AlternateTableProcess())
+        self.processes.add("measure", MeasureProcess())
+        self.processes.add("contact_quality", ContactQualityProcess())
 
-        self.processes.add("table", AlternateTableProcess(
-            failed=self.on_show_error
-        ))
-        self.processes.add("measure", MeasureProcess(
-            failed=self.on_show_error,
-            message=self.on_message,
-            progress=self.on_progress,
-        ))
-        self.processes.add("contact_quality", ContactQualityProcess(
-            failed=self.on_show_error
-        ))
+    def readSettings(self) -> None:
+        self.window.readSettings()
 
-    def _setup_preferences(self):
-        self.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
-        self.preferences_dialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
+    def writeSettings(self) -> None:
+        self.window.writeSettings()
 
-    def load_settings(self):
-        # Restore window size
-        width, height = self.settings.get("window_size", (1420, 920))
-        self.window.resize(width, height)
-        # HACK: resize preferences dialog for HiDPI
-        width, height = self.settings.get("preferences_dialog_size", (640, 480))
-        self.preferences_dialog.resize(width, height)
-        # Load configurations
-        self.dashboard.load_settings()
-
-    def store_settings(self):
-        self.dashboard.store_settings()
-        # Store window size
-        width, height = self.window.width(), self.window.height()
-        self.settings["window_size"] = width, height
-        width, height = self.preferences_dialog.size
-        self.settings["preferences_dialog_size"] = width, height
-
-    def event_loop(self):
+    def eventLoop(self) -> None:
         self.plugin_manager.install_plugins()
 
         logger.info("PQC version %s", __version__)
         logger.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
+        self.window.dashboard.on_toggle_temporary_z_limit(settings.table_temporary_z_limit)
+
         # Sync environment controls
-        if self.dashboard.use_environment():
-            self.dashboard.environ_process.start()
-            self.dashboard.sync_environment_controls()
+        if self.window.dashboard.use_environment():
+            self.window.dashboard.environ_process.start()
+            self.window.dashboard.sync_environment_controls()
 
-        if self.dashboard.use_table():
-            self.dashboard.table_process.start()
-            self.dashboard.sync_table_controls()
-            self.dashboard.table_process.enable_joystick(False)
-
-        # Register interupt signal handler
-        def signal_handler(signum, frame):
-            if signum == signal.SIGINT:
-                self.app.quit()
-        signal.signal(signal.SIGINT, signal_handler)
+        if self.window.dashboard.use_table():
+            self.window.dashboard.table_process.start()
+            self.window.dashboard.sync_table_controls()
+            self.window.dashboard.table_process.enable_joystick(False)
 
         # Run timer to process interrupt signals
         timer = QtCore.QTimer()
         timer.timeout.connect(lambda: None)
         timer.start(250)
 
+        self.window.readSettings()
         self.window.show()
-        self.window.raise_()
 
-        try:
-            return self.app.exec_()
-        finally:
-            # Stop processes
-            self.processes.stop()
-            self.processes.join()
-            self.plugin_manager.uninstall_plugins()
+        self.app.exec_()
 
-    def on_show_error(self, exc, tb):
-        self.on_message("Exception occured!")
-        self.on_progress(None, None)
-        logger.exception(exc)
-        ui.show_exception(exc, tb)
-
-    def on_lock_state_changed(self, state):
-        self.window.preferences_action.setEnabled(not state)
-
-    def on_message(self, message):
-        if message is None:
-            self.window.hide_message()
-        else:
-            self.window.show_message(message)
-
-    def on_progress(self, value, maximum):
-        if value == maximum:
-            self.window.hide_progress()
-        else:
-            self.window.show_progress(value, maximum)
+        # Stop processes
+        self.processes.stop()
+        self.processes.join()
+        self.plugin_manager.uninstall_plugins()

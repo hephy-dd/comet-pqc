@@ -34,7 +34,7 @@ pip install git+https://github.com/hephy-dd/comet-pqc.git@<version>
 ## Run
 
 ```bash
-comet-pqc
+pqc
 ```
 
 ## Instrument emulation
