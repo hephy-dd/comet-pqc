@@ -21,12 +21,12 @@ class StatusPlugin:
         )
         self.window.processes.add("status", self.process)
 
-    def install(self) -> None:
+    def on_install(self) -> None:
         self.statusWidget = StatusWidget()
         self.statusWidget.reloadClicked.connect(self.start_worker)
         self.window.addPage(self.statusWidget, "Status")
 
-    def uninstall(self) -> None:
+    def on_uninstall(self) -> None:
         self.window.removePage(self.statusWidget)
         self.statusWidget.deleteLater()
 

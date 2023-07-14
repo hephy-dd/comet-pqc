@@ -1,6 +1,7 @@
 import logging
 import json
 import urllib.request
+from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -9,25 +10,26 @@ __all__ = ["NotificationPlugin"]
 
 class NotificationPlugin:
 
-    def __init__(self, window):
+    def __init__(self, window) -> None:
         self.window = window
 
-    def install(self):
+    def on_install(self) -> None:
         self.preferencesWidget = PreferencesWidget()
         self.window.preferencesDialog.tab_widget.qt.addTab(self.preferencesWidget, "Notifications")
 
-    def uninstall(self):
+    def on_uninstall(self) -> None:
         index = self.window.preferencesDialog.tab_widget.qt.indexOf(self.preferencesWidget)
         self.window.preferencesDialog.tab_widget.qt.removeTab(index)
         self.preferencesWidget.deleteLater()
 
-    def on_notification(self, message: str) -> None:
+    def on_finished(self, message: str) -> None:
         settings = QtCore.QSettings()
-        settings.beginGroup("plugin.notify")
-        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
+        settings.beginGroup("plugin.notification")
+        slackWebhookUrl = settings.value("slackWebhookUrl", "", str)
+        finishedMessage = settings.value("finishedMessage", "", str)
         settings.endGroup()
-        if slack_webhook_url:
-            send_slack_message(slack_webhook_url, message)
+        if slackWebhookUrl and finishedMessage:
+            send_slack_message(slackWebhookUrl, finishedMessage)
 
 
 def send_slack_message(webhook_url: str, message: str) -> None:
@@ -44,32 +46,70 @@ def send_slack_message(webhook_url: str, message: str) -> None:
 
 class PreferencesWidget(QtWidgets.QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.webhookUrlLabel = QtWidgets.QLabel()
-        self.webhookUrlLabel.setText("Slack Webhook URL")
+        self.webhookUrlLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.webhookUrlLabel.setText("Webhook URL")
 
-        self.webhookUrlLineEdit = QtWidgets.QLineEdit()
+        self.webhookUrlLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+
+        self.webhookNoticeLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.webhookNoticeLabel.setOpenExternalLinks(True)
+        self.webhookNoticeLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        self.webhookNoticeLabel.setTextFormat(QtCore.Qt.MarkdownText)
+        self.webhookNoticeLabel.setText("See also https://api.slack.com/messaging/webhooks")
+
+        self.slackGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.slackGroupBox.setTitle("Slack")
+
+        slackLayout = QtWidgets.QVBoxLayout(self.slackGroupBox)
+        slackLayout.addWidget(self.webhookUrlLabel)
+        slackLayout.addWidget(self.webhookUrlLineEdit)
+        slackLayout.addWidget(self.webhookNoticeLabel)
+
+        self.finishedMessageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.finishedMessageLabel.setText("Sequence finished")
+
+        self.finishedMessageLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+
+        self.messagesGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.messagesGroupBox.setTitle("Messages")
+
+        messagesLayout = QtWidgets.QVBoxLayout(self.messagesGroupBox)
+        messagesLayout.addWidget(self.finishedMessageLabel)
+        messagesLayout.addWidget(self.finishedMessageLineEdit)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.webhookUrlLabel)
-        layout.addWidget(self.webhookUrlLineEdit)
+        layout.addWidget(self.slackGroupBox)
+        layout.addWidget(self.messagesGroupBox)
         layout.addStretch(1)
+
+    def slackWebhookUrl(self) -> str:
+        return self.webhookUrlLineEdit.text()
+
+    def setSlackWebhookUrl(self, url: str) -> None:
+        self.webhookUrlLineEdit.setText(url)
+
+    def finishedMessage(self) -> str:
+        return self.finishedMessageLineEdit.text()
+
+    def setFinishedMessage(self, message: str) -> None:
+        return self.finishedMessageLineEdit.setText(message)
 
     def reflection(self):  # TODO
         return self
 
-    def load(self):
+    def load(self) -> None:
         settings = QtCore.QSettings()
-        settings.beginGroup("plugin.notify")
-        slack_webhook_url = settings.value("slackWebhookUrl", "", str)
+        settings.beginGroup("plugin.notification")
+        self.setSlackWebhookUrl(settings.value("slackWebhookUrl", "", str))
+        self.setFinishedMessage(settings.value("finishedMessage", "PQC sequence finished!", str))
         settings.endGroup()
-        self.webhookUrlLineEdit.setText(slack_webhook_url)
 
-    def store(self):
-        slack_webhook_url = self.webhookUrlLineEdit.text()
+    def store(self) -> None:
         settings = QtCore.QSettings()
-        settings.beginGroup("plugin.notify")
-        settings.setValue("slackWebhookUrl", slack_webhook_url)
+        settings.beginGroup("plugin.notification")
+        settings.setValue("slackWebhookUrl", self.slackWebhookUrl())
+        settings.setValue("finishedMessage", self.finishedMessage())
         settings.endGroup()

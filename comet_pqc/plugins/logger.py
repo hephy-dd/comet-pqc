@@ -11,15 +11,15 @@ __all__ = ["LoggerPlugin"]
 
 class LoggerPlugin:
 
-    def __init__(self, window):
+    def __init__(self, window) -> None:
         self.window = window
 
-    def install(self):
+    def on_install(self) -> None:
         self.logWidget = LogTreeWidget()
         self.logWidget.add_logger(logging.getLogger())
         self.window.addPage(self.logWidget, "Logging")
 
-    def uninstall(self):
+    def on_uninstall(self) -> None:
         self.window.removePage(self.logWidget)
         self.logWidget.deleteLater()
 

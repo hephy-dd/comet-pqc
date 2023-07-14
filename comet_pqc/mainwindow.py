@@ -7,6 +7,19 @@ from comet.ui.preferences import PreferencesDialog
 
 from .dashboard import Dashboard
 from .preferences import OptionsTab, TableTab
+from .plugins import PluginManager
+from .plugins.status import StatusPlugin
+from .plugins.logger import LoggerPlugin
+from .plugins.webapi import WebAPIPlugin
+from .plugins.notification import NotificationPlugin
+from .plugins.summary import SummaryPlugin
+from .processes import (
+    AlternateTableProcess,
+    ContactQualityProcess,
+    EnvironmentProcess,
+    MeasureProcess,
+)
+from .settings import settings as config  # TODO
 
 __all__ = ["MainWindow"]
 
@@ -18,8 +31,10 @@ APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 
 class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
-    def __init__(self, parent=None):
+    def __init__(self, station, parent=None):
         super().__init__(parent)
+
+        self.station = station
 
         # Actions
 
@@ -85,7 +100,19 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.hideMessage()
         self.hideProgress()
 
-        self.dashboard = Dashboard()
+        self.processes.add("environ", EnvironmentProcess(name="environ"))
+        self.processes.add("table", AlternateTableProcess())
+        self.processes.add("measure", MeasureProcess())
+        self.processes.add("contact_quality", ContactQualityProcess())
+
+        self.plugins = PluginManager()
+        self.plugins.register_plugin(StatusPlugin(self))
+        self.plugins.register_plugin(LoggerPlugin(self))
+        self.plugins.register_plugin(WebAPIPlugin(self))
+        self.plugins.register_plugin(SummaryPlugin(self))
+        self.plugins.register_plugin(NotificationPlugin(self))
+
+        self.dashboard = Dashboard(self.plugins)
         self.dashboard.lockStateChanged.connect(lambda state: self.preferencesAction.setEnabled(not state))
         self.dashboard.messageChanged.connect(self.showMessage)
         self.dashboard.progressChanged.connect(self.showProgress)
@@ -93,6 +120,18 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.setCentralWidget(self.dashboard)
 
         self.preferencesDialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
+
+        self.dashboard.on_toggle_temporary_z_limit(config.table_temporary_z_limit)  # TODO
+
+        # Sync environment controls
+        if self.dashboard.use_environment():
+            self.dashboard.environ_process.start()
+            self.dashboard.sync_environment_controls()
+
+        if self.dashboard.use_table():
+            self.dashboard.table_process.start()
+            self.dashboard.sync_table_controls()
+            self.dashboard.table_process.enable_joystick(False)
 
     def readSettings(self):
         settings = QtCore.QSettings()
@@ -186,20 +225,22 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         index = self.dashboard.tabWidget.indexOf(widget)
         self.dashboard.tabWidget.removeTab(index)
 
+    def shutdown(self) -> None:
+        self.processes.stop()
+        self.processes.join()
+
     def closeEvent(self, event: QtCore.QEvent) -> None:
         result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
         if result == QtWidgets.QMessageBox.Yes:
-            if self.processes:
-                dialog = QtWidgets.QProgressDialog(self)
-                dialog.setRange(0, 0)
-                dialog.setCancelButton(None)
-                dialog.setLabelText("Stopping active threads...")
-                def shutdown():
-                    self.processes.stop()
-                    self.processes.join()
-                    dialog.close()
-                QtCore.QTimer.singleShot(250, shutdown)
-                dialog.exec()
+            dialog = QtWidgets.QProgressDialog(self)
+            dialog.setRange(0, 0)
+            dialog.setCancelButton(None)
+            dialog.setLabelText("Stopping active threads...")
+            def callback():
+                self.shutdown()
+                dialog.close()
+            QtCore.QTimer.singleShot(250, callback)
+            dialog.exec()
             event.accept()
         else:
             event.ignore()

@@ -37,7 +37,7 @@ from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
 from .measurementwidget import MeasurementWidget
-from .utils import caldone_valid, handle_exception
+from .utils import caldone_valid, handle_exception, create_icon
 
 logger = logging.getLogger(__name__)
 
@@ -203,11 +203,23 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             title="Reload Configuration",
             text="Do you want to reload sequence configurations from file?"
         ): return
-        for sample_item in self._sequence_tree:
-            if sample_item.sequence:
-                filename = sample_item.sequence.filename
-                sequence = config.load_sequence(filename)
-                sample_item.load_sequence(sequence)
+        sample_items = self._sequence_tree
+        dialog = QtWidgets.QProgressDialog()
+        dialog.setWindowModality(QtCore.Qt.WindowModal)
+        dialog.setLabelText("Reloading sequences...")
+        dialog.setCancelButton(None)
+        dialog.setMaximum(len(sample_items))
+        @handle_exception
+        def callback():
+            for sample_item in sample_items:
+                dialog.setValue(dialog.value() + 1)
+                if sample_item.sequence:
+                    filename = sample_item.sequence.filename
+                    sequence = config.load_sequence(filename)
+                    sample_item.load_sequence(sequence)
+            dialog.close()
+        QtCore.QTimer.singleShot(100, callback)
+        dialog.exec()
 
     @handle_exception
     def on_add_sample_clicked(self):
@@ -352,157 +364,90 @@ class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
         self._joystick_limits = settings.table_joystick_maximum_limits
 
 
-class EnvironmentControlWidget(ui.GroupBox):
+class EnvironmentControlWidget(QtWidgets.QGroupBox):
 
-    laser_sensor_toggled = None
-    box_light_toggled = None
-    microscope_light_toggled = None
-    microscope_camera_toggled = None
-    microscope_control_toggled = None
-    probecard_light_toggled = None
-    probecard_camera_toggled = None
-    pid_control_toggled = None
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setTitle("Environment Box")
+        self.setCheckable(True)
 
-    def __init__(self, laser_sensor_toggled=None, box_light_toggled=None,
-                 microscope_light_toggled=None, microscope_camera_toggled=None,
-                 microscope_control_toggled=None, probecard_light_toggled=None,
-                 probecard_camera_toggled=None, pid_control_toggled=None,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Environment Box"
-        self.checkable = True
-        self._laser_sensor_button = ToggleButton(
-            text="Laser",
-            tool_tip="Toggle laser",
-            checkable=True,
-            checked=False,
-            toggled=self.on_laser_sensor_toggled
-        )
-        self._box_light_button = ToggleButton(
-            text="Box Light",
-            tool_tip="Toggle box light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_box_light_toggled
-        )
-        self._microscope_light_button = ToggleButton(
-            text="Mic Light",
-            tool_tip="Toggle microscope light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_light_toggled
-        )
-        self._microscope_camera_button = ToggleButton(
-            text="Mic Cam",
-            tool_tip="Toggle microscope camera power",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_camera_toggled
-        )
-        self._microscope_control_button = ToggleButton(
-            text="Mic Ctrl",
-            tool_tip="Toggle microscope control",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_control_toggled
-        )
-        self._probecard_light_button = ToggleButton(
-            text="PC Light",
-            tool_tip="Toggle probe card light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_probecard_light_toggled
-        )
-        self._probecard_camera_button = ToggleButton(
-            text="PC Cam",
-            tool_tip="Toggle probe card camera power",
-            checkable=True,
-            checked=False,
-            toggled=self.on_probecard_camera_toggled
-        )
-        self._pid_control_button = ToggleButton(
-            text="PID Control",
-            tool_tip="Toggle PID control",
-            checkable=True,
-            checked=False,
-            toggled=self.on_pid_control_toggled
-        )
-        self.layout=ui.Row(
-            ui.Column(
-                self._laser_sensor_button,
-                self._microscope_camera_button,
-            ),
-            ui.Column(
-                self._box_light_button,
-                self._probecard_camera_button,
-            ),
-            ui.Column(
-                self._microscope_light_button,
-                self._microscope_control_button,
-            ),
-            ui.Column(
-                self._probecard_light_button,
-                self._pid_control_button
-            ),
-            stretch=(1, 1, 1, 1)
-        )
-        # Callbacks
-        self.laser_sensor_toggled = laser_sensor_toggled
-        self.box_light_toggled = box_light_toggled
-        self.microscope_light_toggled = microscope_light_toggled
-        self.microscope_camera_toggled = microscope_camera_toggled
-        self.microscope_control_toggled = microscope_control_toggled
-        self.probecard_light_toggled = probecard_light_toggled
-        self.probecard_camera_toggled = probecard_camera_toggled
-        self.pid_control_toggled = pid_control_toggled
+        self.laserSensorButton = self.createButton()
+        self.laserSensorButton.setText("Laser")
+        self.laserSensorButton.setToolTip("Toggle laser")
 
-    def on_laser_sensor_toggled(self, state):
-        self.emit(self.laser_sensor_toggled, state)
+        self.boxLightButton = self.createButton()
+        self.boxLightButton.setText("Box Light")
+        self.boxLightButton.setToolTip("Toggle box light")
 
-    def on_box_light_toggled(self, state):
-        self.emit(self.box_light_toggled, state)
+        self.microscopeLightButton = self.createButton()
+        self.microscopeLightButton.setText("Mic Light")
+        self.microscopeLightButton.setToolTip("Toggle microscope light")
 
-    def on_microscope_light_toggled(self, state):
-        self.emit(self.microscope_light_toggled, state)
+        self.microscopeCameraButton = self.createButton()
+        self.microscopeCameraButton.setText("Mic Cam")
+        self.microscopeCameraButton.setToolTip("Toggle microscope camera power")
 
-    def on_microscope_camera_toggled(self, state):
-        self.emit(self.microscope_camera_toggled, state)
+        self.microscopeControlButton = self.createButton()
+        self.microscopeControlButton.setText("Mic Ctrl")
+        self.microscopeControlButton.setToolTip("Toggle microscope control")
 
-    def on_microscope_control_toggled(self, state):
-        self.emit(self.microscope_control_toggled, state)
+        self.probecardLightButton = self.createButton()
+        self.probecardLightButton.setText("PC Light")
+        self.probecardLightButton.setToolTip("Toggle probe card light")
 
-    def on_probecard_light_toggled(self, state):
-        self.emit(self.probecard_light_toggled, state)
+        self.probecardCameraButton = self.createButton()
+        self.probecardCameraButton.setText("PC Cam")
+        self.probecardCameraButton.setToolTip("Toggle probe card camera power")
 
-    def on_probecard_camera_toggled(self, state):
-        self.emit(self.probecard_camera_toggled, state)
+        self.pidControlButton = self.createButton()
+        self.pidControlButton.setText("PID Control")
+        self.pidControlButton.setToolTip("Toggle PID control")
 
-    def on_pid_control_toggled(self, state):
-        self.emit(self.pid_control_toggled, state)
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.laserSensorButton, 0, 0)
+        layout.addWidget(self.microscopeCameraButton, 1, 0)
+        layout.addWidget(self.boxLightButton, 0, 1)
+        layout.addWidget(self.probecardCameraButton, 1, 1)
+        layout.addWidget(self.microscopeLightButton, 0, 2)
+        layout.addWidget(self.microscopeControlButton, 1, 2)
+        layout.addWidget(self.probecardLightButton, 0, 3)
+        layout.addWidget(self.pidControlButton, 1, 3)
 
-    def update_laser_sensor_state(self, state):
-        self._laser_sensor_button.checked = state
+    def createButton(self) -> QtWidgets.QPushButton:
+        button = QtWidgets.QPushButton(self)
+        button.setCheckable(True)
+        button.setChecked(False)
+        button.setProperty("checkedIcon", create_icon(12, "green").qt)
+        button.setProperty("uncheckedIcon", create_icon(12, "grey").qt)
+        def updateIcon(state):
+            button.setIcon(button.property("checkedIcon") if state else button.property("uncheckedIcon"))
+        updateIcon(False)
+        button.toggled.connect(updateIcon)
+        return button
 
-    def update_box_light_state(self, state):
-        self._box_light_button.checked = state
+    def updateLaserSensorState(self, state: bool) -> None:
+        self.laserSensorButton.setChecked(state)
 
-    def update_microscope_light_state(self, state):
-        self._microscope_light_button.checked = state
+    def updateBoxLightState(self, state: bool) -> None:
+        self.boxLightButton.setChecked(state)
 
-    def update_microscope_camera_state(self, state):
-        self._microscope_camera_button.checked = state
+    def updateMicroscopeLightState(self, state: bool) -> None:
+        self.microscopeLightButton.setChecked(state)
 
-    def update_microscope_control_state(self, state):
-        self._microscope_control_button.checked = state
+    def updateMicroscopeCameraState(self, state: bool) -> None:
+        self.microscopeCameraButton.setChecked(state)
 
-    def update_probecard_light_state(self, state):
-        self._probecard_light_button.checked = state
+    def updateMicroscopeControlState(self, state: bool) -> None:
+        self.microscopeControlButton.setChecked(state)
 
-    def update_probecard_camera_state(self, state):
-        self._probecard_camera_button.checked = state
+    def updateProbecardLightState(self, state: bool) -> None:
+        self.probecardLightButton.setChecked(state)
 
-    def update_pid_control_state(self, state):
-        self._pid_control_button.checked = state
+    def updateProbecardCameraState(self, state: bool) -> None:
+        self.probecardCameraButton.setChecked(state)
+
+    def updatePidControlState(self, state: bool) -> None:
+        self.pidControlButton.setChecked(state)
 
 
 class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
@@ -512,10 +457,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
     lockStateChanged = QtCore.pyqtSignal(bool)
     messageChanged = QtCore.pyqtSignal(str)
     progressChanged = QtCore.pyqtSignal(int, int)
-    failed = QtCore.pyqtSignal(Exception)
+    failed = QtCore.pyqtSignal(Exception, object)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
+        self.plugins = plugins
         # Layout
         self.temporary_z_limit_label = ui.Label(
             text="Temporary Probecard Z-Limit applied. "
@@ -539,17 +485,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         # Environment Controls
 
-        self.environment_control_widget = EnvironmentControlWidget(
-            toggled=self.on_environment_groupbox_toggled,
-            laser_sensor_toggled=self.on_laser_sensor_toggled,
-            box_light_toggled=self.on_box_light_toggled,
-            microscope_light_toggled=self.on_microscope_light_toggled,
-            microscope_camera_toggled=self.on_microscope_camera_toggled,
-            microscope_control_toggled=self.on_microscope_control_toggled,
-            probecard_light_toggled=self.on_probecard_light_toggled,
-            probecard_camera_toggled=self.on_probecard_camera_toggled,
-            pid_control_toggled=self.on_pid_control_toggled
-        )
+        self.environmentControlWidget = EnvironmentControlWidget(self)
+        self.environmentControlWidget.toggled.connect(self.on_environment_groupbox_toggled)
+        self.environmentControlWidget.laserSensorButton.toggled.connect(self.on_laser_sensor_toggled)
+        self.environmentControlWidget.boxLightButton.toggled.connect(self.on_box_light_toggled)
+        self.environmentControlWidget.microscopeLightButton.toggled.connect(self.on_microscope_light_toggled)
+        self.environmentControlWidget.microscopeCameraButton.toggled.connect(self.on_microscope_camera_toggled)
+        self.environmentControlWidget.microscopeControlButton.toggled.connect(self.on_microscope_control_toggled)
+        self.environmentControlWidget.probecardLightButton.toggled.connect(self.on_probecard_light_toggled)
+        self.environmentControlWidget.probecardCameraButton.toggled.connect(self.on_probecard_camera_toggled)
+        self.environmentControlWidget.pidControlButton.toggled.connect(self.on_pid_control_toggled)
 
         # Table controls
 
@@ -585,7 +530,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         controlWidgetLayout.setContentsMargins(0, 0, 0, 0)
         controlWidgetLayout.addWidget(self.sequence_widget.qt, 0, 0, 1, 2)
         controlWidgetLayout.addWidget(self.table_control_widget.qt, 1, 0, 1, 2)
-        controlWidgetLayout.addWidget(self.environment_control_widget.qt, 2, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.environmentControlWidget, 2, 0, 1, 2)
         controlWidgetLayout.addWidget(self.operator_groupbox.qt, 3, 0, 1, 1)
         controlWidgetLayout.addWidget(self.output_groupbox.qt, 3, 1, 1, 1)
         controlWidgetLayout.setRowStretch(0, 1)
@@ -654,7 +599,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         self.sequence_widget.readSettings()
         use_environ = self.settings.get("use_environ", False)
-        self.environment_control_widget.checked = use_environ
+        self.environmentControlWidget.setChecked(use_environ)
         self.table_control_widget.readSettings()
         self.operator_widget.readSettings()
         self.output_widget.readSettings()
@@ -704,7 +649,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     def use_environment(self):
         """Return True if environment box enabled."""
-        return self.environment_control_widget.checked
+        return self.environmentControlWidget.isChecked()
 
     def use_table(self):
         """Return True if table control enabled."""
@@ -740,24 +685,24 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     def lock_controls(self):
         """Lock dashboard controls."""
-        self.environment_control_widget.enabled = False
+        self.environmentControlWidget.setEnabled(False)
         self.table_control_widget.enabled = False
         self.sequence_widget.setLocked(True)
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
         self.measurementWidget.setLocked(True)
-        self.plugin_manager.handle("lock_controls", True)
+        self.plugins.handle("lock_controls", True)
         self.lockStateChanged.emit(True)
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
-        self.environment_control_widget.enabled = True
+        self.environmentControlWidget.setEnabled(True)
         self.table_control_widget.enabled = True
         self.sequence_widget.setLocked(False)
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
         self.measurementWidget.setLocked(False)
-        self.plugin_manager.handle("lock_controls", False)
+        self.plugins.handle("lock_controls", False)
         self.lockStateChanged.emit(False)
 
     def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
@@ -1123,14 +1068,14 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             self.environmentWidget.setEnabled(False)
 
     def on_pc_data_updated(self, pc_data):
-        self.environment_control_widget.update_laser_sensor_state(pc_data.relay_states.laser_sensor)
-        self.environment_control_widget.update_box_light_state(pc_data.relay_states.box_light)
-        self.environment_control_widget.update_microscope_light_state(pc_data.relay_states.microscope_light)
-        self.environment_control_widget.update_microscope_camera_state(pc_data.relay_states.microscope_camera)
-        self.environment_control_widget.update_microscope_control_state(pc_data.relay_states.microscope_control)
-        self.environment_control_widget.update_probecard_light_state(pc_data.relay_states.probecard_light)
-        self.environment_control_widget.update_probecard_camera_state(pc_data.relay_states.probecard_camera)
-        self.environment_control_widget.update_pid_control_state(pc_data.pid_status)
+        self.environmentControlWidget.updateLaserSensorState(pc_data.relay_states.laser_sensor)
+        self.environmentControlWidget.updateBoxLightState(pc_data.relay_states.box_light)
+        self.environmentControlWidget.updateMicroscopeLightState(pc_data.relay_states.microscope_light)
+        self.environmentControlWidget.updateMicroscopeCameraState(pc_data.relay_states.microscope_camera)
+        self.environmentControlWidget.updateMicroscopeControlState(pc_data.relay_states.microscope_control)
+        self.environmentControlWidget.updateProbecardLightState(pc_data.relay_states.probecard_light)
+        self.environmentControlWidget.updateProbecardCameraState(pc_data.relay_states.probecard_camera)
+        self.environmentControlWidget.updatePidControlState(pc_data.pid_status)
         self.environmentWidget.setEnabled(True)
         t = time.time()
         # Note: occasional crashes due to `NaN` timestamp.
@@ -1166,9 +1111,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def on_push_summary(self, data: dict) -> None:
-        self.plugin_manager.handle("summary", data=data)
+        self.plugins.handle("summary", data=data)
 
     @handle_exception
     def on_measurements_finished(self) -> None:
         message = "PQC measurements finished!"
-        self.plugin_manager.handle("notification", message=message)
+        self.plugins.handle("notification", message=message)

@@ -16,12 +16,12 @@ class WebAPIPlugin:
         )
         self.window.processes.add("webapi", self.process)
 
-    def install(self) -> None:
+    def on_install(self) -> None:
         self.preferencesWidget = WebAPIPreferencesWidget()
         self.window.preferencesDialog.tab_widget.qt.addTab(self.preferencesWidget, "WebAPI")
         self.process.start()
 
-    def uninstall(self) -> None:
+    def on_uninstall(self) -> None:
         self.process.stop()
         index = self.window.preferencesDialog.tab_widget.qt.indexOf(self.preferencesWidget)
         self.window.preferencesDialog.tab_widget.qt.removeTab(index)

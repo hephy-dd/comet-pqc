@@ -1,13 +1,22 @@
 import argparse
 import logging
 import os
+import signal
+import sys
 from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
 
+from PyQt5 import QtCore, QtGui, QtWidgets
+import analysis_pqc
+
 from . import __version__
-from .application import Application
+from .station import Station
+from .mainwindow import MainWindow
+from .utils import make_path
 
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
+CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"
+GITHUB_URL: str = "https://github.com/hephy-dd/comet-pqc/"
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,10 +66,50 @@ def main() -> None:
 
     configure_logger(logging.getLogger(), debug=args.debug, filename=args.logfile)
 
-    app = Application()
-    app.readSettings()
-    app.eventLoop()
-    app.writeSettings()
+    app = QtWidgets.QApplication(sys.argv)
+    app.setApplicationName("comet-pqc")
+    app.setApplicationVersion(__version__)
+    app.setOrganizationName("HEPHY")
+    app.setOrganizationDomain("hephy.at")
+    app.setApplicationDisplayName(f"PQC {__version__}")
+    app.setWindowIcon(QtGui.QIcon(make_path("assets", "icons", "pqc.ico")))
+    app.setProperty("contentsUrl", CONTENTS_URL)
+    app.setProperty("githubUrl", GITHUB_URL)
+    app.lastWindowClosed.connect(app.quit)
+
+    # TODO
+    app.reflection = lambda: app
+    app.name = app.applicationName()
+    app.organization = app.organizationName()
+
+    # Register interupt signal handler
+    def signal_handler(signum, frame):
+        if signum == signal.SIGINT:
+            app.quit()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Run timer to process interrupt signals
+    timer = QtCore.QTimer()
+    timer.timeout.connect(lambda: None)
+    timer.start(250)
+
+    station = Station()
+
+    window = MainWindow(station)
+    window.readSettings()
+    window.show()
+
+    logging.info("PQC version %s", __version__)
+    logging.info("Analysis-PQC version %s", analysis_pqc.__version__)
+
+    window.plugins.install_plugins()
+
+    app.exec()
+
+    window.writeSettings()
+
+    window.plugins.uninstall_plugins()
 
 
 if __name__ == "__main__":

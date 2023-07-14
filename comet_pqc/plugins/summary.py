@@ -50,14 +50,14 @@ class SummaryWidget(QtWidgets.QWidget):
 
 class SummaryPlugin:
 
-    def __init__(self, window):
+    def __init__(self, window) -> None:
         self.window = window
 
-    def install(self):
+    def on_install(self) -> None:
         self.summaryWidget = SummaryWidget()
         self.window.addPage(self.summaryWidget, "Summary")
 
-    def uninstall(self):
+    def on_uninstall(self) -> None:
         self.window.removePage(self.summaryWidget)
         self.summaryWidget.deleteLater()
 

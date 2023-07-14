@@ -6,7 +6,7 @@ import os
 import yaml
 from comet import ui
 from comet.settings import SettingsMixin
-from qutie.qutie import QtCore
+from qutie.qutie import QtCore, QtWidgets
 
 from .components import (
     OperatorWidget,
@@ -220,14 +220,25 @@ class SequenceManager(ui.Dialog, SettingsMixin):
     def load_settings_sequences(self):
         """Load all built-in and custom sequences from settings."""
         self._sequence_tree.clear()
-        for name, filename in load_all_sequences(self.settings):
-            try:
-                sequence = load_sequence(filename)
-                item = self._sequence_tree.append([sequence.name, filename])
-                item.sequence = sequence
-                item.qt.setToolTip(1, filename)
-            except Exception as exc:
-                logger.error("failed to load sequence: %s", filename)
+        all_sequences = load_all_sequences(self.settings)
+        dialog = QtWidgets.QProgressDialog()
+        dialog.setWindowModality(QtCore.Qt.WindowModal)
+        dialog.setLabelText("Loading sequences...")
+        dialog.setCancelButton(None)
+        dialog.setMaximum(len(all_sequences))
+        def callback():
+            for name, filename in all_sequences:
+                dialog.setValue(dialog.value() + 1)
+                try:
+                    sequence = load_sequence(filename)
+                    item = self._sequence_tree.append([sequence.name, filename])
+                    item.sequence = sequence
+                    item.qt.setToolTip(1, filename)
+                except Exception as exc:
+                    logger.error("failed to load sequence: %s", filename)
+            dialog.close()
+        QtCore.QTimer.singleShot(100, callback)
+        dialog.exec()
         self._sequence_tree.fit()
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
