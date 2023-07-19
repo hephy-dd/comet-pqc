@@ -9,6 +9,7 @@ from .panels import (
     CVRampPanel,
     FrequencyScanPanel,
     IVRamp4WirePanel,
+    IVRamp4WireBiasPanel,
     IVRampBiasElmPanel,
     IVRampBiasPanel,
     IVRampElmPanel,
@@ -79,6 +80,7 @@ class PanelStack(QtWidgets.QWidget):
         self.addPanel(CVRampHVPanel())
         self.addPanel(CVRampAltPanel())
         self.addPanel(IVRamp4WirePanel())
+        self.addPanel(IVRamp4WireBiasPanel())
         self.addPanel(FrequencyScanPanel())
 
         self.hide()

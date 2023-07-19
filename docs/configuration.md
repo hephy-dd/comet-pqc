@@ -70,8 +70,8 @@ A connection must provide properties `name`, `type` and `parameters`. Optional
 properties are `id`, `description` and `enabled`.
 
 Property `type` must reflect a built in measurement ID. Valid types are
-`iv_ramp`, `iv_ramp_bias`, `iv_ramp_4_wire`, `cv_ramp`, `cv_ramp_alt`,
-`frequency_scan`.
+`iv_ramp`, `iv_ramp_bias`, `iv_ramp_4_wire`, `iv_ramp_4_wire_bias`, `cv_ramp`,
+`cv_ramp_alt`, `frequency_scan`.
 
 Property `parameters` defines default values specified by an individual
 measurement.
