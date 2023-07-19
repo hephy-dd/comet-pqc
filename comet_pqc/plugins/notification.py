@@ -15,11 +15,11 @@ class NotificationPlugin:
 
     def on_install(self) -> None:
         self.preferencesWidget = PreferencesWidget()
-        self.window.preferencesDialog.tab_widget.qt.addTab(self.preferencesWidget, "Notifications")
+        self.window.preferencesDialog.tabWidget.addTab(self.preferencesWidget, "Notifications")
 
     def on_uninstall(self) -> None:
-        index = self.window.preferencesDialog.tab_widget.qt.indexOf(self.preferencesWidget)
-        self.window.preferencesDialog.tab_widget.qt.removeTab(index)
+        index = self.window.preferencesDialog.tabWidget.indexOf(self.preferencesWidget)
+        self.window.preferencesDialog.tabWidget.removeTab(index)
         self.preferencesWidget.deleteLater()
 
     def on_finished(self, message: str) -> None:
@@ -97,17 +97,14 @@ class PreferencesWidget(QtWidgets.QWidget):
     def setFinishedMessage(self, message: str) -> None:
         return self.finishedMessageLineEdit.setText(message)
 
-    def reflection(self):  # TODO
-        return self
-
-    def load(self) -> None:
+    def readSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.notification")
         self.setSlackWebhookUrl(settings.value("slackWebhookUrl", "", str))
         self.setFinishedMessage(settings.value("finishedMessage", "PQC sequence finished!", str))
         settings.endGroup()
 
-    def store(self) -> None:
+    def writeSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.notification")
         settings.setValue("slackWebhookUrl", self.slackWebhookUrl())

@@ -3,10 +3,9 @@ import webbrowser
 from PyQt5 import QtCore, QtWidgets
 
 from comet import ui, ProcessMixin
-from comet.ui.preferences import PreferencesDialog
 
 from .dashboard import Dashboard
-from .preferences import OptionsTab, TableTab
+from .preferences import PreferencesDialog
 from .plugins import PluginManager
 from .plugins.status import StatusPlugin
 from .plugins.logger import LoggerPlugin
@@ -89,14 +88,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.preferencesDialog = PreferencesDialog()
         self.preferencesDialog.hide()
 
-        table_tab = TableTab()
-        self.preferencesDialog.tab_widget.append(table_tab)
-        self.preferencesDialog.table_tab = table_tab
-
-        options_tab = OptionsTab()
-        self.preferencesDialog.tab_widget.append(options_tab)
-        self.preferencesDialog.options_tab = options_tab
-
         self.hideMessage()
         self.hideProgress()
 
@@ -118,8 +109,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.progressChanged.connect(self.showProgress)
         self.dashboard.failed.connect(self.showException)
         self.setCentralWidget(self.dashboard)
-
-        self.preferencesDialog.table_tab.temporary_z_limit_changed = self.dashboard.on_toggle_temporary_z_limit
 
         self.dashboard.on_toggle_temporary_z_limit(config.table_temporary_z_limit)  # TODO
 
@@ -146,7 +135,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         settings.beginGroup("preferences")
         geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
         if not geometry.isEmpty():
-            self.preferencesDialog.qt.restoreGeometry(geometry)
+            self.preferencesDialog.restoreGeometry(geometry)
         settings.endGroup()
         self.dashboard.readSettings()
 
@@ -158,12 +147,17 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         settings.setValue("state", self.saveState())
         settings.endGroup()
         settings.beginGroup("preferences")
-        settings.setValue("geometry", self.preferencesDialog.qt.saveGeometry())
+        settings.setValue("geometry", self.preferencesDialog.saveGeometry())
         settings.endGroup()
 
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
-        self.preferencesDialog.run()
+        self.preferencesDialog.readSettings()
+        self.preferencesDialog.exec()
+        if self.preferencesDialog.result() == QtWidgets.QDialog.Accepted:
+            self.preferencesDialog.writeSettings()
+            self.dashboard.on_toggle_temporary_z_limit(config.table_temporary_z_limit)  # TODO
+
 
     def showContents(self) -> None:
         """Open local webbrowser with contents URL."""

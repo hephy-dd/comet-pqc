@@ -18,13 +18,13 @@ class WebAPIPlugin:
 
     def on_install(self) -> None:
         self.preferencesWidget = WebAPIPreferencesWidget()
-        self.window.preferencesDialog.tab_widget.qt.addTab(self.preferencesWidget, "WebAPI")
+        self.window.preferencesDialog.tabWidget.addTab(self.preferencesWidget, "WebAPI")
         self.process.start()
 
     def on_uninstall(self) -> None:
         self.process.stop()
-        index = self.window.preferencesDialog.tab_widget.qt.indexOf(self.preferencesWidget)
-        self.window.preferencesDialog.tab_widget.qt.removeTab(index)
+        index = self.window.preferencesDialog.tabWidget.indexOf(self.preferencesWidget)
+        self.window.preferencesDialog.tabWidget.removeTab(index)
         self.preferencesWidget.deleteLater()
 
 
@@ -53,9 +53,6 @@ class WebAPIPreferencesWidget(QtWidgets.QWidget):
         layout.addWidget(self.groupBox)
         layout.addStretch(1)
 
-    def reflection(self):  # TODO
-        return self
-
     def isServerEnabled(self) -> bool:
         return self.isServerEnabledCheckBox.isChecked()
 
@@ -74,7 +71,7 @@ class WebAPIPreferencesWidget(QtWidgets.QWidget):
     def setPort(self, port: int) -> None:
         self.portSpinBox.setValue(port)
 
-    def load(self) -> None:
+    def readSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.webapi")
         enabled = settings.value("enabled", False, bool)
@@ -85,7 +82,7 @@ class WebAPIPreferencesWidget(QtWidgets.QWidget):
         self.setHostname(hostname)
         self.setPort(port)
 
-    def store(self) -> None:
+    def writeSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.webapi")
         settings.setValue("enabled", self.isServerEnabled())

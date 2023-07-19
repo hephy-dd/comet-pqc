@@ -32,9 +32,6 @@ datas = [
 hiddenimports = [
     "pyvisa",
     "pyvisa_py",
-    "pyvisa_sim",
-    "pyserial",
-    "pyusb",
     "PyQt5.sip",
 ]
 
