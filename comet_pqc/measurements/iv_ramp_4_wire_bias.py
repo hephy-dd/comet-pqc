@@ -168,6 +168,12 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin,
             "vsrc_output": self.vsrc_get_output_state(vsrc),
         })
 
+        self.hvsrc_set_output_state(hvsrc, vsrc.OUTPUT_ON)
+        time.sleep(.100)
+        self.process.emit("state", {
+            "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
+        })
+
         self.process.emit("progress", 4, 5)
 
         # Ramp HV Spource to bias voltage

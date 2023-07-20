@@ -7,6 +7,18 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.43.0
+
+### Added
+- Plugin system.
+- Slack notification plugin.
+- IV ramp 4-Wire with Bias measurement.
+- PyInstaller specification for building windows executable.
+
+### Changed
+- Dropped support for Python 3.7
+- Using Flask instead of Bottle for JSON API.
+
 ## 0.42.2
 
 ### Fixed
