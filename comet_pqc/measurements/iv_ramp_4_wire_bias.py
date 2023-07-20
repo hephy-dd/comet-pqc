@@ -9,14 +9,14 @@ from ..core.functions import LinearRange
 from ..utils import format_metric
 from .matrix import MatrixMeasurement
 from .measurement import format_estimate
-from .mixins import AnalysisMixin, EnvironmentMixin, VSourceMixin
+from .mixins import AnalysisMixin, EnvironmentMixin, HVSourceMixin, VSourceMixin
 
 __all__ = ["IVRamp4WireBiasMeasurement"]
 
 logger = logging.getLogger(__name__)
 
 
-class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMixin, AnalysisMixin):
+class IVRamp4WireBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, EnvironmentMixin, AnalysisMixin):
     """IV ramp 4wire with bias measurement.
 
     * set compliance
@@ -45,11 +45,13 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
         self.register_parameter("waiting_time_start", comet.ureg("0 s"), unit="s")
         self.register_parameter("waiting_time_end", comet.ureg("0 s"), unit="s")
         self.register_parameter("bias_voltage", unit="V", required=True)
-        self.register_parameter("bias_mode", "constant", values=("constant", "offset"))
+        self.register_parameter("bias_voltage_step", comet.ureg("1 V"), unit="V")
+        self.register_parameter("bias_waiting_time_start", comet.ureg("1 s"), unit="s")
         self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
         self.register_parameter("hvsrc_accept_compliance", False, type=bool)
         self.register_parameter("vsrc_voltage_compliance", unit="V", required=True)
         self.register_parameter("vsrc_accept_compliance", False, type=bool)
+        self.register_hvsource()
         self.register_vsource()
         self.register_environment()
         self.register_analysis()
@@ -69,7 +71,8 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
         waiting_time_start = self.get_parameter("waiting_time_start")
         waiting_time_end = self.get_parameter("waiting_time_end")
         bias_voltage = self.get_parameter("bias_voltage")
-        bias_mode = self.get_parameter("bias_mode")
+        bias_voltage_step = self.get_parameter("bias_voltage_step")
+        bias_waiting_time_start = self.get_parameter("bias_waiting_time_start")
         hvsrc_current_compliance = self.get_parameter("hvsrc_current_compliance")
         hvsrc_accept_compliance = self.get_parameter("hvsrc_accept_compliance")
         vsrc_voltage_compliance = self.get_parameter("vsrc_voltage_compliance")
@@ -91,6 +94,8 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
         self.set_meta("waiting_time_start", f"{waiting_time_start:G} s")
         self.set_meta("waiting_time_end", f"{waiting_time_end:G} s")
         self.set_meta("bias_voltage", f"{bias_voltage:G} V")
+        self.set_meta("bias_voltage_step", f"{bias_voltage_step:G} V")
+        self.set_meta("bias_waiting_time_start", f"{bias_waiting_time_start:G} s")
         self.set_meta("hvsrc_current_compliance", f"{hvsrc_current_compliance:G} A")
         self.set_meta("hvsrc_accept_compliance", hvsrc_accept_compliance)
         self.hvsrc_update_meta()
@@ -168,8 +173,8 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
         # Ramp HV Spource to bias voltage
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        logger.info("V Source ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, 5.0)
-        for voltage in LinearRange(voltage, bias_voltage, 5.0):
+        logger.info("V Source ramp to bias voltage: from %E V to %E V with step %E V", voltage, bias_voltage, bias_voltage_step)
+        for voltage in LinearRange(voltage, bias_voltage, bias_voltage_step):
             self.process.emit("message", "Ramp to bias... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})
@@ -181,7 +186,7 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
             if not self.process.running:
                 break
 
-        self.wait(2.000)
+        self.wait(bias_waiting_time_start)
 
         current = self.vsrc_get_current_level(vsrc)
 
@@ -214,6 +219,8 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
 
         if not self.process.running:
             return
+
+        bias_voltage = self.hvsrc_get_voltage_level(hvsrc)
 
         current = self.vsrc_get_current_level(vsrc)
 
@@ -250,6 +257,7 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
                 timestamp=dt,
                 current=current,
                 voltage_vsrc=vsrc_reading,
+                bias_voltage=bias_voltage,
                 temperature_box=self.environment_temperature_box,
                 temperature_chuck=self.environment_temperature_chuck,
                 humidity_box=self.environment_humidity_box
@@ -283,6 +291,7 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
         current_step_after = self.get_parameter("current_step_after") or self.get_parameter("current_step")
         waiting_time_after = self.get_parameter("waiting_time_after")
         waiting_time_end = self.get_parameter("waiting_time_end")
+        bias_voltage_step = self.get_parameter("bias_voltage_step")
 
         current = self.vsrc_get_current_level(vsrc)
 
@@ -298,8 +307,8 @@ class IVRamp4WireBiasMeasurement(MatrixMeasurement, VSourceMixin, EnvironmentMix
 
         bias_voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        logger.info("V Source ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, 5.0)
-        for voltage in LinearRange(bias_voltage, 0, 5.0):
+        logger.info("V Source ramp bias to zero: from %E V to %E V with step %E V", bias_voltage, 0, bias_voltage_step)
+        for voltage in LinearRange(bias_voltage, 0, bias_voltage_step):
             self.process.emit("message", "Ramp bias to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
             self.process.emit("state", {"hvsrc_voltage": voltage})

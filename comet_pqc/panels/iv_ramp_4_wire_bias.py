@@ -32,7 +32,7 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
         self.current_step = ui.Number(minimum=0, decimals=3, suffix="uA")
         self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
         self.bias_voltage = ui.Number(decimals=3, suffix="V")
-        self.bias_mode = ui.ComboBox(["constant", "offset"])
+        self.bias_voltage_step = ui.Number(decimals=3, suffix="V")
 
         self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
         self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
@@ -43,8 +43,8 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
         self.bind("current_stop", self.current_stop, 0, unit="uA")
         self.bind("current_step", self.current_step, 0, unit="uA")
         self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("bias_mode", self.bias_mode, "constant")
+        self.bind("bias_voltage", self.bias_voltage, 10, unit="V")
+        self.bind("bias_voltage_step", self.bias_voltage_step, 1, unit="V")
 
         self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
         self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
@@ -71,11 +71,11 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
                 layout=ui.Column(
                     ui.Label(text="Bias Voltage"),
                     self.bias_voltage,
+                    ui.Label(text="Bias Voltage Step"),
+                    self.bias_voltage_step,
                     ui.Label(text="Bias Compliance"),
                     self.hvsrc_current_compliance,
                     self.hvsrc_accept_compliance,
-                    ui.Label(text="Bias Mode"),
-                    self.bias_mode,
                     ui.Spacer()
                 )
             ),

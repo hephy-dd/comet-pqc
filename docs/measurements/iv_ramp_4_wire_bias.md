@@ -29,8 +29,9 @@ Type: `iv_ramp_4_wire_bias`
 |`waiting_time_start`      |`second` |`0 s`    |Additional delay before starting with measurement ramp. |
 |`waiting_time_end`        |`second` |`0 s`    |Additional delay after final ramp down. |
 |`bias_voltage_source`     |`str`    |`hvsrc`  |Possible values are: `hvsrc`, `vsrc`. |
-|`bias_voltage_start`      |`volt`   |`10 V`   | |
-|`bias_voltage_stop`       |`volt`   |`-90 V`  | |
+|`bias_voltage`            |`volt`   |required | |
+|`bias_voltage_step`       |`volt`   |`1 V`  | |
+|`bias_waiting_time_start` |`second` |`1 s`    |Additional delay after reaching bias voltage. |
 |`hvsrc_current_compliance`|`volt`   |required |HV Source current compliance. |
 |`hvsrc_accept_compliance` |`bool`   |`false`  |Stop measurement gracefully if HV Source compliance tripped. |
 |`hvsrc_sense_mode`        |`str`    |`local`  |HV Source sense mode. Possible values are: `local`, `remote`. |
@@ -58,6 +59,7 @@ Type: `iv_ramp_4_wire_bias`
 |`timestamp`                |`second` |Time offset in seconds. |
 |`current`                  |`ampere` |Current assigned to V source. |
 |`voltage_vsrc`             |`volt`   |Voltage reading of V source. |
+|`bias_voltage`             |`volt`   |Voltage reading of HV source. |
 |`temperature_box`          |`degC`   |Box temperature in degree Celcius. |
 |`temperature_chuck`        |`degC`   |Chuck temperature in degree Celcius. |
 |`humidity_box`             |`percent`|Relative box humidity in percent. |
@@ -76,6 +78,9 @@ Type: `iv_ramp_4_wire_bias`
       current_stop: 10 uA
       current_step: 500 nA
       waiting_time: 500 ms
+      bias_voltage: 10 V
+      bias_voltage_step: 1 V
+      bias_waiting_time_start: 5 s
       vsrc_voltage_compliance: 20 V
       vsrc_sense_mode: remote
       vsrc_filter_enable: false
