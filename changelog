@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.1] - 2023-07-20
+### Fixed
+- IV ramp 4-Wire with Bias measurement (#195).
+
 ## [0.43.0] - 2023-07-19
 ### Added
 - Plugin system (#193).
@@ -362,7 +366,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.43.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.43.1...HEAD
+[0.43.1]: https://github.com/hephy-dd/comet-pqc/compare/0.43.0...0.43.1
 [0.43.0]: https://github.com/hephy-dd/comet-pqc/compare/0.42.2...0.43.0
 [0.42.2]: https://github.com/hephy-dd/comet-pqc/compare/0.42.1...0.42.2
 [0.42.1]: https://github.com/hephy-dd/comet-pqc/compare/0.42.0...0.42.1
