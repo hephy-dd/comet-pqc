@@ -164,6 +164,22 @@ class QuickEditDialog(QtWidgets.QDialog):
         layout.addWidget(self._scrollArea)
         layout.addWidget(self._buttonBox)
 
+    def readSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("quickedit")
+        geometry = settings.value("geometry", None)
+        settings.endGroup()
+        if geometry is None:
+            self.resize(800, 600)
+        else:
+            self.restoreGeometry(geometry)
+
+    def writeSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("quickedit")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.endGroup()
+
     def addItem(self) -> QuickEditItem:
         item = QuickEditItem(self)
         row = self._gridLayout.rowCount()

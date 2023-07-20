@@ -1,8 +1,10 @@
 comet @ git+https://github.com/hephy-dd/comet.git@0.13.2
 analysis-pqc @ git+https://github.com/hephy-dd/analysis-pqc.git@0.7.1
-PyQt5==5.15.*
-PyQtChart==5.15.*
-PyYAML==6.0.*
-jsonschema==3.2.*
-bottle==0.12.*
-waitress==2.1.*
+PyVISA==1.11.*
+PyVISA-py==0.5.*
+PyQt5==5.15.9
+PyQtChart==5.15.6
+PyYAML==6.0.1
+jsonschema==3.2.0
+flask==2.3.2
+waitress==2.1.2

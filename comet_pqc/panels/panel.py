@@ -1,15 +1,21 @@
+from typing import Optional
+
 import comet
 from comet import ui
-from PyQt5 import QtCore
+
+from PyQt5 import QtCore, QtWidgets
 
 from ..utils import stitch_pixmaps
 
 __all__ = ["PanelStub", "BasicPanel", "Panel"]
 
 
-class PanelStub(ui.Widget):
+class PanelStub(QtWidgets.QWidget):
 
     type: str = ""
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
     @property
     def context(self):
@@ -24,10 +30,7 @@ class PanelStub(ui.Widget):
     def clear_readings(self):
         ...
 
-    def lock(self):
-        ...
-
-    def unlock(self):
+    def setLocked(self, locked: bool) -> None:
         ...
 
     def mount(self, context):
@@ -40,22 +43,30 @@ class PanelStub(ui.Widget):
 
 class BasicPanel(PanelStub, comet.SettingsMixin):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title_label = ui.Label(
-            stylesheet="font-size: 16px; font-weight: bold; height: 32px;"
-        )
-        self.title_label.qt.setTextFormat(QtCore.Qt.RichText)
-        self.description_label = ui.Label()
-        self.layout = ui.Column(
-            self.title_label,
-            self.description_label,
-            ui.Spacer()
-        )
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.titleLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.titleLabel.setStyleSheet("font-size: 16px; font-weight: bold; height: 32px;")
+        self.titleLabel.setTextFormat(QtCore.Qt.RichText)
+
+        self.descriptionLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.titleLabel)
+        layout.addWidget(self.descriptionLabel)
+        layout.addStretch(1)
+
+    def setTitle(self, text: str) -> None:
+        self.titleLabel.setText(text)
+
+    def setDescription(self, text: str) -> None:
+        self.descriptionLabel.setText(text)
+        self.descriptionLabel.setVisible(len(self.descriptionLabel.text()) > 0)
 
     def unmount(self):
-        self.title_label.text = ""
-        self.description_label.text = ""
+        self.titleLabel.clear()
+        self.descriptionLabel.clear()
         super().unmount()
 
 
@@ -66,6 +77,7 @@ class Panel(BasicPanel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.title = ""
         self._bindings = {}
         self.state_handlers = []
         self.data_panel = ui.Column()
@@ -83,9 +95,8 @@ class Panel(BasicPanel):
             ),
             stretch=(3, 1)
         )
-        self.layout.insert(2, self.data_panel)
-        self.layout.insert(3, self.control_panel)
-        self.layout.stretch= 0, 0, 0, 0, 1
+        self.layout().insertWidget(2, self.data_panel.qt)
+        self.layout().insertWidget(3, self.control_panel.qt)
         self.measurement = None
         self.data_tabs = ui.Tabs()
         self.data_panel.append(self.data_tabs)
@@ -103,7 +114,7 @@ class Panel(BasicPanel):
         and store.
 
         >>> # for measurement parameter "value" of unit "V"
-        >>> self.value = ui.Number()
+        >>> self.value = QtWidgets.QDoubleSpinBox()
         >>> self.bind("value", self.value, default=10.0, unit="V")
         """
         self._bindings[key] = element, default, unit
@@ -111,13 +122,12 @@ class Panel(BasicPanel):
     def mount(self, measurement):
         """Mount measurement to panel."""
         super().mount(measurement)
-        self.title_label.text = f"{self.title} &rarr; {measurement.name}"
-        self.description_label.text = measurement.description
+        self.setTitle(f"{self.title} &rarr; {measurement.name}")
+        self.setDescription(measurement.description or "")
         self.measurement = measurement
         # Load parameters to UI
         parameters = self.measurement.parameters
-        for key, item in self._bindings.items():
-            element, default, unit = item
+        for key, (element, default, unit) in self._bindings.items():
             value = parameters.get(key, default)
             if unit is not None:
                 if isinstance(value, comet.ureg.Quantity):
@@ -156,8 +166,7 @@ class Panel(BasicPanel):
         """Store UI element values to measurement parameters."""
         if self.measurement:
             parameters = self.measurement.parameters
-            for key, item in self._bindings.items():
-                element, default, unit = item
+            for key, (element, default, unit) in self._bindings.items():
                 if isinstance(element, ui.List):
                     value = getattr(element, "values")
                 elif isinstance(element, ui.ComboBox):
@@ -180,8 +189,7 @@ class Panel(BasicPanel):
         """Restore measurement defaults."""
         if self.measurement:
             default_parameters = self.measurement.default_parameters
-            for key, item in self._bindings.items():
-                element, default, unit = item
+            for key, (element, default, unit) in self._bindings.items():
                 value = default_parameters.get(key, default)
                 if unit is not None:
                     if isinstance(value, comet.ureg.Quantity):
@@ -228,17 +236,14 @@ class Panel(BasicPanel):
             for key, values in self.measurement.analysis.items():
                 self.append_analysis(key, values)
 
-    def lock(self):
+    def setLocked(self, locked: bool) -> None:
         for tab in self.control_tabs:
-            tab.enabled = False
-        if self.general_tab in self.control_tabs:
-            self.control_tabs.current = self.general_tab
-        self.control_tabs.enabled = True
-        self.status_panel.enabled = True
-
-    def unlock(self):
-        for tab in self.control_tabs:
-            tab.enabled = True
+            tab.qt.setEnabled(not locked)
+        if locked:
+            if self.general_tab in self.control_tabs:
+                self.control_tabs.current = self.general_tab
+            self.control_tabs.enabled = True
+            self.status_panel.enabled = True
 
     def save_to_image(self, filename):
         """Save screenshots of data tabs to stitched image."""

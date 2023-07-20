@@ -1,12 +1,14 @@
 import json
 import logging
+import math
 
 import analysis_pqc
-import bottle
 import comet
+from flask import Flask, jsonify
+from PyQt5 import QtCore
 from waitress.server import TcpWSGIServer
 
-from .. import __version__
+from comet_pqc import __version__
 
 __all__ = ["WebAPIProcess"]
 
@@ -38,14 +40,6 @@ class WSGIServer(TcpWSGIServer):
         return True
 
 
-class JSONErrorBottle(bottle.Bottle):
-    """Custom bollte application with default JSON error handling."""
-
-    def default_error_handler(self, res):
-        bottle.response.content_type = "application/json"
-        return json.dumps({"error": res.body, "status_code": res.status_code})
-
-
 class WebAPIProcess(comet.Process, comet.ProcessMixin):
 
     host = "localhost"
@@ -60,46 +54,43 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             server.shutdown()
 
     def run(self):
-        self.enabled = self.settings.get("webapi_enabled") or type(self).enabled
-        self.host = self.settings.get("webapi_host") or type(self).host
-        self.port = int(self.settings.get("webapi_port") or type(self).port)
+        settings = QtCore.QSettings()
+        settings.beginGroup("plugin.webapi")
+        self.enabled = settings.value("enabled", type(self).enabled, bool)
+        self.host = settings.value("hostname",  type(self).host, str)
+        self.port = settings.value("port", type(self).port, int)
+        settings.endGroup()
 
         if not self.enabled:
             return
 
         logger.info("start serving webapi... %s:%s", self.host, self.port)
 
-        app = JSONErrorBottle()
-
-        # Fix Cross-Origin Request Blocked error on client side
-        def apply_cors():
-            bottle.response.headers["Access-Control-Allow-Origin"] = "*"
-        app.add_hook("after_request", apply_cors)
+        app = Flask(__name__)
 
         @app.route("/")
         def index():
-            return {
+            return jsonify({
                 "pqc_version": __version__,
                 "comet_version": comet.__version__,
                 "analyze_pqc_version": analysis_pqc.__version__,
-            }
+            })
 
         @app.route("/table")
         def table():
             enabled = self._table_enabled()
             position = self._table_position()
             contact_quality = self._contact_quality()
-            return {
+            return jsonify({
                 "table": {
                     "enabled": enabled,
                     "position": position,
                     "contact_quality": contact_quality
                 }
-            }
+            })
 
         self.server = WSGIServer(app, host=self.host, port=self.port)
-        while self.running:
-            self.server.run()
+        self.server.run()
         self.server = None
         logger.info("stopped serving webapi")
 

@@ -168,7 +168,7 @@ class MeasureProcess(BaseProcess):
 
     context = None
 
-    def __init__(self, message, progress, measurement_state=None,
+    def __init__(self, message=None, progress=None, measurement_state=None,
                  measurement_reset=None, reading=None, save_to_image=None,
                  push_summary=None, **kwargs):
         super().__init__(**kwargs)
@@ -282,7 +282,14 @@ class MeasureProcess(BaseProcess):
             finally:
                 self.emit(self.measurement_state, measurement_item, state)
                 self.emit("save_to_image", measurement_item, plot_filename)
-                self.emit("push_summary", measurement.timestamp, sample_name, sample_type, measurement_item.contact.name, measurement_item.name, state)
+                self.emit("push_summary", {
+                    "timestamp": measurement.timestamp,
+                    "sample_name": sample_name,
+                    "sample_type": sample_type,
+                    "contact_name": measurement_item.contact.name,
+                    "measurement_name": measurement_item.name,
+                    "measurement_state": state,
+                })
                 if self.get("serialize_json"):
                     with open(self.create_filename(measurement, suffix=".json"), "w") as fp:
                         measurement.serialize_json(fp)
@@ -460,3 +467,5 @@ class MeasureProcess(BaseProcess):
             raise
         else:
             self.emit("message", "Measurement done.")
+        finally:
+            self.emit("measurements_finished")

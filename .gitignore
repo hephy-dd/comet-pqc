@@ -32,8 +32,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-!pyinstaller.spec
-entry_point.pyw
+!windows_app.spec
+launcher.pyw
 version_info.txt
 
 # Installer logs

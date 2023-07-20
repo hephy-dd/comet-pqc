@@ -4,8 +4,9 @@ import math
 import os
 import time
 import webbrowser
+from typing import Optional
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 import comet
 from comet.process import ProcessMixin
@@ -21,9 +22,7 @@ from .components import (
 )
 from .core import config
 from .core.position import Position
-from .core.formatter import CSVFormatter
 from .core.utils import make_path, user_home
-from .logwindow import LogWidget
 from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
@@ -36,12 +35,11 @@ from .sequence import (
 )
 from .settings import settings
 from .tablecontrol import TableControlDialog, safe_z_position
-from .tabs import EnvironmentTab, MeasurementTab, StatusTab, SummaryTab
-from .utils import caldone_valid, handle_exception
+from .environmentwidget import EnvironmentWidget
+from .measurementwidget import MeasurementWidget
+from .utils import caldone_valid, handle_exception, create_icon
 
 logger = logging.getLogger(__name__)
-
-SUMMARY_FILENAME = "summary.csv"
 
 
 class SequenceWidget(ui.GroupBox, SettingsMixin):
@@ -162,7 +160,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             )
         )
 
-    def load_settings(self):
+    def readSettings(self):
         samples = self.settings.get("sequence_samples") or []
         self._sequence_tree.clear()
         for kwargs in samples:
@@ -178,36 +176,23 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._sequence_tree.fit()
         self.current_path = self.settings.get("sequence_default_path") or user_home()
 
-    def store_settings(self):
+    def writeSettings(self):
         sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
         self.settings["sequence_samples"] = sequence_samples
         self.settings["sequence_default_path"] = self.current_path
 
-    def lock(self):
-        self._sequence_tree.double_clicked = None
-        self._start_button.enabled = False
-        self._stop_button.enabled = True
-        self._reset_button.enabled = False
-        self._edit_button.enabled = False
-        self._reload_config_button.enabled = False
-        self._add_sample_button.enabled = False
-        self._remove_sample_button.enabled = False
-        self._save_button.enabled = False
-        self._open_button.enabled = False
-        self._sequence_tree.lock()
-
-    def unlock(self):
-        self._sequence_tree.double_clicked = self.tree_double_clicked
-        self._start_button.enabled = True
-        self._stop_button.enabled = False
-        self._reset_button.enabled = True
-        self._edit_button.enabled = True
-        self._reload_config_button.enabled = True
-        self._add_sample_button.enabled = True
-        self._remove_sample_button.enabled = True
-        self._save_button.enabled = True
-        self._open_button.enabled = True
-        self._sequence_tree.unlock()
+    def setLocked(self, locked: bool) -> None:
+        self._sequence_tree.double_clicked = None if locked else self.tree_double_clicked
+        self._start_button.enabled = not locked
+        self._stop_button.enabled = locked
+        self._reset_button.enabled = not locked
+        self._edit_button.enabled = not locked
+        self._reload_config_button.enabled = not locked
+        self._add_sample_button.enabled = not locked
+        self._remove_sample_button.enabled = not locked
+        self._save_button.enabled = not locked
+        self._open_button.enabled = not locked
+        self._sequence_tree.setLocked(locked)
 
     def stop(self):
         self._stop_button.enabled = False
@@ -218,11 +203,23 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             title="Reload Configuration",
             text="Do you want to reload sequence configurations from file?"
         ): return
-        for sample_item in self._sequence_tree:
-            if sample_item.sequence:
-                filename = sample_item.sequence.filename
-                sequence = config.load_sequence(filename)
-                sample_item.load_sequence(sequence)
+        sample_items = self._sequence_tree
+        dialog = QtWidgets.QProgressDialog()
+        dialog.setWindowModality(QtCore.Qt.WindowModal)
+        dialog.setLabelText("Reloading sequences...")
+        dialog.setCancelButton(None)
+        dialog.setMaximum(len(sample_items))
+        @handle_exception
+        def callback():
+            for sample_item in sample_items:
+                dialog.setValue(dialog.value() + 1)
+                if sample_item.sequence:
+                    filename = sample_item.sequence.filename
+                    sequence = config.load_sequence(filename)
+                    sample_item.load_sequence(sequence)
+            dialog.close()
+        QtCore.QTimer.singleShot(100, callback)
+        dialog.exec()
 
     @handle_exception
     def on_add_sample_clicked(self):
@@ -361,179 +358,110 @@ class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
         self._calibration_widget.update_calibration(position)
         self.calibration_valid = caldone_valid(position)
 
-    def load_settings(self):
+    def readSettings(self):
         use_table = self.settings.get("use_table") or False
         self.checked = use_table
         self._joystick_limits = settings.table_joystick_maximum_limits
 
 
-class EnvironmentControlWidget(ui.GroupBox):
+class EnvironmentControlWidget(QtWidgets.QGroupBox):
 
-    laser_sensor_toggled = None
-    box_light_toggled = None
-    microscope_light_toggled = None
-    microscope_camera_toggled = None
-    microscope_control_toggled = None
-    probecard_light_toggled = None
-    probecard_camera_toggled = None
-    pid_control_toggled = None
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setTitle("Environment Box")
+        self.setCheckable(True)
 
-    def __init__(self, laser_sensor_toggled=None, box_light_toggled=None,
-                 microscope_light_toggled=None, microscope_camera_toggled=None,
-                 microscope_control_toggled=None, probecard_light_toggled=None,
-                 probecard_camera_toggled=None, pid_control_toggled=None,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Environment Box"
-        self.checkable = True
-        self._laser_sensor_button = ToggleButton(
-            text="Laser",
-            tool_tip="Toggle laser",
-            checkable=True,
-            checked=False,
-            toggled=self.on_laser_sensor_toggled
-        )
-        self._box_light_button = ToggleButton(
-            text="Box Light",
-            tool_tip="Toggle box light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_box_light_toggled
-        )
-        self._microscope_light_button = ToggleButton(
-            text="Mic Light",
-            tool_tip="Toggle microscope light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_light_toggled
-        )
-        self._microscope_camera_button = ToggleButton(
-            text="Mic Cam",
-            tool_tip="Toggle microscope camera power",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_camera_toggled
-        )
-        self._microscope_control_button = ToggleButton(
-            text="Mic Ctrl",
-            tool_tip="Toggle microscope control",
-            checkable=True,
-            checked=False,
-            toggled=self.on_microscope_control_toggled
-        )
-        self._probecard_light_button = ToggleButton(
-            text="PC Light",
-            tool_tip="Toggle probe card light",
-            checkable=True,
-            checked=False,
-            toggled=self.on_probecard_light_toggled
-        )
-        self._probecard_camera_button = ToggleButton(
-            text="PC Cam",
-            tool_tip="Toggle probe card camera power",
-            checkable=True,
-            checked=False,
-            toggled=self.on_probecard_camera_toggled
-        )
-        self._pid_control_button = ToggleButton(
-            text="PID Control",
-            tool_tip="Toggle PID control",
-            checkable=True,
-            checked=False,
-            toggled=self.on_pid_control_toggled
-        )
-        self.layout=ui.Row(
-            ui.Column(
-                self._laser_sensor_button,
-                self._microscope_camera_button,
-            ),
-            ui.Column(
-                self._box_light_button,
-                self._probecard_camera_button,
-            ),
-            ui.Column(
-                self._microscope_light_button,
-                self._microscope_control_button,
-            ),
-            ui.Column(
-                self._probecard_light_button,
-                self._pid_control_button
-            ),
-            stretch=(1, 1, 1, 1)
-        )
-        # Callbacks
-        self.laser_sensor_toggled = laser_sensor_toggled
-        self.box_light_toggled = box_light_toggled
-        self.microscope_light_toggled = microscope_light_toggled
-        self.microscope_camera_toggled = microscope_camera_toggled
-        self.microscope_control_toggled = microscope_control_toggled
-        self.probecard_light_toggled = probecard_light_toggled
-        self.probecard_camera_toggled = probecard_camera_toggled
-        self.pid_control_toggled = pid_control_toggled
+        self.laserSensorButton = self.createButton()
+        self.laserSensorButton.setText("Laser")
+        self.laserSensorButton.setToolTip("Toggle laser")
 
-    def on_laser_sensor_toggled(self, state):
-        self.emit(self.laser_sensor_toggled, state)
+        self.boxLightButton = self.createButton()
+        self.boxLightButton.setText("Box Light")
+        self.boxLightButton.setToolTip("Toggle box light")
 
-    def on_box_light_toggled(self, state):
-        self.emit(self.box_light_toggled, state)
+        self.microscopeLightButton = self.createButton()
+        self.microscopeLightButton.setText("Mic Light")
+        self.microscopeLightButton.setToolTip("Toggle microscope light")
 
-    def on_microscope_light_toggled(self, state):
-        self.emit(self.microscope_light_toggled, state)
+        self.microscopeCameraButton = self.createButton()
+        self.microscopeCameraButton.setText("Mic Cam")
+        self.microscopeCameraButton.setToolTip("Toggle microscope camera power")
 
-    def on_microscope_camera_toggled(self, state):
-        self.emit(self.microscope_camera_toggled, state)
+        self.microscopeControlButton = self.createButton()
+        self.microscopeControlButton.setText("Mic Ctrl")
+        self.microscopeControlButton.setToolTip("Toggle microscope control")
 
-    def on_microscope_control_toggled(self, state):
-        self.emit(self.microscope_control_toggled, state)
+        self.probecardLightButton = self.createButton()
+        self.probecardLightButton.setText("PC Light")
+        self.probecardLightButton.setToolTip("Toggle probe card light")
 
-    def on_probecard_light_toggled(self, state):
-        self.emit(self.probecard_light_toggled, state)
+        self.probecardCameraButton = self.createButton()
+        self.probecardCameraButton.setText("PC Cam")
+        self.probecardCameraButton.setToolTip("Toggle probe card camera power")
 
-    def on_probecard_camera_toggled(self, state):
-        self.emit(self.probecard_camera_toggled, state)
+        self.pidControlButton = self.createButton()
+        self.pidControlButton.setText("PID Control")
+        self.pidControlButton.setToolTip("Toggle PID control")
 
-    def on_pid_control_toggled(self, state):
-        self.emit(self.pid_control_toggled, state)
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.laserSensorButton, 0, 0)
+        layout.addWidget(self.microscopeCameraButton, 1, 0)
+        layout.addWidget(self.boxLightButton, 0, 1)
+        layout.addWidget(self.probecardCameraButton, 1, 1)
+        layout.addWidget(self.microscopeLightButton, 0, 2)
+        layout.addWidget(self.microscopeControlButton, 1, 2)
+        layout.addWidget(self.probecardLightButton, 0, 3)
+        layout.addWidget(self.pidControlButton, 1, 3)
 
-    def update_laser_sensor_state(self, state):
-        self._laser_sensor_button.checked = state
+    def createButton(self) -> QtWidgets.QPushButton:
+        button = QtWidgets.QPushButton(self)
+        button.setCheckable(True)
+        button.setChecked(False)
+        button.setProperty("checkedIcon", create_icon(12, "green").qt)
+        button.setProperty("uncheckedIcon", create_icon(12, "grey").qt)
+        def updateIcon(state):
+            button.setIcon(button.property("checkedIcon") if state else button.property("uncheckedIcon"))
+        updateIcon(False)
+        button.toggled.connect(updateIcon)
+        return button
 
-    def update_box_light_state(self, state):
-        self._box_light_button.checked = state
+    def updateLaserSensorState(self, state: bool) -> None:
+        self.laserSensorButton.setChecked(state)
 
-    def update_microscope_light_state(self, state):
-        self._microscope_light_button.checked = state
+    def updateBoxLightState(self, state: bool) -> None:
+        self.boxLightButton.setChecked(state)
 
-    def update_microscope_camera_state(self, state):
-        self._microscope_camera_button.checked = state
+    def updateMicroscopeLightState(self, state: bool) -> None:
+        self.microscopeLightButton.setChecked(state)
 
-    def update_microscope_control_state(self, state):
-        self._microscope_control_button.checked = state
+    def updateMicroscopeCameraState(self, state: bool) -> None:
+        self.microscopeCameraButton.setChecked(state)
 
-    def update_probecard_light_state(self, state):
-        self._probecard_light_button.checked = state
+    def updateMicroscopeControlState(self, state: bool) -> None:
+        self.microscopeControlButton.setChecked(state)
 
-    def update_probecard_camera_state(self, state):
-        self._probecard_camera_button.checked = state
+    def updateProbecardLightState(self, state: bool) -> None:
+        self.probecardLightButton.setChecked(state)
 
-    def update_pid_control_state(self, state):
-        self._pid_control_button.checked = state
+    def updateProbecardCameraState(self, state: bool) -> None:
+        self.probecardCameraButton.setChecked(state)
+
+    def updatePidControlState(self, state: bool) -> None:
+        self.pidControlButton.setChecked(state)
 
 
-class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
+class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     sample_count = 4
 
-    lock_state_changed = None
-    message_changed = None
-    progress_changed = None
+    lockStateChanged = QtCore.pyqtSignal(bool)
+    messageChanged = QtCore.pyqtSignal(str)
+    progressChanged = QtCore.pyqtSignal(int, int)
+    failed = QtCore.pyqtSignal(Exception, object)
 
-    def __init__(self, lock_state_changed=None, message_changed=None, progress_changed=None, **kwargs):
-        super().__init__()
-        # Callbacks
-        self.lock_state_changed = lock_state_changed
-        self.message_changed = message_changed
-        self.progress_changed = progress_changed
+    def __init__(self, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.plugins = plugins
         # Layout
         self.temporary_z_limit_label = ui.Label(
             text="Temporary Probecard Z-Limit applied. "
@@ -557,17 +485,16 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         # Environment Controls
 
-        self.environment_control_widget = EnvironmentControlWidget(
-            toggled=self.on_environment_groupbox_toggled,
-            laser_sensor_toggled=self.on_laser_sensor_toggled,
-            box_light_toggled=self.on_box_light_toggled,
-            microscope_light_toggled=self.on_microscope_light_toggled,
-            microscope_camera_toggled=self.on_microscope_camera_toggled,
-            microscope_control_toggled=self.on_microscope_control_toggled,
-            probecard_light_toggled=self.on_probecard_light_toggled,
-            probecard_camera_toggled=self.on_probecard_camera_toggled,
-            pid_control_toggled=self.on_pid_control_toggled
-        )
+        self.environmentControlWidget = EnvironmentControlWidget(self)
+        self.environmentControlWidget.toggled.connect(self.on_environment_groupbox_toggled)
+        self.environmentControlWidget.laserSensorButton.toggled.connect(self.on_laser_sensor_toggled)
+        self.environmentControlWidget.boxLightButton.toggled.connect(self.on_box_light_toggled)
+        self.environmentControlWidget.microscopeLightButton.toggled.connect(self.on_microscope_light_toggled)
+        self.environmentControlWidget.microscopeCameraButton.toggled.connect(self.on_microscope_camera_toggled)
+        self.environmentControlWidget.microscopeControlButton.toggled.connect(self.on_microscope_control_toggled)
+        self.environmentControlWidget.probecardLightButton.toggled.connect(self.on_probecard_light_toggled)
+        self.environmentControlWidget.probecardCameraButton.toggled.connect(self.on_probecard_camera_toggled)
+        self.environmentControlWidget.pidControlButton.toggled.connect(self.on_pid_control_toggled)
 
         # Table controls
 
@@ -580,7 +507,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         # Operator
 
         self.operator_widget = OperatorWidget()
-        self.operator_widget.load_settings()
+        self.operator_widget.readSettings()
         self.operator_groupbox = ui.GroupBox(
             title="Operator",
             layout=self.operator_widget
@@ -597,101 +524,98 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
         # Controls
 
-        self.control_widget = ui.Column(
-            self.sequence_widget,
-            self.table_control_widget,
-            self.environment_control_widget,
-            ui.Row(
-                self.operator_groupbox,
-                self.output_groupbox,
-                stretch=(3, 7)
-            ),
-            stretch=(1, 0, 0)
-        )
+        self.controlWidget = QtWidgets.QWidget(self)
+
+        controlWidgetLayout = QtWidgets.QGridLayout(self.controlWidget)
+        controlWidgetLayout.setContentsMargins(0, 0, 0, 0)
+        controlWidgetLayout.addWidget(self.sequence_widget.qt, 0, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.table_control_widget.qt, 1, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.environmentControlWidget, 2, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.operator_groupbox.qt, 3, 0, 1, 1)
+        controlWidgetLayout.addWidget(self.output_groupbox.qt, 3, 1, 1, 1)
+        controlWidgetLayout.setRowStretch(0, 1)
+        controlWidgetLayout.setColumnStretch(0, 3)
+        controlWidgetLayout.setColumnStretch(1, 7)
 
         # Tabs
 
-        self.measurement_tab = MeasurementTab(restore=self.on_measure_restore)
-        self.environment_tab = EnvironmentTab()
-        self.status_tab = StatusTab(reload=self.on_status_start)
-        self.summary_tab = SummaryTab()
+        self.measurementWidget = MeasurementWidget()
+        self.measurementWidget.restoreDefaults.connect(self.restoreDefaults)
 
-        self.panels = self.measurement_tab.panels
-        self.panels.sample_changed = self.on_sample_changed
+        self.environmentWidget = EnvironmentWidget()
 
-        self.log_widget = LogWidget()
-        self.log_widget.add_logger(logging.getLogger())
-
-        self.logging_tab = ui.Tab(
-            title="Logs",
-            layout=self.log_widget
-        )
+        self.panels = self.measurementWidget.panels
+        self.panels.sampleChanged.connect(lambda _: self.sequence_tree.fit())
 
         # Tabs
 
-        self.tab_widget = ui.Tabs(
-            self.measurement_tab,
-            self.environment_tab,
-            self.status_tab,
-            self.logging_tab,
-            self.summary_tab
-        )
+        self.tabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget.addTab(self.measurementWidget, "Measurement")
+        self.tabWidget.addTab(self.environmentWidget, "Environment")
 
         # Layout
 
-        self.splitter = ui.Splitter()
-        self.splitter.append(self.control_widget)
-        self.splitter.append(self.tab_widget)
-        self.splitter.stretch = 4, 9
-        self.splitter.collapsible = False
+        self.splitter = QtWidgets.QSplitter(self)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.addWidget(self.controlWidget)
+        self.splitter.addWidget(self.tabWidget)
+        self.splitter.setStretchFactor(0, 4)
+        self.splitter.setStretchFactor(1, 9)
 
-        self.append(self.temporary_z_limit_label)
-        self.append(self.splitter)
-        self.stretch = 0, 1
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.temporary_z_limit_label.qt, 0)
+        layout.addWidget(self.splitter, 1)
 
         # Setup process callbacks
 
         self.environ_process = self.processes.get("environ")
         self.environ_process.pc_data_updated = self.on_pc_data_updated
-
-        self.status_process = self.processes.get("status")
-        self.status_process.finished = self.on_status_finished
+        self.environ_process.failed = self.failed.emit
 
         self.table_process = self.processes.get("table")
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed
         self.table_process.caldone_changed = self.on_table_calibration_changed
+        self.table_process.failed = self.failed.emit
 
         self.measure_process = self.processes.get("measure")
         self.measure_process.finished = self.on_finished
         self.measure_process.measurement_state = self.on_measurement_state
         self.measure_process.measurement_reset = self.on_measurement_reset
         self.measure_process.save_to_image = self.on_save_to_image
+        self.measure_process.failed = self.failed.emit
+        self.measure_process.message = self.messageChanged.emit
+        self.measure_process.progress = self.progressChanged.emit
 
         self.contact_quality_process = self.processes.get("contact_quality")
-
-        # Experimental
-
-        self.close_event = self.on_stop
+        self.contact_quality_process.failed = self.failed.emit
 
     @handle_exception
-    def load_settings(self):
-        self.splitter.sizes = self.settings.get("dashboard_sizes") or (300, 500)
-        self.sequence_widget.load_settings()
+    def readSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("dashboard")
+        self.splitter.restoreState(settings.value("splitterState", QtCore.QByteArray(), QtCore.QByteArray))
+        settings.endGroup()
+
+        self.sequence_widget.readSettings()
         use_environ = self.settings.get("use_environ", False)
-        self.environment_control_widget.checked = use_environ
-        self.table_control_widget.load_settings()
-        self.operator_widget.load_settings()
-        self.output_widget.load_settings()
+        self.environmentControlWidget.setChecked(use_environ)
+        self.table_control_widget.readSettings()
+        self.operator_widget.readSettings()
+        self.output_widget.readSettings()
 
     @handle_exception
-    def store_settings(self):
-        self.settings["dashboard_sizes"] = self.splitter.sizes
-        self.sequence_widget.store_settings()
+    def writeSettings(self):
+        settings = QtCore.QSettings()
+        settings.beginGroup("dashboard")
+        settings.setValue("splitterState", self.splitter.saveState())
+        settings.endGroup()
+
+        self.sequence_widget.writeSettings()
         self.settings["use_environ"] = self.use_environment()
         self.settings["use_table"] = self.use_table()
-        self.operator_widget.store_settings()
-        self.output_widget.store_settings()
+        self.operator_widget.writeSettings()
+        self.output_widget.writeSettings()
 
     def sample_name(self):
         """Return sample name."""
@@ -725,7 +649,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     def use_environment(self):
         """Return True if environment box enabled."""
-        return self.environment_control_widget.checked
+        return self.environmentControlWidget.isChecked()
 
     def use_table(self):
         """Return True if table control enabled."""
@@ -761,25 +685,25 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     def lock_controls(self):
         """Lock dashboard controls."""
-        self.environment_control_widget.enabled = False
+        self.environmentControlWidget.setEnabled(False)
         self.table_control_widget.enabled = False
-        self.sequence_widget.lock()
+        self.sequence_widget.setLocked(True)
         self.output_groupbox.enabled = False
         self.operator_groupbox.enabled = False
-        self.measurement_tab.lock()
-        self.status_tab.lock()
-        self.lock_state_changed(True)
+        self.measurementWidget.setLocked(True)
+        self.plugins.handle("lock_controls", True)
+        self.lockStateChanged.emit(True)
 
     def unlock_controls(self):
         """Unlock dashboard controls."""
-        self.environment_control_widget.enabled = True
+        self.environmentControlWidget.setEnabled(True)
         self.table_control_widget.enabled = True
-        self.sequence_widget.unlock()
+        self.sequence_widget.setLocked(False)
         self.output_groupbox.enabled = True
         self.operator_groupbox.enabled = True
-        self.measurement_tab.unlock()
-        self.status_tab.unlock()
-        self.lock_state_changed(False)
+        self.measurementWidget.setLocked(False)
+        self.plugins.handle("lock_controls", False)
+        self.lockStateChanged.emit(False)
 
     def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
         logger.info("Temporary Z-Limit enabled: %s", enabled)
@@ -790,20 +714,20 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
     def on_tree_selected(self, item):
         self.panels.store()
         self.panels.unmount()
-        self.panels.clear_readings()
+        self.panels.clear()
         self.panels.hide()
-        self.measurement_tab.measure_controls.visible = False
+        self.measurementWidget.setControlsVisible(False)
         self.start_sample_action.qt.setEnabled(False)
         self.start_contact_action.qt.setEnabled(False)
         self.start_measurement_action.qt.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(item)
             self.start_sample_action.qt.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
-            panel.visible = True
+            panel.setVisible(True)
             panel.table_move = self.on_table_contact
             panel.table_contact = self.on_table_move
             panel.mount(item)
@@ -811,18 +735,15 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             if panel:
-                panel.visible = True
+                panel.setVisible(True)
                 panel.mount(item)
-                self.measurement_tab.measure_controls.visible = True
+                self.measurementWidget.setControlsVisible(True)
                 self.start_measurement_action.qt.setEnabled(True)
         # Show measurement tab
-        self.tab_widget.current = self.measurement_tab
+        self.tabWidget.setCurrentWidget(self.measurementWidget)
 
     def on_tree_double_clicked(self, item, index):
         self.on_start()
-
-    def on_sample_changed(self, item):
-        self.sequence_tree.fit()
 
     # Contcat table controls
 
@@ -831,8 +752,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         if self.use_table():
             self.lock_controls()
             x, y, z = contact.position
-            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
-            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
+            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -842,8 +763,8 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             self.lock_controls()
             x, y, z = contact.position
             z = safe_z_position(z)
-            self.table_process.message_changed = lambda message: self.emit("message_changed", message)
-            self.table_process.progress_changed = lambda a, b: self.emit("progress_changed", a, b)
+            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
@@ -852,11 +773,11 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         current_item = self.sequence_tree.current
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(current_item)
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(current_item)
         self.unlock_controls()
 
@@ -867,14 +788,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             context=sample_items,
             table_enabled=self.use_table()
         )
-        self.operator_widget.store_settings()
-        self.output_widget.store_settings()
-        dialog.load_settings()
+        self.operator_widget.writeSettings()
+        self.output_widget.writeSettings()
+        dialog.readSettings()
         if not dialog.run():
             return
-        dialog.store_settings()
-        self.operator_widget.load_settings()
-        self.output_widget.load_settings()
+        dialog.writeSettings()
+        self.operator_widget.readSettings()
+        self.output_widget.readSettings()
         self._on_start(
             sample_items,
             move_to_contact=dialog.move_to_contact(),
@@ -884,7 +805,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
     @handle_exception
     def on_start(self):
         # Store settings
-        self.store_settings()
+        self.writeSettings()
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
@@ -898,14 +819,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 context=current_item,
                 table_enabled=self.use_table()
             )
-            self.operator_widget.store_settings()
-            self.output_widget.store_settings()
-            dialog.load_settings()
+            self.operator_widget.writeSettings()
+            self.output_widget.writeSettings()
+            dialog.readSettings()
             if not dialog.run():
                 return
-            dialog.store_settings()
-            self.operator_widget.load_settings()
-            self.output_widget.load_settings()
+            dialog.writeSettings()
+            self.operator_widget.readSettings()
+            self.output_widget.readSettings()
             self._on_start(
                 current_item,
                 move_to_contact=dialog.move_to_contact(),
@@ -916,14 +837,14 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 context=current_item,
                 table_enabled=self.use_table()
             )
-            self.operator_widget.store_settings()
-            self.output_widget.store_settings()
-            dialog.load_settings()
+            self.operator_widget.writeSettings()
+            self.output_widget.writeSettings()
+            dialog.readSettings()
             if not dialog.run():
                 return
-            dialog.store_settings()
-            self.operator_widget.load_settings()
-            self.output_widget.load_settings()
+            dialog.writeSettings()
+            self.operator_widget.readSettings()
+            self.output_widget.readSettings()
             move_to_after_position = dialog.move_to_position()
             self._on_start(
                 current_item,
@@ -935,7 +856,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         # Create output directory
         self.panels.store()
         self.panels.unmount()
-        self.panels.clear_readings()
+        self.panels.clear()
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
@@ -961,9 +882,9 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
             self.sequence_tree.scroll_to(item)
             self.panels.unmount()
             self.panels.hide()
-            self.panels.clear_readings()
+            self.panels.clear()
             panel = self.panels.get(item.type)
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(item)
             measure.reading = panel.append_reading
             measure.update = panel.update_readings
@@ -975,6 +896,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         measure.show_measurement = show_measurement
         measure.hide_measurement = hide_measurement
         measure.push_summary = self.on_push_summary
+        measure.measurements_finished = self.on_measurements_finished
         measure.start()
 
     def on_measurement_state(self, item, state=None):
@@ -1007,13 +929,13 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         ): return
         current_item = self.sequence_tree.current
         self.panels.unmount()
-        self.panels.clear_readings()
+        self.panels.clear()
         self.panels.hide()
         for sample_item in self.sequence_tree:
             sample_item.reset()
         if current_item is not None:
             panel = self.panels.get(current_item.type)
-            panel.visible = True
+            panel.setVisible(True)
             panel.mount(current_item)
 
     @handle_exception
@@ -1025,7 +947,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
 
     # Measurement control
 
-    def on_measure_restore(self):
+    def restoreDefaults(self) -> None:
         if not ui.show_question(
             title="Restore Defaults",
             text="Do you want to restore to default parameters?"
@@ -1033,19 +955,6 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         measurement = self.sequence_tree.current
         panel = self.panels.get(measurement.type)
         panel.restore()
-
-    def on_status_start(self):
-        self.lock_controls()
-        self.status_tab.reset()
-        self.status_process.set("use_environ", self.use_environment())
-        self.status_process.set("use_table", self.use_table())
-        self.status_process.start()
-        # Fix: stay in status tab
-        self.tab_widget.current = self.status_tab
-
-    def on_status_finished(self):
-        self.unlock_controls()
-        self.status_tab.update_status(self.status_process)
 
     # Table calibration
 
@@ -1069,7 +978,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
     def on_table_control_clicked(self):
         self.table_process.enable_joystick(False)
         dialog = TableControlDialog(self.table_process, self.contact_quality_process)
-        dialog.load_settings()
+        dialog.readSettings()
         dialog.load_samples(list(self.sequence_tree)) # HACK
         if self.use_environment():
             # TODO !!!
@@ -1080,13 +989,13 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 dialog.update_microscope_light(pc_data.relay_states.microscope_light)
                 dialog.update_box_light(pc_data.relay_states.box_light)
             dialog.update_lights_enabled(True)
-            dialog.probecard_light_toggled = self.on_probecard_light_toggled
-            dialog.microscope_light_toggled = self.on_microscope_light_toggled
-            dialog.box_light_toggled = self.on_box_light_toggled
-        dialog.run()
+            dialog.probecardLightToggled.connect(self.on_probecard_light_toggled)
+            dialog.microscopeLightToggled.connect(self.on_microscope_light_toggled)
+            dialog.boxLightToggled.connect(self.on_box_light_toggled)
+        dialog.exec()
         self.contact_quality_process.stop()
         self.contact_quality_process.join()
-        dialog.store_settings()
+        dialog.writeSettings()
         dialog.update_samples()
         # Prevent glitch
         current_item = self.sequence_tree.current
@@ -1099,7 +1008,7 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.table_process.caldone_changed = self.on_table_calibration_changed
         self.sync_table_controls()
         # Store settings
-        self.store_settings()
+        self.writeSettings()
 
     @handle_exception
     def on_laser_sensor_toggled(self, state):
@@ -1156,24 +1065,24 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
                 environment.request_pc_data()
 
         else:
-            self.environment_tab.enabled = False
+            self.environmentWidget.setEnabled(False)
 
     def on_pc_data_updated(self, pc_data):
-        self.environment_control_widget.update_laser_sensor_state(pc_data.relay_states.laser_sensor)
-        self.environment_control_widget.update_box_light_state(pc_data.relay_states.box_light)
-        self.environment_control_widget.update_microscope_light_state(pc_data.relay_states.microscope_light)
-        self.environment_control_widget.update_microscope_camera_state(pc_data.relay_states.microscope_camera)
-        self.environment_control_widget.update_microscope_control_state(pc_data.relay_states.microscope_control)
-        self.environment_control_widget.update_probecard_light_state(pc_data.relay_states.probecard_light)
-        self.environment_control_widget.update_probecard_camera_state(pc_data.relay_states.probecard_camera)
-        self.environment_control_widget.update_pid_control_state(pc_data.pid_status)
-        self.environment_tab.enabled = True
+        self.environmentControlWidget.updateLaserSensorState(pc_data.relay_states.laser_sensor)
+        self.environmentControlWidget.updateBoxLightState(pc_data.relay_states.box_light)
+        self.environmentControlWidget.updateMicroscopeLightState(pc_data.relay_states.microscope_light)
+        self.environmentControlWidget.updateMicroscopeCameraState(pc_data.relay_states.microscope_camera)
+        self.environmentControlWidget.updateMicroscopeControlState(pc_data.relay_states.microscope_control)
+        self.environmentControlWidget.updateProbecardLightState(pc_data.relay_states.probecard_light)
+        self.environmentControlWidget.updateProbecardCameraState(pc_data.relay_states.probecard_camera)
+        self.environmentControlWidget.updatePidControlState(pc_data.pid_status)
+        self.environmentWidget.setEnabled(True)
         t = time.time()
         # Note: occasional crashes due to `NaN` timestamp.
         if not math.isfinite(t):
             logger.error("invalid timestamp: %s", t)
             t = 0
-        self.environment_tab.append_data(t, pc_data)
+        self.environmentWidget.appendData(t, pc_data)
 
     @handle_exception
     def sync_table_controls(self):
@@ -1201,18 +1110,10 @@ class Dashboard(ui.Column, ProcessMixin, SettingsMixin):
         self.sync_table_controls()
 
     @handle_exception
-    def on_push_summary(self, *args):
-        """Push result to summary and write to summary file (experimantal)."""
-        item = self.summary_tab.append_result(*args)
-        output_path = self.output_widget.current_location
-        if output_path and os.path.exists(output_path):
-            filename = os.path.join(output_path, SUMMARY_FILENAME)
-            has_header = os.path.exists(filename)
-            with open(filename, "a") as fp:
-                header = self.summary_tab.header()
-                fmt = CSVFormatter(fp)
-                for key in header:
-                    fmt.add_column(key)
-                if not has_header:
-                    fmt.write_header()
-                fmt.write_row({header[i]: item[i].value for i in range(len(header))})
+    def on_push_summary(self, data: dict) -> None:
+        self.plugins.handle("summary", data=data)
+
+    @handle_exception
+    def on_measurements_finished(self) -> None:
+        message = "PQC measurements finished!"
+        self.plugins.handle("notification", message=message)
