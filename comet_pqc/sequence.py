@@ -5,7 +5,6 @@ import os
 
 import yaml
 from comet import ui
-from comet.settings import SettingsMixin
 from qutie.qutie import QtCore, QtWidgets
 
 from .components import (
@@ -36,7 +35,7 @@ def load_all_sequences(settings):
     return configs
 
 
-class StartSequenceDialog(ui.Dialog, SettingsMixin):
+class StartSequenceDialog(ui.Dialog):
     """Start sequence dialog."""
 
     def __init__(self, context, table_enabled):
@@ -98,15 +97,15 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
     # Settings
 
     def readSettings(self):
-        self._contact_checkbox.checked = bool(self.settings.get("move_to_contact") or False)
-        self._position_checkbox.checked = bool(self.settings.get("move_on_success") or False)
+        self._contact_checkbox.checked = bool(settings.settings.get("move_to_contact") or False)
+        self._position_checkbox.checked = bool(settings.settings.get("move_on_success") or False)
         self._positions_combobox.readSettings()
         self._operator_combobox.readSettings()
         self._output_combobox.readSettings()
 
     def writeSettings(self):
-        self.settings["move_to_contact"] = self._contact_checkbox.checked
-        self.settings["move_on_success"] = self._position_checkbox.checked
+        settings.settings["move_to_contact"] = self._contact_checkbox.checked
+        settings.settings["move_on_success"] = self._position_checkbox.checked
         self._positions_combobox.writeSettings()
         self._operator_combobox.writeSettings()
         self._output_combobox.writeSettings()
@@ -143,7 +142,7 @@ class StartSequenceDialog(ui.Dialog, SettingsMixin):
             return f"<b>Are you sure to start sequence {context.name!r}?</b>"
 
 
-class SequenceManager(ui.Dialog, SettingsMixin):
+class SequenceManager(ui.Dialog):
     """Dialog for managing custom sequence configuration files."""
 
     def __init__(self):
@@ -214,13 +213,13 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     def load_settings_dialog_size(self):
         """Load dialog size from settings."""
-        width, height = self.settings.get("sequence_manager_dialog_size") or (640, 480)
+        width, height = settings.settings.get("sequence_manager_dialog_size") or (640, 480)
         self.resize(width, height)
 
     def load_settings_sequences(self):
         """Load all built-in and custom sequences from settings."""
         self._sequence_tree.clear()
-        all_sequences = load_all_sequences(self.settings)
+        all_sequences = load_all_sequences(settings.settings)
         dialog = QtWidgets.QProgressDialog()
         dialog.setWindowModality(QtCore.Qt.WindowModal)
         dialog.setLabelText("Loading sequences...")
@@ -249,14 +248,14 @@ class SequenceManager(ui.Dialog, SettingsMixin):
 
     def store_settings_dialog_size(self):
         """Store dialog size to settings."""
-        self.settings["sequence_manager_dialog_size"] = self.width, self.height
+        settings.settings["sequence_manager_dialog_size"] = self.width, self.height
 
     def store_settings_sequences(self):
         """Store custom sequences to settings."""
         sequences = []
         for item in self._sequence_tree:
             sequences.append(item.sequence.filename)
-        self.settings["custom_sequences"] = list(set(sequences))
+        settings.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
 
@@ -652,7 +651,7 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.analysis.clear()
 
 
-class EditSamplesDialog(SettingsMixin):
+class EditSamplesDialog:
     """Quick edit all samples at once dialog."""
 
     def __init__(self, sequence_tree, sequences):

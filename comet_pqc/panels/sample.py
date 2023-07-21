@@ -1,7 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
 
 from comet import ui
-from comet.settings import SettingsMixin
 
 from ..core import config
 from ..sequence import SequenceManager
@@ -11,7 +10,7 @@ from .panel import BasicPanel
 __all__ = ["SamplePanel"]
 
 
-class SamplePanel(BasicPanel, SettingsMixin):
+class SamplePanel(BasicPanel):
 
     type = "sample"
 

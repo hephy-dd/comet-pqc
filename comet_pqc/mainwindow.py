@@ -1,9 +1,11 @@
+import traceback
 import webbrowser
 
 from PyQt5 import QtCore, QtWidgets
 
-from comet import ui, ProcessMixin
+from comet import ProcessMixin
 
+from .components import MessageBox
 from .dashboard import Dashboard
 from .preferences import PreferencesDialog
 from .plugins import PluginManager
@@ -110,7 +112,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.failed.connect(self.showException)
         self.setCentralWidget(self.dashboard)
 
-        self.dashboard.on_toggle_temporary_z_limit(config.table_temporary_z_limit)  # TODO
+        self.dashboard.setNoticeVisible(config.table_temporary_z_limit)  # TODO
 
         # Sync environment controls
         if self.dashboard.use_environment():
@@ -156,8 +158,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.preferencesDialog.exec()
         if self.preferencesDialog.result() == QtWidgets.QDialog.Accepted:
             self.preferencesDialog.writeSettings()
-            self.dashboard.on_toggle_temporary_z_limit(config.table_temporary_z_limit)  # TODO
-
+            self.dashboard.setNoticeVisible(config.table_temporary_z_limit)  # TODO
 
     def showContents(self) -> None:
         """Open local webbrowser with contents URL."""
@@ -200,9 +201,15 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.progressBar.setValue(0)
         self.progressBar.hide()
 
-    def showException(self, exception: Exception, tb=None) -> None:
+    def showException(self, exc: Exception, tb=None) -> None:
         """Raise message box showing exception information."""
-        ui.show_exception(exception, tb)
+        msgbox = MessageBox(self)
+        if not tb:
+            tb = traceback.format_exc()
+        msgbox.setIcon(msgbox.Critical)
+        msgbox.setWindowTitle("An exception occured")
+        msgbox.setText(format(exc))
+        msgbox.setDetailedText(tb)
         self.showMessage("Error")
         self.hideProgress()
 

@@ -6,11 +6,10 @@ import time
 import webbrowser
 from typing import Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 import comet
 from comet.process import ProcessMixin
-from comet.settings import SettingsMixin
 from comet import ui
 
 from .components import (
@@ -42,126 +41,114 @@ from .utils import caldone_valid, handle_exception, create_icon
 logger = logging.getLogger(__name__)
 
 
-class SequenceWidget(ui.GroupBox, SettingsMixin):
+class SequenceWidget(QtWidgets.QGroupBox):
 
     config_version = 1
 
     def __init__(self, *, tree_selected, tree_double_clicked, start_all, start,
                  stop, reset_sequence_state, edit_sequence):
         super().__init__()
+
         self.current_path = user_home()
-        self.title = "Sequence"
+        self.setTitle("Sequence")
         self.tree_double_clicked = tree_double_clicked
 
         self._sequence_tree = SequenceTree(
             selected=tree_selected,
             double_clicked=self.tree_double_clicked
         )
-        self._sequence_tree.minimum_width = 360
+        self._sequence_tree.qt.setMinimumWidth(360)
 
-        self._start_all_action = ui.Action(
-            text="&All Samples",
-            triggered=start_all
-        )
+        self.startAllAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.startAllAction.setText("&All Samples")
+        self.startAllAction.triggered.connect(start_all)
 
-        self._start_sample_action = ui.Action(
-            text="&Sample",
-            triggered=start
-        )
-        self._start_sample_action.qt.setEnabled(False)
+        self.startSampleAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.startSampleAction.setText("&Sample")
+        self.startSampleAction.setEnabled(False)
+        self.startSampleAction.triggered.connect(start)
 
-        self._start_contact_action = ui.Action(
-            text="&Contact",
-            triggered=start
-        )
-        self._start_contact_action.qt.setEnabled(False)
+        self.startContactAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.startContactAction.setText("&Contact")
+        self.startContactAction.setEnabled(False)
+        self.startContactAction.triggered.connect(start)
 
-        self._start_measurement_action = ui.Action(
-            text="&Measurement",
-            triggered=start
-        )
-        self._start_measurement_action.qt.setEnabled(False)
+        self.startMeasurementAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.startMeasurementAction.setText("&Measurement")
+        self.startMeasurementAction.setEnabled(False)
+        self.startMeasurementAction.triggered.connect(start)
 
-        self._start_menu = ui.Menu()
-        self._start_menu.append(self._start_all_action)
-        self._start_menu.append(self._start_sample_action)
-        self._start_menu.append(self._start_contact_action)
-        self._start_menu.append(self._start_measurement_action)
+        self.startMenu: QtWidgets.QMenu = QtWidgets.QMenu()
+        self.startMenu.addAction(self.startAllAction)
+        self.startMenu.addAction(self.startSampleAction)
+        self.startMenu.addAction(self.startContactAction)
+        self.startMenu.addAction(self.startMeasurementAction)
 
-        self._start_button = ui.Button(
-            text="Start",
-            tool_tip="Start measurement sequence.",
-            stylesheet="QPushButton:enabled{color:green;font-weight:bold;}"
-        )
-        self._start_button.qt.setMenu(self._start_menu.qt)
+        self.startButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.startButton.setText("Start")
+        self.startButton.setToolTip("Start measurement sequence.")
+        self.startButton.setStyleSheet("QPushButton:enabled{color:green;font-weight:bold;}")
+        self.startButton.setMenu(self.startMenu)
 
-        self._stop_button = ui.Button(
-            text="Stop",
-            tool_tip="Stop measurement sequence.",
-            enabled=False,
-            clicked=stop,
-            stylesheet="QPushButton:enabled{color:red;font-weight:bold;}"
-        )
+        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stopButton.setText("Stop")
+        self.stopButton.setToolTip("Stop measurement sequence.")
+        self.stopButton.setEnabled(False)
+        self.stopButton.setStyleSheet("QPushButton:enabled{color:red;font-weight:bold;}")
+        self.stopButton.clicked.connect(stop)
 
-        self._reset_button = ui.Button(
-            text="Reset",
-            tool_tip="Reset measurement sequence state.",
-            clicked=reset_sequence_state
-        )
+        self.resetButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetButton.setText("Reset")
+        self.resetButton.setToolTip("Reset measurement sequence state.")
+        self.resetButton.clicked.connect(reset_sequence_state)
 
-        self._edit_button = ui.Button(
-            text="Edit",
-            tool_tip="Quick edit properties of sequence items.",
-            clicked=edit_sequence
-        )
+        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton.setText("Edit")
+        self.editButton.setToolTip("Quick edit properties of sequence items.",)
+        self.editButton.clicked.connect(edit_sequence)
 
-        self._reload_config_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "reload.svg"),
-            tool_tip="Reload sequence configurations from file.",
-            clicked=self.on_reload_config_clicked
-        )
+        self.reloadConfigButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.reloadConfigButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "reload.svg")))
+        self.reloadConfigButton.setToolTip("Reload sequence configurations from file.")
+        self.reloadConfigButton.clicked.connect(self.on_reload_config_clicked)
 
-        self._add_sample_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "add.svg"),
-            tool_tip="Add new sample sequence.",
-            clicked=self.on_add_sample_clicked
-        )
+        self.addSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.addSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
+        self.addSampleButton.setToolTip("Add new sample sequence.")
+        self.addSampleButton.clicked.connect(self.on_add_sample_clicked)
 
-        self._remove_sample_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "delete.svg"),
-            tool_tip="Remove current sample sequence.",
-            clicked=self.on_remove_sample_clicked
-        )
+        self.removeSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.removeSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
+        self.removeSampleButton.setToolTip("Remove current sample sequence.")
+        self.removeSampleButton.clicked.connect(self.on_remove_sample_clicked)
 
-        self._open_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "document_open.svg"),
-            tool_tip="Open sequence tree from file.",
-            clicked=self.on_open_clicked
-        )
+        self.openButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.openButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_open.svg")))
+        self.openButton.setToolTip("Open sequence tree from file.")
+        self.openButton.clicked.connect(self.on_open_clicked)
 
-        self._save_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "document_save.svg"),
-            tool_tip="Save sequence tree to file.",
-            clicked=self.on_save_clicked
-        )
+        self.saveButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.saveButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_save.svg")))
+        self.saveButton.setToolTip("Save sequence tree to file.")
+        self.saveButton.clicked.connect(self.on_save_clicked)
 
-        self.layout = ui.Column(
-            self._sequence_tree,
-            ui.Row(
-                self._start_button,
-                self._stop_button,
-                self._reset_button,
-                self._edit_button,
-                self._reload_config_button,
-                self._add_sample_button,
-                self._remove_sample_button,
-                self._open_button,
-                self._save_button
-            )
-        )
+        self.buttonLayout = QtWidgets.QHBoxLayout()
+        self.buttonLayout.addWidget(self.startButton)
+        self.buttonLayout.addWidget(self.stopButton)
+        self.buttonLayout.addWidget(self.resetButton)
+        self.buttonLayout.addWidget(self.editButton)
+        self.buttonLayout.addWidget(self.reloadConfigButton)
+        self.buttonLayout.addWidget(self.addSampleButton)
+        self.buttonLayout.addWidget(self.removeSampleButton)
+        self.buttonLayout.addWidget(self.openButton)
+        self.buttonLayout.addWidget(self.saveButton)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self._sequence_tree.qt)
+        layout.addLayout(self.buttonLayout)
 
     def readSettings(self):
-        samples = self.settings.get("sequence_samples") or []
+        samples = settings.settings.get("sequence_samples") or []
         self._sequence_tree.clear()
         for kwargs in samples:
             item = SampleTreeItem()
@@ -174,31 +161,31 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         if len(self._sequence_tree):
             self._sequence_tree.current = self._sequence_tree[0]
         self._sequence_tree.fit()
-        self.current_path = self.settings.get("sequence_default_path") or user_home()
+        self.current_path = settings.settings.get("sequence_default_path") or user_home()
 
     def writeSettings(self):
         sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
-        self.settings["sequence_samples"] = sequence_samples
-        self.settings["sequence_default_path"] = self.current_path
+        settings.settings["sequence_samples"] = sequence_samples
+        settings.settings["sequence_default_path"] = self.current_path
 
     def setLocked(self, locked: bool) -> None:
         self._sequence_tree.double_clicked = None if locked else self.tree_double_clicked
-        self._start_button.enabled = not locked
-        self._stop_button.enabled = locked
-        self._reset_button.enabled = not locked
-        self._edit_button.enabled = not locked
-        self._reload_config_button.enabled = not locked
-        self._add_sample_button.enabled = not locked
-        self._remove_sample_button.enabled = not locked
-        self._save_button.enabled = not locked
-        self._open_button.enabled = not locked
+        self.startButton.setEnabled(not locked)
+        self.stopButton.setEnabled(locked)
+        self.resetButton.setEnabled(not locked)
+        self.editButton.setEnabled(not locked)
+        self.reloadConfigButton.setEnabled(not locked)
+        self.addSampleButton.setEnabled(not locked)
+        self.removeSampleButton.setEnabled(not locked)
+        self.saveButton.setEnabled(not locked)
+        self.openButton.setEnabled(not locked)
         self._sequence_tree.setLocked(locked)
 
     def stop(self):
-        self._stop_button.enabled = False
+        self.stopButton.setEnabled(False)
 
     @handle_exception
-    def on_reload_config_clicked(self):
+    def on_reload_config_clicked(self, state):
         if not ui.show_question(
             title="Reload Configuration",
             text="Do you want to reload sequence configurations from file?"
@@ -222,7 +209,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         dialog.exec()
 
     @handle_exception
-    def on_add_sample_clicked(self):
+    def on_add_sample_clicked(self, state):
         item = SampleTreeItem(
             name_prefix="",
             name_infix="Unnamed",
@@ -235,7 +222,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
         self._sequence_tree.current = item
 
     @handle_exception
-    def on_remove_sample_clicked(self):
+    def on_remove_sample_clicked(self, state):
         item = self._sequence_tree.current
         if item in self._sequence_tree:
             if ui.show_question(
@@ -245,7 +232,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
                 self._sequence_tree.remove(item)
 
     @handle_exception
-    def on_open_clicked(self):
+    def on_open_clicked(self, state):
         filename = ui.filename_open(path=self.current_path, filter="JSON (*.json)")
         if filename:
             with open(filename) as f:
@@ -276,7 +263,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             self._sequence_tree.fit()
 
     @handle_exception
-    def on_save_clicked(self):
+    def on_save_clicked(self, state):
         filename = ui.filename_save(path=self.current_path, filter="JSON (*.json)")
         if filename:
             samples = [sample.to_settings() for sample in self._sequence_tree]
@@ -297,7 +284,7 @@ class SequenceWidget(ui.GroupBox, SettingsMixin):
             self.current_path = os.path.dirname(filename)
 
 
-class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
+class TableControlWidget(ui.GroupBox):
 
     joystick_toggled = None
     control_clicked = None
@@ -359,7 +346,7 @@ class TableControlWidget(ui.GroupBox, comet.SettingsMixin):
         self.calibration_valid = caldone_valid(position)
 
     def readSettings(self):
-        use_table = self.settings.get("use_table") or False
+        use_table = settings.settings.get("use_table") or False
         self.checked = use_table
         self._joystick_limits = settings.table_joystick_maximum_limits
 
@@ -450,7 +437,7 @@ class EnvironmentControlWidget(QtWidgets.QGroupBox):
         self.pidControlButton.setChecked(state)
 
 
-class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
+class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     sample_count = 4
 
@@ -462,14 +449,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
     def __init__(self, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.plugins = plugins
-        # Layout
-        self.temporary_z_limit_label = ui.Label(
-            text="Temporary Probecard Z-Limit applied. "
-                 "Revert after finishing current measurements.",
-            stylesheet="QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}",
-            visible=False
-        )
-        self.sequence_widget = SequenceWidget(
+
+        self.noticeLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.noticeLabel.setText("Temporary Probecard Z-Limit applied. Revert after finishing current measurements.")
+        self.noticeLabel.setStyleSheet("QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}")
+        self.noticeLabel.setVisible(False)
+
+        self.sequenceWidget: SequenceWidget = SequenceWidget(
             tree_selected=self.on_tree_selected,
             tree_double_clicked=self.on_tree_double_clicked,
             start_all=self.on_start_all,
@@ -478,10 +464,10 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             reset_sequence_state=self.on_reset_sequence_state,
             edit_sequence=self.on_edit_sequence
         )
-        self.sequence_tree = self.sequence_widget._sequence_tree
-        self.start_sample_action = self.sequence_widget._start_sample_action
-        self.start_contact_action = self.sequence_widget._start_contact_action
-        self.start_measurement_action = self.sequence_widget._start_measurement_action
+        self.sequence_tree = self.sequenceWidget._sequence_tree
+        self.start_sample_action = self.sequenceWidget.startSampleAction
+        self.start_contact_action = self.sequenceWidget.startContactAction
+        self.start_measurement_action = self.sequenceWidget.startMeasurementAction
 
         # Environment Controls
 
@@ -508,19 +494,22 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         self.operator_widget = OperatorWidget()
         self.operator_widget.readSettings()
-        self.operator_groupbox = ui.GroupBox(
-            title="Operator",
-            layout=self.operator_widget
-        )
+
+        self.operatorGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.operatorGroupBox.setTitle("Operator")
+
+        operatorGroupBoxLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
+        operatorGroupBoxLayout.addWidget(self.operator_widget.qt)
 
         # Working directory
 
         self.output_widget = WorkingDirectoryWidget()
 
-        self.output_groupbox = ui.GroupBox(
-            title="Working Directory",
-            layout=self.output_widget
-        )
+        self.outputGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.outputGroupBox.setTitle("Working Directory")
+
+        outputGroupBoxLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
+        outputGroupBoxLayout.addWidget(self.output_widget.qt)
 
         # Controls
 
@@ -528,11 +517,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
         controlWidgetLayout = QtWidgets.QGridLayout(self.controlWidget)
         controlWidgetLayout.setContentsMargins(0, 0, 0, 0)
-        controlWidgetLayout.addWidget(self.sequence_widget.qt, 0, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.sequenceWidget, 0, 0, 1, 2)
         controlWidgetLayout.addWidget(self.table_control_widget.qt, 1, 0, 1, 2)
         controlWidgetLayout.addWidget(self.environmentControlWidget, 2, 0, 1, 2)
-        controlWidgetLayout.addWidget(self.operator_groupbox.qt, 3, 0, 1, 1)
-        controlWidgetLayout.addWidget(self.output_groupbox.qt, 3, 1, 1, 1)
+        controlWidgetLayout.addWidget(self.operatorGroupBox, 3, 0, 1, 1)
+        controlWidgetLayout.addWidget(self.outputGroupBox, 3, 1, 1, 1)
         controlWidgetLayout.setRowStretch(0, 1)
         controlWidgetLayout.setColumnStretch(0, 3)
         controlWidgetLayout.setColumnStretch(1, 7)
@@ -563,7 +552,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.splitter.setStretchFactor(1, 9)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.temporary_z_limit_label.qt, 0)
+        layout.addWidget(self.noticeLabel, 0)
         layout.addWidget(self.splitter, 1)
 
         # Setup process callbacks
@@ -592,13 +581,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def readSettings(self):
-        settings = QtCore.QSettings()
-        settings.beginGroup("dashboard")
-        self.splitter.restoreState(settings.value("splitterState", QtCore.QByteArray(), QtCore.QByteArray))
-        settings.endGroup()
+        settings_ = QtCore.QSettings()
+        settings_.beginGroup("dashboard")
+        self.splitter.restoreState(settings_.value("splitterState", QtCore.QByteArray(), QtCore.QByteArray))
+        settings_.endGroup()
 
-        self.sequence_widget.readSettings()
-        use_environ = self.settings.get("use_environ", False)
+        self.sequenceWidget.readSettings()
+        use_environ = settings.settings.get("use_environ", False)
         self.environmentControlWidget.setChecked(use_environ)
         self.table_control_widget.readSettings()
         self.operator_widget.readSettings()
@@ -606,14 +595,14 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
 
     @handle_exception
     def writeSettings(self):
-        settings = QtCore.QSettings()
-        settings.beginGroup("dashboard")
-        settings.setValue("splitterState", self.splitter.saveState())
-        settings.endGroup()
+        settings_ = QtCore.QSettings()
+        settings_.beginGroup("dashboard")
+        settings_.setValue("splitterState", self.splitter.saveState())
+        settings_.endGroup()
 
-        self.sequence_widget.writeSettings()
-        self.settings["use_environ"] = self.use_environment()
-        self.settings["use_table"] = self.use_table()
+        self.sequenceWidget.writeSettings()
+        settings.settings["use_environ"] = self.use_environment()
+        settings.settings["use_table"] = self.use_table()
         self.operator_widget.writeSettings()
         self.output_widget.writeSettings()
 
@@ -673,13 +662,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         return output_dir
 
     def write_logfiles(self):
-        return bool(self.settings.get("write_logfiles", True))
+        return bool(settings.settings.get("write_logfiles", True))
 
     def export_json(self):
-        return bool(self.settings.get("export_json", True))
+        return bool(settings.settings.get("export_json", True))
 
     def export_txt(self):
-        return bool(self.settings.get("export_txt", True))
+        return bool(settings.settings.get("export_txt", True))
 
     # Callbacks
 
@@ -687,9 +676,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         """Lock dashboard controls."""
         self.environmentControlWidget.setEnabled(False)
         self.table_control_widget.enabled = False
-        self.sequence_widget.setLocked(True)
-        self.output_groupbox.enabled = False
-        self.operator_groupbox.enabled = False
+        self.sequenceWidget.setLocked(True)
+        self.outputGroupBox.setEnabled(False)
+        self.operatorGroupBox.setEnabled(False)
         self.measurementWidget.setLocked(True)
         self.plugins.handle("lock_controls", True)
         self.lockStateChanged.emit(True)
@@ -698,16 +687,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         """Unlock dashboard controls."""
         self.environmentControlWidget.setEnabled(True)
         self.table_control_widget.enabled = True
-        self.sequence_widget.setLocked(False)
-        self.output_groupbox.enabled = True
-        self.operator_groupbox.enabled = True
+        self.sequenceWidget.setLocked(False)
+        self.outputGroupBox.setEnabled(True)
+        self.operatorGroupBox.setEnabled(True)
         self.measurementWidget.setLocked(False)
         self.plugins.handle("lock_controls", False)
         self.lockStateChanged.emit(False)
 
-    def on_toggle_temporary_z_limit(self, enabled: bool) -> None:
-        logger.info("Temporary Z-Limit enabled: %s", enabled)
-        self.temporary_z_limit_label.visible = enabled
+    def setNoticeVisible(self, visible: bool) -> None:
+        self.noticeLabel.setVisible(visible)
 
     # Sequence control
 
@@ -717,28 +705,28 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.panels.clear()
         self.panels.hide()
         self.measurementWidget.setControlsVisible(False)
-        self.start_sample_action.qt.setEnabled(False)
-        self.start_contact_action.qt.setEnabled(False)
-        self.start_measurement_action.qt.setEnabled(False)
+        self.start_sample_action.setEnabled(False)
+        self.start_contact_action.setEnabled(False)
+        self.start_measurement_action.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
             panel.mount(item)
-            self.start_sample_action.qt.setEnabled(True)
+            self.start_sample_action.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.setVisible(True)
             panel.table_move = self.on_table_contact
             panel.table_contact = self.on_table_move
             panel.mount(item)
-            self.start_contact_action.qt.setEnabled(True)
+            self.start_contact_action.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             if panel:
                 panel.setVisible(True)
                 panel.mount(item)
                 self.measurementWidget.setControlsVisible(True)
-                self.start_measurement_action.qt.setEnabled(True)
+                self.start_measurement_action.setEnabled(True)
         # Show measurement tab
         self.tabWidget.setCurrentWidget(self.measurementWidget)
 
@@ -782,7 +770,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.unlock_controls()
 
     @handle_exception
-    def on_start_all(self):
+    def on_start_all(self, state=None):
         sample_items = SamplesItem(self.sequence_tree)
         dialog = StartSequenceDialog(
             context=sample_items,
@@ -803,7 +791,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         )
 
     @handle_exception
-    def on_start(self):
+    def on_start(self, state=None):
         # Store settings
         self.writeSettings()
         current_item = self.sequence_tree.current
@@ -873,7 +861,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         measure.set("serialize_txt", self.export_txt())
         measure.set("move_to_contact", move_to_contact)
         measure.set("move_to_after_position", move_to_after_position)
-        measure.set("contact_delay", self.settings.get("table_contact_delay") or 0)
+        measure.set("contact_delay", settings.settings.get("table_contact_delay") or 0)
         measure.set("retry_contact_overdrive", settings.retry_contact_overdrive)
         def show_measurement(item):
             item.selectable = True
@@ -908,13 +896,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.sequence_tree.fit()
 
     def on_save_to_image(self, item, filename):
-        plot_png = self.settings.get("png_plots") or False
+        plot_png = settings.settings.get("png_plots") or False
         panel = self.panels.get(item.type)
         if panel and plot_png:
             panel.save_to_image(filename)
 
     def on_stop(self):
-        self.sequence_widget.stop()
+        self.sequenceWidget.stop()
         self.measure_process.stop()
 
     def on_finished(self):
@@ -922,7 +910,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
         self.unlock_controls()
 
     @handle_exception
-    def on_reset_sequence_state(self):
+    def on_reset_sequence_state(self, state=None):
         if not ui.show_question(
             title="Reset State",
             text="Do you want to reset all sequence states?"
@@ -939,8 +927,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin, SettingsMixin):
             panel.mount(current_item)
 
     @handle_exception
-    def on_edit_sequence(self):
-        sequences = load_all_sequences(self.settings)
+    def on_edit_sequence(self, state=None):
+        sequences = load_all_sequences(settings.settings)
         dialog = EditSamplesDialog(self.sequence_tree, sequences)
         dialog.run()
         self.on_tree_selected(self.sequence_tree.current)

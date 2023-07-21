@@ -5,6 +5,7 @@ from comet import ui
 
 from PyQt5 import QtCore, QtWidgets
 
+from ..settings import settings
 from ..utils import stitch_pixmaps
 
 __all__ = ["PanelStub", "BasicPanel", "Panel"]
@@ -41,7 +42,7 @@ class PanelStub(QtWidgets.QWidget):
         self.__context = None
 
 
-class BasicPanel(PanelStub, comet.SettingsMixin):
+class BasicPanel(PanelStub):
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -150,7 +151,7 @@ class Panel(BasicPanel):
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
         # Update plot series style
-        points_in_plots = self.settings.get("points_in_plots") or False
+        points_in_plots = settings.settings.get("points_in_plots") or False
         for tab in self.data_tabs:
             if isinstance(tab.layout, ui.Plot):
                 for series in tab.layout.series.values():
@@ -249,7 +250,7 @@ class Panel(BasicPanel):
         """Save screenshots of data tabs to stitched image."""
         current = self.data_tabs.current
         pixmaps = []
-        png_analysis = self.settings.get("png_analysis") or False
+        png_analysis = settings.settings.get("png_analysis") or False
         for tab in self.data_tabs:
             self.data_tabs.current = tab
             if isinstance(tab.layout, ui.Plot):

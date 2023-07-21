@@ -7,7 +7,6 @@ from PyQt5 import QtCore, QtWidgets
 
 import comet
 import comet.ui as ui
-from comet.settings import SettingsMixin
 from PyQt5 import QtCore, QtGui, QtChart
 
 from .components import (
@@ -373,7 +372,7 @@ class PositionDialog(ui.Dialog):
         self.emit(self.position_picked, callback)
 
 
-class TablePositionsWidget(ui.Row, SettingsMixin):
+class TablePositionsWidget(ui.Row):
 
     def __init__(self, position_picked=None, absolute_move=None, **kwargs):
         super().__init__(**kwargs)
@@ -606,7 +605,7 @@ class LCRChart(ui.Widget):
         self._marker.append(x, y)
 
 
-class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
+class TableControlDialog(QtWidgets.QDialog):
 
     process = None
 
@@ -1124,7 +1123,7 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self._lcr_matrix_channels_text.value = ", ".join([token for token in value])
 
     def load_table_step_sizes(self):
-        return self.settings.get("table_step_sizes") or self.default_steps
+        return settings.settings.get("table_step_sizes") or self.default_steps
 
     def reset_position(self):
         self.update_position(Position())
@@ -1338,17 +1337,17 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         self.x_hard_limit_label.value = x
         self.y_hard_limit_label.value = y
         self.z_hard_limit_label.value = z
-        self.step_up_delay = self.settings.get("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY)
-        self.step_up_multiply = self.settings.get("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY)
-        self.lcr_update_interval = self.settings.get("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL)
-        matrix_channels = self.settings.get("tablecontrol_lcr_matrix_channels") or DEFAULT_MATRIX_CHANNELS
+        self.step_up_delay = settings.settings.get("tablecontrol_step_up_delay", DEFAULT_STEP_UP_DELAY)
+        self.step_up_multiply = settings.settings.get("tablecontrol_step_up_multiply", DEFAULT_STEP_UP_MULTIPLY)
+        self.lcr_update_interval = settings.settings.get("tablecontrol_lcr_update_delay", DEFAULT_LCR_UPDATE_INTERVAL)
+        matrix_channels = settings.settings.get("tablecontrol_lcr_matrix_channels") or DEFAULT_MATRIX_CHANNELS
         self.lcr_matrix_channels = matrix_channels
         self.lcr_process.update_interval = self.lcr_update_interval
         self.lcr_process.matrix_channels = self.lcr_matrix_channels
         self.update_interval = settings.table_control_update_interval
         self.dodge_enabled = settings.table_control_dodge_enabled
         self.dodge_height = settings.table_control_dodge_height
-        self.lcr_reset_on_move = self.settings.get("tablecontrol_lcr_reset_on_move", True)
+        self.lcr_reset_on_move = settings.settings.get("tablecontrol_lcr_reset_on_move", True)
 
     def writeSettings(self) -> None:
         settings_ = QtCore.QSettings()
@@ -1356,14 +1355,14 @@ class TableControlDialog(QtWidgets.QDialog, SettingsMixin):
         settings_.setValue("geometry", self.saveGeometry())
         settings_.endGroup()
 
-        self.settings["tablecontrol_step_up_multiply"] = self.step_up_multiply
-        self.settings["tablecontrol_lcr_update_delay"] = self.lcr_update_interval
-        self.settings["tablecontrol_lcr_matrix_channels"] = self.lcr_matrix_channels
+        settings.settings["tablecontrol_step_up_multiply"] = self.step_up_multiply
+        settings.settings["tablecontrol_lcr_update_delay"] = self.lcr_update_interval
+        settings.settings["tablecontrol_lcr_matrix_channels"] = self.lcr_matrix_channels
         self.positions_widget.writeSettings()
         settings.table_control_update_interval = self.update_interval
         settings.table_control_dodge_enabled = self.dodge_enabled
         settings.table_control_dodge_height = self.dodge_height
-        self.settings["tablecontrol_lcr_reset_on_move"] = self.lcr_reset_on_move
+        settings.settings["tablecontrol_lcr_reset_on_move"] = self.lcr_reset_on_move
 
     def setLocked(self, locked: bool) -> None:
         self.control_layout.qt.setEnabled(not locked)

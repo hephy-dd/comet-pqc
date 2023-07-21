@@ -41,6 +41,15 @@ class TablePosition(Position):
 
 class Settings(SettingsMixin):
 
+    def get(self, key, default=None):
+        return self.settings.get(key, default)
+
+    def __getitem__(self, key):
+        return self.settings[key]
+
+    def __setitem__(self, key, value):
+        self.settings[key] = value
+
     @property
     def table_positions(self):
         """List of user defined table positions for movement operations."""

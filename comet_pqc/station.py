@@ -3,7 +3,7 @@ import comet
 __all__ = ["Station"]
 
 
-class Station(comet.ResourceMixin, comet.SettingsMixin):
+class Station(comet.ResourceMixin):
 
     def __init__(self) -> None:
         self.resources.add("matrix", comet.Resource(

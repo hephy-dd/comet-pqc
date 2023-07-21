@@ -7,6 +7,13 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.44.0
+
+## 0.43.1
+
+### Fixed
+- IV ramp 4-Wire with Bias measurement.
+
 ## 0.43.0
 
 ### Added

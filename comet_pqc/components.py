@@ -1,9 +1,9 @@
 import math
 import os
+from typing import Optional
 
 from comet import ui
-from comet.settings import SettingsMixin
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 
 from .core.position import Position
 from .core.utils import make_path, user_home
@@ -24,6 +24,18 @@ __all__ = [
     "OperatorComboBox",
     "PositionsComboBox"
 ]
+
+
+class MessageBox(QtWidgets.QMessageBox):
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        # Fix message box width
+        layout = self.layout()
+        rows = layout.rowCount()
+        columns = layout.columnCount()
+        spacer = QtWidgets.QSpacerItem(420, 0)
+        layout.addItem(spacer, rows, 0, 1, columns)
 
 
 class ToggleButton(ui.Button):
@@ -265,7 +277,7 @@ class DirectoryWidget(ui.Row):
             self.location_combo_box.qt.setCurrentIndex(0)
 
 
-class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
+class WorkingDirectoryWidget(DirectoryWidget):
 
     def readSettings(self):
         self.clear_locations()
@@ -283,7 +295,7 @@ class WorkingDirectoryWidget(DirectoryWidget, SettingsMixin):
         settings.current_output_path = self.location_combo_box.current
 
 
-class OperatorComboBox(ui.ComboBox, SettingsMixin):
+class OperatorComboBox(ui.ComboBox):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -303,7 +315,7 @@ class OperatorComboBox(ui.ComboBox, SettingsMixin):
         settings.operators = operators
 
 
-class OperatorWidget(ui.Row, SettingsMixin):
+class OperatorWidget(ui.Row):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -349,16 +361,16 @@ class OperatorWidget(ui.Row, SettingsMixin):
         self.operator_combo_box.writeSettings()
 
 
-class PositionsComboBox(ui.ComboBox, SettingsMixin):
+class PositionsComboBox(ui.ComboBox):
 
     def readSettings(self):
         self.clear()
         for position in settings.table_positions:
             self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
-        index = self.settings.get("current_table_position") or 0
+        index = settings.settings.get("current_table_position") or 0
         if 0 <= index < len(self):
             self.current = self[index]
 
     def writeSettings(self):
         index = self.index(self.current or 0)
-        self.settings["current_table_position"] = index
+        settings.settings["current_table_position"] = index
