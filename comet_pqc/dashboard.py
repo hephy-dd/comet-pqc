@@ -967,12 +967,12 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_process.enable_joystick(False)
         dialog = TableControlDialog(self.table_process, self.contact_quality_process)
         dialog.readSettings()
-        dialog.load_samples(list(self.sequence_tree)) # HACK
+        dialog.loadSamples(list(self.sequence_tree)) # HACK
         if self.use_environment():
             # TODO !!!
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
-                dialog.update_safety(laser_sensor=pc_data.relay_states.laser_sensor)
+                dialog.updateSafety(pc_data.relay_states.laser_sensor)
                 dialog.update_probecard_light(pc_data.relay_states.probecard_light)
                 dialog.update_microscope_light(pc_data.relay_states.microscope_light)
                 dialog.update_box_light(pc_data.relay_states.box_light)

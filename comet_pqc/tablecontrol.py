@@ -2,6 +2,7 @@
 
 import logging
 import math
+from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -231,13 +232,13 @@ class TableContactsWidget(ui.Row):
         if isinstance(current_item, TableSampleItem):
             current_item.calculate_positions()
 
-    def load_samples(self, sample_items):
+    def loadSamples(self, sample_items) -> None:
         self.contacts_tree.clear()
         for sample_item in sample_items:
             self.append_sample(sample_item)
         self.contacts_tree.fit()
 
-    def update_samples(self):
+    def updateSamples(self) -> None:
         for sample_item in self.contacts_tree:
             sample_item.update_contacts()
 
@@ -291,85 +292,105 @@ class TablePositionItem(ui.TreeItem):
         self[4].value = value
 
 
-class PositionDialog(ui.Dialog):
+class PositionDialog(QtWidgets.QDialog):
 
-    def __init__(self, position_picked=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self._name_text = ui.Text(value="Unnamed")
-        self._x_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._y_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._z_number = ui.Number(value=0., minimum=0., maximum=1000., decimals=3, suffix="mm")
-        self._comment_text = ui.Text()
-        self._assign_button = ui.Button(
-            text="Assign Position",
-            tool_tip="Assign current table position.",
-            clicked=self.on_assign_clicked
-        )
-        self._button_box = ui.DialogButtonBox(buttons=("ok", "cancel"), accepted=self.accept, rejected=self.reject)
-        self.layout = ui.Column(
-            ui.Label("Name", tool_tip="Position name"),
-            self._name_text,
-            ui.Row(
-                ui.Column(
-                    ui.Label("X", tool_tip="Position X coordinate"),
-                    self._x_number
-                ),
-                ui.Column(
-                    ui.Label("Y", tool_tip="Position Y coordinate"),
-                    self._y_number
-                ),
-                ui.Column(
-                    ui.Label("Z", tool_tip="Position Z coordinate"),
-                    self._z_number
-                ),
-                ui.Column(
-                    ui.Spacer(),
-                    self._assign_button,
-                )
-            ),
-            ui.Label("Comment", tool_tip="Optional position comment"),
-            self._comment_text,
-            ui.Spacer(),
-            self._button_box
-        )
+    positionPicked = QtCore.pyqtSignal()
 
-    @property
-    def name(self):
-        return self._name_text.value
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
-    @name.setter
-    def name(self, value):
-        self._name_text.value = value
+        self.nameLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.nameLabel.setText("Name")
+        self.nameLabel.setToolTip("Position name")
 
-    @property
-    def position(self):
-        x = self._x_number.value
-        y = self._y_number.value
-        z = self._z_number.value
+        self.nameLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.nameLineEdit.setText("Unnamed")
+
+        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel.setText("X")
+        self.xLabel.setToolTip("Position X coordinate")
+
+        self.xSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.xSpinBox.setRange(0, 1000)
+        self.xSpinBox.setDecimals(3)
+        self.xSpinBox.setSuffix(" mm")
+
+        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel.setText("X")
+        self.yLabel.setToolTip("Position Y coordinate")
+
+        self.ySpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.ySpinBox.setRange(0, 1000)
+        self.ySpinBox.setDecimals(3)
+        self.ySpinBox.setSuffix(" mm")
+
+        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel.setText("Z")
+        self.zLabel.setToolTip("Position Z coordinate")
+
+        self.zSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.zSpinBox.setRange(0, 1000)
+        self.zSpinBox.setDecimals(3)
+        self.zSpinBox.setSuffix(" mm")
+
+        self.commentLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.commentLabel.setText("Comment")
+        self.commentLabel.setToolTip("Optional position comment")
+
+        self.commentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+
+        self.assignButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.assignButton.setText("Assign Position")
+        self.assignButton.setToolTip("Assign current table position.")
+        self.assignButton.clicked.connect(self.positionPicked.emit)
+
+        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        gridLayout = QtWidgets.QGridLayout()
+        gridLayout.addWidget(self.xLabel, 0, 0)
+        gridLayout.addWidget(self.xSpinBox, 1, 0)
+        gridLayout.addWidget(self.yLabel, 0, 1)
+        gridLayout.addWidget(self.ySpinBox, 1, 1)
+        gridLayout.addWidget(self.zLabel, 0, 2)
+        gridLayout.addWidget(self.zSpinBox, 1, 2)
+        gridLayout.addWidget(self.assignButton, 1, 3)
+        gridLayout.setColumnStretch(3, 1)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.nameLabel)
+        layout.addWidget(self.nameLineEdit)
+        layout.addLayout(gridLayout)
+        layout.addWidget(self.commentLabel)
+        layout.addWidget(self.commentLineEdit)
+        layout.addStretch()
+        layout.addWidget(self.buttonBox)
+
+    def name(self) -> None:
+        return self.nameLineEdit.text()
+
+    def setName(self, name: str) -> None:
+        self.nameLineEdit.setText(name)
+
+    def position(self) -> tuple:
+        x = self.xSpinBox.value()
+        y = self.ySpinBox.value()
+        z = self.zSpinBox.value()
         return x, y, z
 
-    @position.setter
-    def position(self, value):
-        x, y, z = value
-        self._x_number.value = x
-        self._y_number.value = y
-        self._z_number.value = z
+    def setPosition(self, x: float, y: float, z: float) -> None:
+        self.xSpinBox.setValue(x)
+        self.ySpinBox.setValue(y)
+        self.zSpinBox.setValue(z)
 
-    @property
-    def comment(self):
-        return self._comment_text.value
+    def comment(self) -> str:
+        return self.commentLineEdit.text()
 
-    @comment.setter
-    def comment(self, value):
-        self._comment_text.value = value
-
-    def on_assign_clicked(self):
-        self.layout.enabled = False
-        def callback(x, y, z):
-            self.position = x, y, z
-            self.layout.enabled = True
-        self.emit(self.position_picked, callback)
+    def setComment(self, comment: str) -> None:
+        self.commentLineEdit.setText(comment)
 
 
 class TablePositionsWidget(ui.Row):
@@ -407,13 +428,26 @@ class TablePositionsWidget(ui.Row):
             clicked=self.on_move,
             enabled=False
         )
+        self.import_button = ui.Button(
+            text="Import...",
+            tool_tip="Import from CSV",
+            clicked=self.on_import,
+        )
+        self.export_button = ui.Button(
+            text="Export...",
+            tool_tip="Export to CSV",
+            clicked=self.on_export,
+        )
         self.append(self.positions_tree)
         self.append(ui.Column(
             self.move_button,
             ui.Spacer(),
             self.add_button,
             self.edit_button,
-            self.remove_button
+            self.remove_button,
+            self.import_button,
+            self.export_button,
+
         ))
         self.stretch = 1, 0
 
@@ -459,6 +493,17 @@ class TablePositionsWidget(ui.Row):
             # Restore event
             self.positions_tree.double_clicked = self.on_position_double_clicked
 
+    def on_import(self) -> None:
+        filename, ok = QtWidgets.QFileDialog.getOpenFileName(self.qt, "Import CSV", "", "CSV (*.csv);;All files (*)")
+        if ok:
+            ...
+
+
+    def on_export(self) -> None:
+        filename, ok = QtWidgets.QFileDialog.getSaveFileName(self.qt, "Export CSV", "", "CSV (*.csv);;All files (*)")
+        if ok:
+            ...
+
     def on_position_selected(self, item):
         enabled = item is not None
         self.edit_button.enabled = True
@@ -472,29 +517,27 @@ class TablePositionsWidget(ui.Row):
         self.emit(self.position_picked, callback)
 
     def on_add_position(self):
-        dialog = PositionDialog(
-            position_picked=self.on_position_picked
-        )
-        if dialog.run():
-            name = dialog.name
-            x, y, z = dialog.position
-            comment = dialog.comment
+        dialog = PositionDialog()
+        dialog.positionPicked.connect(lambda dialog=dialog: self.on_position_picked(dialog.setPosition))  # TODO
+        if dialog.exec() == dialog.Accepted:
+            name = dialog.name()
+            x, y, z = dialog.position()
+            comment = dialog.comment()
             self.positions_tree.append(TablePositionItem(name, x, y, z, comment))
             self.positions_tree.fit()
 
     def on_edit_position(self):
         item = self.positions_tree.current
         if item:
-            dialog = PositionDialog(
-                position_picked=self.on_position_picked
-            )
-            dialog.name = item.name
-            dialog.position = item.position
-            dialog.comment = item.comment
-            if dialog.run():
-                item.name = dialog.name
-                item.position = dialog.position
-                item.comment = dialog.comment
+            dialog = PositionDialog()
+            dialog.positionPicked.connect(lambda dialog=dialog: self.on_position_picked(dialog.setPosition))  # TODO
+            dialog.setName(item.name)
+            dialog.setPosition(*item.position)
+            dialog.setComment(item.comment)
+            if dialog.exec() == dialog.Accepted:
+                item.name = dialog.name()
+                item.position = dialog.position()
+                item.comment = dialog.comment()
                 self.positions_tree.fit()
 
     def on_remove_position(self):
@@ -515,12 +558,13 @@ class TablePositionsWidget(ui.Row):
                 self.emit(self.absolute_move, Position(x, y, z))
 
 
-class LCRChart(ui.Widget):
+class LCRWidget(QtWidgets.QWidget):
 
-    max_points = 1000
+    MaxPoints = 1000
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
         self._chart = QtChart.QChart()
         self._chart.legend().hide()
         self._chart.layout().setContentsMargins(0, 0, 0, 0)
@@ -566,41 +610,43 @@ class LCRChart(ui.Widget):
         self._marker.attachAxis(self._xAxis)
         self._marker.attachAxis(self._yAxis)
 
-        self.qt.setMinimumSize(160, 60)
+        self.setMinimumSize(160, 60)
 
-        self._view = QtChart.QChartView(self._chart)
-        self.qt.layout().setContentsMargins(0, 0, 0, 0)
-        self.qt.layout().addWidget(self._view)
+        self.chartView: QtChart.QChartView = QtChart.QChartView(self._chart)
 
-    def get_y_limits(self):
-        limits = []
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.chartView)
+
+    def yLimits(self) -> list:
+        limits: list = []
         for point in self._series.pointsVector():
             limits.append(point.y())
         return limits
 
-    def clear(self):
+    def clear(self) -> None:
         self._series.clear()
 
-    def append(self, x, y):
-        if self._series.count() > self.max_points:
+    def append(self, x: float, y: float) -> None:
+        if self._series.count() > type(self).MaxPoints:
             self._series.remove(0)
         self._series.append(QtCore.QPointF(x, y))
-        self.set_marker(x, y)
+        self.setMarker(x, y)
 
-    def set_limits(self, x):
+    def setLimits(self, x: float) -> None:
         self._xAxis.setRange(x - 0.050, x + 0.050)
-        limits = self.get_y_limits()
+        limits = self.yLimits()
         if limits:
             self._yAxis.setRange(min(limits), max(limits))
             self._yAxis.applyNiceNumbers()
             self._yAxis.setTickCount(2)
 
-    def set_line(self, x):
+    def setLine(self, x: float) -> None:
         self._line.clear()
         self._line.append(x, self._yAxis.min())
         self._line.append(x, self._yAxis.max())
 
-    def set_marker(self, x, y):
+    def setMarker(self, x: float, y: float) -> None:
         self._marker.clear()
         self._marker.append(x, y)
 
@@ -622,14 +668,18 @@ class TableControlDialog(QtWidgets.QDialog):
     microscopeLightToggled = QtCore.pyqtSignal(bool)
     boxLightToggled = QtCore.pyqtSignal(bool)
 
-    def __init__(self, process, lcr_process):
-        super().__init__()
+    def __init__(self, process, lcr_process, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
         self.lcr_process = lcr_process
         self.lcr_process.finished = self.on_lcr_finished
         self.lcr_process.failed = self.on_lcr_failed
         self.lcr_process.reading = self.on_lcr_reading
+
         self.mount(process)
-        self.title = "Table Control"
+
+        self.setWindowTitle("Table Control")
+
         self.add_x_button = KeypadButton(
             text="+X",
             clicked=self.on_add_x
@@ -659,6 +709,7 @@ class TableControlDialog(QtWidgets.QDialog):
             tool_tip="Step up, move single step up then double step down and double step up (experimental).",
             clicked=self.on_step_up
         )
+
         self.control_buttons = (
             self.add_x_button,
             self.sub_x_button,
@@ -668,14 +719,13 @@ class TableControlDialog(QtWidgets.QDialog):
             self.sub_z_button,
             self.step_up_button
         )
+
         self._lcr_prim_text = ui.Text(readonly=True)
         self._lcr_sec_text = ui.Text(readonly=True)
-        self._lcr_chart = LCRChart()
+
+        self.lcrWidget: LCRWidget = LCRWidget(self)
+
         self._lcr_groupbox = ui.GroupBox(
-            title="Contact Quality (LCR)",
-            checkable=True,
-            checked=False,
-            toggled=self.on_lcr_toggled,
             layout=ui.Column(
                 ui.Row(
                     ui.Label("Cp"),
@@ -684,10 +734,15 @@ class TableControlDialog(QtWidgets.QDialog):
                 ui.Row(
                     ui.Label("Rp"),
                     self._lcr_sec_text
-                ),
-                self._lcr_chart
+                )
             )
         )
+        self._lcr_groupbox.qt.setTitle("Contact Quality (LCR)")
+        self._lcr_groupbox.qt.setCheckable(True)
+        self._lcr_groupbox.qt.setChecked(False)
+        self._lcr_groupbox.qt.toggled.connect(self.on_lcr_toggled)
+        self._lcr_groupbox.qt.layout().addWidget(self.lcrWidget)
+
         self.probecard_light_button = ToggleButton(
             text="PC Light",
             tool_tip="Toggle probe card light",
@@ -857,7 +912,7 @@ class TableControlDialog(QtWidgets.QDialog):
                 ui.Spacer()
             )
         )
-        self._lcr_update_interval_number =ui.Number(
+        self._lcr_update_interval_number = ui.Number(
             minimum=0,
             maximum=1000,
             decimals=0,
@@ -882,23 +937,24 @@ class TableControlDialog(QtWidgets.QDialog):
                 )
             )
         )
-        self.progress_bar = ui.ProgressBar(
-            visible=False
-        )
-        self.message_label = ui.Label()
-        self.stop_button = ui.Button(
-            text="&Stop",
-            default=False,
-            auto_default=False,
-            enabled=False,
-            clicked=self.on_stop
-        )
-        self.close_button = ui.Button(
-            text="&Close",
-            default=False,
-            auto_default=False,
-            clicked=self.on_close
-        )
+
+        self.progressBar: QtWidgets.QProgressBar = QtWidgets.QProgressBar(self)
+        self.progressBar.setVisible(False)
+
+        self.messageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+
+        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stopButton.setText("&Stop")
+        self.stopButton.setDefault(False)
+        self.stopButton.setAutoDefault(False)
+        self.stopButton.setEnabled(False)
+        self.stopButton.clicked.connect(self.stop)
+
+        self.closeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.closeButton.setText("&Close")
+        self.closeButton.setDefault(False)
+        self.closeButton.setAutoDefault(False)
+        self.closeButton.clicked.connect(self.close)
 
         self.control_panel = ui.Row(
             ui.Column(
@@ -1017,22 +1073,21 @@ class TableControlDialog(QtWidgets.QDialog):
             stretch=(1, 0)
         )
 
-        self.button_panel = ui.Row(
-            self.progress_bar,
-            self.message_label,
-            ui.Spacer(),
-            self.stop_button,
-            self.close_button
-        )
+        self.buttomLayout = QtWidgets.QHBoxLayout()
+        self.buttomLayout.addWidget(self.progressBar)
+        self.buttomLayout.addWidget(self.messageLabel)
+        self.buttomLayout.addStretch()
+        self.buttomLayout.addWidget(self.stopButton)
+        self.buttomLayout.addWidget(self.closeButton)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.control_panel.qt, 1)
-        layout.addWidget(self.button_panel.qt, 0)
+        layout.addLayout(self.buttomLayout, 0)
 
-        self.reset_position()
-        self.reset_caldone()
-        self.update_limits()
-        self.reset_safety()
+        self.resetPosition()
+        self.resetCaldone()
+        self.updateLimits()
+        self.resetSafety()
         self.update_control_buttons()
 
     @property
@@ -1125,40 +1180,40 @@ class TableControlDialog(QtWidgets.QDialog):
     def load_table_step_sizes(self):
         return settings.settings.get("table_step_sizes") or self.default_steps
 
-    def reset_position(self):
-        self.update_position(Position())
+    def resetPosition(self) -> None:
+        self.setPosition(Position())
 
-    def update_position(self, position):
+    def setPosition(self, position: Position) -> None:
         self.current_position = position
         self._position_widget.update_position(position)
-        self.update_limits()
+        self.updateLimits()
         self.update_control_buttons()
         if math.isfinite(position.z):
-            self._lcr_chart.set_limits(position.z)
-            self._lcr_chart.set_line(position.z)
+            self.lcrWidget.setLimits(position.z)
+            self.lcrWidget.setLine(position.z)
 
-    def reset_caldone(self):
+    def resetCaldone(self) -> None:
         self._calibration_widget.reset_calibration()
 
-    def update_caldone(self, position):
+    def setCaldone(self, position: Position) -> None:
         self.current_caldone = position
         self.positions_widget.enabled = caldone_valid(position)
         self.contacts_widget.enabled = caldone_valid(position)
         self.control_layout.enabled = caldone_valid(position)
         self._calibration_widget.update_calibration(position)
 
-    def update_limits(self):
+    def updateLimits(self) -> None:
         x, y, z = self.current_position
         self.z_limit_label.stylesheet = ""
         if not math.isnan(z):
             if z >= self.z_limit:
                 self.z_limit_label.stylesheet = "QLabel:enabled{color:red;}"
 
-    def reset_safety(self):
-        self.laser_label.value = None
+    def resetSafety(self) -> None:
+        self.laser_label.setValue(None)
 
-    def update_safety(self, laser_sensor):
-        self.laser_label.value = laser_sensor
+    def updateSafety(self, value) -> None:
+        self.laser_label.setValue(value)
 
     def update_control_buttons(self):
         x, y, z = self.current_position
@@ -1206,11 +1261,11 @@ class TableControlDialog(QtWidgets.QDialog):
             vector = [(x, y, 0)]
         # Clear contact quality graph on X/Y movements.
         if self.lcr_reset_on_move:
-            self._lcr_chart.clear()
+            self.lcrWidget.clear()
         self.process.relative_move_vector(vector)
         # Clear contact quality graph on X/Y movements.
         if self.lcr_reset_on_move:
-            self._lcr_chart.clear()
+            self.lcrWidget.clear()
 
     def on_add_x(self):
         self.setLocked(True)
@@ -1266,23 +1321,23 @@ class TableControlDialog(QtWidgets.QDialog):
         self.box_light_button.enabled = state
 
     def on_move_finished(self):
-        self.progress_bar.visible = False
-        self.stop_button.enabled = False
+        self.progressBar.setVisible(False)
+        self.stopButton.setEnabled(False)
         self.setLocked(False)
 
     def on_calibration_finished(self):
-        self.progress_bar.visible = False
-        self.stop_button.enabled = False
+        self.progressBar.setVisible(False)
+        self.stopButton.setEnabled(False)
         self.setLocked(False)
 
-    def on_message_changed(self, message):
-        self.message_label.text = message
+    def setMessage(self, message: str) -> None:
+        self.messageLabel.setText(message)
         logger.info(message)
 
-    def on_progress_changed(self, a, b):
-        self.progress_bar.value = a
-        self.progress_bar.maximum = b
-        self.progress_bar.visible = True
+    def setProgress(self, value: int, maximum: int) -> None:
+        self.progressBar.setValue(value)
+        self.progressBar.setMaximum(maximum)
+        self.progressBar.setVisible(True)
 
     def on_update_interval_changed(self, value):
         self.process.update_interval = value
@@ -1296,31 +1351,28 @@ class TableControlDialog(QtWidgets.QDialog):
         position = Position(position.x, position.y, safe_z_position(position.z))
         self.setLocked(True)
         # Clear contact quality graph on X/Y movements.
-        self._lcr_chart.clear()
-        self.stop_button.enabled = True
+        self.lcrWidget.clear()
+        self.stopButton.setEnabled(True)
         self.process.safe_absolute_move(position.x, position.y, position.z)
 
     def on_calibrate(self):
         self.setLocked(True)
-        self.stop_button.enabled = True
+        self.stopButton.setEnabled(True)
         self.process.calibrate_table()
 
-    def on_stop(self):
-        self.stop_button.enabled = False
+    def stop(self) -> None:
+        self.stopButton.setEnabled(False)
         self.process.stop_current_action()
-
-    def on_close(self):
-        self.close()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
         self.process.wait()
         event.accept()
 
-    def load_samples(self, sample_items):
-        self.contacts_widget.load_samples(sample_items)
+    def loadSamples(self, sample_items):
+        self.contacts_widget.loadSamples(sample_items)
 
     def update_samples(self):
-        self.contacts_widget.update_samples()
+        self.contacts_widget.updateSamples()
 
     def readSettings(self) -> None:
         settings_ = QtCore.QSettings()
@@ -1368,20 +1420,20 @@ class TableControlDialog(QtWidgets.QDialog):
         self.control_layout.qt.setEnabled(not locked)
         self.positions_widget.setLocked(locked)
         self.contacts_widget.setLocked(locked)
-        self.close_button.qt.setEnabled(not locked)
-        self.progress_bar.qt.setVisible(locked)
+        self.closeButton.setEnabled(not locked)
+        self.progressBar.setVisible(locked)
         if locked:
-            self.progress_bar.qt.setRange(0, 0)
-            self.progress_bar.qt.setValue(0)
+            self.progressBar.setRange(0, 0)
+            self.progressBar.setValue(0)
 
     def mount(self, process):
         """Mount table process."""
         self.unmount()
         self.process = process
-        self.process.message_changed = self.on_message_changed
-        self.process.progress_changed = self.on_progress_changed
-        self.process.position_changed = self.update_position
-        self.process.caldone_changed = self.update_caldone
+        self.process.message_changed = self.setMessage
+        self.process.progress_changed = self.setProgress
+        self.process.position_changed = self.setPosition
+        self.process.caldone_changed = self.setCaldone
         self.process.relative_move_finished = self.on_move_finished
         self.process.absolute_move_finished = self.on_move_finished
         self.process.calibration_finished = self.on_calibration_finished
@@ -1403,9 +1455,9 @@ class TableControlDialog(QtWidgets.QDialog):
     def on_lcr_toggled(self, state):
         self._lcr_prim_text.enabled = state
         self._lcr_sec_text.enabled = state
-        self._lcr_chart.enabled = state
+        self.lcrWidget.setEnabled(state)
         if state:
-            self._lcr_chart.clear()
+            self.lcrWidget.clear()
             self.lcr_process.update_interval = self.lcr_update_interval
             self.lcr_process.matrix_channels = self.lcr_matrix_channels
             self.lcr_process.start()
@@ -1425,28 +1477,22 @@ class TableControlDialog(QtWidgets.QDialog):
         _, _, z = self.current_position
         if math.isfinite(z) and math.isfinite(sec):
             # Append only absolute Rp readings
-            self._lcr_chart.append(z, abs(sec))
-            self._lcr_chart.set_line(z)
+            self.lcrWidget.append(z, abs(sec))
+            self.lcrWidget.setLine(z)
 
 
 class SwitchLabel(ui.Label):
 
     def __init__(self, value=None):
         super().__init__()
-        self.value = value
+        self.setValue(value)
 
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, value):
-        self.__value = value
+    def setValue(self, value) -> None:
         if value is None:
-            self.text = float("nan")
+            self.qt.setText(format(float("nan")))
             self.qt.setStyleSheet("")
         else:
-            self.text = format_switch(value)
+            self.qt.setText(format_switch(value))
             self.qt.setStyleSheet("QLabel:enabled{color:green}" if value else "QLabel:enabled{color:red}")
 
 
