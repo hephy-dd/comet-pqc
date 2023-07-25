@@ -102,10 +102,10 @@ class PositionWidget(ui.GroupBox):
             stretch=(1, 1)
         )
 
-    def reset_position(self):
-        self.update_position(Position())
+    def reset(self) -> None:
+        self.setPosition(Position())
 
-    def update_position(self, position):
+    def setPosition(self, position: Position) -> None:
         self._pos_x_label.value = position.x
         self._pos_y_label.value = position.y
         self._pos_z_label.value = position.z
@@ -171,10 +171,10 @@ class CalibrationWidget(ui.GroupBox):
             stretch=(1, 1, 1)
         )
 
-    def reset_calibration(self):
-        self.update_calibration(Position())
+    def reset(self) -> None:
+        self.setCalibration(Position())
 
-    def update_calibration(self, position):
+    def setCalibration(self, position: Position) -> None:
         self._update_cal(position)
         self._update_rm(position)
 

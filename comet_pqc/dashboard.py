@@ -33,7 +33,7 @@ from .sequence import (
     load_all_sequences,
 )
 from .settings import settings
-from .tablecontrol import TableControlDialog, safe_z_position
+from .alignment import AlignmentDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
 from .measurementwidget import MeasurementWidget
 from .utils import caldone_valid, handle_exception, create_icon
@@ -284,68 +284,62 @@ class SequenceWidget(QtWidgets.QGroupBox):
             self.current_path = os.path.dirname(filename)
 
 
-class TableControlWidget(ui.GroupBox):
+class TableControlWidget(QtWidgets.QGroupBox):
 
-    joystick_toggled = None
-    control_clicked = None
+    joystickToggled = QtCore.pyqtSignal(bool)
+    controlClicked = QtCore.pyqtSignal()
 
-    def __init__(self, joystick_toggled=None, control_clicked=None, **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Table"
-        self.checkable = True
-        self._joystick_button = ToggleButton(
-            text="Joystick",
-            tool_tip="Toggle table joystick",
-            checkable=True,
-            toggled=self.on_joystick_toggled
-        )
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setTitle("Table")
+        self.setCheckable(True)
+
+        self.joystickButton = ToggleButton().qt
+        self.joystickButton.setText("Joystick")
+        self.joystickButton.setToolTip("Toggle table joystick")
+        self.joystickButton.setCheckable(True)
+        self.joystickButton.toggled.connect(self.joystickToggled.emit)
+
         self._position_widget = PositionWidget()
+
         self._calibration_widget = CalibrationWidget()
-        self._control_button = ui.Button(
-            text="Control...",
-            tool_tip="Open table controls dialog.",
-            clicked=self.on_control_clicked
-        )
-        self.layout=ui.Row(
-            self._position_widget,
-            self._calibration_widget,
-            ui.Spacer(),
-            ui.Column(
-                ui.Spacer(),
-                self._control_button,
-                self._joystick_button,
-                ui.Spacer()
-            ),
-            stretch=(0, 0, 1, 0)
-        )
+
+        self.alignmentButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.alignmentButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "alignment.svg")))
+        self.alignmentButton.setText("Alignment...")
+        self.alignmentButton.setToolTip("Open table controls dialog.")
+        self.alignmentButton.clicked.connect(self.controlClicked.emit)
+
+        # Layout
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self._position_widget.qt, 0, 0, 4, 1)
+        layout.addWidget(self._calibration_widget.qt, 0, 1, 4, 1)
+        layout.addWidget(self.alignmentButton, 1, 3)
+        layout.addWidget(self.joystickButton, 2, 3)
+        layout.setColumnStretch(2, 1)
+
         # Callbacks
-        self.joystick_toggled = joystick_toggled
-        self.control_clicked = control_clicked
         self._joystick_limits = [0, 0, 0]
-        self.calibration_valid = False
+        self._calibration_valid: bool = False
 
-    def on_joystick_toggled(self, state):
-        self.emit(self.joystick_toggled, state)
+    def isCalibrationValid(self) -> bool:
+        return self._calibration_valid
 
-    def on_control_clicked(self):
-        self.emit(self.control_clicked)
+    def setJoystickEnabled(self, enabled: bool) -> None:
+        self.joystickButton.setChecked(enabled)
 
-    def update_joystick_state(self, state):
-        self._joystick_button.toggled = None
-        self._joystick_button.checked = state
-        self._joystick_button.toggled = self.on_joystick_toggled
-
-    def update_position(self, position):
-        self._position_widget.update_position(position)
+    def setPosition(self, position: Position) -> None:
+        self._position_widget.setPosition(position)
         limits = self._joystick_limits
         enabled = position.x <= limits[0] and position.y <= limits[1] and position.z <= limits[2]
-        self._joystick_button.enabled = enabled and self.calibration_valid
+        self.joystickButton.setEnabled(enabled and self._calibration_valid)
 
-    def update_calibration(self, position):
-        self._calibration_widget.update_calibration(position)
-        self.calibration_valid = caldone_valid(position)
+    def setCalibration(self, position: Position) -> None:
+        self._calibration_widget.setCalibration(position)
+        self._calibration_valid = caldone_valid(position)
 
-    def readSettings(self):
+    def readSettings(self) -> None:
         use_table = settings.settings.get("use_table") or False
         self.checked = use_table
         self._joystick_limits = settings.table_joystick_maximum_limits
@@ -484,11 +478,10 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         # Table controls
 
-        self.table_control_widget = TableControlWidget(
-            toggled=self.on_table_groupbox_toggled,
-            joystick_toggled=self.on_table_joystick_toggled,
-            control_clicked=self.on_table_control_clicked
-        )
+        self.table_control_widget: TableControlWidget = TableControlWidget(self)
+        self.table_control_widget.toggled.connect(self.on_table_groupbox_toggled)
+        self.table_control_widget.joystickToggled.connect(self.on_table_joystick_toggled)
+        self.table_control_widget.controlClicked.connect(self.on_table_control_clicked)
 
         # Operator
 
@@ -518,7 +511,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         controlWidgetLayout = QtWidgets.QGridLayout(self.controlWidget)
         controlWidgetLayout.setContentsMargins(0, 0, 0, 0)
         controlWidgetLayout.addWidget(self.sequenceWidget, 0, 0, 1, 2)
-        controlWidgetLayout.addWidget(self.table_control_widget.qt, 1, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.table_control_widget, 1, 0, 1, 2)
         controlWidgetLayout.addWidget(self.environmentControlWidget, 2, 0, 1, 2)
         controlWidgetLayout.addWidget(self.operatorGroupBox, 3, 0, 1, 1)
         controlWidgetLayout.addWidget(self.outputGroupBox, 3, 1, 1, 1)
@@ -642,7 +635,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def use_table(self):
         """Return True if table control enabled."""
-        return self.table_control_widget.checked
+        return self.table_control_widget.isChecked()
 
     def operator(self):
         """Return current operator."""
@@ -675,7 +668,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def lock_controls(self):
         """Lock dashboard controls."""
         self.environmentControlWidget.setEnabled(False)
-        self.table_control_widget.enabled = False
+        self.table_control_widget.setEnabled(False)
         self.sequenceWidget.setLocked(True)
         self.outputGroupBox.setEnabled(False)
         self.operatorGroupBox.setEnabled(False)
@@ -686,7 +679,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def unlock_controls(self):
         """Unlock dashboard controls."""
         self.environmentControlWidget.setEnabled(True)
-        self.table_control_widget.enabled = True
+        self.table_control_widget.setEnabled(True)
         self.sequenceWidget.setLocked(False)
         self.outputGroupBox.setEnabled(True)
         self.operatorGroupBox.setEnabled(True)
@@ -947,25 +940,25 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     # Table calibration
 
     @handle_exception
-    def on_table_joystick_toggled(self, state):
+    def on_table_joystick_toggled(self, state: bool) -> None:
         self.table_process.enable_joystick(state)
 
     def on_table_joystick_changed(self, state):
-        self.table_control_widget.update_joystick_state(state)
+        self.table_control_widget.setJoystickEnabled(state)
 
     def on_table_position_changed(self, position):
-        self.table_control_widget.update_position(position)
+        self.table_control_widget.setPosition(position)
 
     def on_table_calibration_changed(self, position):
-        self.table_control_widget.update_calibration(position)
+        self.table_control_widget.setCalibration(position)
         panel = self.panels.get("contact")
         if panel:
-            panel.update_use_table(self.use_table() and self.table_control_widget.calibration_valid)
+            panel.update_use_table(self.use_table() and self.table_control_widget.isCalibrationValid())
 
     @handle_exception
-    def on_table_control_clicked(self):
+    def on_table_control_clicked(self) -> None:
         self.table_process.enable_joystick(False)
-        dialog = TableControlDialog(self.table_process, self.contact_quality_process)
+        dialog = AlignmentDialog(self.table_process, self.contact_quality_process)
         dialog.readSettings()
         dialog.loadSamples(list(self.sequence_tree)) # HACK
         if self.use_environment():
@@ -984,7 +977,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.contact_quality_process.stop()
         self.contact_quality_process.join()
         dialog.writeSettings()
-        dialog.update_samples()
+        dialog.updateSamples()
         # Prevent glitch
         current_item = self.sequence_tree.current
         if isinstance(current_item, ContactTreeItem):
@@ -1089,7 +1082,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         else:
             self.environ_process.stop()
 
-    def on_table_groupbox_toggled(self, state):
+    def on_table_groupbox_toggled(self, state: bool) -> None:
         if state:
             self.table_process.start()
             self.table_process.enable_joystick(False)

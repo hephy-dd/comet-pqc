@@ -87,16 +87,6 @@ class TableStepDialog(QtWidgets.QDialog):
         self.colorLineEdit.setText(str(value or ""))
 
 
-class ItemDelegate(QtWidgets.QItemDelegate):
-    """Item delegate for custom floating point number display."""
-
-    decimals = 3
-
-    def drawDisplay(self, painter, option, rect, text):
-        text = format(float(text), f".{self.decimals}f")
-        super().drawDisplay(painter, option, rect, text)
-
-
 class TableStepItem(QtWidgets.QTreeWidgetItem):
 
     def __init__(self, step_size, z_limit, step_color=None) -> None:
@@ -112,7 +102,7 @@ class TableStepItem(QtWidgets.QTreeWidgetItem):
     @step_size.setter
     def step_size(self, value: float) -> None:
         self.setData(0, 0x2000, value)
-        self.setText(0, str(value))
+        self.setText(0, f"{value:.3f} mm")
 
     @property
     def z_limit(self) -> float:
@@ -132,6 +122,12 @@ class TableStepItem(QtWidgets.QTreeWidgetItem):
         self.setData(2, 0x2000, value)
         self.setText(2, str(value))
 
+    def __lt__(self, other):
+        column = self.treeWidget().sortColumn()
+        if column == 0:
+            return self.step_size < other.step_size
+        return super().__lt__(other)
+
 
 class TableWidget(QtWidgets.QWidget):
     """Table limits tab for preferences dialog."""
@@ -146,8 +142,6 @@ class TableWidget(QtWidgets.QWidget):
         self.stepsTreeWidget.setColumnHidden(1, True)
         self.stepsTreeWidget.itemSelectionChanged.connect(self.on_position_selected)
         self.stepsTreeWidget.itemDoubleClicked.connect(self.on_steps_tree_double_clicked)
-        self.stepsTreeWidget.setItemDelegateForColumn(0, ItemDelegate(self.stepsTreeWidget))
-        self.stepsTreeWidget.setItemDelegateForColumn(1, ItemDelegate(self.stepsTreeWidget))
 
         self.addStepButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.addStepButton.setText("&Add")
@@ -292,7 +286,7 @@ class TableWidget(QtWidgets.QWidget):
             z_limit = dialog.z_limit
             step_color = dialog.step_color
             self.stepsTreeWidget.addTopLevelItem(TableStepItem(step_size, z_limit, step_color))
-            self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
+            self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def editCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
@@ -305,7 +299,7 @@ class TableWidget(QtWidgets.QWidget):
                 item.step_size = dialog.step_size
                 item.z_limit = dialog.z_limit
                 item.step_color = dialog.step_color
-                self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
+                self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def removeCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
@@ -316,7 +310,7 @@ class TableWidget(QtWidgets.QWidget):
                 if not self.stepsTreeWidget.topLevelItemCount():
                     self.editStepButton.setEnabled(False)
                     self.removeStepButton.setEnabled(False)
-                self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
+                self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def readSettings(self) -> None:
         table_step_sizes = settings.settings.get("table_step_sizes") or []
@@ -327,7 +321,7 @@ class TableWidget(QtWidgets.QWidget):
                 z_limit=from_table_unit(item.get("z_limit")),
                 step_color=format(item.get("step_color"))
             ))
-        self.stepsTreeWidget.sortByColumn(0, QtCore.Qt.AscendingOrder)
+        self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
         self.zLimitMovementSpinBox.setValue(settings.table_z_limit)
         # Probecard limits
         x, y, z = settings.table_probecard_maximum_limits
