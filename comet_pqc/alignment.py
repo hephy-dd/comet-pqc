@@ -4,11 +4,8 @@ import logging
 import math
 from typing import Optional
 
-from PyQt5 import QtCore, QtWidgets
-
-import comet
-import comet.ui as ui
-from PyQt5 import QtCore, QtGui, QtChart
+from comet import ureg
+from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 
 from .components import (
     CalibrationWidget,
@@ -147,230 +144,262 @@ class LCRWidget(QtWidgets.QWidget):
         self._marker.append(x, y)
 
 
-class TableSampleItem(ui.TreeItem):
+class TableSampleItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, sample_item):
+    def __init__(self, sample_item) -> None:
         super().__init__()
         self.sample_item = sample_item
         self.setName("/".join([item for item in (sample_item.name, sample_item.sample_type) if item]))
-        self.position = sample_item.sample_position
+        self.setPositionLabel(sample_item.sample_position)
         for contact_item in sample_item.children:
-            self.append(TableContactItem(contact_item))
+            self.addChild(TableContactItem(contact_item))
 
     def name(self) -> str:
-        return self.qt.text(0)
+        return self.text(0)
 
     def setName(self, name: str) -> None:
-        self.qt.setText(0, name)
+        self.setText(0, name)
 
-    @property
-    def position(self):
-        return self[1].value
+    def positionLabel(self) -> str:
+        return self.text(1)
 
-    @position.setter
-    def position(self, value):
-        self[1].value = value
+    def setPositionLabel(self, value: str) -> None:
+        self.setText(1, value)
 
     def update_contacts(self):
-        for contact_item in self.children:
+        for index in range(self.childCount()):
+            contact_item = self.child(index)
             contact_item.update_contact()
-            logger.info("Updated contact position: %s %s %s", self.name(), contact_item.name(), contact_item.position)
+            logger.info("Updated contact position: %s %s %s", self.name(), contact_item.name(), contact_item.position())
 
     def calculate_positions(self):
         tr = LinearTransform()
-        count = len(self.children)
+        count = self.childCount()
         if count > 2:
-            first = self.children[0].position
-            last = list(self.children)[-1].position
+            first = self.child(0).position()
+            last = self.child(count - 1).position()
             for i, position in enumerate(tr.calculate(first, last, count - 1)):
-                self.children[i].position = position
+                self.child(i).setPosition(position)
 
 
-class TableContactItem(ui.TreeItem):
+class TableContactItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, contact_item):
+    def __init__(self, contact_item) -> None:
         super().__init__()
         for i in range(2, 5):
-            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+            self.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.contact_item = contact_item
         self.setName(contact_item.name)
-        self.position = contact_item.position
+        self.setPosition(contact_item.position)
 
     def name(self) -> str:
-        return self.qt.text(0)
+        return self.text(0)
 
     def setName(self, name: str) -> None:
-        self.qt.setText(0, name)
+        self.setText(0, name)
 
-    @property
-    def position(self):
-        return self.__position
+    def position(self) -> tuple:
+        x = self.data(2, 0x2000)
+        y = self.data(3, 0x2000)
+        z = self.data(4, 0x2000)
+        return x, y, z
 
-    @position.setter
-    def position(self, value):
+    def setPosition(self, value):
         x, y, z = value
-        self.__position = x, y, z
-        self[2].value = format(x, ".3f") if x is not None else None
-        self[3].value = format(y, ".3f") if y is not None else None
-        self[4].value = format(z, ".3f") if z is not None else None
+        self.setData(2, 0x2000, x)
+        self.setData(3, 0x2000, y)
+        self.setData(4, 0x2000, z)
+        self.setText(2, format(x, ".3f") if x is not None else "")
+        self.setText(3, format(y, ".3f") if y is not None else "")
+        self.setText(4, format(z, ".3f") if z is not None else "")
 
     @property
     def has_position(self):
-        return any((not math.isnan(value) for value in self.__position))
+        return any((not math.isnan(value) for value in self.position()))
 
     def update_contact(self):
-        self.contact_item.position = self.position
+        self.contact_item.position = self.position()
 
     def reset(self) -> None:
-        self.position = (float("nan"), float("nan"), float("nan"))
+        self.setPosition((float("nan"), float("nan"), float("nan")))
 
 
-class TableContactsWidget(ui.Row):
+class TableContactsWidget(QtWidgets.QWidget):
 
-    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self.absolute_move = absolute_move
-        self.contacts_tree = ui.Tree(
-            header=("Contact", "Pos", "X", "Y", "Z", None),
-            selected=self.on_contacts_selected
-        )
-        self.contacts_tree.fit()
-        self.pick_button = ui.Button(
-            text="Assign &Position",
-            tool_tip="Assign current table position to selected position item",
-            clicked=self.on_pick_position,
-            enabled=False
-        )
-        self.calculate_button= ui.Button(
-            text="&Calculate",
-            clicked=self.on_calculate,
-            enabled=False
-        )
-        self.move_button= ui.Button(
-            text="&Move",
-            tool_tip="Move to selected position",
-            clicked=self.on_move,
-            enabled=False
-        )
-        self.reset_button = ui.Button(
-            text="&Reset",
-            clicked=self.on_reset,
-            enabled=False
-        )
-        self.reset_all_button = ui.Button(
-            text="Reset &All",
-            clicked=self.on_reset_all
-        )
-        self.append(self.contacts_tree)
-        self.append(ui.Column(
-            self.pick_button,
-            self.move_button,
-            self.calculate_button,
-            ui.Spacer(),
-            self.reset_button,
-            self.reset_all_button
-        ))
-        self.stretch = 1, 0
+    positionPicked = QtCore.pyqtSignal(object)
+    absoluteMove = QtCore.pyqtSignal(object)
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.contactsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.contactsTreeWidget.setHeaderLabels(["Contact", "Pos", "X", "Y", "Z", ""])
+        self.contactsTreeWidget.currentItemChanged.connect(self.on_contacts_selected)
+        self.contactsTreeWidget.resizeColumnToContents(0)
+        self.contactsTreeWidget.resizeColumnToContents(1)
+        self.contactsTreeWidget.resizeColumnToContents(2)
+        self.contactsTreeWidget.resizeColumnToContents(3)
+        self.contactsTreeWidget.resizeColumnToContents(4)
+
+        self.pickButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.pickButton.setText("Assign &Position")
+        self.pickButton.setToolTip("Assign current table position to selected position item")
+        self.pickButton.setEnabled(False)
+        self.pickButton.clicked.connect(self.on_pick_position)
+
+        self.calculateButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.calculateButton.setText("&Calculate")
+        self.calculateButton.setEnabled(False)
+        self.calculateButton.clicked.connect(self.on_calculate)
+
+        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton.setText("&Move")
+        self.moveButton.setToolTip("Move to selected position")
+        self.moveButton.setEnabled(False)
+        self.moveButton.clicked.connect(self.moveToCurrentPosition)
+
+        self.resetButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetButton.setText("&Reset")
+        self.resetButton.setEnabled(False)
+        self.resetButton.clicked.connect(self.on_reset)
+
+        self.resetAllButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetAllButton.setText("Reset &All")
+        self.resetAllButton.clicked.connect(self.on_reset_all)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.contactsTreeWidget, 0, 0, 6, 1)
+        layout.addWidget(self.pickButton, 0, 1)
+        layout.addWidget(self.moveButton, 1, 1)
+        layout.addWidget(self.calculateButton, 2, 1)
+        layout.addWidget(self.resetButton, 4, 1)
+        layout.addWidget(self.resetAllButton, 5, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setRowStretch(3, 1)
 
     def append_sample(self, sample_item):
-        self.contacts_tree.append(TableSampleItem(sample_item))
+        item = TableSampleItem(sample_item)
+        self.contactsTreeWidget.addTopLevelItem(item)
+        item.setExpanded(True)
 
-    def on_contacts_selected(self, item):
-        self.update_button_states(item)
+    def on_contacts_selected(self, current, previous):
+        self.update_button_states(current)
 
     def update_button_states(self, item=None):
         if item is None:
-            item = self.contacts_tree.current
+            item = self.contactsTreeWidget.currentItem()
         is_contact = isinstance(item, TableContactItem)
-        self.pick_button.enabled = is_contact
-        self.move_button.enabled = item.has_position if is_contact else False
-        self.calculate_button.enabled = not is_contact
-        self.reset_button.enabled = is_contact
+        self.pickButton.setEnabled(is_contact)
+        self.moveButton.setEnabled(item.has_position if is_contact else False)
+        self.calculateButton.setEnabled(not is_contact)
+        self.resetButton.setEnabled(is_contact)
 
     def on_pick_position(self):
-        item = self.contacts_tree.current
+        item = self.contactsTreeWidget.currentItem()
         if isinstance(item, TableContactItem):
             def callback(x, y, z):
-                item.position = x, y, z
-                self.contacts_tree.fit()
-            self.emit(self.position_picked, callback)
+                item.setPosition((x, y, z))
+                self.contactsTreeWidget.resizeColumnToContents(0)
+                self.contactsTreeWidget.resizeColumnToContents(1)
+                self.contactsTreeWidget.resizeColumnToContents(2)
+                self.contactsTreeWidget.resizeColumnToContents(3)
+                self.contactsTreeWidget.resizeColumnToContents(4)
+            self.positionPicked.emit(callback)
 
     def on_reset(self):
-        item = self.contacts_tree.current
+        item = self.contactsTreeWidget.currentItem()
         if isinstance(item, TableContactItem):
             item.reset()
-            self.contacts_tree.fit()
+            self.contactsTreeWidget.resizeColumnToContents(0)
+            self.contactsTreeWidget.resizeColumnToContents(1)
+            self.contactsTreeWidget.resizeColumnToContents(2)
+            self.contactsTreeWidget.resizeColumnToContents(3)
+            self.contactsTreeWidget.resizeColumnToContents(4)
 
     def on_reset_all(self):
-        if ui.show_question("Do you want to reset all contact positions?"):
-            for sample_item in self.contacts_tree:
+        if QtWidgets.QMessageBox.question(None, "", "Do you want to reset all contact positions?") == QtWidgets.QMessageBox.yes:
+            for index in range(self.contactsTreeWidget.topLevelItemCount()):
+                sample_item = self.contactsTreeWidget.topLevelItem(index)
                 for contact_item in sample_item.children:
                     contact_item.reset()
-            self.contacts_tree.fit()
+            self.contactsTreeWidget.resizeColumnToContents(0)
+            self.contactsTreeWidget.resizeColumnToContents(1)
+            self.contactsTreeWidget.resizeColumnToContents(2)
+            self.contactsTreeWidget.resizeColumnToContents(3)
+            self.contactsTreeWidget.resizeColumnToContents(4)
 
-    def on_move(self):
-        current_item = self.contacts_tree.current
+    def moveToCurrentPosition(self) -> None:
+        current_item = self.contactsTreeWidget.currentItem()
         if isinstance(current_item, TableContactItem):
             if current_item.has_position:
-                if ui.show_question(f"Do you want to move table to contact {current_item.name()}?"):
-                    x, y, z = current_item.position
-                    self.emit(self.absolute_move, Position(x, y, z))
+                if QtWidgets.QMessageBox.question(None, "", f"Do you want to move table to contact {current_item.name()}?") == QtWidgets.QMessageBox.Yes:
+                    x, y, z = current_item.position()
+                    self.absoluteMove.emit(Position(x, y, z))
 
     def on_calculate(self):
-        current_item = self.contacts_tree.current
+        current_item = self.contactsTreeWidget.currentItem()
         if isinstance(current_item, TableSampleItem):
             current_item.calculate_positions()
 
     def loadSamples(self, sample_items) -> None:
-        self.contacts_tree.clear()
+        self.contactsTreeWidget.clear()
         for sample_item in sample_items:
             self.append_sample(sample_item)
-        self.contacts_tree.fit()
+        self.contactsTreeWidget.resizeColumnToContents(0)
+        self.contactsTreeWidget.resizeColumnToContents(1)
+        self.contactsTreeWidget.resizeColumnToContents(2)
+        self.contactsTreeWidget.resizeColumnToContents(3)
+        self.contactsTreeWidget.resizeColumnToContents(4)
 
     def updateSamples(self) -> None:
-        for sample_item in self.contacts_tree:
+        for index in range(self.contactsTreeWidget.topLevelItemCount()):
+            sample_item = self.contactsTreeWidget.topLevelItem(index)
             sample_item.update_contacts()
 
     def setLocked(self, locked: bool) -> None:
         if locked:
-            self.pick_button.qt.setEnabled(False)
-            self.move_button.qt.setEnabled(False)
-            self.calculate_button.qt.setEnabled(False)
-            self.reset_button.qt.setEnabled(False)
+            self.pickButton.setEnabled(False)
+            self.moveButton.setEnabled(False)
+            self.calculateButton.setEnabled(False)
+            self.resetButton.setEnabled(False)
         else:
             self.update_button_states()
-        self.reset_all_button.qt.setEnabled(not locked)
+        self.resetAllButton.setEnabled(not locked)
 
 
-class TablePositionItem(ui.TreeItem):
+class TablePositionItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         for i in range(1, 4):
-            self[i].qt.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+            self.setTextAlignment(i, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.setPosition(0, 0, 0)
 
     def name(self) -> str:
-        return self.qt.text(0)
+        return self.text(0)
 
     def setName(self, name: str) -> None:
-        self.qt.setText(0, name)
+        self.setText(0, name)
 
     def position(self) -> tuple:
-        return self.__position
+        x = self.data(1, 0x2000)
+        y = self.data(2, 0x2000)
+        z = self.data(3, 0x2000)
+        return x, y, z
 
     def setPosition(self, x, y, z) -> None:
-        self.__position = x, y, z
-        self.qt.setText(1, format(x, ".3f"))
-        self.qt.setText(2, format(y, ".3f"))
-        self.qt.setText(3, format(z, ".3f"))
+        self.setData(1, 0x2000, x)
+        self.setData(2, 0x2000, y)
+        self.setData(3, 0x2000, z)
+        self.setText(1, format(x, ".3f"))
+        self.setText(2, format(y, ".3f"))
+        self.setText(3, format(z, ".3f"))
 
     def comment(self) -> str:
-        return self.qt.text(4)
+        return self.text(4)
 
     def setComment(self, comment: str) -> None:
-        self.qt.setText(4, comment)
+        self.setText(4, comment)
 
 
 class PositionDialog(QtWidgets.QDialog):
@@ -474,77 +503,85 @@ class PositionDialog(QtWidgets.QDialog):
         self.commentLineEdit.setText(comment)
 
 
-class TablePositionsWidget(ui.Row):
+class TablePositionsWidget(QtWidgets.QWidget):
 
-    def __init__(self, position_picked=None, absolute_move=None, **kwargs):
-        super().__init__(**kwargs)
-        self.position_picked = position_picked
-        self.absolute_move = absolute_move
-        self.positions_tree = ui.Tree(
-            header=("Name", "X", "Y", "Z", "Comment"),
-            root_is_decorated=False,
-            selected=self.on_position_selected,
-            double_clicked=self.on_position_double_clicked
-        )
-        self.add_button = ui.Button(
-            text="&Add",
-            tool_tip="Add new position item",
-            clicked=self.on_add_position
-        )
-        self.edit_button = ui.Button(
-            text="&Edit",
-            tool_tip="Edit selected position item",
-            clicked=self.on_edit_position,
-            enabled=False
-        )
-        self.remove_button = ui.Button(
-            text="&Remove",
-            tool_tip="Remove selected position item",
-            clicked=self.on_remove_position,
-            enabled=False
-        )
-        self.move_button= ui.Button(
-            text="&Move",
-            tool_tip="Move to selected position",
-            clicked=self.on_move,
-            enabled=False
-        )
-        self.import_button = ui.Button(
-            text="Import...",
-            tool_tip="Import from CSV",
-            clicked=self.on_import,
-        )
-        self.export_button = ui.Button(
-            text="Export...",
-            tool_tip="Export to CSV",
-            clicked=self.on_export,
-        )
-        self.append(self.positions_tree)
-        self.append(ui.Column(
-            self.move_button,
-            ui.Spacer(),
-            self.add_button,
-            self.edit_button,
-            self.remove_button,
-            self.import_button,
-            self.export_button,
+    positionPicked = QtCore.pyqtSignal(object)
+    absoluteMove = QtCore.pyqtSignal(object)
 
-        ))
-        self.stretch = 1, 0
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self._locked = False  # TODO
+
+        self.positionsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.positionsTreeWidget.setHeaderLabels(["Name", "X", "Y", "Z", "Comment"])
+        self.positionsTreeWidget.setRootIsDecorated(False)
+        self.positionsTreeWidget.currentItemChanged.connect(self.on_position_selected)
+        self.positionsTreeWidget.itemDoubleClicked.connect(lambda item, column: self.moveToCurrentPosition())
+
+        self.addButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.addButton.setText("&Add")
+        self.addButton.setToolTip("Add new position item")
+        self.addButton.clicked.connect(self.on_add_position)
+
+        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton.setText("&Edit")
+        self.editButton.setToolTip("Edit selected position item")
+        self.editButton.setEnabled(False)
+        self.editButton.clicked.connect(self.on_edit_position)
+
+        self.removeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.removeButton.setText("&Remove")
+        self.removeButton.setToolTip("Remove selected position item")
+        self.removeButton.setEnabled(False)
+        self.removeButton.clicked.connect(self.on_remove_position)
+
+        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton.setText("&Move")
+        self.moveButton.setToolTip("Move to selected position")
+        self.moveButton.setEnabled(False)
+        self.moveButton.clicked.connect(self.moveToCurrentPosition)
+
+        self.importButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.importButton.setText("Import...")
+        self.importButton.setToolTip("Import from CSV")
+        self.importButton.setEnabled(False)
+        self.importButton.clicked.connect(self.on_import)
+
+        self.exportButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.exportButton.setText("Export...")
+        self.exportButton.setToolTip("Export to CSV")
+        self.exportButton.setEnabled(False)
+        self.exportButton.clicked.connect(self.on_export)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.positionsTreeWidget, 0, 0, 6, 1)
+        layout.addWidget(self.moveButton, 0, 1)
+        layout.addWidget(self.addButton, 2, 1)
+        layout.addWidget(self.editButton, 3, 1)
+        layout.addWidget(self.removeButton, 4, 1)
+        layout.addWidget(self.importButton, 5, 1)
+        layout.addWidget(self.exportButton, 6, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setRowStretch(1, 1)
 
     def readSettings(self) -> None:
-        self.positions_tree.clear()
+        self.positionsTreeWidget.clear()
         for position in settings.table_positions:
             item = TablePositionItem()
             item.setName(position.name)
             item.setPosition(position.x,position.y, position.z)
             item.setComment(position.comment)
-            self.positions_tree.append(item)
-        self.positions_tree.fit()
+            self.positionsTreeWidget.addTopLevelItem(item)
+        self.positionsTreeWidget.resizeColumnToContents(0)
+        self.positionsTreeWidget.resizeColumnToContents(1)
+        self.positionsTreeWidget.resizeColumnToContents(2)
+        self.positionsTreeWidget.resizeColumnToContents(3)
 
     def writeSettings(self) -> None:
         positions: list = []
-        for item in self.positions_tree:
+        for index in range(self.positionsTreeWidget.topLevelItemCount()):
+            item = self.positionsTreeWidget.topLevelItem(index)
             x, y, z = item.position()
             positions.append(TablePosition(
                 name=item.name(),
@@ -556,61 +593,55 @@ class TablePositionsWidget(ui.Row):
         settings.table_positions = positions
 
     def setLocked(self, locked: bool) -> None:
+        self._locked = locked
         if locked:
-            self.add_button.enabled = False
-            self.edit_button.enabled = False
-            self.remove_button.enabled = False
-            self.move_button.enabled = False
-            # Remove event
-            self.positions_tree.double_clicked = None
+            self.addButton.setEnabled(False)
+            self.editButton.setEnabled(False)
+            self.removeButton.setEnabled(False)
+            self.moveButton.setEnabled(False)
         else:
-            enabled = self.positions_tree.current is not None
-            self.add_button.enabled = True
-            self.edit_button.enabled = enabled
-            self.remove_button.enabled = enabled
-            self.move_button.enabled = enabled
-            # Restore event
-            self.positions_tree.double_clicked = self.on_position_double_clicked
+            enabled = self.positionsTreeWidget.currentItem() is not None
+            self.addButton.setEnabled(True)
+            self.editButton.setEnabled(enabled)
+            self.removeButton.setEnabled(enabled)
+            self.moveButton.setEnabled(enabled)
 
     def on_import(self) -> None:
         filename, ok = QtWidgets.QFileDialog.getOpenFileName(self.qt, "Import CSV", "", "CSV (*.csv);;All files (*)")
         if ok:
             ...
 
-
     def on_export(self) -> None:
         filename, ok = QtWidgets.QFileDialog.getSaveFileName(self.qt, "Export CSV", "", "CSV (*.csv);;All files (*)")
         if ok:
             ...
 
-    def on_position_selected(self, item):
-        enabled = item is not None
-        self.edit_button.enabled = True
-        self.remove_button.enabled = True
-        self.move_button.enabled = True
-
-    def on_position_double_clicked(self, *args):
-        self.on_move()
+    def on_position_selected(self, current, previous):
+        enabled = current is not None
+        self.editButton.setEnabled(True)
+        self.removeButton.setEnabled(True)
+        self.moveButton.setEnabled(True)
 
     def on_position_picked(self, callback):
-        self.emit(self.position_picked, callback)
+        self.positionPicked.emit(callback)
 
     def on_add_position(self):
         dialog = PositionDialog()
         dialog.positionPicked.connect(lambda dialog=dialog: self.on_position_picked(dialog.setPosition))  # TODO
         if dialog.exec() == dialog.Accepted:
-            name = dialog.name()
             x, y, z = dialog.position()
-            comment = dialog.comment()
             item = TablePositionItem()
-            item.setName()
-            item.setPosition(x, y, z)
-            item.setComment(comment)
-            self.positions_tree.append(item)
-            self.positions_tree.fit()
+            item.setName(dialog.name())
+            item.setPosition(x, y, z)  # TODO
+            item.setComment(dialog.comment())
+            self.positionsTreeWidget.addTopLevelItem(item)
+            self.positionsTreeWidget.resizeColumnToContents(0)
+            self.positionsTreeWidget.resizeColumnToContents(1)
+            self.positionsTreeWidget.resizeColumnToContents(2)
+            self.positionsTreeWidget.resizeColumnToContents(3)
 
     def on_edit_position(self):
-        item = self.positions_tree.current
+        item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
             dialog = PositionDialog()
             dialog.positionPicked.connect(lambda dialog=dialog: self.on_position_picked(dialog.setPosition))  # TODO
@@ -621,24 +652,33 @@ class TablePositionsWidget(ui.Row):
                 item.setName(dialog.name())
                 item.setPosition(*dialog.position())
                 item.setComment(dialog.comment())
-                self.positions_tree.fit()
+                self.positionsTreeWidget.resizeColumnToContents(0)
+                self.positionsTreeWidget.resizeColumnToContents(1)
+                self.positionsTreeWidget.resizeColumnToContents(2)
+                self.positionsTreeWidget.resizeColumnToContents(3)
 
     def on_remove_position(self):
-        item = self.positions_tree.current
+        item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
-            if ui.show_question(f"Do you want to remove position {item.name()!r}?"):
-                self.positions_tree.remove(item)
-                if not len(self.positions_tree):
-                    self.edit_button.enabled = False
-                    self.remove_button.enabled = False
-                self.positions_tree.fit()
+            if QtWidgets.QMessageBox.question(None, "", f"Do you want to remove position {item.name()!r}?") == QtWidgets.QMessageBox.Yes:
+                index = self.positionsTreeWidget.indexOfTopLevelItem(item)
+                self.positionsTreeWidget.takeTopLevelItem(index)
+                if not self.positionsTreeWidget.topLevelItemCount():
+                    self.editButton.setEnabled(False)
+                    self.removeButton.setEnabled(False)
+                self.positionsTreeWidget.resizeColumnToContents(0)
+                self.positionsTreeWidget.resizeColumnToContents(1)
+                self.positionsTreeWidget.resizeColumnToContents(2)
+                self.positionsTreeWidget.resizeColumnToContents(3)
 
-    def on_move(self):
-        item = self.positions_tree.current
+    def moveToCurrentPosition(self):
+        if self._locked:
+            return
+        item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
-            if ui.show_question(f"Do you want to move table to position {item.name()!r}?"):
+            if QtWidgets.QMessageBox.question(None, "", f"Do you want to move table to position {item.name()!r}?") == QtWidgets.QMessageBox.Yes:
                 x, y ,z = item.position()
-                self.emit(self.absolute_move, Position(x, y, z))
+                self.absoluteMove.emit(Position(x, y, z))
 
 
 class CalibrateWidget(QtWidgets.QWidget):
@@ -788,11 +828,11 @@ class OptionsWidget(QtWidgets.QWidget):
 
     def dodgeHeight(self) -> float:
         """Return dodge height in millimeters."""
-        return (self.dodgeHeightSpinBox.value() * comet.ureg("um")).to("mm").m
+        return (self.dodgeHeightSpinBox.value() * ureg("um")).to("mm").m
 
     def setDodgeHeight(self, height: float) -> None:
         """Set dodge height in millimeters."""
-        self.dodgeHeightSpinBox.setValue((height * comet.ureg("mm")).to("um").m)
+        self.dodgeHeightSpinBox.setValue((height * ureg("mm")).to("um").m)
 
     def isLcrResetOnMove(self) -> bool:
         return self.lcrResetOnMoveCheckBox.isChecked()
@@ -802,10 +842,10 @@ class OptionsWidget(QtWidgets.QWidget):
 
     def stepUpDelay(self) -> float:
         """Return step up delay in seconds."""
-        return (self.stepUpDelaySpinBox.value() * comet.ureg("ms")).to("s").m
+        return (self.stepUpDelaySpinBox.value() * ureg("ms")).to("s").m
 
     def setStepUpDelay(self, seconds: float) -> None:
-        self.stepUpDelaySpinBox.setValue((seconds * comet.ureg("s")).to("ms").m)
+        self.stepUpDelaySpinBox.setValue((seconds * ureg("s")).to("ms").m)
 
     def stepUpMultiply(self) -> int:
         """Return step up delay in seconds."""
@@ -816,10 +856,10 @@ class OptionsWidget(QtWidgets.QWidget):
 
     def lcrUpdateInterval(self) -> float:
         """LCR update interval in seconds."""
-        return (self.lcrUpdateIntervalSpinBox.value() * comet.ureg("ms")).to("s").m
+        return (self.lcrUpdateIntervalSpinBox.value() * ureg("ms")).to("s").m
 
     def setLcrUpdateInterval(self, seconds: float) -> None:
-        self.lcrUpdateIntervalSpinBox.setValue((seconds * comet.ureg("s")).to("ms").m)
+        self.lcrUpdateIntervalSpinBox.setValue((seconds * ureg("s")).to("ms").m)
 
     def lcrMatrixChannels(self) -> list:
         """Matrix channels used for LCR readings."""
@@ -942,7 +982,7 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Create step width radio buttons
         for item in self.load_table_step_sizes():
-            step_size = item.get("step_size") * comet.ureg("um")
+            step_size = item.get("step_size") * ureg("um")
             step_color = item.get("step_color")
             step_size_label = format_metric(step_size.to("m").m, "m", decimals=1)
             button = QtWidgets.QRadioButton(self)
@@ -950,8 +990,8 @@ class AlignmentDialog(QtWidgets.QDialog):
             button.setToolTip(f"Move in {step_size_label} steps.")
             button.setStyleSheet(f"QRadioButton:enabled{{color:{step_color};}}")
             button.setChecked(len(self.stepWidthButtonGroup.buttons()) == 0)
-            button.movement_width = step_size.to("mm").m
-            button.movement_color = step_color
+            button.setProperty("step", step_size.to("mm").m)
+            button.setProperty("color", step_color)
             self.stepWidthButtonGroup.addButton(button)
             stepWidthGroupBoxLayout.addWidget(button)
         stepWidthGroupBoxLayout.addStretch()
@@ -1019,19 +1059,17 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Position group box
 
-        self.positions_widget = TablePositionsWidget(
-            position_picked=self.on_position_picked,
-            absolute_move=self.on_absolute_move
-        )
-        self.positions_widget.qt.setEnabled(False)
+        self.positionsWidget: TablePositionsWidget = TablePositionsWidget(self)
+        self.positionsWidget.setEnabled(False)
+        self.positionsWidget.positionPicked.connect(self.on_position_picked)
+        self.positionsWidget.absoluteMove.connect(self.on_absolute_move)
 
         # Contact group box
 
-        self.contacts_widget = TableContactsWidget(
-            position_picked=self.on_position_picked,
-            absolute_move=self.on_absolute_move
-        )
-        self.contacts_widget.qt.setEnabled(False)
+        self.contactsWidget: TableContactsWidget = TableContactsWidget(self)
+        self.contactsWidget.setEnabled(False)
+        self.contactsWidget.positionPicked.connect(self.on_position_picked)
+        self.contactsWidget.absoluteMove.connect(self.on_absolute_move)
 
         self._position_widget = PositionWidget()
 
@@ -1121,8 +1159,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         # Tab widget
 
         self.tabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
-        self.tabWidget.addTab(self.positions_widget.qt, "Move")
-        self.tabWidget.addTab(self.contacts_widget.qt, "Contacts")
+        self.tabWidget.addTab(self.positionsWidget, "Move")
+        self.tabWidget.addTab(self.contactsWidget, "Contacts")
         self.tabWidget.addTab(self.calibrateWidget, "Calibrate")
         self.tabWidget.addTab(self.optionsWidget, "Options")
 
@@ -1169,19 +1207,11 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.resetSafety()
         self.updateKeypadButtons()
 
-    @property
-    def step_width(self):
+    def stepWidth(self) -> float:
         for button in self.stepWidthButtonGroup.buttons():
             if button.isChecked():
-                return abs(button.movement_width)
-        return 0
-
-    @property
-    def step_color(self):
-        for button in self.stepWidthButtonGroup.buttons():
-            if button.isChecked():
-                return button.movement_color
-        return "black"
+                return abs(button.property("step") or 0.0)
+        return 0.0
 
     def load_table_step_sizes(self):
         return settings.settings.get("table_step_sizes") or self.default_steps
@@ -1203,8 +1233,8 @@ class AlignmentDialog(QtWidgets.QDialog):
 
     def setCaldone(self, position: Position) -> None:
         self.current_caldone = position
-        self.positions_widget.qt.setEnabled(caldone_valid(position))
-        self.contacts_widget.qt.setEnabled(caldone_valid(position))
+        self.positionsWidget.setEnabled(caldone_valid(position))
+        self.contactsWidget.setEnabled(caldone_valid(position))
         self.keypadGroupBox.setEnabled(caldone_valid(position))
         self._calibration_widget.setCalibration(position)
 
@@ -1227,19 +1257,20 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.update_y_buttons(y)
         self.update_z_buttons(z)
         for button in self.allKeypadButtons:
-            button.setStyleSheet(f"QPushButton:enabled{{color:{self.step_color or 'black'}}}")
+            color = button.property("color") or "inherit"
+            button.setStyleSheet(f"QPushButton:enabled{{color:{color}}}")
 
     def update_x_buttons(self, x):
         x_enabled = True
         if not math.isnan(x):
-            if (x - self.step_width) < 0:
+            if (x - self.stepWidth()) < 0:
                 x_enabled = False
         self.xSubButton.setEnabled(x_enabled)
 
     def update_y_buttons(self, y):
         y_enabled = True
         if not math.isnan(y):
-            if (y - self.step_width) < 0:
+            if (y - self.stepWidth()) < 0:
                 y_enabled = False
         self.ySubButton.setEnabled(y_enabled)
 
@@ -1247,13 +1278,13 @@ class AlignmentDialog(QtWidgets.QDialog):
         # Disable move up button for large step sizes
         z_enabled = False
         if not math.isnan(z):
-            if (z + self.step_width) <= self.z_limit:
+            if (z + self.stepWidth()) <= self.z_limit:
                 z_enabled = True
             else:
-                z_enabled = self.step_width <= self.maximum_z_step_size
+                z_enabled = self.stepWidth() <= self.maximum_z_step_size
         self.zAddButton.setEnabled(z_enabled)
-        step_up_limit = comet.ureg("10.0 um").to("mm").m
-        self.stepUpButton.setEnabled(z_enabled and (self.step_width <= step_up_limit))  # TODO
+        step_up_limit = ureg("10.0 um").to("mm").m
+        self.stepUpButton.setEnabled(z_enabled and (self.stepWidth() <= step_up_limit))  # TODO
 
     def relative_move_xy(self, x, y):
         # Dodge on X/Y movements.
@@ -1275,31 +1306,31 @@ class AlignmentDialog(QtWidgets.QDialog):
 
     def on_add_x(self):
         self.setLocked(True)
-        self.relative_move_xy(+self.step_width, 0)
+        self.relative_move_xy(+self.stepWidth(), 0)
 
     def on_sub_x(self):
         self.setLocked(True)
-        self.relative_move_xy(-self.step_width, 0)
+        self.relative_move_xy(-self.stepWidth(), 0)
 
     def on_add_y(self):
         self.setLocked(True)
-        self.relative_move_xy(0, +self.step_width)
+        self.relative_move_xy(0, +self.stepWidth())
 
     def on_sub_y(self):
         self.setLocked(True)
-        self.relative_move_xy(0, -self.step_width)
+        self.relative_move_xy(0, -self.stepWidth())
 
     def on_add_z(self):
         self.setLocked(True)
-        self.process.relative_move(0, 0, +self.step_width)
+        self.process.relative_move(0, 0, +self.stepWidth())
 
     def on_sub_z(self):
         self.setLocked(True)
-        self.process.relative_move(0, 0, -self.step_width)
+        self.process.relative_move(0, 0, -self.stepWidth())
 
     def on_step_up(self):
         self.setLocked(True)
-        step_width = self.step_width
+        step_width = self.stepWidth()
         multiply = self.optionsWidget.stepUpMultiply()
         vector = (
             [0, 0, +step_width],
@@ -1309,7 +1340,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.process.relative_move_vector(vector, delay=self.optionsWidget.stepUpDelay())
 
     def toggleStepWidth(self, button, state: bool) -> None:
-        logger.info("set table step width to %.3f mm", self.step_width)
+        logger.info("set table step width to %.3f mm", self.stepWidth())
         self.updateKeypadButtons()
 
     def update_probecard_light(self, state):
@@ -1375,10 +1406,10 @@ class AlignmentDialog(QtWidgets.QDialog):
         event.accept()
 
     def loadSamples(self, sample_items):
-        self.contacts_widget.loadSamples(sample_items)
+        self.contactsWidget.loadSamples(sample_items)
 
     def updateSamples(self):
-        self.contacts_widget.updateSamples()
+        self.contactsWidget.updateSamples()
 
     def readSettings(self) -> None:
         settings_ = QtCore.QSettings()
@@ -1388,7 +1419,7 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.restoreGeometry(geometry)
         settings_.endGroup()
 
-        self.positions_widget.readSettings()
+        self.positionsWidget.readSettings()
         self.z_limit = settings.table_z_limit
         self.z_limit_label.value = self.z_limit
         x, y, z = settings.table_probecard_maximum_limits
@@ -1417,7 +1448,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         settings.settings["tablecontrol_step_up_multiply"] = self.optionsWidget.stepUpMultiply()
         settings.settings["tablecontrol_lcr_update_delay"] = self.optionsWidget.lcrUpdateInterval()
         settings.settings["tablecontrol_lcr_matrix_channels"] = self.optionsWidget.lcrMatrixChannels()
-        self.positions_widget.writeSettings()
+        self.positionsWidget.writeSettings()
         settings.table_control_update_interval = self.optionsWidget.updateInterval()
         settings.table_control_dodge_enabled = self.optionsWidget.isDodgeEnabled()
         settings.table_control_dodge_height = self.optionsWidget.dodgeHeight()
@@ -1425,8 +1456,8 @@ class AlignmentDialog(QtWidgets.QDialog):
 
     def setLocked(self, locked: bool) -> None:
         self.keypadGroupBox.setEnabled(not locked)
-        self.positions_widget.setLocked(locked)
-        self.contacts_widget.setLocked(locked)
+        self.positionsWidget.setLocked(locked)
+        self.contactsWidget.setLocked(locked)
         self.closeButton.setEnabled(not locked)
         self.progressBar.setVisible(locked)
         if locked:
