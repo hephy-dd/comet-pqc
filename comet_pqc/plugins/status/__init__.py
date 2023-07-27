@@ -34,10 +34,10 @@ class StatusPlugin:
         self.statusWidget.setLocked(state)
 
     def start_worker(self) -> None:
-        self.window.dashboard.lock_controls()
+        self.window.dashboard.setControlsLocked(True)
         self.statusWidget.clearStatus()
-        self.process.set("use_environ", self.window.dashboard.use_environment())
-        self.process.set("use_table", self.window.dashboard.use_table())
+        self.process.set("use_environ", self.window.dashboard.isEnvironmentEnabled())
+        self.process.set("use_table", self.window.dashboard.isTableEnabled())
         self.process.start()
         # Fix: stay in status tab
         self.window.dashboard.tabWidget.setCurrentWidget(self.statusWidget)
@@ -45,7 +45,7 @@ class StatusPlugin:
     def worker_finished(self) -> None:
         self.statusWidget.updateStatus(self.process)
         self.statusWidget.setLocked(False)
-        self.window.dashboard.unlock_controls()
+        self.window.dashboard.setControlsLocked(False)
 
 
 class StatusWidget(QtWidgets.QWidget):
@@ -58,76 +58,76 @@ class StatusWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.matrixModelLineEdit = QtWidgets.QLineEdit()
+        self.matrixModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.matrixModelLineEdit.setReadOnly(True)
 
-        self.matrixChannelsLineEdit = QtWidgets.QLineEdit()
+        self.matrixChannelsLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.matrixChannelsLineEdit.setReadOnly(True)
 
-        self.hvSourceModelLineEdit = QtWidgets.QLineEdit()
+        self.hvSourceModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.hvSourceModelLineEdit.setReadOnly(True)
 
-        self.vSourceModelLineEdit = QtWidgets.QLineEdit()
+        self.vSourceModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.vSourceModelLineEdit.setReadOnly(True)
 
-        self.lcrModelLineEdit = QtWidgets.QLineEdit()
+        self.lcrModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.lcrModelLineEdit.setReadOnly(True)
 
-        self.elmModelLineEdit = QtWidgets.QLineEdit()
+        self.elmModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.elmModelLineEdit.setReadOnly(True)
 
-        self.tableModelLineEdit = QtWidgets.QLineEdit()
+        self.tableModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.tableModelLineEdit.setReadOnly(True)
 
-        self.table_state_text = QtWidgets.QLineEdit()
+        self.table_state_text: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.table_state_text.setReadOnly(True)
 
-        self.envModelLineEdit = QtWidgets.QLineEdit()
+        self.envModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
         self.envModelLineEdit.setReadOnly(True)
 
-        self.reloadButton = QtWidgets.QPushButton()
+        self.reloadButton: QtWidgets.QPushButton = QtWidgets.QPushButton()
         self.reloadButton.setText("&Reload")
         self.reloadButton.clicked.connect(self.reloadClicked.emit)
 
-        matrixGroupBox = QtWidgets.QGroupBox()
+        matrixGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         matrixGroupBox.setTitle("Matrix")
 
         matrixGroupBoxLayout = QtWidgets.QFormLayout(matrixGroupBox)
         matrixGroupBoxLayout.addRow("Model", self.matrixModelLineEdit)
         matrixGroupBoxLayout.addRow("Closed channels", self.matrixChannelsLineEdit)
 
-        hvSourceGroupBox = QtWidgets.QGroupBox()
+        hvSourceGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         hvSourceGroupBox.setTitle("HVSource")
 
         hvSourceGroupBoxLayout = QtWidgets.QFormLayout(hvSourceGroupBox)
         hvSourceGroupBoxLayout.addRow("Model", self.hvSourceModelLineEdit)
 
-        vSourceGroupBox = QtWidgets.QGroupBox()
+        vSourceGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         vSourceGroupBox.setTitle("VSource")
 
         vSourceGroupBoxLayout = QtWidgets.QFormLayout(vSourceGroupBox)
         vSourceGroupBoxLayout.addRow("Model", self.vSourceModelLineEdit)
 
-        lcrGroupBox = QtWidgets.QGroupBox()
+        lcrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         lcrGroupBox.setTitle("LCRMeter")
 
         lcrGroupBoxLayout = QtWidgets.QFormLayout(lcrGroupBox)
         lcrGroupBoxLayout.addRow("Model", self.lcrModelLineEdit)
 
-        elmGroupBox = QtWidgets.QGroupBox()
+        elmGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         elmGroupBox.setTitle("Electrometer")
 
         elmGroupBoxLayout = QtWidgets.QFormLayout(elmGroupBox)
         elmGroupBoxLayout.addRow("Model", self.elmModelLineEdit)
 
-        tableGroupBox = QtWidgets.QGroupBox()
+        tableGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         tableGroupBox.setTitle("Table")
 
         tableGroupBoxLayout = QtWidgets.QFormLayout(tableGroupBox)
         tableGroupBoxLayout.addRow("Model", self.tableModelLineEdit)
         tableGroupBoxLayout.addRow("State", self.table_state_text)
 
-        environGroupBox = QtWidgets.QGroupBox()
+        environGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
         environGroupBox.setTitle("Environment Box")
 
         environGroupBoxLayout = QtWidgets.QFormLayout(environGroupBox)

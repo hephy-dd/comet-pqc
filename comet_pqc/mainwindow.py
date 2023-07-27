@@ -115,11 +115,11 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.setNoticeVisible(config.table_temporary_z_limit)  # TODO
 
         # Sync environment controls
-        if self.dashboard.use_environment():
+        if self.dashboard.isEnvironmentEnabled():
             self.dashboard.environ_process.start()
             self.dashboard.sync_environment_controls()
 
-        if self.dashboard.use_table():
+        if self.dashboard.isTableEnabled():
             self.dashboard.table_process.start()
             self.dashboard.sync_table_controls()
             self.dashboard.table_process.enable_joystick(False)

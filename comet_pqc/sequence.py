@@ -2,10 +2,11 @@ import copy
 import logging
 import math
 import os
+from typing import Optional
 
 import yaml
 from comet import ui
-from qutie.qutie import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from .components import (
     OperatorWidget,
@@ -17,7 +18,11 @@ from .quickedit import QuickEditDialog
 from .settings import settings
 from .utils import from_table_unit, to_table_unit
 
-__all__ = ["StartSequenceDialog", "SequenceManager", "SequenceTree"]
+__all__ = [
+    "StartSequenceDialog",
+    "SequenceManagerDialog",
+    "SequenceTree",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -142,85 +147,83 @@ class StartSequenceDialog(ui.Dialog):
             return f"<b>Are you sure to start sequence {context.name!r}?</b>"
 
 
-class SequenceManager(ui.Dialog):
+class SequenceManagerDialog(QtWidgets.QDialog):
     """Dialog for managing custom sequence configuration files."""
 
-    def __init__(self):
-        super().__init__()
-        # Properties
-        self.title = "Sequence Manager"
-        # Layout
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Sequence Manager")
         self.resize(640, 480)
-        self._sequence_tree = ui.Tree(
-            header=("Name", "Filename"),
-            indentation=0,
-            selected=self.on_sequence_tree_selected
-        )
-        self._add_button = ui.Button(
-            text="&Add",
-            clicked=self.on_add_sequence
-        )
-        self._remove_button = ui.Button(
-            text="&Remove",
-            enabled=False,
-            clicked=self.on_remove_sequence
-        )
-        self._preview_tree = ui.Tree(header=["Key", "Value"])
-        self.layout = ui.Column(
-            ui.Row(
-                ui.Column(
-                    self._sequence_tree,
-                    self._preview_tree,
-                    stretch=(4, 3)
-                ),
-                ui.Column(
-                    self._add_button,
-                    self._remove_button,
-                    ui.Spacer()
-                ),
-                stretch=(1, 0)
-            ),
-            ui.DialogButtonBox(
-                buttons=("ok", "cancel"),
-                accepted=self.accept,
-                rejected=self.reject
-            ),
-            stretch=(1, 0)
-        )
 
-    # Properties
+        self.sequenceTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.sequenceTreeWidget.setHeaderLabels(["Name", "Filename"])
+        self.sequenceTreeWidget.setRootIsDecorated(False)
+        self.sequenceTreeWidget.currentItemChanged.connect(self.loadPreview)
 
-    @property
-    def current_sequence(self):
+        self.addButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.addButton.setText("&Add")
+        self.addButton.clicked.connect(self.addSequence)
+
+        self.removeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.removeButton.setText("&Remove")
+        self.removeButton.setEnabled(False)
+        self.removeButton.clicked.connect(self.removeSequence)
+
+        self.previewTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.previewTreeWidget.setHeaderLabels(["Key", "Value"])
+
+        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        leftLayout = QtWidgets.QVBoxLayout()
+        leftLayout.addWidget(self.sequenceTreeWidget)
+        leftLayout.addWidget(self.previewTreeWidget)
+
+        rightLayout = QtWidgets.QVBoxLayout()
+        rightLayout.addWidget(self.addButton)
+        rightLayout.addWidget(self.removeButton)
+        rightLayout.addStretch()
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addLayout(leftLayout, 0, 0)
+        layout.addLayout(rightLayout, 0, 1)
+        layout.addWidget(self.buttonBox, 1, 0, 1, 2)
+
+    def currentSequence(self):
         """Return selected sequence object or None if nothing selected."""
-        item = self._sequence_tree.current
+        item = self.sequenceTreeWidget.currentItem()
         if item is not None:
-            return item.sequence
+            return item.sequence  # TODO
         return None
 
-    @property
-    def sequence_filenames(self):
-        filenames = []
-        for sequence_item in self._sequence_tree:
-            filenames.append(sequence_item.sequence.filename)
+    def sequenceFilenames(self) -> list:
+        filenames: list = []
+        for index in range(self.sequenceTreeWidget.topLevelItemCount()):
+            item = self.sequenceTreeWidget.topLevelItem(index)
+            filenames.append(item.sequence.filename)
         return filenames
 
     # Settings
 
-    def readSettings(self):
-        self.load_settings_dialog_size()
+    def readSettings(self) -> None:
+        self.readDialogSettings()
         self.load_settings_sequences()
 
-    def load_settings_dialog_size(self):
-        """Load dialog size from settings."""
-        width, height = settings.settings.get("sequence_manager_dialog_size") or (640, 480)
-        self.resize(width, height)
+    def readDialogSettings(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup("SequenceManager")
+        geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        self.restoreGeometry(geometry)
+        settings.endGroup()
 
     def load_settings_sequences(self):
         """Load all built-in and custom sequences from settings."""
-        self._sequence_tree.clear()
+        self.sequenceTreeWidget.clear()
         all_sequences = load_all_sequences(settings.settings)
-        dialog = QtWidgets.QProgressDialog()
+        dialog = QtWidgets.QProgressDialog(self)
         dialog.setWindowModality(QtCore.Qt.WindowModal)
         dialog.setLabelText("Loading sequences...")
         dialog.setCancelButton(None)
@@ -230,67 +233,84 @@ class SequenceManager(ui.Dialog):
                 dialog.setValue(dialog.value() + 1)
                 try:
                     sequence = load_sequence(filename)
-                    item = self._sequence_tree.append([sequence.name, filename])
+                    item = QtWidgets.QTreeWidgetItem()
+                    item.setText(0, sequence.name)
+                    item.setText(1, filename)
+                    item.setToolTip(1, filename)
                     item.sequence = sequence
-                    item.qt.setToolTip(1, filename)
+                    self.sequenceTreeWidget.addTopLevelItem(item)
                 except Exception as exc:
                     logger.error("failed to load sequence: %s", filename)
             dialog.close()
         QtCore.QTimer.singleShot(100, callback)
         dialog.exec()
-        self._sequence_tree.fit()
-        if len(self._sequence_tree):
-            self._sequence_tree.current = self._sequence_tree[0]
+        self.sequenceTreeWidget.resizeColumnToContents(0)
+        self.sequenceTreeWidget.resizeColumnToContents(1)
+        if self.sequenceTreeWidget.topLevelItemCount():
+            item = self.sequenceTreeWidget.topLevelItem(0)
+            self.sequenceTreeWidget.setCurrentItem(item)
 
-    def writeSettings(self):
-        self.store_settings_dialog_size()
+    def writeSettings(self) -> None:
+        self.writeDialogSettings()
         self.store_settings_sequences()
 
-    def store_settings_dialog_size(self):
-        """Store dialog size to settings."""
-        settings.settings["sequence_manager_dialog_size"] = self.width, self.height
+    def writeDialogSettings(self) -> None:
+        settings = QtCore.QSettings()
+        settings.beginGroup("SequenceManager")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.endGroup()
 
     def store_settings_sequences(self):
         """Store custom sequences to settings."""
         sequences = []
-        for item in self._sequence_tree:
+        for index in range(self.sequenceTreeWidget.topLevelItemCount()):
+            item = self.sequenceTreeWidget.topLevelItem(index)
             sequences.append(item.sequence.filename)
         settings.settings["custom_sequences"] = list(set(sequences))
 
     # Callbacks
 
-    def on_sequence_tree_selected(self, item):
+    def loadPreview(self, current, previous) -> None:
         """Load sequence config preview."""
-        self._remove_button.enabled = False
-        self._preview_tree.clear()
+        self.removeButton.setEnabled(False)
+        self.previewTreeWidget.clear()
+        item = current
         if item is not None:
-            self._remove_button.enabled = True
+            self.removeButton.setEnabled(True)
             if os.path.exists(item.sequence.filename):
                 with open(item.sequence.filename) as f:
                     data = yaml.safe_load(f)
                     def append(item, key, value):
                         """Recursively append items."""
                         if isinstance(value, dict):
-                            child = item.append([key])
+                            child = QtWidgets.QTreeWidgetItem()
+                            child.setText(0, format(key))
+                            item.addChild(child)
                             for key, value in value.items():
                                 append(child, key, value)
                         elif isinstance(value, list):
-                            child = item.append([key])
+                            child = QtWidgets.QTreeWidgetItem()
+                            child.setText(0, format(key))
+                            item.addChild(child)
                             for i, obj in enumerate(value):
                                 if isinstance(obj, dict):
                                     for key, value in obj.items():
                                         append(child, key, value)
                                 else:
                                     append(child, f"[{i}]", obj)
-                            child.expanded = True
+                            child.setExpanded(True)
                         else:
-                            item.append([key, value])
-                            item.expanded = True
+                            child = QtWidgets.QTreeWidgetItem()
+                            child.setText(0, format(key))
+                            child.setText(1, format(value))
+                            item.addChild(child)
+                            child.setExpanded(True)
                     for key, value in data.items():
-                        append(self._preview_tree, key, value)
-                    self._preview_tree.fit()
+                        append(self.previewTreeWidget.invisibleRootItem(), key, value)
+                    self.previewTreeWidget.resizeColumnToContents(0)
+                    self.previewTreeWidget.resizeColumnToContents(1)
 
-    def on_add_sequence(self):
+    def addSequence(self):
         filename = ui.filename_open(filter="YAML files (*.yml, *.yaml);;All files (*)")
         if filename:
             try:
@@ -298,21 +318,25 @@ class SequenceManager(ui.Dialog):
             except Exception as exc:
                 ui.show_exception(exc)
             else:
-                if filename not in self.sequence_filenames:
-                    item = self._sequence_tree.append([sequence.name, filename])
-                    item.qt.setToolTip(1, filename)
+                if filename not in self.sequenceFilenames():
+                    item = QtWidgets.QTreeWidgetItem()
+                    item.setText(0, sequence.name)
+                    item.setText(1, filename)
+                    item.setToolTip(1, filename)
                     item.sequence = sequence
-                    self._sequence_tree.current = item
+                    self.sequenceTreeWidget.addTopLevelItem(item)
+                    index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+                    self.sequenceTreeWidget.setCurrentIndex(index)
 
-    def on_remove_sequence(self):
-        item = self._sequence_tree.current
-        if item:
-            if ui.show_question(
-                title="Remove Sequence",
-                text=f"Do yo want to remove sequence {item.sequence.name!r}?"
-            ):
-                self._sequence_tree.remove(item)
-                self._remove_button.enabled = len(self._sequence_tree)
+    def removeSequence(self) -> None:
+        item = self.sequenceTreeWidget.currentItem()
+        if item is not None:
+            message = f"Do yo want to remove sequence {item.sequence.name!r}?"
+            result = QtWidgets.QMessageBox.question(self, "Remove Sequence", message)
+            if result == QtWidgets.QMessageBox.Yes:
+                index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+                self.sequenceTreeWidget.takeItem(index)
+                self.removeButton.setEnabled(self.sequenceTreeWidget.topLevelItemCount() != 0)
 
 
 class SequenceTree(ui.Tree):
@@ -674,18 +698,28 @@ class EditSamplesDialog:
             item.setProperty("sample_item", sample_item)
 
     def _update_samples(self, dialog):
-        for item in dialog.items():
-            sample_item = item.property("sample_item")
-            sample_item.enabled = item.isEnabled()
-            sample_item.name_prefix = item.prefix()
-            sample_item.name_infix = item.infix()
-            sample_item.name_suffix = item.suffix()
-            sample_item.sample_type = item.type()
-            sample_item.sample_position = item.position()
-            for name, filename in self.sequences:
-                if item.currentSequence() == name:
-                    sequence = load_sequence(filename)
-                    sample_item.load_sequence(sequence)
+        progress = QtWidgets.QProgressDialog()
+        progress.setWindowModality(QtCore.Qt.WindowModal)
+        progress.setLabelText("Updating sequence...")
+        progress.setCancelButton(None)
+        progress.setMaximum(len(dialog.items()))
+        def callback():
+            for item in dialog.items():
+                progress.setValue(progress.value() + 1)
+                sample_item = item.property("sample_item")
+                sample_item.enabled = item.isEnabled()
+                sample_item.name_prefix = item.prefix()
+                sample_item.name_infix = item.infix()
+                sample_item.name_suffix = item.suffix()
+                sample_item.sample_type = item.type()
+                sample_item.sample_position = item.position()
+                for name, filename in self.sequences:
+                    if item.currentSequence() == name:
+                        sequence = load_sequence(filename)
+                        sample_item.load_sequence(sequence)
+            progress.close()
+        QtCore.QTimer.singleShot(100, callback)
+        progress.exec()
 
     def run(self):
         dialog = QuickEditDialog()

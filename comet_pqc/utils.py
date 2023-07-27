@@ -1,7 +1,7 @@
 import logging
 import math
 import traceback
-from typing import Callable, Iterable, Union
+from typing import Callable, Iterable, Optional, Union
 
 from comet import ui
 from comet import ureg
@@ -57,7 +57,7 @@ def format_metric(value: float, unit: str, decimals: int = 3) -> str:
     return f"{value:.{decimals}f} {unit}"
 
 
-def format_switch(value: bool, default: str = None) -> str:
+def format_switch(value: bool, default: Optional[str] = None) -> str:
     """Pretty format for instrument output states.
 
     >>> format_switch(False)

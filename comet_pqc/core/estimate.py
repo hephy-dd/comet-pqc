@@ -1,7 +1,7 @@
 """Estimate remaining time."""
 
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 __all__ = ["Estimate"]
 
@@ -24,7 +24,7 @@ class Estimate:
         self._start: datetime = datetime.now()
         self._prev: datetime = datetime.now()
 
-    def reset(self, count: int = None) -> None:
+    def reset(self, count: Optional[int] = None) -> None:
         if count is not None:
             self._count = count
         self._deltas = []

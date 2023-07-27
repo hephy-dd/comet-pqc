@@ -3,8 +3,10 @@ import logging
 import os
 import signal
 import sys
+import traceback
 from logging import Formatter, StreamHandler
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import analysis_pqc
@@ -51,7 +53,7 @@ def add_rotating_file_handle(logger: logging.Logger, filename: str) -> None:
     logger.addHandler(file_handler)
 
 
-def configure_logger(logger: logging.Logger, debug: bool = False, filename: str = None) -> None:
+def configure_logger(logger: logging.Logger, debug: bool = False, filename: Optional[str] = None) -> None:
     level = logging.DEBUG if debug else logging.INFO
     logger.setLevel(level)
 
@@ -88,6 +90,19 @@ def main() -> None:
             app.quit()
 
     signal.signal(signal.SIGINT, signal_handler)
+
+    # Handle uncaught exceptions
+    def exception_hook(exc_type, exc_value, exc_traceback):
+        logging.error("", exc_info=(exc_type, exc_value, exc_traceback))
+        tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        msgbox = QtWidgets.QMessageBox()
+        msgbox.setIcon(QtWidgets.QMessageBox.Critical)
+        msgbox.setWindowTitle("Uncaught Exception")
+        msgbox.setText(f"{exc_type.__name__}: {exc_value}")
+        msgbox.setDetailedText(tb)
+        msgbox.exec()
+
+    sys.excepthook = exception_hook
 
     # Run timer to process interrupt signals
     timer = QtCore.QTimer()

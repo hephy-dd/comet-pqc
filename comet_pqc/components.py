@@ -32,10 +32,11 @@ class MessageBox(QtWidgets.QMessageBox):
         super().__init__(parent)
         # Fix message box width
         layout = self.layout()
-        rows = layout.rowCount()
-        columns = layout.columnCount()
-        spacer = QtWidgets.QSpacerItem(420, 0)
-        layout.addItem(spacer, rows, 0, 1, columns)
+        if isinstance(layout, QtWidgets.QGridLayout):
+            rows = layout.rowCount()
+            columns = layout.columnCount()
+            spacer = QtWidgets.QSpacerItem(420, 0)
+            layout.addItem(spacer, rows, 0, 1, columns)
 
 
 class ToggleButton(ui.Button):
@@ -51,142 +52,131 @@ class ToggleButton(ui.Button):
         self.icon = self.icons[state]
 
 
-class PositionLabel(ui.Label):
+class PositionLabel(QtWidgets.QLabel):  # TODO
 
-    def __init__(self, value=None):
-        super().__init__()
-        self.value = value
-        self.qt.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.setValue(None)
 
-    @property
-    def value(self):
+    def value(self) -> Optional[float]:
         return self.__value
 
-    @value.setter
-    def value(self, value):
+    def setValue(self, value: Optional[float]) -> None:
         self.__value = value
         if value is None:
-            self.text = format(float("nan"))
+            self.setText(format(float("nan")))
         else:
-            self.text = format_table_unit(value)
+            self.setText(format_table_unit(value))
 
 
-class PositionWidget(ui.GroupBox):
+class PositionWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Position"
-        self._pos_x_label = PositionLabel()
-        self._pos_y_label = PositionLabel()
-        self._pos_z_label = PositionLabel()
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label(
-                    text="X",
-                    tool_tip="X axis position."
-                ),
-                ui.Label(
-                    text="Y",
-                    tool_tip="Y axis position."
-                ),
-                ui.Label(
-                    text="Z",
-                    tool_tip="Z axis position."
-                )
-            ),
-            ui.Column(
-                self._pos_x_label,
-                self._pos_y_label,
-                self._pos_z_label
-            ),
-            stretch=(1, 1)
-        )
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.setTitle("Position")
+
+        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel.setText("X")
+        self.xLabel.setToolTip("X axis position")
+
+        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel.setText("Y")
+        self.yLabel.setToolTip("Y axis position")
+
+        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel.setText("Z")
+        self.zLabel.setToolTip("Z axis position")
+
+        self.xValueLabel = PositionLabel(self)
+        self.yValueLabel = PositionLabel(self)
+        self.zValueLabel = PositionLabel(self)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.xLabel, 0, 0)
+        layout.addWidget(self.yLabel, 1, 0)
+        layout.addWidget(self.zLabel, 2, 0)
+        layout.addWidget(self.xValueLabel, 0, 1)
+        layout.addWidget(self.yValueLabel, 1, 1)
+        layout.addWidget(self.zValueLabel, 2, 1)
 
     def reset(self) -> None:
         self.setPosition(Position())
 
     def setPosition(self, position: Position) -> None:
-        self._pos_x_label.value = position.x
-        self._pos_y_label.value = position.y
-        self._pos_z_label.value = position.z
+        self.xValueLabel.setValue(position.x)
+        self.yValueLabel.setValue(position.y)
+        self.zValueLabel.setValue(position.z)
 
 
-class CalibrationLabel(ui.Label):
+class CalibrationLabel(QtWidgets.QLabel):
 
-    def __init__(self, prefix, value=None):
-        super().__init__()
+    def __init__(self, prefix: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
         self.prefix = prefix
-        self.value = value
+        self.setValue(None)
 
-    @property
     def value(self):
         return self._value
 
-    @value.setter
-    def value(self, value):
+    def setValue(self, value):
         self._value = value or float("nan")
-        self.text = f"{self.prefix} {self._value}"
-        if math.isnan(self._value) or not self._value:
-            self.qt.setStyleSheet("QLabel:enabled{color:red}")
+        self.setText(f"{self.prefix} {self._value}")
+        if math.isnan(self._value) or self._value is None:
+            self.setStyleSheet("QLabel:enabled{color:red}")
         else:
-            self.qt.setStyleSheet("QLabel:enabled{color:green}")
+            self.setStyleSheet("QLabel:enabled{color:green}")
 
 
-class CalibrationWidget(ui.GroupBox):
+class CalibrationWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.title = "Calibration"
-        self._cal_x_label = CalibrationLabel("cal")
-        self._cal_y_label = CalibrationLabel("cal")
-        self._cal_z_label = CalibrationLabel("cal")
-        self._rm_x_label = CalibrationLabel("rm")
-        self._rm_y_label = CalibrationLabel("rm")
-        self._rm_z_label = CalibrationLabel("rm")
-        self.layout = ui.Row(
-            ui.Column(
-                ui.Label(
-                    text="X",
-                    tool_tip="X axis calibration state."
-                ),
-                ui.Label(
-                    text="Y",
-                    tool_tip="Y axis calibration state."
-                ),
-                ui.Label(
-                    text="Z",
-                    tool_tip="Z axis calibration state."
-                )
-            ),
-            ui.Column(
-                self._cal_x_label,
-                self._cal_y_label,
-                self._cal_z_label
-            ),
-            ui.Column(
-                self._rm_x_label,
-                self._rm_y_label,
-                self._rm_z_label
-            ),
-            stretch=(1, 1, 1)
-        )
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self.setTitle("Calibration")
+
+        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel.setText("X")
+        self.xLabel.setToolTip("X axis calibration state")
+
+        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel.setText("Y")
+        self.yLabel.setToolTip("Y axis calibration state")
+
+        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel.setText("Z")
+        self.zLabel.setToolTip("Z axis calibration state")
+
+        self.xCalLabel = CalibrationLabel("cal", self)
+        self.yCalLabel = CalibrationLabel("cal", self)
+        self.zCalLabel = CalibrationLabel("cal", self)
+
+        self.xRmLabel = CalibrationLabel("rm", self)
+        self.yRmLabel = CalibrationLabel("rm", self)
+        self.zRmLabel = CalibrationLabel("rm", self)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.xLabel, 0, 0)
+        layout.addWidget(self.yLabel, 1, 0)
+        layout.addWidget(self.zLabel, 2, 0)
+        layout.addWidget(self.xCalLabel, 0, 1)
+        layout.addWidget(self.yCalLabel, 1, 1)
+        layout.addWidget(self.zCalLabel, 2, 1)
+        layout.addWidget(self.xRmLabel, 0, 2)
+        layout.addWidget(self.yRmLabel, 1, 2)
+        layout.addWidget(self.zRmLabel, 2, 2)
 
     def reset(self) -> None:
         self.setCalibration(Position())
 
     def setCalibration(self, position: Position) -> None:
-        self._update_cal(position)
-        self._update_rm(position)
-
-    def _update_cal(self, position):
-        self._cal_x_label.value = getcal(position.x)
-        self._cal_y_label.value = getcal(position.y)
-        self._cal_z_label.value = getcal(position.z)
-
-    def _update_rm(self, position):
-        self._rm_x_label.value = getrm(position.x)
-        self._rm_y_label.value = getrm(position.y)
-        self._rm_z_label.value = getrm(position.z)
+        self.xCalLabel.setValue(getcal(position.x))
+        self.yCalLabel.setValue(getcal(position.y))
+        self.zCalLabel.setValue(getcal(position.z))
+        self.xRmLabel.setValue(getrm(position.x))
+        self.yRmLabel.setValue(getrm(position.y))
+        self.zRmLabel.setValue(getrm(position.z))
 
 
 class DirectoryWidget(ui.Row):
@@ -260,10 +250,9 @@ class DirectoryWidget(ui.Row):
         if len(self.location_combo_box) > 1:
             index = self.location_combo_box.qt.currentIndex()
             if index >= 0:
-                if ui.show_question(
-                    title="Remove directory",
-                    text=f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
-                ):
+                message = f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
+                result = QtWidgets.QMessageBox.question(self, "Remove directory", message)
+                if result == QtWidgets.QMessageBox.Yes:
                     self.location_combo_box.qt.removeItem(index)
 
     def update_locations(self):
@@ -348,10 +337,9 @@ class OperatorWidget(ui.Row):
     def on_remove_clicked(self):
         index = self.operator_combo_box.qt.currentIndex()
         if index >= 0:
-            if ui.show_question(
-                title="Remove operator",
-                text=f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
-            ):
+            message = f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
+            result = QtWidgets.QMessageBox.question(self, "Remove operator", message)
+            if result == QtWidgets.QMessageBox.Yes:
                 self.operator_combo_box.qt.removeItem(index)
 
     def readSettings(self):

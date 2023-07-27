@@ -186,10 +186,9 @@ class SequenceWidget(QtWidgets.QGroupBox):
 
     @handle_exception
     def on_reload_config_clicked(self, state):
-        if not ui.show_question(
-            title="Reload Configuration",
-            text="Do you want to reload sequence configurations from file?"
-        ): return
+        result = QtWidgets.QMessageBox.question(self, "Reload Configuration", "Do you want to reload sequence configurations from file?")
+        if result != QtWidgets.QMessageBox.Yes:
+            return
         sample_items = self._sequence_tree
         dialog = QtWidgets.QProgressDialog()
         dialog.setWindowModality(QtCore.Qt.WindowModal)
@@ -225,10 +224,8 @@ class SequenceWidget(QtWidgets.QGroupBox):
     def on_remove_sample_clicked(self, state):
         item = self._sequence_tree.current
         if item in self._sequence_tree:
-            if ui.show_question(
-                title="Remove Sample",
-                text=f"Do you want to remove {item.name!r}?"
-            ):
+            result = QtWidgets.QMessageBox.question(self, "Remove Sample", f"Do you want to remove {item.name!r}?")
+            if result == QtWidgets.QMessageBox.Yes:
                 self._sequence_tree.remove(item)
 
     @handle_exception
@@ -275,7 +272,8 @@ class SequenceWidget(QtWidgets.QGroupBox):
             if os.path.splitext(filename)[-1] not in [".json"]:
                 filename = f"{filename}.json"
                 if os.path.exists(filename):
-                    if not ui.show_question(f"Do you want to overwrite existing file {filename}?"):
+                    result = QtWidgets.QMessageBox.question(self, "", f"Do you want to overwrite existing file {filename}?")
+                    if result != QtWidgets.QMessageBox.Yes:
                         return
             with open(filename, "w") as f:
                 logger.info("Writing sequence... %s", filename)
@@ -300,9 +298,9 @@ class TableControlWidget(QtWidgets.QGroupBox):
         self.joystickButton.setCheckable(True)
         self.joystickButton.toggled.connect(self.joystickToggled.emit)
 
-        self._position_widget = PositionWidget()
+        self.positionWidget = PositionWidget()
 
-        self._calibration_widget = CalibrationWidget()
+        self.calibrationWidget = CalibrationWidget()
 
         self.alignmentButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
         self.alignmentButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "alignment.svg")))
@@ -313,8 +311,8 @@ class TableControlWidget(QtWidgets.QGroupBox):
         # Layout
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self._position_widget.qt, 0, 0, 4, 1)
-        layout.addWidget(self._calibration_widget.qt, 0, 1, 4, 1)
+        layout.addWidget(self.positionWidget, 0, 0, 4, 1)
+        layout.addWidget(self.calibrationWidget, 0, 1, 4, 1)
         layout.addWidget(self.alignmentButton, 1, 3)
         layout.addWidget(self.joystickButton, 2, 3)
         layout.setColumnStretch(2, 1)
@@ -330,18 +328,18 @@ class TableControlWidget(QtWidgets.QGroupBox):
         self.joystickButton.setChecked(enabled)
 
     def setPosition(self, position: Position) -> None:
-        self._position_widget.setPosition(position)
+        self.positionWidget.setPosition(position)
         limits = self._joystick_limits
         enabled = position.x <= limits[0] and position.y <= limits[1] and position.z <= limits[2]
         self.joystickButton.setEnabled(enabled and self._calibration_valid)
 
     def setCalibration(self, position: Position) -> None:
-        self._calibration_widget.setCalibration(position)
+        self.calibrationWidget.setCalibration(position)
         self._calibration_valid = caldone_valid(position)
 
     def readSettings(self) -> None:
         use_table = settings.settings.get("use_table") or False
-        self.checked = use_table
+        self.setChecked(use_table)
         self._joystick_limits = settings.table_joystick_maximum_limits
 
 
@@ -459,9 +457,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             edit_sequence=self.on_edit_sequence
         )
         self.sequence_tree = self.sequenceWidget._sequence_tree
-        self.start_sample_action = self.sequenceWidget.startSampleAction
-        self.start_contact_action = self.sequenceWidget.startContactAction
-        self.start_measurement_action = self.sequenceWidget.startMeasurementAction
+        self.startSampleAction = self.sequenceWidget.startSampleAction
+        self.startContactAction = self.sequenceWidget.startContactAction
+        self.startMeasurementAction = self.sequenceWidget.startMeasurementAction
 
         # Environment Controls
 
@@ -594,8 +592,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         settings_.endGroup()
 
         self.sequenceWidget.writeSettings()
-        settings.settings["use_environ"] = self.use_environment()
-        settings.settings["use_table"] = self.use_table()
+        settings.settings["use_environ"] = self.isEnvironmentEnabled()
+        settings.settings["use_table"] = self.isTableEnabled()
         self.operator_widget.writeSettings()
         self.output_widget.writeSettings()
 
@@ -625,15 +623,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         """Return table position in millimeters as tuple. If table not available
         return (0., 0., 0.).
         """
-        if self.use_table():
+        if self.isTableEnabled():
             return self.table_process.get_cached_position()
         return Position()
 
-    def use_environment(self):
+    def isEnvironmentEnabled(self) -> bool:
         """Return True if environment box enabled."""
         return self.environmentControlWidget.isChecked()
 
-    def use_table(self):
+    def isTableEnabled(self) -> bool:
         """Return True if table control enabled."""
         return self.table_control_widget.isChecked()
 
@@ -665,27 +663,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     # Callbacks
 
-    def lock_controls(self):
-        """Lock dashboard controls."""
-        self.environmentControlWidget.setEnabled(False)
-        self.table_control_widget.setEnabled(False)
-        self.sequenceWidget.setLocked(True)
-        self.outputGroupBox.setEnabled(False)
-        self.operatorGroupBox.setEnabled(False)
-        self.measurementWidget.setLocked(True)
-        self.plugins.handle("lock_controls", True)
-        self.lockStateChanged.emit(True)
-
-    def unlock_controls(self):
-        """Unlock dashboard controls."""
-        self.environmentControlWidget.setEnabled(True)
-        self.table_control_widget.setEnabled(True)
-        self.sequenceWidget.setLocked(False)
-        self.outputGroupBox.setEnabled(True)
-        self.operatorGroupBox.setEnabled(True)
-        self.measurementWidget.setLocked(False)
-        self.plugins.handle("lock_controls", False)
-        self.lockStateChanged.emit(False)
+    def setControlsLocked(self, locked: bool) -> None:
+        """Lock or unlock dashboard controls."""
+        self.environmentControlWidget.setEnabled(not locked)
+        self.table_control_widget.setEnabled(not locked)
+        self.sequenceWidget.setLocked(locked)
+        self.outputGroupBox.setEnabled(not locked)
+        self.operatorGroupBox.setEnabled(not locked)
+        self.measurementWidget.setLocked(locked)
+        self.plugins.handle("lock_controls", locked)
+        self.lockStateChanged.emit(locked)
 
     def setNoticeVisible(self, visible: bool) -> None:
         self.noticeLabel.setVisible(visible)
@@ -698,28 +685,28 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.panels.clear()
         self.panels.hide()
         self.measurementWidget.setControlsVisible(False)
-        self.start_sample_action.setEnabled(False)
-        self.start_contact_action.setEnabled(False)
-        self.start_measurement_action.setEnabled(False)
+        self.startSampleAction.setEnabled(False)
+        self.startContactAction.setEnabled(False)
+        self.startMeasurementAction.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
             panel.mount(item)
-            self.start_sample_action.setEnabled(True)
+            self.startSampleAction.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.setVisible(True)
-            panel.table_move = self.on_table_contact
-            panel.table_contact = self.on_table_move
+            panel.tableMoveRequested.connect(self.moveTable)
+            panel.tableContactRequested.connect(self.contactTable)
             panel.mount(item)
-            self.start_contact_action.setEnabled(True)
+            self.startContactAction.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             if panel:
                 panel.setVisible(True)
                 panel.mount(item)
                 self.measurementWidget.setControlsVisible(True)
-                self.start_measurement_action.setEnabled(True)
+                self.startMeasurementAction.setEnabled(True)
         # Show measurement tab
         self.tabWidget.setCurrentWidget(self.measurementWidget)
 
@@ -729,9 +716,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     # Contcat table controls
 
     @handle_exception
-    def on_table_move(self, contact):
-        if self.use_table():
-            self.lock_controls()
+    def moveTable(self, contact) -> None:
+        if self.isTableEnabled():
+            self.setControlsLocked(True)
             x, y, z = contact.position
             self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
             self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
@@ -739,9 +726,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.table_process.safe_absolute_move(x, y, z)
 
     @handle_exception
-    def on_table_contact(self, contact):
-        if self.use_table():
-            self.lock_controls()
+    def contactTable(self, contact) -> None:
+        if self.isTableEnabled():
+            self.setControlsLocked(True)
             x, y, z = contact.position
             z = safe_z_position(z)
             self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
@@ -760,14 +747,14 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             panel = self.panels.get("contact")
             panel.setVisible(True)
             panel.mount(current_item)
-        self.unlock_controls()
+        self.setControlsLocked(False)
 
     @handle_exception
     def on_start_all(self, state=None):
         sample_items = SamplesItem(self.sequence_tree)
         dialog = StartSequenceDialog(
             context=sample_items,
-            table_enabled=self.use_table()
+            table_enabled=self.isTableEnabled()
         )
         self.operator_widget.writeSettings()
         self.output_widget.writeSettings()
@@ -790,15 +777,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         current_item = self.sequence_tree.current
         if isinstance(current_item, MeasurementTreeItem):
             contact_item = current_item.contact
-            if not ui.show_question(
-                title="Run Measurement",
-                text=f"Are you sure to run measurement {current_item.name!r} for {contact_item.name!r}?"
-            ): return
-            self._on_start(current_item)
+            message = f"Are you sure to run measurement {current_item.name!r} for {contact_item.name!r}?"
+            result = QtWidgets.QMessageBox.question(self, "Run Measurement", message)
+            if result == QtWidgets.QMessageBox.Yes:
+                self._on_start(current_item)
+            return
         elif isinstance(current_item, ContactTreeItem):
             dialog = StartSequenceDialog(
                 context=current_item,
-                table_enabled=self.use_table()
+                table_enabled=self.isTableEnabled()
             )
             self.operator_widget.writeSettings()
             self.output_widget.writeSettings()
@@ -816,7 +803,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         elif isinstance(current_item, SampleTreeItem):
             dialog = StartSequenceDialog(
                 context=current_item,
-                table_enabled=self.use_table()
+                table_enabled=self.isTableEnabled()
             )
             self.operator_widget.writeSettings()
             self.output_widget.writeSettings()
@@ -841,15 +828,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
-        self.lock_controls()
+        self.setControlsLocked(True)
         measure = self.measure_process
         measure.context = context
         measure.set("table_position", self.table_position())
         measure.set("operator", self.operator())
         measure.set("output_dir", self.output_dir())
         measure.set("write_logfiles", self.write_logfiles())
-        measure.set("use_environ", self.use_environment())
-        measure.set("use_table", self.use_table())
+        measure.set("use_environ", self.isEnvironmentEnabled())
+        measure.set("use_table", self.isTableEnabled())
         measure.set("serialize_json", self.export_json())
         measure.set("serialize_txt", self.export_txt())
         measure.set("move_to_contact", move_to_contact)
@@ -900,24 +887,22 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def on_finished(self):
         self.sync_environment_controls()
-        self.unlock_controls()
+        self.setControlsLocked(False)
 
     @handle_exception
     def on_reset_sequence_state(self, state=None):
-        if not ui.show_question(
-            title="Reset State",
-            text="Do you want to reset all sequence states?"
-        ): return
-        current_item = self.sequence_tree.current
-        self.panels.unmount()
-        self.panels.clear()
-        self.panels.hide()
-        for sample_item in self.sequence_tree:
-            sample_item.reset()
-        if current_item is not None:
-            panel = self.panels.get(current_item.type)
-            panel.setVisible(True)
-            panel.mount(current_item)
+        result = QtWidgets.QMessageBox.question(self, "Reset State", "Do you want to reset all sequence states?")
+        if result == QtWidgets.QMessageBox.Yes:
+            current_item = self.sequence_tree.current
+            self.panels.unmount()
+            self.panels.clear()
+            self.panels.hide()
+            for sample_item in self.sequence_tree:
+                sample_item.reset()
+            if current_item is not None:
+                panel = self.panels.get(current_item.type)
+                panel.setVisible(True)
+                panel.mount(current_item)
 
     @handle_exception
     def on_edit_sequence(self, state=None):
@@ -929,13 +914,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     # Measurement control
 
     def restoreDefaults(self) -> None:
-        if not ui.show_question(
-            title="Restore Defaults",
-            text="Do you want to restore to default parameters?"
-        ): return
-        measurement = self.sequence_tree.current
-        panel = self.panels.get(measurement.type)
-        panel.restore()
+        result = QtWidgets.QMessageBox.question(self, "Restore Defaults", "Do you want to restore to default parameters?")
+        if result == QtWidgets.QMessageBox.Yes:
+            measurement = self.sequence_tree.current
+            panel = self.panels.get(measurement.type)
+            panel.restore()
 
     # Table calibration
 
@@ -953,7 +936,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_control_widget.setCalibration(position)
         panel = self.panels.get("contact")
         if panel:
-            panel.update_use_table(self.use_table() and self.table_control_widget.isCalibrationValid())
+            enabled = self.isTableEnabled() and self.table_control_widget.isCalibrationValid()
+            panel.setTableEnabled(enabled)
 
     @handle_exception
     def on_table_control_clicked(self) -> None:
@@ -961,7 +945,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         dialog = AlignmentDialog(self.table_process, self.contact_quality_process)
         dialog.readSettings()
         dialog.loadSamples(list(self.sequence_tree)) # HACK
-        if self.use_environment():
+        if self.isEnvironmentEnabled():
             # TODO !!!
             with self.environ_process as environ:
                 pc_data = environ.pc_data()
@@ -1033,7 +1017,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     @handle_exception
     def switch_off_lights(self):
-        if self.use_environment():
+        if self.isEnvironmentEnabled():
             with self.environ_process as environment:
                 if environment.has_lights():
                     environment.dim_lights()
@@ -1041,7 +1025,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     @handle_exception
     def sync_environment_controls(self):
         """Syncronize environment controls."""
-        if self.use_environment():
+        if self.isEnvironmentEnabled():
             with self.environ_process as environment:
                 environment.request_pc_data()
 
@@ -1068,7 +1052,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     @handle_exception
     def sync_table_controls(self):
         """Syncronize table controls."""
-        enabled = self.use_table()
+        enabled = self.isTableEnabled()
         self.table_process.enabled = enabled
         self.on_table_position_changed(Position())
         self.on_table_calibration_changed(Position())

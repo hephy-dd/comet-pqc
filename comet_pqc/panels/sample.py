@@ -1,9 +1,9 @@
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from comet import ui
 
 from ..core import config
-from ..sequence import SequenceManager
+from ..sequence import SequenceManagerDialog
 from ..utils import handle_exception, make_path
 from .panel import BasicPanel
 
@@ -52,47 +52,45 @@ class SamplePanel(BasicPanel):
             clearable=True,
             editing_finished=self.on_sample_comment_edited
         )
-        self._reload_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "reload.svg"),
-            tool_tip="Reload sequence configuration from file.",
-            clicked=self.on_reload_clicked
-        )
-        self._sequence_manager_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "gear.svg"),
-            tool_tip="Open sequence manager",
-            clicked=self.on_sequence_manager_clicked
-        )
-        self._sample_groupbox = ui.GroupBox(
-            title="Sample",
-            layout=ui.Row(
-                ui.Column(
-                    ui.Label("Name"),
-                    ui.Label("Type"),
-                    ui.Label("Position"),
-                    ui.Label("Comment"),
-                    ui.Label("Sequence")
-                ),
-                ui.Column(
-                    ui.Row(
-                        self._sample_name_prefix_text,
-                        self._sample_name_infix_text,
-                        self._sample_name_suffix_text,
-                        stretch=(3, 7, 3)
-                    ),
-                    self._sample_type_text,
-                    self._sample_position_text,
-                    self._sample_comment_text,
-                    ui.Row(
-                        self._sequence_text,
-                        self._reload_button,
-                        self._sequence_manager_button,
-                        stretch=(1, 0)
-                    )
-                ),
-                stretch=(0, 1)
-            )
-        )
-        self.layout().insertWidget(2, self._sample_groupbox.qt)
+
+        self.reloadSequenceButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.reloadSequenceButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "reload.svg")))
+        self.reloadSequenceButton.setToolTip("Reload sequence configuration from file.")
+        self.reloadSequenceButton.clicked.connect(self.reloadSequence)
+
+        self.editSequenceButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.editSequenceButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "gear.svg")))
+        self.editSequenceButton.setToolTip("Open sequence manager")
+        self.editSequenceButton.clicked.connect(self.showSequenceManager)
+
+        self.sampleGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.sampleGroupBox.setTitle("Sample")
+
+        sampleNameLayout = QtWidgets.QHBoxLayout()
+        sampleNameLayout.addWidget(self._sample_name_prefix_text.qt, 3)
+        sampleNameLayout.addWidget(self._sample_name_infix_text.qt, 7)
+        sampleNameLayout.addWidget(self._sample_name_suffix_text.qt, 3)
+
+        sampleSequenceLayout = QtWidgets.QHBoxLayout()
+        sampleSequenceLayout.addWidget(self._sequence_text.qt, 1)
+        sampleSequenceLayout.addWidget(self.reloadSequenceButton, 0)
+        sampleSequenceLayout.addWidget(self.editSequenceButton, 0)
+
+        sampleGroupBoxLayout = QtWidgets.QGridLayout(self.sampleGroupBox)
+        sampleGroupBoxLayout.addWidget(QtWidgets.QLabel("Name"), 0, 0)
+        sampleGroupBoxLayout.addWidget(QtWidgets.QLabel("Type"), 1, 0)
+        sampleGroupBoxLayout.addWidget(QtWidgets.QLabel("Position"), 2, 0)
+        sampleGroupBoxLayout.addWidget(QtWidgets.QLabel("Comment"), 3, 0)
+        sampleGroupBoxLayout.addWidget(QtWidgets.QLabel("Sequence"), 4, 0)
+        sampleGroupBoxLayout.addLayout(sampleNameLayout, 0, 1)
+        sampleGroupBoxLayout.addWidget(self._sample_type_text.qt, 1, 1)
+        sampleGroupBoxLayout.addWidget(self._sample_position_text.qt ,2, 1)
+        sampleGroupBoxLayout.addWidget(self._sample_comment_text.qt, 3, 1)
+        sampleGroupBoxLayout.addLayout(sampleSequenceLayout, 4, 1)
+        sampleGroupBoxLayout.setColumnStretch(0, 0)
+        sampleGroupBoxLayout.setColumnStretch(1, 1)
+
+        self.layout().insertWidget(2, self.sampleGroupBox)
 
     def on_sample_name_edited(self):
         if self.context:
@@ -113,32 +111,30 @@ class SamplePanel(BasicPanel):
             self.context.comment = self._sample_comment_text.value
             self.sampleChanged.emit(self.context)
 
-    @handle_exception
-    def on_reload_clicked(self):
-        if not ui.show_question(
-            title="Reload Configuration",
-            text="Do you want to reload sequence configuration from file?"
-        ): return
+    def reloadSequence(self) -> None:
+        result = QtWidgets.QMessageBox.question(self, "Reload Configuration", "Do you want to reload sequence configuration from file?")
+        if result != QtWidgets.QMessageBox.Yes:
+            return
         if self.context.sequence:
             filename = self.context.sequence.filename
             sequence = config.load_sequence(filename)
             self.context.load_sequence(sequence)
 
-    @handle_exception
-    def on_sequence_manager_clicked(self):
-        dialog = SequenceManager()
+    def showSequenceManager(self) -> None:
+        dialog = SequenceManagerDialog()
         dialog.readSettings()
-        if dialog.run():
+        dialog.exec()
+        if dialog.result() == dialog.Accepted:
             dialog.writeSettings()
             self._sequence_text.clear()
-            sequence = dialog.current_sequence
+            sequence = dialog.currentSequence()
             if sequence is not None:
                 self._sequence_text.value = f"{sequence.name}"
                 self._sequence_text.tool_tip = f"{sequence.filename}"
                 self.context.load_sequence(sequence)
                 self.sampleChanged.emit(self.context)
 
-    def mount(self, context):
+    def mount(self, context) -> None:
         """Mount measurement to panel."""
         super().mount(context)
         self.setTitle(f"Sample &rarr; {context.name}")
@@ -154,7 +150,7 @@ class SamplePanel(BasicPanel):
         else:
             self._sequence_text.value = ""
 
-    def unmount(self):
+    def unmount(self) -> None:
         self._sample_name_prefix_text.clear()
         self._sample_name_infix_text.clear()
         self._sample_name_suffix_text.clear()
