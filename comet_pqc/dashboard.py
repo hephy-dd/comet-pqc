@@ -433,9 +433,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     sample_count = 4
 
-    lockStateChanged = QtCore.pyqtSignal(bool)
     messageChanged = QtCore.pyqtSignal(str)
     progressChanged = QtCore.pyqtSignal(int, int)
+    started = QtCore.pyqtSignal()
+    aborting = QtCore.pyqtSignal()
+    finished = QtCore.pyqtSignal()
     failed = QtCore.pyqtSignal(Exception, object)
 
     def __init__(self, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
@@ -457,6 +459,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             edit_sequence=self.on_edit_sequence
         )
         self.sequence_tree = self.sequenceWidget._sequence_tree
+        self.startAllAction = self.sequenceWidget.startAllAction
         self.startSampleAction = self.sequenceWidget.startSampleAction
         self.startContactAction = self.sequenceWidget.startContactAction
         self.startMeasurementAction = self.sequenceWidget.startMeasurementAction
@@ -672,7 +675,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.operatorGroupBox.setEnabled(not locked)
         self.measurementWidget.setLocked(locked)
         self.plugins.handle("lock_controls", locked)
-        self.lockStateChanged.emit(locked)
 
     def setNoticeVisible(self, visible: bool) -> None:
         self.noticeLabel.setVisible(visible)
@@ -821,6 +823,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             )
 
     def _on_start(self, context, move_to_contact=False, move_to_after_position=None):
+        self.started.emit()
         # Create output directory
         self.panels.store()
         self.panels.unmount()
@@ -828,7 +831,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
-        self.setControlsLocked(True)
         measure = self.measure_process
         measure.context = context
         measure.set("table_position", self.table_position())
@@ -884,10 +886,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def on_stop(self):
         self.sequenceWidget.stop()
         self.measure_process.stop()
+        self.aborting.emit()
 
     def on_finished(self):
         self.sync_environment_controls()
-        self.setControlsLocked(False)
+        self.finished.emit()
 
     @handle_exception
     def on_reset_sequence_state(self, state=None):

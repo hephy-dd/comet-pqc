@@ -106,7 +106,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.plugins.register_plugin(NotificationPlugin(self))
 
         self.dashboard = Dashboard(self.plugins)
-        self.dashboard.lockStateChanged.connect(lambda state: self.preferencesAction.setEnabled(not state))
         self.dashboard.messageChanged.connect(self.showMessage)
         self.dashboard.progressChanged.connect(self.showProgress)
         self.dashboard.failed.connect(self.showException)
@@ -123,6 +122,31 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             self.dashboard.table_process.start()
             self.dashboard.sync_table_controls()
             self.dashboard.table_process.enable_joystick(False)
+
+        # State machine
+
+        self.idleState = QtCore.QState()
+        self.idleState.entered.connect(self.enterIdle)
+
+        self.runningState = QtCore.QState()
+        self.runningState.entered.connect(self.enterRunning)
+
+        self.abortingState = QtCore.QState()
+        self.abortingState.entered.connect(self.enterAborting)
+
+        self.idleState.addTransition(self.dashboard.started, self.runningState)
+
+        self.runningState.addTransition(self.dashboard.aborting, self.abortingState)
+        self.runningState.addTransition(self.dashboard.finished, self.idleState)
+
+        self.abortingState.addTransition(self.dashboard.finished, self.idleState)
+
+        self.stateMachine = QtCore.QStateMachine(self)
+        self.stateMachine.addState(self.idleState)
+        self.stateMachine.addState(self.runningState)
+        self.stateMachine.addState(self.abortingState)
+        self.stateMachine.setInitialState(self.idleState)
+        self.stateMachine.start()
 
     def readSettings(self):
         settings = QtCore.QSettings()
@@ -233,6 +257,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def closeEvent(self, event: QtCore.QEvent) -> None:
         result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
         if result == QtWidgets.QMessageBox.Yes:
+            self.stateMachine.stop()
             dialog = QtWidgets.QProgressDialog(self)
             dialog.setRange(0, 0)
             dialog.setCancelButton(None)
@@ -245,3 +270,14 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             event.accept()
         else:
             event.ignore()
+
+    def enterIdle(self) -> None:
+        self.preferencesAction.setEnabled(True)
+        self.dashboard.setControlsLocked(False)
+
+    def enterRunning(self) -> None:
+        self.preferencesAction.setEnabled(False)
+        self.dashboard.setControlsLocked(True)
+
+    def enterAborting(self) -> None:
+        ...
