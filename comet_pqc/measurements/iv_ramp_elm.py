@@ -61,7 +61,7 @@ class IVRampElmMeasurement(MatrixMeasurement, HVSourceMixin, ElectrometerMixin, 
         self.register_parameter("elm_current_autorange_enable", False, type=bool)
         self.register_parameter("elm_current_autorange_minimum", comet.ureg("20 pA"), unit="A")
         self.register_parameter("elm_current_autorange_maximum", comet.ureg("20 mA"), unit="A")
-        self.register_hvsource()
+        self.register_vsource()
         self.register_elm()
         self.register_environment()
         self.register_analysis()

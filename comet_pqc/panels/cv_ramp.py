@@ -1,3 +1,7 @@
+from typing import Optional
+
+from PyQt5 import QtWidgets
+
 import comet
 from comet import ui
 
@@ -10,13 +14,11 @@ __all__ = ["CVRampPanel"]
 class CVRampPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
     """Panel for CV ramp measurements."""
 
-    type = "cv_ramp"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
         self.title = "CV Ramp (HV Source)"
 
-        self.register_vsource()
+        self.register_hvsource()
         self.register_lcr()
         self.register_environment()
 

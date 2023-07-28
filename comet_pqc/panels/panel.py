@@ -1,9 +1,9 @@
 from typing import Optional
 
+from PyQt5 import QtCore, QtWidgets
+
 import comet
 from comet import ui
-
-from PyQt5 import QtCore, QtWidgets
 
 from ..settings import settings
 from ..utils import stitch_pixmaps
@@ -12,8 +12,6 @@ __all__ = ["PanelStub", "BasicPanel", "Panel"]
 
 
 class PanelStub(QtWidgets.QWidget):
-
-    type: str = ""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -74,32 +72,40 @@ class BasicPanel(PanelStub):
 class Panel(BasicPanel):
     """Base class for measurement panels."""
 
-    type = "measurement"
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = ""
         self._bindings = {}
+
         self.state_handlers = []
+
         self.data_panel = ui.Column()
+
         self.general_tab = ui.Tab(
-                title="General",
-                layout=ui.Row()
-            )
-        self.control_tabs = ui.Tabs(self.general_tab)
-        self.status_panel = ui.Column()
-        self.control_panel = ui.Row(
-            self.control_tabs,
-            ui.Column(
-                self.status_panel,
-                ui.Spacer(horizontal=False)
-            ),
-            stretch=(3, 1)
+            layout=ui.Row()
         )
+
+        self.controlTabWidget = QtWidgets.QTabWidget(self)
+        self.controlTabWidget.addTab(self.general_tab.qt, self.tr("General"))
+
+        self.statusWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+        self.statusWidget.setLayout(QtWidgets.QVBoxLayout())
+
+        col = ui.Column()
+        col.qt.layout().addWidget(self.statusWidget)
+        col.qt.layout().addStretch()
+
+        self.control_panel = ui.Row()
+        self.control_panel.qt.layout().addWidget(self.controlTabWidget, 3)
+        self.control_panel.qt.layout().addWidget(col.qt, 1)
+
         self.layout().insertWidget(2, self.data_panel.qt)
         self.layout().insertWidget(3, self.control_panel.qt)
+
         self.measurement = None
+
         self.data_tabs = ui.Tabs()
+
         self.data_panel.append(self.data_tabs)
 
         # Add analysis tab
@@ -110,22 +116,46 @@ class Panel(BasicPanel):
         self.series_transform = {}
         self.series_transform_default = lambda x, y: (x, y)
 
+        self.customBindTypes: dict = {}
+
+        self.registerBindType(
+            QtWidgets.QCheckBox,
+            lambda widget: widget.isChecked(),
+            lambda widget, value: widget.setChecked(bool(value)),
+        )
+        self.registerBindType(
+            QtWidgets.QLineEdit,
+            lambda widget: widget.text(),
+            lambda widget, value: widget.setText(str(value)),
+        )
+        self.registerBindType(
+            QtWidgets.QLabel,
+            lambda widget: widget.text(),
+            lambda widget, value: widget.setText(str(value)),
+        )
+
+    def registerBindType(self, type, getter, setter) -> None:
+        """Register setter and getter bindings for input widgets."""
+        self.customBindTypes.update({type: (getter, setter)})
+
     def bind(self, key, element, default=None, unit=None):
-        """Bind measurement parameter to UI element for syncronization on mount
-        and store.
+        """Bind measurement parameter to input widget for syncronization on
+        mount and store.
 
         >>> # for measurement parameter "value" of unit "V"
-        >>> self.value = QtWidgets.QDoubleSpinBox()
-        >>> self.bind("value", self.value, default=10.0, unit="V")
+        >>> self.valueSpinBox = QtWidgets.QDoubleSpinBox()
+        >>> self.bind("value", self.valueSpinBox, default=10.0, unit="V")
         """
         self._bindings[key] = element, default, unit
 
     def mount(self, measurement):
         """Mount measurement to panel."""
         super().mount(measurement)
+
         self.setTitle(f"{self.title} &rarr; {measurement.name}")
         self.setDescription(measurement.description or "")
         self.measurement = measurement
+
         # Load parameters to UI
         parameters = self.measurement.parameters
         for key, (element, default, unit) in self._bindings.items():
@@ -145,11 +175,16 @@ class Panel(BasicPanel):
                 setattr(element, "text", format(value))
             elif isinstance(element, ui.Metric):
                 setattr(element, "value", value)
+            elif type(element) in self.customBindTypes:
+                _, setter = self.customBindTypes[type(element)]
+                setter(element, value)
             else:
                 setattr(element, "value", value)
         self.load_analysis()
+
         # Show first tab on mount
         self.data_tabs.qt.setCurrentIndex(0)
+
         # Update plot series style
         points_in_plots = settings.settings.get("points_in_plots") or False
         for tab in self.data_tabs:
@@ -180,6 +215,9 @@ class Panel(BasicPanel):
                     value = getattr(element, "text")
                 elif isinstance(element, ui.Metric):
                     value = getattr(element, "value")
+                elif type(element) in self.customBindTypes:
+                    getter, _ = self.customBindTypes[type(element)]
+                    value = getter(element)
                 else:
                     value = getattr(element, "value")
                 if unit is not None:
@@ -205,6 +243,9 @@ class Panel(BasicPanel):
                     setattr(element, "value", value)
                 elif isinstance(element, ui.Metric):
                     setattr(element, "value", value)
+                elif type(element) in self.customBindTypes:
+                    _, setter = self.customBindTypes[type(element)]
+                    setter(element, value)
                 else:
                     setattr(element, "value", value)
 
@@ -238,19 +279,19 @@ class Panel(BasicPanel):
                 self.append_analysis(key, values)
 
     def setLocked(self, locked: bool) -> None:
-        for tab in self.control_tabs:
-            tab.qt.setEnabled(not locked)
+        for index in range(self.controlTabWidget.count()):
+            widget = self.controlTabWidget.widget(index)
+            widget.setEnabled(not locked)
         if locked:
-            if self.general_tab in self.control_tabs:
-                self.control_tabs.current = self.general_tab
-            self.control_tabs.enabled = True
-            self.status_panel.enabled = True
+            self.controlTabWidget.setCurrentWidget(self.general_tab.qt)
+            self.controlTabWidget.setEnabled(True)
+            self.statusWidget.setEnabled(True)
 
     def save_to_image(self, filename):
         """Save screenshots of data tabs to stitched image."""
         current = self.data_tabs.current
         pixmaps = []
-        png_analysis = settings.settings.get("png_analysis") or False
+        png_analysis = settings.png_analysis
         for tab in self.data_tabs:
             self.data_tabs.current = tab
             if isinstance(tab.layout, ui.Plot):

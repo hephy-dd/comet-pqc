@@ -1,16 +1,18 @@
 import logging
 import math
 import traceback
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 from comet import ui
 from comet import ureg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from .core.utils import make_path
 
 __all__ = [
     "make_path",
+    "join_channels",
+    "split_channels",
     "format_metric",
     "format_switch",
     "stitch_pixmaps",
@@ -22,6 +24,16 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+def join_channels(channels: List[str]) -> str:
+    """Return string containing comma separated channels."""
+    return ", ".join([channel.strip() for channel in channels if channel.strip()])
+
+
+def split_channels(channels: str) -> List[str]:
+    """Return list of channels from comma separated string."""
+    return [channel.strip() for channel in channels.split(",") if channel.strip()]
 
 
 def format_metric(value: float, unit: str, decimals: int = 3) -> str:
@@ -116,6 +128,17 @@ def create_icon(size: int, color: str) -> ui.Icon:
     painter.drawEllipse(1, 1, size - 2, size - 2)
     del painter
     return ui.Icon(qt=pixmap)
+
+
+def progress_dialog(callback, *, text=None, maximum=None, parent=None):
+    dialog = QtWidgets.QProgressDialog(parent)
+    dialog.setWindowModality(QtCore.Qt.WindowModal)
+    dialog.setCancelButton(None)
+    dialog.setLabelText(format(text or ""))
+    if maximum is not None:
+        dialog.setMaximum(maximum)
+    QtCore.QTimer.singleShot(200, lambda dialog=dialog: callback(dialog))
+    dialog.exec()
 
 
 def handle_exception(func: Callable) -> Callable:

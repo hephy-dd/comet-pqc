@@ -31,25 +31,30 @@ class MessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         # Fix message box width
+        width = 420
         layout = self.layout()
         if isinstance(layout, QtWidgets.QGridLayout):
             rows = layout.rowCount()
             columns = layout.columnCount()
-            spacer = QtWidgets.QSpacerItem(420, 0)
+            spacer = QtWidgets.QSpacerItem(width, 0)
             layout.addItem(spacer, rows, 0, 1, columns)
 
 
-class ToggleButton(ui.Button):
-    """Colored checkable button."""
+class ToggleButton(QtWidgets.QPushButton):
+    """Checkable button with color icon."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.icons = {False: create_icon(12, "grey"), True: create_icon(12, "green")}
-        self.on_toggle_color(self.checked)
-        self.qt.toggled.connect(self.on_toggle_color)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setChecked(False)
+        self.setProperty("checkedIcon", create_icon(12, "green").qt)
+        self.setProperty("uncheckedIcon", create_icon(12, "grey").qt)
+        self.updateIcon(self.isChecked())
+        self.toggled.connect(self.updateIcon)
 
-    def on_toggle_color(self, state):
-        self.icon = self.icons[state]
+    def updateIcon(self, state: bool) -> None:
+        icon = self.property("checkedIcon") if state else self.property("uncheckedIcon")
+        self.setIcon(icon)
 
 
 class PositionLabel(QtWidgets.QLabel):  # TODO

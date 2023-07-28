@@ -1,3 +1,7 @@
+from typing import Optional
+
+from PyQt5 import QtWidgets
+
 import comet
 from comet import ui
 
@@ -10,13 +14,11 @@ __all__ = ["FrequencyScanPanel"]
 class FrequencyScanPanel(MatrixPanel, HVSourceMixin, LCRMixin, EnvironmentMixin):
     """Frequency scan with log10 steps."""
 
-    type = "frequency_scan"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
         self.title = "Frequency Scan"
 
-        self.register_vsource()
+        self.register_hvsource()
         self.register_lcr()
         self.register_environment()
 

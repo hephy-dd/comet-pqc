@@ -46,7 +46,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_parameter("waiting_time_end", comet.ureg("0 s"), unit="s")
         self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
         self.register_parameter("hvsrc_accept_compliance", False, type=bool)
-        self.register_hvsource()
+        self.register_vsource()
         self.register_environment()
         self.register_analysis()
 

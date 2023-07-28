@@ -1,3 +1,7 @@
+from typing import Optional
+
+from PyQt5 import QtWidgets
+
 import comet
 from comet import ui
 
@@ -10,14 +14,12 @@ __all__ = ["IVRamp4WireBiasPanel"]
 class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
     """Panel for 4 wire IV ramp with bias measurements."""
 
-    type = "iv_ramp_4_wire_bias"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
         self.title = "4 Wire IV Ramp Bias"
 
-        self.register_vsource()
         self.register_hvsource()
+        self.register_vsource()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")

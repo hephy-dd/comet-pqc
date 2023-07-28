@@ -16,7 +16,7 @@ from .components import (
 from .core.config import list_configs, load_sequence
 from .quickedit import QuickEditDialog
 from .settings import settings
-from .utils import from_table_unit, to_table_unit
+from .utils import from_table_unit, to_table_unit, progress_dialog
 
 __all__ = [
     "StartSequenceDialog",
@@ -40,93 +40,96 @@ def load_all_sequences(settings):
     return configs
 
 
-class StartSequenceDialog(ui.Dialog):
+class StartSequenceDialog(QtWidgets.QDialog):
     """Start sequence dialog."""
 
-    def __init__(self, context, table_enabled):
-        super().__init__()
-        self.title = "Start Sequence"
-        self._contact_checkbox = ui.CheckBox(
-            text="Move table and contact with Probe Card",
-            checked=True,
-            enabled=table_enabled
-        )
-        self._position_checkbox = ui.CheckBox(
-            text="Move table after measurements",
-            checked=False,
-            enabled=table_enabled,
-            changed=self.on_position_checkbox_toggled
-        )
-        self._positions_combobox = PositionsComboBox(
-            enabled=False
-        )
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Start Sequence")
+
+        self.contactCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.contactCheckBox.setText("Move table and contact with Probe Card")
+        self.contactCheckBox.setChecked(True)
+
+        self.positionCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.positionCheckBox.setText("Move table after measurements")
+        self.positionCheckBox.setChecked(False)
+        self.positionCheckBox.toggled.connect(self.onpositionCheckBox_toggled)
+
+        self._positions_combobox = PositionsComboBox()
+        self._positions_combobox.qt.setEnabled(False)
+
         self._operator_combobox = OperatorWidget()
+
         self._output_combobox = WorkingDirectoryWidget()
-        self._button_box = ui.DialogButtonBox(
-            buttons=("yes", "no"),
-            accepted=self.accept,
-            rejected=self.reject
-        )
-        self._button_box.qt.button(self._button_box.QtClass.Yes).setAutoDefault(False)
-        self._button_box.qt.button(self._button_box.QtClass.No).setDefault(True)
-        self.layout = ui.Column(
-            ui.Label(
-                text=self._create_message(context)
-            ),
-            ui.GroupBox(
-                title="Table",
-                layout=ui.Column(
-                    self._contact_checkbox,
-                    ui.Row(
-                        self._position_checkbox,
-                        self._positions_combobox
-                    ),
-                    ui.Spacer()
-                )
-            ),
-            ui.Row(
-                ui.GroupBox(
-                    title="Operator",
-                    layout=self._operator_combobox
-                ),
-                ui.GroupBox(
-                    title="Working Directory",
-                    layout=self._output_combobox
-                ),
-                stretch=(2, 3)
-            ),
-            self._button_box,
-            stretch=(1, 0, 0, 0)
-        )
 
-    # Settings
+        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Yes).setAutoDefault(False)
+        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.No).setDefault(True)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
 
-    def readSettings(self):
-        self._contact_checkbox.checked = bool(settings.settings.get("move_to_contact") or False)
-        self._position_checkbox.checked = bool(settings.settings.get("move_on_success") or False)
+        self.messageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+
+        self.tableGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.tableGroupBox.setTitle(self.tr("Table"))
+
+        tableGroupBoxLayout = QtWidgets.QGridLayout(self.tableGroupBox)
+        tableGroupBoxLayout.addWidget(self.contactCheckBox, 0, 0, 1, 2)
+        tableGroupBoxLayout.addWidget(self.positionCheckBox, 1, 0)
+        tableGroupBoxLayout.addWidget(self._positions_combobox.qt, 1, 1)
+
+        self.operatorGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.operatorGroupBox.setTitle(self.tr("Operator"))
+
+        operatorGroupBoxLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
+        operatorGroupBoxLayout.addWidget(self._operator_combobox.qt)
+
+        self.outputGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.outputGroupBox.setTitle(self.tr("Working Directory"))
+
+        outputGroupBoxLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
+        outputGroupBoxLayout.addWidget(self._output_combobox.qt)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.messageLabel, 0, 0, 1, 2)
+        layout.addWidget(self.tableGroupBox, 1, 0, 1, 2)
+        layout.addWidget(self.operatorGroupBox, 2, 0)
+        layout.addWidget(self.outputGroupBox, 2, 1)
+        layout.addWidget(self.buttonBox, 3, 0, 1, 2)
+        layout.setColumnStretch(0, 2)
+        layout.setColumnStretch(1, 3)
+        layout.setRowStretch(0, 1)
+
+    def setMessage(self, message: str) -> None:
+        self.messageLabel.setText(message)
+
+    def setTableEnabled(self, enabled: bool) -> None:
+        self.contactCheckBox.setEnabled(enabled)
+        self.positionCheckBox.setEnabled(enabled)
+
+    def readSettings(self) -> None:
+        self.contactCheckBox.setChecked(bool(settings.settings.get("move_to_contact") or False))
+        self.positionCheckBox.setChecked(bool(settings.settings.get("move_on_success") or False))
         self._positions_combobox.readSettings()
         self._operator_combobox.readSettings()
         self._output_combobox.readSettings()
 
-    def writeSettings(self):
-        settings.settings["move_to_contact"] = self._contact_checkbox.checked
-        settings.settings["move_on_success"] = self._position_checkbox.checked
+    def writeSettings(self) -> None:
+        settings.settings["move_to_contact"] = self.contactCheckBox.isChecked()
+        settings.settings["move_on_success"] = self.positionCheckBox.isChecked()
         self._positions_combobox.writeSettings()
         self._operator_combobox.writeSettings()
         self._output_combobox.writeSettings()
 
-    # Callbacks
+    def onpositionCheckBox_toggled(self, state: bool) -> None:
+        self._positions_combobox.qt.setEnabled(state)
 
-    def on_position_checkbox_toggled(self, state):
-        self._positions_combobox.enabled = state
+    def isMoveToContact(self) -> bool:
+        return self.contactCheckBox.isChecked()
 
-    # Methods
-
-    def move_to_contact(self):
-        return self._contact_checkbox.checked
-
-    def move_to_position(self):
-        if self.move_to_contact() and self._position_checkbox.checked:
+    def isMoveToPosition(self):
+        if self.isMoveToContact() and self.positionCheckBox.isChecked():
             current = self._positions_combobox.current
             if current:
                 index = self._positions_combobox.index(current)
@@ -136,15 +139,14 @@ class StartSequenceDialog(ui.Dialog):
                     return position.x, position.y, position.z
         return None
 
-    # Helpers
-
-    def _create_message(self, context):
+    def createMessage(self, context) -> str:
         if isinstance(context, SamplesItem):
-            return "<b>Are you sure to start all enabled sequences for all enabled samples?</b>"
+            return
         elif isinstance(context, SampleTreeItem):
-            return f"<b>Are you sure to start all enabled sequences for {context.name!r}?</b>"
+            return
         elif isinstance(context, ContactTreeItem):
-            return f"<b>Are you sure to start sequence {context.name!r}?</b>"
+            return
+        return ""
 
 
 class SequenceManagerDialog(QtWidgets.QDialog):
@@ -220,17 +222,13 @@ class SequenceManagerDialog(QtWidgets.QDialog):
         settings.endGroup()
 
     def load_settings_sequences(self):
-        """Load all built-in and custom sequences from settings."""
-        self.sequenceTreeWidget.clear()
-        all_sequences = load_all_sequences(settings.settings)
-        dialog = QtWidgets.QProgressDialog(self)
-        dialog.setWindowModality(QtCore.Qt.WindowModal)
-        dialog.setLabelText("Loading sequences...")
-        dialog.setCancelButton(None)
-        dialog.setMaximum(len(all_sequences))
-        def callback():
+        """Load all sequences from settings."""
+        def callback(progress):
+            self.sequenceTreeWidget.clear()
+            all_sequences = load_all_sequences(settings.settings)
+            progress.setMaximum(len(all_sequences))
             for name, filename in all_sequences:
-                dialog.setValue(dialog.value() + 1)
+                progress.setValue(progress.value() + 1)
                 try:
                     sequence = load_sequence(filename)
                     item = QtWidgets.QTreeWidgetItem()
@@ -241,14 +239,14 @@ class SequenceManagerDialog(QtWidgets.QDialog):
                     self.sequenceTreeWidget.addTopLevelItem(item)
                 except Exception as exc:
                     logger.error("failed to load sequence: %s", filename)
-            dialog.close()
-        QtCore.QTimer.singleShot(100, callback)
-        dialog.exec()
-        self.sequenceTreeWidget.resizeColumnToContents(0)
-        self.sequenceTreeWidget.resizeColumnToContents(1)
-        if self.sequenceTreeWidget.topLevelItemCount():
-            item = self.sequenceTreeWidget.topLevelItem(0)
-            self.sequenceTreeWidget.setCurrentItem(item)
+            self.sequenceTreeWidget.resizeColumnToContents(0)
+            self.sequenceTreeWidget.resizeColumnToContents(1)
+            if self.sequenceTreeWidget.topLevelItemCount():
+                item = self.sequenceTreeWidget.topLevelItem(0)
+                self.sequenceTreeWidget.setCurrentItem(item)
+            progress.close()
+
+        progress_dialog(callback, text="Loading sequences...", parent=self)
 
     def writeSettings(self) -> None:
         self.writeDialogSettings()
@@ -683,27 +681,29 @@ class EditSamplesDialog:
         self.sequences = sequences
 
     def _populate_dialog(self, dialog):
-        for sample_item in self.sequence_tree:
-            item = dialog.addItem()
-            item.setEnabled(sample_item.enabled)
-            item.setPrefix(sample_item.name_prefix)
-            item.setInfix(sample_item.name_infix)
-            item.setSuffix(sample_item.name_suffix)
-            item.setType(sample_item.sample_type)
-            item.setPosition(sample_item.sample_position)
-            for name, filename in self.sequences:
-                item.addSequence(name)
-            if sample_item.sequence is not None:
-                item.setCurrentSequence(sample_item.sequence.name)
-            item.setProperty("sample_item", sample_item)
+        def callback(progress):
+            items = self.sequence_tree
+            progress.setRange(0, len(items))
+            for sample_item in items:
+                item = dialog.addItem()
+                item.setEnabled(sample_item.enabled)
+                item.setPrefix(sample_item.name_prefix)
+                item.setInfix(sample_item.name_infix)
+                item.setSuffix(sample_item.name_suffix)
+                item.setType(sample_item.sample_type)
+                item.setPosition(sample_item.sample_position)
+                for name, filename in self.sequences:
+                    item.addSequence(name)
+                if sample_item.sequence is not None:
+                    item.setCurrentSequence(sample_item.sequence.name)
+                item.setProperty("sample_item", sample_item)
+            progress.close()
+
+        progress_dialog(callback, text="Loading sequence...", parent=self)
 
     def _update_samples(self, dialog):
-        progress = QtWidgets.QProgressDialog()
-        progress.setWindowModality(QtCore.Qt.WindowModal)
-        progress.setLabelText("Updating sequence...")
-        progress.setCancelButton(None)
-        progress.setMaximum(len(dialog.items()))
-        def callback():
+        def callback(progress):
+            progress.setMaximum(len(dialog.items()))
             for item in dialog.items():
                 progress.setValue(progress.value() + 1)
                 sample_item = item.property("sample_item")
@@ -718,8 +718,8 @@ class EditSamplesDialog:
                         sequence = load_sequence(filename)
                         sample_item.load_sequence(sequence)
             progress.close()
-        QtCore.QTimer.singleShot(100, callback)
-        progress.exec()
+
+        progress_dialog(callback, text="Updating sequence...", parent=self)
 
     def run(self):
         dialog = QuickEditDialog()

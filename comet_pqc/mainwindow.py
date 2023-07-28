@@ -1,12 +1,15 @@
+import json
+import logging
+import os
 import traceback
 import webbrowser
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from comet import ProcessMixin
 
 from .components import MessageBox
-from .dashboard import Dashboard
+from .dashboard import Dashboard, SampleTreeItem
 from .preferences import PreferencesDialog
 from .plugins import PluginManager
 from .plugins.status import StatusPlugin
@@ -20,6 +23,7 @@ from .processes import (
     EnvironmentProcess,
     MeasureProcess,
 )
+from .utils import make_path, progress_dialog
 from .settings import settings as config  # TODO
 
 __all__ = ["MainWindow"]
@@ -32,12 +36,28 @@ APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 
 class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
+    config_version = 1
+
     def __init__(self, station, parent=None):
         super().__init__(parent)
 
         self.station = station
 
+        self.setProperty("directory", os.path.expanduser("~"))
+
         # Actions
+
+        self.importSequenceAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.importSequenceAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_import.svg")))
+        self.importSequenceAction.setText("Import Sequence...")
+        self.importSequenceAction.setToolTip("Import sequence from JSON file.")
+        self.importSequenceAction.triggered.connect(self.importSequence)
+
+        self.exportSequenceAction: QtWidgets.QAction = QtWidgets.QAction(self)
+        self.exportSequenceAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "document_export.svg")))
+        self.exportSequenceAction.setText("Export Sequence...")
+        self.exportSequenceAction.setToolTip("Export sequence to JSON file.")
+        self.exportSequenceAction.triggered.connect(self.exportSequence)
 
         self.quitAction = QtWidgets.QAction(self)
         self.quitAction.setText("&Quit")
@@ -67,6 +87,8 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         # Menus
         self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(self.importSequenceAction)
+        self.fileMenu.addAction(self.exportSequenceAction)
         self.fileMenu.addAction(self.quitAction)
 
         self.editMenu = self.menuBar().addMenu("&Edit")
@@ -110,6 +132,8 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.progressChanged.connect(self.showProgress)
         self.dashboard.failed.connect(self.showException)
         self.setCentralWidget(self.dashboard)
+        self.dashboard.sequenceWidget.importButton.setDefaultAction(self.importSequenceAction)
+        self.dashboard.sequenceWidget.exportButton.setDefaultAction(self.exportSequenceAction)
 
         self.dashboard.setNoticeVisible(config.table_temporary_z_limit)  # TODO
 
@@ -157,6 +181,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         state = settings.value("state", None)
         if state is not None:
             self.restoreState(state)
+        self.setProperty("directory", settings.value("directory", os.path.expanduser("~"), str))
         settings.endGroup()
         settings.beginGroup("preferences")
         geometry = settings.value("geometry", QtCore.QByteArray(), QtCore.QByteArray)
@@ -171,6 +196,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         settings.beginGroup("mainwindow")
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("state", self.saveState())
+        settings.setValue("directory", self.property("directory"))
         settings.endGroup()
         settings.beginGroup("preferences")
         settings.setValue("geometry", self.preferencesDialog.saveGeometry())
@@ -250,32 +276,105 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         index = self.dashboard.tabWidget.indexOf(widget)
         self.dashboard.tabWidget.removeTab(index)
 
+    def importSequence(self) -> None:
+        """Import sequence from JSON file."""
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Import Sequence", self.property("directory"), "JSON (*.json)")
+        if filename:
+            self.setProperty("directory", os.path.dirname(filename))
+
+            def callback(progress, filename=filename):
+                with open(filename) as fp:
+                    logging.info("Reading sequence... %r", filename)
+                    data = json.load(fp)
+                    logging.info("Reading sequence... done.")
+                self.setProperty("directory", os.path.dirname(filename))
+                version = data.get("version")
+                if version is None:
+                    raise RuntimeError(f"Missing version information in sequence: {filename}")
+                elif isinstance(version, int):
+                    if version != self.config_version:
+                        raise RuntimeError(f"Invalid version in sequence: {filename}")
+                else:
+                    raise RuntimeError(f"Invalid version information in sequence: {filename}")
+                samples = data.get("sequence") or []
+                self.dashboard.clearSequence()
+                progress.setRange(0, len(samples))
+                for kwargs in samples:
+                    progress.setValue(progress.value() + 1)
+                    item = SampleTreeItem()
+                    try:
+                        item.from_settings(**kwargs)
+                    except Exception as exc:
+                        logger.error(exc)
+                    self.dashboard.addSequenceItem(item.qt)
+                    item.qt.setExpanded(False)
+                if self.dashboard.sequenceTreeWidget.topLevelItemCount():
+                    self.dashboard.sequenceTreeWidget.setCurrentItem(self.dashboard.sequenceTreeWidget.topLevelItem(0))
+                self.dashboard.resizeSequenceColumns()
+                progress.close()
+
+            progress_dialog(callback, text="Reading sequence from JSON...", parent=self)
+
+    def exportSequence(self) -> None:
+        """Export sequence to JSON file."""
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Export Sequence", self.property("directory"), "JSON (*.json)")
+        if filename:
+            self.setProperty("directory", os.path.dirname(filename))
+
+            def callback(progress, filename=filename):
+                items = self.dashboard.sequenceItems()
+                progress.setRange(0, len(items))
+                samples = []
+                for item in items:
+                    progress.setValue(progress.value() + 1)
+                    samples.append(item.reflection().to_settings())
+                progress.setRange(0, 0)
+                data = {
+                    "version": self.config_version,
+                    "sequence": samples
+                }
+                # Auto filename extension
+                if os.path.splitext(filename)[-1] not in [".json"]:
+                    filename = f"{filename}.json"
+                    if os.path.exists(filename):
+                        result = QtWidgets.QMessageBox.question(self, "", f"Do you want to overwrite existing file {filename}?")
+                        if result != QtWidgets.QMessageBox.Yes:
+                            return
+                with open(filename, "w") as fp:
+                    logging.info("Writing sequence... %r", filename)
+                    json.dump(data, fp)
+                    logging.info("Writing sequence... done.")
+                progress.close()
+
+            progress_dialog(callback, text="Writing sequence to JSON...", parent=self)
+
     def shutdown(self) -> None:
         self.processes.stop()
         self.processes.join()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
-        result = QtWidgets.QMessageBox.question(self, "", "Quit application?")
+        result = QtWidgets.QMessageBox.question(self, "Quit", "Quit application?")
         if result == QtWidgets.QMessageBox.Yes:
             self.stateMachine.stop()
-            dialog = QtWidgets.QProgressDialog(self)
-            dialog.setRange(0, 0)
-            dialog.setCancelButton(None)
-            dialog.setLabelText("Stopping active threads...")
-            def callback():
+
+            def callback(progress):
                 self.shutdown()
-                dialog.close()
-            QtCore.QTimer.singleShot(250, callback)
-            dialog.exec()
+                progress.close()
+
+            progress_dialog(callback, text="Stopping active threads...", maximum=0, parent=self)
             event.accept()
         else:
             event.ignore()
 
     def enterIdle(self) -> None:
+        self.importSequenceAction.setEnabled(True)
+        self.exportSequenceAction.setEnabled(True)
         self.preferencesAction.setEnabled(True)
         self.dashboard.setControlsLocked(False)
 
     def enterRunning(self) -> None:
+        self.importSequenceAction.setEnabled(False)
+        self.exportSequenceAction.setEnabled(False)
         self.preferencesAction.setEnabled(False)
         self.dashboard.setControlsLocked(True)
 

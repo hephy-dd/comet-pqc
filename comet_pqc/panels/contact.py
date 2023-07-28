@@ -12,8 +12,6 @@ __all__ = ["ContactPanel"]
 
 class ContactPanel(BasicPanel):
 
-    type = "contact"
-
     tableMoveRequested = QtCore.pyqtSignal(object)
     tableContactRequested = QtCore.pyqtSignal(object)
 
@@ -68,13 +66,6 @@ class ContactPanel(BasicPanel):
         self.moveButton.setEnabled(self.isPositionValid and self.isTableEnabled)
         self.contactButton.setEnabled(self.isPositionValid and self.isTableEnabled)
 
-    def mount(self, context) -> None:
-        """Mount measurement to panel."""
-        super().mount(context)
-        self.setTitle(f"Contact &rarr; {context.name}")
-        self.setDescription(context.description or "")
-        self.updatePosition()
-
     def movePosition(self) -> None:
         self.moveButton.setEnabled(False)
         self.tableMoveRequested.emit(self.context)
@@ -82,3 +73,10 @@ class ContactPanel(BasicPanel):
     def contactPosition(self) -> None:
         self.contactButton.setEnabled(False)
         self.tableContactRequested.emit(self.context)
+
+    def mount(self, context) -> None:
+        """Mount measurement to panel."""
+        super().mount(context)
+        self.setTitle(f"Contact &rarr; {context.name}")
+        self.setDescription(context.description or "")
+        self.updatePosition()

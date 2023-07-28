@@ -17,7 +17,7 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.register_hvsource()
+        self.register_vsource()
         self.register_lcr()
         self.register_environment()
         self.register_analysis()

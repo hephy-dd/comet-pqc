@@ -46,8 +46,8 @@ class IVRampBiasMeasurement(MatrixMeasurement, HVSourceMixin, VSourceMixin, Envi
         self.register_parameter("hvsrc_accept_compliance", False, type=bool)
         self.register_parameter("vsrc_current_compliance", unit="A", required=True)
         self.register_parameter("vsrc_accept_compliance", False, type=bool)
-        self.register_hvsource()
         self.register_vsource()
+        self.register_hvsource()
         self.register_environment()
         self.register_analysis()
 

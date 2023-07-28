@@ -32,7 +32,7 @@ class Mixin:
 
 class HVSourceMixin(Mixin):
 
-    def register_hvsource(self):
+    def register_vsource(self):
         # self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
         self.register_parameter("hvsrc_sense_mode", "local", values=("local", "remote"))
         self.register_parameter("hvsrc_route_terminal", "rear", values=("front", "rear"))
@@ -201,7 +201,7 @@ class HVSourceMixin(Mixin):
 
 class VSourceMixin(Mixin):
 
-    def register_vsource(self):
+    def register_hvsource(self):
         # self.register_parameter("vsrc_current_compliance", unit="A", required=True)
         self.register_parameter("vsrc_sense_mode", "local", values=("local", "remote"))
         self.register_parameter("vsrc_route_terminal", "rear", values=("front", "rear"))

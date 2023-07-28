@@ -262,5 +262,29 @@ class Settings(SettingsMixin):
     def retry_contact_overdrive(self, value):
         self.settings["retry_contact_overdrive"] = to_table_unit(value)
 
+    @property
+    def export_json(self) -> bool:
+        return bool(self.settings.get("export_json", True))
+
+    @export_json.setter
+    def export_json(self, value: bool) -> None:
+        self.settings["export_json"] = bool(value)
+
+    @property
+    def export_txt(self) -> bool:
+        return bool(self.settings.get("export_txt", True))
+
+    @export_txt.setter
+    def export_txt(self, value: bool) -> None:
+        self.settings["export_txt"] = bool(value)
+
+    @property
+    def png_analysis(self) -> bool:
+        return bool(self.settings.get("png_analysis", False))
+
+    @png_analysis.setter
+    def png_analysis(self, value: bool) -> None:
+        self.settings["png_analysis"] = bool(value)
+
 
 settings = Settings()

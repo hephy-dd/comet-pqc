@@ -1,6 +1,20 @@
 from comet_pqc import utils
 
 
+def test_encode_matrix():
+    assert utils.join_channels([]) == ""
+    assert utils.join_channels(["A1"]) == "A1"
+    assert utils.join_channels(["A1", "B1", "C1"]) == "A1, B1, C1"
+
+
+def test_decode_matrix():
+    assert utils.split_channels("") == []
+    assert utils.split_channels("A1") == ["A1"]
+    assert utils.split_channels("A1,B1, C1") == ["A1", "B1", "C1"]
+    assert utils.split_channels(",,,") == []
+    assert utils.split_channels("A1,B1,,,C1,") == ["A1", "B1", "C1"]
+
+
 def test_format_metric():
     assert "4.20 YA" == utils.format_metric(4.2e24, "A", decimals=2)
     assert "-4.200 ZA" == utils.format_metric(-4.2e21, "A")

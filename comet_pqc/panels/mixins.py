@@ -1,3 +1,5 @@
+from PyQt5 import QtWidgets
+
 from comet import ui
 
 from ..utils import format_metric, format_switch
@@ -16,7 +18,7 @@ NO_VALUE = "---"
 class HVSourceMixin:
     """Mixin class providing default controls and status for HV Source."""
 
-    def register_vsource(self):
+    def register_hvsource(self):
         self.hvsrc_sense_mode = ui.ComboBox(["local", "remote"])
         self.hvsrc_route_terminal = ui.ComboBox(["front", "rear"])
 
@@ -41,23 +43,11 @@ class HVSourceMixin:
         toggle_hvsrc_filter(False)
         toggle_hvsrc_source_voltage_autorange(False)
 
-        self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
-        self.bind("hvsrc_route_terminal", self.hvsrc_route_terminal, "rear")
-        self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
-        self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
-        self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
-        self.bind("hvsrc_source_voltage_autorange_enable", self.hvsrc_source_voltage_autorange_enable, True)
-        self.bind("hvsrc_source_voltage_range", self.hvsrc_source_voltage_range, 20, unit="V")
-
         self.status_hvsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
         self.status_hvsrc_current = ui.Text(value=NO_VALUE, readonly=True)
         self.status_hvsrc_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, NO_VALUE)
-        self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
-        self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
-
-        self.status_panel.append(ui.GroupBox(
+        self.statusWidget.layout().addWidget(ui.GroupBox(
             title="HV Source Status",
             layout=ui.Column(
                 ui.Row(
@@ -75,10 +65,9 @@ class HVSourceMixin:
                     )
                 )
             )
-        ))
+        ).qt)
 
-        self.control_tabs.append(ui.Tab(
-            title="HV Source",
+        self.controlTabWidget.addTab(ui.Tab(
             layout=ui.Row(
                 ui.GroupBox(
                     title="Filter",
@@ -112,7 +101,23 @@ class HVSourceMixin:
                 ),
                 stretch=(1, 1, 1)
             )
-        ))
+        ).qt, self.tr("HV Source"))
+
+        # Bindings
+
+        self.bind("hvsrc_sense_mode", self.hvsrc_sense_mode, "local")
+        self.bind("hvsrc_route_terminal", self.hvsrc_route_terminal, "rear")
+        self.bind("hvsrc_filter_enable", self.hvsrc_filter_enable, False)
+        self.bind("hvsrc_filter_count", self.hvsrc_filter_count, 10)
+        self.bind("hvsrc_filter_type", self.hvsrc_filter_type, "repeat")
+        self.bind("hvsrc_source_voltage_autorange_enable", self.hvsrc_source_voltage_autorange_enable, True)
+        self.bind("hvsrc_source_voltage_range", self.hvsrc_source_voltage_range, 20, unit="V")
+
+        self.bind("status_hvsrc_voltage", self.status_hvsrc_voltage, NO_VALUE)
+        self.bind("status_hvsrc_current", self.status_hvsrc_current, NO_VALUE)
+        self.bind("status_hvsrc_output", self.status_hvsrc_output, NO_VALUE)
+
+        # Handler
 
         def handler(state):
             if "hvsrc_voltage" in state:
@@ -131,7 +136,7 @@ class HVSourceMixin:
 class VSourceMixin:
     """Mixin class providing default controls and status for V Source."""
 
-    def register_hvsource(self):
+    def register_vsource(self):
         self.vsrc_sense_mode = ui.ComboBox(["local", "remote"])
 
         def toggle_vsrc_filter(enabled):
@@ -148,20 +153,11 @@ class VSourceMixin:
 
         toggle_vsrc_filter(False)
 
-        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
-        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
-        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
-        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
-
         self.status_vsrc_voltage = ui.Text(value=NO_VALUE, readonly=True)
         self.status_vsrc_current = ui.Text(value=NO_VALUE, readonly=True)
         self.status_vsrc_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, NO_VALUE)
-        self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
-        self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
-
-        self.status_panel.append(ui.GroupBox(
+        self.statusWidget.layout().addWidget(ui.GroupBox(
             title="V Source Status",
             layout=ui.Column(
                 ui.Row(
@@ -179,10 +175,9 @@ class VSourceMixin:
                     )
                 )
             )
-        ))
+        ).qt)
 
-        self.control_tabs.append(ui.Tab(
-            title="V Source",
+        self.controlTabWidget.addTab(ui.Tab(
             layout=ui.Row(
                 ui.GroupBox(
                     title="Filter",
@@ -206,7 +201,20 @@ class VSourceMixin:
                 ui.Spacer(),
                 stretch=(1, 1, 1)
             )
-        ))
+        ).qt, self.tr("V Source"))
+
+        # Bindings
+
+        self.bind("vsrc_sense_mode", self.vsrc_sense_mode, "local")
+        self.bind("vsrc_filter_enable", self.vsrc_filter_enable, False)
+        self.bind("vsrc_filter_count", self.vsrc_filter_count, 10)
+        self.bind("vsrc_filter_type", self.vsrc_filter_type, "repeat")
+
+        self.bind("status_vsrc_voltage", self.status_vsrc_voltage, NO_VALUE)
+        self.bind("status_vsrc_current", self.status_vsrc_current, NO_VALUE)
+        self.bind("status_vsrc_output", self.status_vsrc_output, NO_VALUE)
+
+        # Handler
 
         def handler(state):
             if "vsrc_voltage" in state:
@@ -254,21 +262,9 @@ class ElectrometerMixin:
         toggle_elm_filter(False)
         toggle_elm_current_autorange(False)
 
-        self.bind("elm_filter_enable", self.elm_filter_enable, False)
-        self.bind("elm_filter_count", self.elm_filter_count, 10)
-        self.bind("elm_filter_type", self.elm_filter_type, "repeat")
-        self.bind("elm_zero_correction", self.elm_zero_correction, False)
-        self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
-        self.bind("elm_current_range", self.elm_current_range, 20e-12, unit="A")
-        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, False)
-        self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
-        self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
-
         self.status_elm_current = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
-
-        self.status_panel.append(ui.GroupBox(
+        self.statusWidget.layout().addWidget(ui.GroupBox(
             title="Electrometer Status",
             layout=ui.Column(
                 ui.Row(
@@ -280,10 +276,9 @@ class ElectrometerMixin:
                     stretch=(1, 2)
                 )
             )
-        ))
+        ).qt)
 
-        self.control_tabs.append(ui.Tab(
-            title="Electrometer",
+        self.controlTabWidget.addTab(ui.Tab(
             layout=ui.Row(
                 ui.GroupBox(
                     title="Filter",
@@ -328,12 +323,29 @@ class ElectrometerMixin:
                 ui.Spacer(),
                 stretch=(1, 1, 1)
             )
-        ))
+        ).qt, self.tr("Electrometer"))
+
+        # Bindings
+
+        self.bind("elm_filter_enable", self.elm_filter_enable, False)
+        self.bind("elm_filter_count", self.elm_filter_count, 10)
+        self.bind("elm_filter_type", self.elm_filter_type, "repeat")
+        self.bind("elm_zero_correction", self.elm_zero_correction, False)
+        self.bind("elm_integration_rate", self.elm_integration_rate, 50.0)
+        self.bind("elm_current_range", self.elm_current_range, 20e-12, unit="A")
+        self.bind("elm_current_autorange_enable", self.elm_current_autorange_enable, False)
+        self.bind("elm_current_autorange_minimum", self.elm_current_autorange_minimum, 2.0E-11, unit="A")
+        self.bind("elm_current_autorange_maximum", self.elm_current_autorange_maximum, 2.0E-2, unit="A")
+
+        self.bind("status_elm_current", self.status_elm_current, NO_VALUE)
+
+        # Handler
 
         def handler(state):
             if "elm_current" in state:
                 value = state.get("elm_current")
                 self.status_elm_current.value = format_metric(value, "A")
+
         self.state_handlers.append(handler)
 
 
@@ -353,22 +365,11 @@ class LCRMixin:
 
         change_lcr_open_correction_mode(self.lcr_open_correction_mode.current)
 
-        self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
-        self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
-        self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
-        self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
-        self.bind("lcr_open_correction_mode", self.lcr_open_correction_mode, "single")
-        self.bind("lcr_open_correction_channel", self.lcr_open_correction_channel, 0)
-
         self.status_lcr_voltage = ui.Text(value=NO_VALUE, readonly=True)
         self.status_lcr_current = ui.Text(value=NO_VALUE, readonly=True)
         self.status_lcr_output = ui.Text(value=NO_VALUE, readonly=True)
 
-        self.bind("status_lcr_voltage", self.status_lcr_voltage, NO_VALUE)
-        self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
-        self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
-
-        self.status_panel.append(ui.GroupBox(
+        self.statusWidget.layout().addWidget(ui.GroupBox(
             title="LCR Status",
             layout=ui.Row(
                 ui.Column(
@@ -384,10 +385,9 @@ class LCRMixin:
                     self.status_lcr_output
                 )
             )
-        ))
+        ).qt)
 
-        self.control_tabs.append(ui.Tab(
-            title="LCR",
+        self.controlTabWidget.addTab(ui.Tab(
             layout=ui.Row(
                 ui.GroupBox(
                     title="Open Correction",
@@ -414,7 +414,22 @@ class LCRMixin:
                 ui.Spacer(),
                 stretch=(1, 1, 1)
             )
-        ))
+        ).qt, self.tr("LCR"))
+
+        # Bindings
+
+        self.bind("lcr_integration_time", self.lcr_integration_time, "medium")
+        self.bind("lcr_averaging_rate", self.lcr_averaging_rate, 1)
+        self.bind("lcr_auto_level_control", self.lcr_auto_level_control, True)
+        self.bind("lcr_soft_filter", self.lcr_soft_filter, True)
+        self.bind("lcr_open_correction_mode", self.lcr_open_correction_mode, "single")
+        self.bind("lcr_open_correction_channel", self.lcr_open_correction_channel, 0)
+
+        self.bind("status_lcr_voltage", self.status_lcr_voltage, NO_VALUE)
+        self.bind("status_lcr_current", self.status_lcr_current, NO_VALUE)
+        self.bind("status_lcr_output", self.status_lcr_output, NO_VALUE)
+
+        # Handler
 
         def handler(state):
             if "lcr_voltage" in state:
@@ -433,44 +448,52 @@ class LCRMixin:
 class EnvironmentMixin:
     """Mixin class providing default controls and status for Environment box."""
 
-    def register_environment(self):
-        self.status_env_chuck_temperature = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_env_box_temperature = ui.Text(value=NO_VALUE, readonly=True)
-        self.status_env_box_humidity = ui.Text(value=NO_VALUE, readonly=True)
+    def register_environment(self) -> None:
+
+        # Status
+
+        self.status_env_chuck_temperature: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.status_env_chuck_temperature.setReadOnly(True)
+        self.status_env_chuck_temperature.setText(NO_VALUE)
+
+        self.status_env_box_temperature: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.status_env_box_temperature.setReadOnly(True)
+        self.status_env_box_temperature.setText(NO_VALUE)
+
+        self.status_env_box_humidity: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.status_env_box_humidity.setReadOnly(True)
+        self.status_env_box_humidity.setText(NO_VALUE)
+
+        self.environmentStatusGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.environmentStatusGroupBox.setTitle(self.tr("Environment Status"))
+
+        environmentStatusGroupBoxLayout = QtWidgets.QGridLayout(self.environmentStatusGroupBox)
+        environmentStatusGroupBoxLayout.addWidget(QtWidgets.QLabel("Chuck temp."), 0, 0)
+        environmentStatusGroupBoxLayout.addWidget(self.status_env_chuck_temperature, 1, 0)
+        environmentStatusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box temp."), 0, 1)
+        environmentStatusGroupBoxLayout.addWidget(self.status_env_box_temperature, 1, 1)
+        environmentStatusGroupBoxLayout.addWidget(QtWidgets.QLabel("Box humid."), 0, 2)
+        environmentStatusGroupBoxLayout.addWidget(self.status_env_box_humidity, 1, 2)
+
+        self.statusWidget.layout().addWidget(self.environmentStatusGroupBox)
+
+        # Bindings
 
         self.bind("status_env_chuck_temperature", self.status_env_chuck_temperature, NO_VALUE)
         self.bind("status_env_box_temperature", self.status_env_box_temperature, NO_VALUE)
         self.bind("status_env_box_humidity", self.status_env_box_humidity, NO_VALUE)
 
-        self.status_panel.append(ui.GroupBox(
-            title="Environment Status",
-            layout=ui.Column(
-                ui.Row(
-                    ui.Column(
-                        ui.Label("Chuck temp."),
-                        self.status_env_chuck_temperature
-                    ),
-                    ui.Column(
-                        ui.Label("Box temp."),
-                        self.status_env_box_temperature
-                    ),
-                    ui.Column(
-                        ui.Label("Box humid."),
-                        self.status_env_box_humidity
-                    )
-                )
-            )
-        ))
+        # Handler
 
         def handler(state):
             if "env_chuck_temperature" in state:
                 value = state.get("env_chuck_temperature")
-                self.status_env_chuck_temperature.value = format_metric(value, "°C", decimals=2)
+                self.status_env_chuck_temperature.setText(format_metric(value, "°C", decimals=2))
             if "env_box_temperature" in state:
                 value = state.get("env_box_temperature")
-                self.status_env_box_temperature.value = format_metric(value, "°C", decimals=2)
+                self.status_env_box_temperature.setText(format_metric(value, "°C", decimals=2))
             if "env_box_humidity" in state:
                 value = state.get("env_box_humidity")
-                self.status_env_box_humidity.value = format_metric(value, "%rH", decimals=2)
+                self.status_env_box_humidity.setText(format_metric(value, "%rH", decimals=2))
 
         self.state_handlers.append(handler)

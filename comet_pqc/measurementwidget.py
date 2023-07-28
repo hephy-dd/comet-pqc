@@ -65,53 +65,49 @@ class PanelStack(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.panels = []
+        self.panels: Dict[str, QtWidgets.QWidget] = {}
 
         samplePanel = SamplePanel()
         samplePanel.sampleChanged.connect(self.sampleChanged.emit)
 
-        self.addPanel(samplePanel)
-        self.addPanel(ContactPanel())
-        self.addPanel(IVRampPanel())
-        self.addPanel(IVRampElmPanel())
-        self.addPanel(IVRampBiasPanel())
-        self.addPanel(IVRampBiasElmPanel())
-        self.addPanel(CVRampPanel())
-        self.addPanel(CVRampHVPanel())
-        self.addPanel(CVRampAltPanel())
-        self.addPanel(IVRamp4WirePanel())
-        self.addPanel(IVRamp4WireBiasPanel())
-        self.addPanel(FrequencyScanPanel())
+        self.addPanel("sample", samplePanel)
+        self.addPanel("contact", ContactPanel())
+        self.addPanel("iv_ramp", IVRampPanel())
+        self.addPanel("iv_ramp_elm", IVRampElmPanel())
+        self.addPanel("iv_ramp_bias", IVRampBiasPanel())
+        self.addPanel("iv_ramp_bias_elm", IVRampBiasElmPanel())
+        self.addPanel("cv_ramp", CVRampPanel())
+        self.addPanel("cv_ramp_vsrc", CVRampHVPanel())
+        self.addPanel("cv_ramp_alt", CVRampAltPanel())
+        self.addPanel("iv_ramp_4_wire", IVRamp4WirePanel())
+        self.addPanel("iv_ramp_4_wire_bias", IVRamp4WireBiasPanel())
+        self.addPanel("frequency_scan", FrequencyScanPanel())
 
-        self.hide()
-
-    def addPanel(self, panel) -> None:
-        self.panels.append(panel)
+    def addPanel(self, type: str, panel: QtWidgets.QWidget) -> None:
+        self.panels.update({type: panel})
         self.layout().addWidget(panel)
+        panel.setVisible(False)
 
     def store(self):
-        for child in self.panels:
+        for child in self.panels.values():
             child.store()
 
     def unmount(self):
-        for child in self.panels:
+        for child in self.panels.values():
             child.unmount()
 
     def clear(self) -> None:
-        for child in self.panels:
+        for child in self.panels.values():
             child.clear_readings()
 
     def hide(self):
-        for child in self.panels:
+        for child in self.panels.values():
             child.setVisible(False)
 
     def setLocked(self, locked: bool) -> None:
-        for child in self.panels:
+        for child in self.panels.values():
             child.setLocked(locked)
 
-    def get(self, type):
-        """Get panel by type."""
-        for child in self.panels:
-            if child.type == type:
-                return child
-        return None
+    def get(self, type: str) -> Optional[QtWidgets.QWidget]:
+        """Get panel by type name."""
+        return self.panels.get(type)

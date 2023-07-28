@@ -1006,25 +1006,19 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Lights group box
 
-        self.probecardLightButton = ToggleButton().qt
+        self.probecardLightButton: ToggleButton = ToggleButton(self)
         self.probecardLightButton.setText("PC Light")
         self.probecardLightButton.setToolTip("Toggle probe card light")
-        self.probecardLightButton.setCheckable(True)
-        self.probecardLightButton.setChecked(False)
         self.probecardLightButton.toggled.connect(self.probecardLightToggled.emit)
 
-        self.microscopeLightButton = ToggleButton().qt
+        self.microscopeLightButton: ToggleButton = ToggleButton(self)
         self.microscopeLightButton.setText("Mic Light")
         self.microscopeLightButton.setToolTip("Toggle microscope light")
-        self.microscopeLightButton.setCheckable(True)
-        self.microscopeLightButton.setChecked(False)
         self.microscopeLightButton.toggled.connect(self.microscopeLightToggled.emit)
 
-        self.boxLightButton = ToggleButton().qt
+        self.boxLightButton: ToggleButton = ToggleButton(self)
         self.boxLightButton.setText("Box Light")
         self.boxLightButton.setToolTip("Toggle box light")
-        self.boxLightButton.setCheckable(True)
-        self.boxLightButton.setChecked(False)
         self.boxLightButton.toggled.connect(self.boxLightToggled.emit)
 
         self.lightsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)

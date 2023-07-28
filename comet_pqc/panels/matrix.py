@@ -1,65 +1,70 @@
-from comet import ui
-from comet.resource import ResourceMixin
+from typing import List, Optional
+
+from PyQt5 import QtWidgets
+
+from ..utils import join_channels, split_channels
 
 from .panel import Panel
 
 __all__ = ["MatrixPanel"]
 
 
-def encode_matrix(values):
-    return ", ".join(map(format, values))
+class MatrixChannelsEdit(QtWidgets.QLineEdit):
+    """Custom QLineEdit to handle matrix channel list."""
+
+    def channels(self) -> List[str]:
+        return split_channels(self.text())
+
+    def setChannels(self, channels: List[str]) -> None:
+        self.setText(join_channels(channels))
 
 
-def decode_matrix(value):
-    return list(map(str.strip, value.split(",")))
-
-
-class MatrixChannelsText(ui.Text):
-    """Overloaded text input to handle matrix channel list."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def value(self):
-        return decode_matrix(self.qt.text())
-
-    @value.setter
-    def value(self, value):
-        self.qt.setText(encode_matrix(value or []))
-
-
-class MatrixPanel(Panel, ResourceMixin):
+class MatrixPanel(Panel):
     """Base class for matrix switching panels."""
 
-    type = "matrix"
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        # Matrix enable
 
-        self.matrix_enable = ui.CheckBox(text="Enable Switching")
-        self.matrix_channels = MatrixChannelsText(
-            tool_tip="Matrix card switching channels, comma separated list."
+        self.matrixEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.matrixEnableCheckBox.setText("Enable Switching")
+
+        # Matrix channels
+
+        self.matrixChannelsLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.matrixChannelsLabel.setText(self.tr("Channels"))
+
+        self.matrixChannelsEdit = MatrixChannelsEdit(self)
+        self.matrixChannelsEdit.setToolTip("Matrix card switching channels, comma separated list.")
+
+        # Matrix group box
+
+        self.matrixGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.matrixGroupBox.setTitle(self.tr("Matrix"))
+
+        matrixgroupBoxLayout = QtWidgets.QVBoxLayout(self.matrixGroupBox)
+        matrixgroupBoxLayout.addWidget(self.matrixEnableCheckBox)
+        matrixgroupBoxLayout.addWidget(self.matrixChannelsLabel)
+        matrixgroupBoxLayout.addWidget(self.matrixChannelsEdit)
+
+        # Layout
+
+        self.matrixWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+
+        matrixWidgetLayout = QtWidgets.QVBoxLayout(self.matrixWidget)
+        matrixWidgetLayout.addWidget(self.matrixGroupBox)
+        matrixWidgetLayout.addStretch()
+
+        self.controlTabWidget.addTab(self.matrixWidget, self.tr("Matrix"))
+
+        # Bindings
+
+        self.registerBindType(
+            MatrixChannelsEdit,
+            lambda widget: widget.channels(),
+            lambda widget, value: widget.setChannels(value),
         )
 
-        self.bind("matrix_enable", self.matrix_enable, True)
-        self.bind("matrix_channels", self.matrix_channels, [])
-
-        self.control_tabs.append(ui.Tab(
-            title="Matrix",
-            layout=ui.Column(
-                ui.GroupBox(
-                    title="Matrix",
-                    layout=ui.Column(
-                        self.matrix_enable,
-                        ui.Label(text="Channels"),
-                        ui.Row(
-                            self.matrix_channels,
-                            # ui.Button(text="Load from Matrix", clicked=self.load_matrix_channels)
-                        )
-                    )
-                ),
-                ui.Spacer(),
-                stretch=(0, 1)
-            )
-        ))
+        self.bind("matrix_enable", self.matrixEnableCheckBox, True)
+        self.bind("matrix_channels", self.matrixChannelsEdit, [])
