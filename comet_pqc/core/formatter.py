@@ -1,6 +1,6 @@
 import csv
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 __all__ = ["FormatterError", "Formatter", "CSVFormatter", "PQCFormatter"]
 
@@ -29,27 +29,28 @@ class CSVFormatter(Formatter):
 
     def __init__(self, f, linesep=None, **kwargs) -> None:
         super().__init__(f)
-        self._writer: csv.DictWriter = csv.DictWriter(f, fieldnames=[], lineterminator="", **kwargs)
-        self._format_specs: dict = {}
+        self._fieldnames: List[str] = []
+        self._writer: csv.DictWriter = csv.DictWriter(f, fieldnames=self._fieldnames, lineterminator="", **kwargs)
+        self._format_specs: Dict[str, str] = {}
         self._has_rows: bool = False
         if linesep is None:
             linesep = os.linesep
         self.linesep = linesep
 
     @property
-    def columns(self):
-        return self._writer.fieldnames
+    def columns(self) -> List[str]:
+        return self._fieldnames
 
-    def format_spec(self, name) -> str:
+    def format_spec(self, name: str) -> str:
         return self._format_specs.get(name, "")
 
-    def add_column(self, name, format_spec=None) -> None:
+    def add_column(self, name, format_spec: Optional[str] = None) -> None:
         """Add table column, optional format spec for values."""
-        if name in self._writer.fieldnames:
+        if name in self._fieldnames:
             raise ValueError(f"column name already exists: {name}")
         if format_spec is None:
             format_spec = ""
-        self._writer.fieldnames.append(name)
+        self._fieldnames.append(name)
         self._format_specs[name] = format_spec
 
     def write_header(self) -> None:
@@ -114,7 +115,7 @@ class PQCFormatter(CSVFormatter):
         super().__init__(f, dialect="excel-tab")
         self._has_rows = False
 
-    def write_meta(self, key, value, format_spec=None) -> None:
+    def write_meta(self, key: str, value: Any, format_spec: Optional[str] = None) -> None:
         """Write meta information, optional format spec.
 
         Raise `FormatterError` if `write_header` or `write_row` was called before.
@@ -130,5 +131,5 @@ class PQCFormatter(CSVFormatter):
         self.write_line(f"{key}: {value}")
         self.flush()
 
-    def add_column(self, name, format_spec=None, unit=None) -> None:
+    def add_column(self, name, format_spec: Optional[str] = None, unit: Optional[str] = None) -> None:
         super().add_column(PQCHeaderItem(name, unit), format_spec)

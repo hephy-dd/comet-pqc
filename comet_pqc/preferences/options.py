@@ -13,43 +13,43 @@ class OptionsWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.pngPlotsCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.pngPlotsCheckBox = QtWidgets.QCheckBox(self)
         self.pngPlotsCheckBox.setText("Save plots as PNG")
 
-        self.pointsInPlotsCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.pointsInPlotsCheckBox = QtWidgets.QCheckBox(self)
         self.pointsInPlotsCheckBox.setText("Show points in plots")
 
-        self.pngAnalysisCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.pngAnalysisCheckBox = QtWidgets.QCheckBox(self)
         self.pngAnalysisCheckBox.setText("Add analysis preview to PNG")
 
-        self.exportJsonCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.exportJsonCheckBox = QtWidgets.QCheckBox(self)
         self.exportJsonCheckBox.setText("Write JSON data (*.json)")
 
-        self.exportTxtCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.exportTxtCheckBox = QtWidgets.QCheckBox(self)
         self.exportTxtCheckBox.setText("Write plain text data (*.txt)")
 
-        self.writeLogfilesCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.writeLogfilesCheckBox = QtWidgets.QCheckBox(self)
         self.writeLogfilesCheckBox.setText("Write measurement log files (*.log)")
 
-        self.vsrcComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self.vsrcComboBox = QtWidgets.QComboBox(self)
         self.vsrcComboBox.addItems(["K2410", "K2470", "K2657A"])
 
-        self.hvsrcComboBox: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self.hvsrcComboBox = QtWidgets.QComboBox(self)
         self.hvsrcComboBox.addItems(["K2410", "K2470", "K2657A"])
 
-        self.retryMeasurementSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.retryMeasurementSpinBox = QtWidgets.QSpinBox(self)
         self.retryMeasurementSpinBox.setRange(0, 1000)
         self.retryMeasurementSpinBox.setSuffix("x")
         self.retryMeasurementSpinBox.setToolTip("Number of retries for measurements with failed analysis.")
 
-        self.retryContactSpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.retryContactSpinBox = QtWidgets.QSpinBox(self)
         self.retryContactSpinBox.setRange(0, 1000)
         self.retryContactSpinBox.setSuffix("x")
         self.retryContactSpinBox.setToolTip("Number of re-contact retries for measurements with failed analysis.")
 
         # Plots
 
-        self.plotsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.plotsGroupBox = QtWidgets.QGroupBox(self)
         self.plotsGroupBox.setTitle("Plots")
 
         plotsGroupBoxLayout = QtWidgets.QGridLayout(self.plotsGroupBox)
@@ -58,7 +58,7 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Analysis
 
-        self.analysisGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.analysisGroupBox = QtWidgets.QGroupBox(self)
         self.analysisGroupBox.setTitle("Analysis")
 
         analysisGroupBoxLayout = QtWidgets.QGridLayout(self.analysisGroupBox)
@@ -67,7 +67,7 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Formats
 
-        self.formatsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.formatsGroupBox = QtWidgets.QGroupBox(self)
         self.formatsGroupBox.setTitle("Formats")
 
         formatsGroupBoxLayout = QtWidgets.QGridLayout(self.formatsGroupBox)
@@ -76,7 +76,7 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Logfiles
 
-        self.logfileGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.logfileGroupBox = QtWidgets.QGroupBox(self)
         self.logfileGroupBox.setTitle("Log files")
 
         logfileGroupBoxLayout = QtWidgets.QGridLayout(self.logfileGroupBox)
@@ -85,7 +85,7 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Instruments
 
-        self.instrumentsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.instrumentsGroupBox = QtWidgets.QGroupBox(self)
         self.instrumentsGroupBox.setTitle("Instruments")
 
         instrumentsGroupBoxLayout = QtWidgets.QGridLayout(self.instrumentsGroupBox)
@@ -97,7 +97,7 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Auto Retry
 
-        self.autoRetryGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.autoRetryGroupBox = QtWidgets.QGroupBox(self)
         self.autoRetryGroupBox.setTitle("Auto Retry")
 
         autoRetryGroupBoxLayout = QtWidgets.QGridLayout(self.autoRetryGroupBox)

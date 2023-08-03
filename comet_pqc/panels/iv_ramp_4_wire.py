@@ -1,9 +1,8 @@
 from typing import Optional
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtChart
 
-import comet
-from comet import ui
+from comet_pqc.plotwidget import VIPlotWidget
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin
@@ -16,103 +15,119 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.title = "4 Wire IV Ramp"
+        self.setName("4 Wire IV Ramp")
+
+        self.series = {}
 
         self.register_vsource()
         self.register_environment()
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
-        self.plot.add_axis("y", align="right", text="Voltage [V]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
+        self.ivPlotWidget = VIPlotWidget()
+        self.dataTabWidget.insertTab(0, self.ivPlotWidget, "IV Curve")
 
-        self.current_start = ui.Number(decimals=3, suffix="uA")
-        self.current_stop = ui.Number(decimals=3, suffix="uA")
-        self.current_step = ui.Number(minimum=0, decimals=3, suffix="uA")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
-        self.vsrc_voltage_compliance = ui.Number(decimals=3, suffix="V")
-        self.vsrc_accept_compliance = ui.CheckBox("Accept Compliance")
+        self.vsrcSeries = QtChart.QLineSeries()
+        self.vsrcSeries.setName("V Source")
+        self.vsrcSeries.setPen(QtCore.Qt.blue)
+        self.ivPlotWidget.addSeries(self.vsrcSeries)
+        self.series["vsrc"] = self.vsrcSeries
 
-        self.bind("current_start", self.current_start, 0, unit="uA")
-        self.bind("current_stop", self.current_stop, 0, unit="uA")
-        self.bind("current_step", self.current_step, 0, unit="uA")
-        self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("vsrc_voltage_compliance", self.vsrc_voltage_compliance, 0, unit="V")
-        self.bind("vsrc_accept_compliance", self.vsrc_accept_compliance, False)
+        self.xfitSeries = QtChart.QLineSeries()
+        self.xfitSeries.setName("Fit")
+        self.xfitSeries.setPen(QtCore.Qt.magenta)
+        self.ivPlotWidget.addSeries(self.xfitSeries)
+        self.series["xfit"] = self.xfitSeries
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="Ramp",
-                layout=ui.Column(
-                    ui.Label(text="Start"),
-                    self.current_start,
-                    ui.Label(text="Stop"),
-                    self.current_stop,
-                    ui.Label(text="Step"),
-                    self.current_step,
-                    ui.Label(text="Waiting Time"),
-                    self.waiting_time,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="V Source",
-                layout=ui.Column(
-                    ui.Label(text="Compliance"),
-                    self.vsrc_voltage_compliance,
-                    self.vsrc_accept_compliance,
-                    ui.Spacer()
-                )
-            ),
-            ui.Spacer(),
-            stretch=(1, 1, 1)
-        )
+        self.currentStartSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.currentStartSpinBox.setDecimals(3)
+        self.currentStartSpinBox.setRange(-2.1e6, +2.1e6)
+        self.currentStartSpinBox.setSuffix(" uA")
 
-        ampere = comet.ureg("A")
-        volt = comet.ureg("V")
+        self.currentStopSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.currentStopSpinBox.setDecimals(3)
+        self.currentStopSpinBox.setRange(-2.1e6, +2.1e6)
+        self.currentStopSpinBox.setSuffix(" uA")
 
-        self.series_transform["vsrc"] = lambda x, y: ((x * ampere).to("uA").m, (y * volt).to("V").m)
-        self.series_transform["xfit"] = self.series_transform.get("vsrc")
+        self.currentStepSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.currentStepSpinBox.setDecimals(3)
+        self.currentStepSpinBox.setRange(0, +2.1e6)
+        self.currentStepSpinBox.setSuffix(" uA")
+
+        self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waitingTimeSpinBox.setDecimals(2)
+        self.waitingTimeSpinBox.setRange(0, 60)
+        self.waitingTimeSpinBox.setSuffix(" s")
+
+        self.vsrcVoltageComplianceSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.vsrcVoltageComplianceSpinBox.setDecimals(3)
+        self.vsrcVoltageComplianceSpinBox.setRange(0, +2200)
+        self.vsrcVoltageComplianceSpinBox.setSuffix(" V")
+
+        self.vsrcAcceptComplianceSpinBox = QtWidgets.QCheckBox(self)
+        self.vsrcAcceptComplianceSpinBox.setText("Accept Compliance")
+
+        self.bind("current_start", self.currentStartSpinBox, 0, unit="uA")
+        self.bind("current_stop", self.currentStopSpinBox, 0, unit="uA")
+        self.bind("current_step", self.currentStepSpinBox, 0, unit="uA")
+        self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
+        self.bind("vsrc_voltage_compliance", self.vsrcVoltageComplianceSpinBox, 0, unit="V")
+        self.bind("vsrc_accept_compliance", self.vsrcAcceptComplianceSpinBox, False)
+
+        rampGroupBox = QtWidgets.QGroupBox(self)
+        rampGroupBox.setTitle("Ramp")
+
+        rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
+        rampGroupBoxLayout.addWidget(self.currentStartSpinBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop"))
+        rampGroupBoxLayout.addWidget(self.currentStopSpinBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step"))
+        rampGroupBoxLayout.addWidget(self.currentStepSpinBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time"))
+        rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
+        rampGroupBoxLayout.addStretch()
+
+        vsrcGroupBox = QtWidgets.QGroupBox(self)
+        vsrcGroupBox.setTitle("V Source")
+
+        vsrcGroupBoxLayout = QtWidgets.QVBoxLayout(vsrcGroupBox)
+        vsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance"))
+        vsrcGroupBoxLayout.addWidget(self.vsrcVoltageComplianceSpinBox)
+        vsrcGroupBoxLayout.addWidget(self.vsrcAcceptComplianceSpinBox)
+        vsrcGroupBoxLayout.addStretch()
+
+        layout = self.generalWidget.layout()
+        layout.addWidget(rampGroupBox, 1)
+        layout.addWidget(vsrcGroupBox, 1)
+        layout.addStretch(1)
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.plot.series.get("xfit").qt.setVisible(False)
+        self.xfitSeries.setVisible(False)
+        self.ivPlotWidget.clear()
         for name, points in measurement.series.items():
-            if name in self.plot.series:
-                self.plot.series.clear()
-            tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
-                self.plot.series.get(name).append(*tr(x, y))
-            self.plot.series.get(name).qt.setVisible(True)
-        self.update_readings()
+                self.series.get(name).append(x, y)
+            self.series.get(name).setVisible(True)
+        self.updateReadings()
 
-    def append_reading(self, name, x, y):
+    def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
-            if name in self.plot.series:
+            if name in self.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                tr = self.series_transform.get(name, self.series_transform_default)
-                self.plot.series.get(name).append(*tr(x, y))
-                self.plot.series.get(name).qt.setVisible(True)
+                self.series.get(name).append(x, y)
+                self.series.get(name).setVisible(True)
 
-    def update_readings(self):
-        super().update_readings()
-        if self.measurement:
-            if self.plot.zoomed:
-                self.plot.update("x")
-            else:
-                self.plot.qt.chart().zoomOut() # HACK
-                self.plot.fit()
+    def updateReadings(self) -> None:
+        super().updateReadings()
+        self.ivPlotWidget.resizeAxes()
 
-    def clear_readings(self):
-        super().clear_readings()
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for series in self.plot.series.values():
-            series.clear()
+    def clearReadings(self) -> None:
+        super().clearReadings()
+        self.xfitSeries.setVisible(False)
+        self.ivPlotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.ivPlotWidget.resizeAxes()

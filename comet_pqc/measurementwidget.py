@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -98,7 +98,7 @@ class PanelStack(QtWidgets.QWidget):
 
     def clear(self) -> None:
         for child in self.panels.values():
-            child.clear_readings()
+            child.clearReadings()
 
     def hide(self):
         for child in self.panels.values():

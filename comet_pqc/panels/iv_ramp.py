@@ -5,6 +5,7 @@ from PyQt5 import QtWidgets
 import comet
 from comet import ui
 
+from comet_pqc.components import Metric
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin
 
@@ -16,7 +17,7 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.title = "IV Ramp"
+        self.setName("IV Ramp")
 
         self.register_hvsource()
         self.register_environment()
@@ -26,51 +27,72 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
         self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.data_tabs.insert(0, ui.Tab(title="IV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
-        self.voltage_start = ui.Number(decimals=3, suffix="V")
-        self.voltage_stop = ui.Number(decimals=3, suffix="V")
-        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.voltage_start = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setRange(-2200, +2200)
+        self.voltage_start.setSuffix(" V")
 
-        self.hvsrc_current_compliance = ui.Metric(minimum=0, decimals=3, prefixes="mun", unit="A")
-        self.hvsrc_accept_compliance = ui.CheckBox("Accept Compliance")
+        self.voltage_stop = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setRange(-2200, +2200)
+        self.voltage_stop.setSuffix(" V")
+
+        self.voltage_step = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setRange(0, 200)
+        self.voltage_step.setSuffix(" V")
+
+        self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waitingTimeSpinBox.setDecimals(2)
+        self.waitingTimeSpinBox.setRange(0, 60)
+        self.waitingTimeSpinBox.setSuffix(" s")
+
+        self.hvsrcCurrentComplianceSpinBox = Metric(self)
+        self.hvsrcCurrentComplianceSpinBox.setUnit("A")
+        self.hvsrcCurrentComplianceSpinBox.setPrefixes("mun")
+        self.hvsrcCurrentComplianceSpinBox.setDecimals(3)
+        self.hvsrcCurrentComplianceSpinBox.setRange(0, float("inf"))
+
+        self.hvsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
+        self.hvsrcAcceptComplianceCheckBox.setText("Accept Compliance")
 
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
         self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
         self.bind("voltage_step", self.voltage_step, 1, unit="V")
-        self.bind("waiting_time", self.waiting_time, 1, unit="s")
+        self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
 
-        self.bind("hvsrc_current_compliance", self.hvsrc_current_compliance, 0, unit="A")
-        self.bind("hvsrc_accept_compliance", self.hvsrc_accept_compliance, False)
+        self.bind("hvsrc_current_compliance", self.hvsrcCurrentComplianceSpinBox, 0, unit="A")
+        self.bind("hvsrc_accept_compliance", self.hvsrcAcceptComplianceCheckBox, False)
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="Ramp",
-                layout=ui.Column(
-                    ui.Label(text="Start"),
-                    self.voltage_start,
-                    ui.Label(text="Stop"),
-                    self.voltage_stop,
-                    ui.Label(text="Step"),
-                    self.voltage_step,
-                    ui.Label(text="Waiting Time"),
-                    self.waiting_time,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="HV Source",
-                layout=ui.Column(
-                    ui.Label(text="Compliance"),
-                    self.hvsrc_current_compliance,
-                    self.hvsrc_accept_compliance,
-                    ui.Spacer()
-                )
-            ),
-            ui.Spacer(),
-            stretch=(1, 1, 1)
-        )
+        rampGroupBox = QtWidgets.QGroupBox(self)
+        rampGroupBox.setTitle("Ramp")
+
+        rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
+        rampGroupBoxLayout.addWidget(self.voltage_start)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop"))
+        rampGroupBoxLayout.addWidget(self.voltage_stop)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step"))
+        rampGroupBoxLayout.addWidget(self.voltage_step)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time"))
+        rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
+        rampGroupBoxLayout.addStretch()
+
+        hvsrcGroupBox = QtWidgets.QGroupBox(self)
+        hvsrcGroupBox.setTitle("HV Source")
+
+        hvsrcGroupBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
+        hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance"))
+        hvsrcGroupBoxLayout.addWidget(self.hvsrcCurrentComplianceSpinBox)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrcAcceptComplianceCheckBox)
+        hvsrcGroupBoxLayout.addStretch()
+
+        layout = self.generalWidget.layout()
+        layout.addWidget(rampGroupBox, 1)
+        layout.addWidget(hvsrcGroupBox, 1)
+        layout.addStretch(1)
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
@@ -86,9 +108,9 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
             tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
                 self.plot.series.get(name).append(*tr(x, y))
-        self.update_readings()
+        self.updateReadings()
 
-    def append_reading(self, name, x, y):
+    def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
             if name in self.plot.series:
                 if name not in self.measurement.series:
@@ -98,15 +120,16 @@ class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
                 self.plot.series.get(name).append(*tr(x, y))
                 self.plot.series.get(name).qt.setVisible(True)
 
-    def update_readings(self):
+    def updateReadings(self) -> None:
+        super().updateReadings()
         if self.measurement:
             if self.plot.zoomed:
                 self.plot.update("x")
             else:
                 self.plot.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self) -> None:
+        super().clearReadings()
         self.plot.series.get("xfit").qt.setVisible(False)
         for series in self.plot.series.values():
             series.clear()

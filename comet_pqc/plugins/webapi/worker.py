@@ -10,7 +10,7 @@ from waitress.server import TcpWSGIServer
 
 from comet_pqc import __version__
 
-__all__ = ["WebAPIProcess"]
+__all__ = ["WebAPIWorker"]
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class WSGIServer(TcpWSGIServer):
         return True
 
 
-class WebAPIProcess(comet.Process, comet.ProcessMixin):
+class WebAPIWorker(comet.Process, comet.ProcessMixin):
 
     host = "localhost"
     port = 9000
@@ -73,7 +73,7 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
             return jsonify({
                 "pqc_version": __version__,
                 "comet_version": comet.__version__,
-                "analyze_pqc_version": analysis_pqc.__version__,
+                "analysis_pqc_version": analysis_pqc.__version__,
             })
 
         @app.route("/table")
@@ -95,14 +95,14 @@ class WebAPIProcess(comet.Process, comet.ProcessMixin):
         logger.info("stopped serving webapi")
 
     def _table_enabled(self):
-        table_process = self.processes.get("table")
+        table_process = self.station.table_process
         if table_process:
             return table_process.enabled
         return False
 
     def _table_position(self):
         x, y, z = None, None, None
-        table_process = self.processes.get("table")
+        table_process = self.station.table_process
         if table_process and table_process.running:
             if table_process.enabled:
                 x, y, z = table_process.get_cached_position()

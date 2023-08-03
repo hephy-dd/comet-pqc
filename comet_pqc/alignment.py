@@ -16,7 +16,7 @@ from .components import (
 from .core.position import Position
 from .core.utils import LinearTransform
 from .settings import TablePosition, settings
-from .utils import format_metric, caldone_valid, format_switch, handle_exception
+from .utils import format_metric, caldone_valid, format_switch
 
 DEFAULT_STEP_UP_DELAY = 0.
 DEFAULT_STEP_UP_MULTIPLY = 2
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 def format_sample_item(sample_item) -> str:
-    return "/".join([item for item in [sample_item.name, sample_item.sample_type] if item])
+    return "/".join([item for item in [sample_item.name(), sample_item.sample_type] if item])
 
 
 def safe_z_position(z: float) -> float:
@@ -53,31 +53,31 @@ class LCRWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self._chart = QtChart.QChart()
-        self._chart.legend().hide()
-        self._chart.layout().setContentsMargins(0, 0, 0, 0)
-        self._chart.setBackgroundRoundness(0)
-        self._chart.setBackgroundVisible(False)
-        self._chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
+        chart = QtChart.QChart()
+        chart.legend().hide()
+        chart.layout().setContentsMargins(0, 0, 0, 0)
+        chart.setBackgroundRoundness(0)
+        chart.setBackgroundVisible(False)
+        chart.setMargins(QtCore.QMargins(0, 0, 0, 0))
 
         self._xAxis = QtChart.QValueAxis()
         self._xAxis.setTickCount(3)
         self._xAxis.setMinorTickCount(4)
         self._xAxis.setLabelFormat("%.3f mm")
-        self._chart.addAxis(self._xAxis, QtCore.Qt.AlignBottom)
+        chart.addAxis(self._xAxis, QtCore.Qt.AlignBottom)
 
         self._yAxis = QtChart.QValueAxis()
         self._yAxis.setTickCount(2)
         self._yAxis.setMinorTickCount(3)
         self._yAxis.setLabelFormat("%.2g Ohm")
-        self._chart.addAxis(self._yAxis, QtCore.Qt.AlignLeft)
+        chart.addAxis(self._yAxis, QtCore.Qt.AlignLeft)
 
-        self._line = QtChart.QLineSeries()
-        self._line.setColor(QtGui.QColor("magenta"))
+        self.lineSeries = QtChart.QLineSeries()
+        self.lineSeries.setColor(QtGui.QColor("magenta"))
 
-        self._chart.addSeries(self._line)
-        self._line.attachAxis(self._xAxis)
-        self._line.attachAxis(self._yAxis)
+        chart.addSeries(self.lineSeries)
+        self.lineSeries.attachAxis(self._xAxis)
+        self.lineSeries.attachAxis(self._yAxis)
 
         self._series = QtChart.QScatterSeries()
         self._series.setName("R")
@@ -85,29 +85,29 @@ class LCRWidget(QtWidgets.QWidget):
         self._series.setBorderColor(QtGui.QColor("red"))
         self._series.setColor(QtGui.QColor("red"))
 
-        self._chart.addSeries(self._series)
+        chart.addSeries(self._series)
         self._series.attachAxis(self._xAxis)
         self._series.attachAxis(self._yAxis)
 
-        self._marker = QtChart.QScatterSeries()
-        self._marker.setMarkerSize(9)
-        self._marker.setBorderColor(QtGui.QColor("red"))
-        self._marker.setColor(QtGui.QColor("red"))
+        self.markerSeries = QtChart.QScatterSeries()
+        self.markerSeries.setMarkerSize(9)
+        self.markerSeries.setBorderColor(QtGui.QColor("red"))
+        self.markerSeries.setColor(QtGui.QColor("red"))
 
-        self._chart.addSeries(self._marker)
-        self._marker.attachAxis(self._xAxis)
-        self._marker.attachAxis(self._yAxis)
+        chart.addSeries(self.markerSeries)
+        self.markerSeries.attachAxis(self._xAxis)
+        self.markerSeries.attachAxis(self._yAxis)
 
         self.setMinimumSize(160, 60)
 
-        self.chartView: QtChart.QChartView = QtChart.QChartView(self._chart)
+        self.chartView = QtChart.QChartView(chart)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.chartView)
 
-    def yLimits(self) -> list:
-        limits: list = []
+    def yValues(self) -> List[float]:
+        limits: List[float] = []
         for point in self._series.pointsVector():
             limits.append(point.y())
         return limits
@@ -119,24 +119,25 @@ class LCRWidget(QtWidgets.QWidget):
         if self._series.count() > type(self).MaxPoints:
             self._series.remove(0)
         self._series.append(QtCore.QPointF(x, y))
-        self.setMarker(x, y)
+        self.setMarkerPos(x, y)
 
     def setLimits(self, x: float) -> None:
-        self._xAxis.setRange(x - 0.050, x + 0.050)
-        limits = self.yLimits()
-        if limits:
-            self._yAxis.setRange(min(limits), max(limits))
+        offset = 0.050
+        self._xAxis.setRange(x - offset, x + offset)
+        values = self.yValues()
+        if values:
+            self._yAxis.setRange(min(values), max(values))
             self._yAxis.applyNiceNumbers()
             self._yAxis.setTickCount(2)
 
-    def setLine(self, x: float) -> None:
-        self._line.clear()
-        self._line.append(x, self._yAxis.min())
-        self._line.append(x, self._yAxis.max())
+    def setLinePos(self, x: float) -> None:
+        self.lineSeries.clear()
+        self.lineSeries.append(x, self._yAxis.min())
+        self.lineSeries.append(x, self._yAxis.max())
 
-    def setMarker(self, x: float, y: float) -> None:
-        self._marker.clear()
-        self._marker.append(x, y)
+    def setMarkerPos(self, x: float, y: float) -> None:
+        self.markerSeries.clear()
+        self.markerSeries.append(x, y)
 
 
 class TableSampleItem(QtWidgets.QTreeWidgetItem):
@@ -146,7 +147,7 @@ class TableSampleItem(QtWidgets.QTreeWidgetItem):
         self.sample_item = sample_item
         self.setName(format_sample_item(sample_item))
         self.setPositionLabel(sample_item.sample_position)
-        for contact_item in sample_item.children:
+        for contact_item in sample_item.children():
             self.addChild(TableContactItem(contact_item))
 
     def name(self) -> str:
@@ -193,7 +194,7 @@ class TableContactItem(QtWidgets.QTreeWidgetItem):
         self.setTextAlignment(2, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)  # type: ignore[arg-type]
         self.setTextAlignment(3, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)  # type: ignore[arg-type]
         self.setTextAlignment(4, QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)  # type: ignore[arg-type]
-        self.setName(contact_item.name)
+        self.setName(contact_item.name())
         x, y, z = contact_item.position
         self.setPosition(x, y, z)
 
@@ -235,7 +236,7 @@ class TableContactsWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.contactsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.contactsTreeWidget = QtWidgets.QTreeWidget(self)
         self.contactsTreeWidget.setHeaderLabels(["Contact", "Pos", "X", "Y", "Z", ""])
         self.contactsTreeWidget.resizeColumnToContents(0)
         self.contactsTreeWidget.resizeColumnToContents(1)
@@ -244,29 +245,29 @@ class TableContactsWidget(QtWidgets.QWidget):
         self.contactsTreeWidget.resizeColumnToContents(4)
         self.contactsTreeWidget.currentItemChanged.connect(lambda current, previous: self.setButtonStates(current))
 
-        self.pickButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.pickButton = QtWidgets.QPushButton(self)
         self.pickButton.setText("Assign &Position")
         self.pickButton.setToolTip("Assign current table position to selected position item")
         self.pickButton.setEnabled(False)
         self.pickButton.clicked.connect(self.pickPosition)
 
-        self.calculateButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.calculateButton = QtWidgets.QPushButton(self)
         self.calculateButton.setText("&Calculate")
         self.calculateButton.setEnabled(False)
         self.calculateButton.clicked.connect(self.calculate)
 
-        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton = QtWidgets.QPushButton(self)
         self.moveButton.setText("&Move")
         self.moveButton.setToolTip("Move to selected position")
         self.moveButton.setEnabled(False)
         self.moveButton.clicked.connect(self.moveToCurrentPosition)
 
-        self.resetButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetButton = QtWidgets.QPushButton(self)
         self.resetButton.setText("&Reset")
         self.resetButton.setEnabled(False)
         self.resetButton.clicked.connect(self.resetCurrent)
 
-        self.resetAllButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetAllButton = QtWidgets.QPushButton(self)
         self.resetAllButton.setText("Reset &All")
         self.resetAllButton.clicked.connect(self.resetAll)
 
@@ -416,52 +417,52 @@ class PositionDialog(QtWidgets.QDialog):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.nameLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.nameLabel = QtWidgets.QLabel(self)
         self.nameLabel.setText("Name")
         self.nameLabel.setToolTip("Position name")
 
-        self.nameLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.nameLineEdit = QtWidgets.QLineEdit(self)
         self.nameLineEdit.setText("Unnamed")
 
-        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel = QtWidgets.QLabel(self)
         self.xLabel.setText("X")
         self.xLabel.setToolTip("Position X coordinate")
 
-        self.xSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.xSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.xSpinBox.setRange(0, 1000)
         self.xSpinBox.setDecimals(3)
         self.xSpinBox.setSuffix(" mm")
 
-        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel = QtWidgets.QLabel(self)
         self.yLabel.setText("X")
         self.yLabel.setToolTip("Position Y coordinate")
 
-        self.ySpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.ySpinBox = QtWidgets.QDoubleSpinBox(self)
         self.ySpinBox.setRange(0, 1000)
         self.ySpinBox.setDecimals(3)
         self.ySpinBox.setSuffix(" mm")
 
-        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel = QtWidgets.QLabel(self)
         self.zLabel.setText("Z")
         self.zLabel.setToolTip("Position Z coordinate")
 
-        self.zSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.zSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.zSpinBox.setRange(0, 1000)
         self.zSpinBox.setDecimals(3)
         self.zSpinBox.setSuffix(" mm")
 
-        self.commentLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.commentLabel = QtWidgets.QLabel(self)
         self.commentLabel.setText("Comment")
         self.commentLabel.setToolTip("Optional position comment")
 
-        self.commentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.commentLineEdit = QtWidgets.QLineEdit(self)
 
-        self.assignButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.assignButton = QtWidgets.QPushButton(self)
         self.assignButton.setText("Assign Position")
         self.assignButton.setToolTip("Assign current table position.")
         self.assignButton.clicked.connect(self.positionPicked.emit)
 
-        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
@@ -520,42 +521,42 @@ class TablePositionsWidget(QtWidgets.QWidget):
 
         self._locked = False  # TODO
 
-        self.positionsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.positionsTreeWidget = QtWidgets.QTreeWidget(self)
         self.positionsTreeWidget.setHeaderLabels(["Name", "X", "Y", "Z", "Comment"])
         self.positionsTreeWidget.setRootIsDecorated(False)
         self.positionsTreeWidget.currentItemChanged.connect(self.on_position_selected)
         self.positionsTreeWidget.itemDoubleClicked.connect(lambda item, column: self.moveToCurrentPosition())
 
-        self.addButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.addButton = QtWidgets.QPushButton(self)
         self.addButton.setText("&Add")
         self.addButton.setToolTip("Add new position item")
         self.addButton.clicked.connect(self.on_add_position)
 
-        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton = QtWidgets.QPushButton(self)
         self.editButton.setText("&Edit")
         self.editButton.setToolTip("Edit selected position item")
         self.editButton.setEnabled(False)
         self.editButton.clicked.connect(self.on_edit_position)
 
-        self.removeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.removeButton = QtWidgets.QPushButton(self)
         self.removeButton.setText("&Remove")
         self.removeButton.setToolTip("Remove selected position item")
         self.removeButton.setEnabled(False)
         self.removeButton.clicked.connect(self.on_remove_position)
 
-        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton = QtWidgets.QPushButton(self)
         self.moveButton.setText("&Move")
         self.moveButton.setToolTip("Move to selected position")
         self.moveButton.setEnabled(False)
         self.moveButton.clicked.connect(self.moveToCurrentPosition)
 
-        self.importButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.importButton = QtWidgets.QPushButton(self)
         self.importButton.setText("Import...")
         self.importButton.setToolTip("Import from CSV")
         self.importButton.setEnabled(False)
         self.importButton.clicked.connect(self.on_import)
 
-        self.exportButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.exportButton = QtWidgets.QPushButton(self)
         self.exportButton.setText("Export...")
         self.exportButton.setToolTip("Export to CSV")
         self.exportButton.setEnabled(False)
@@ -694,16 +695,16 @@ class CalibrateWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.calibrateButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.calibrateButton = QtWidgets.QPushButton(self)
         self.calibrateButton.setText("Calibrate")
 
-        self.calibrateLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.calibrateLabel = QtWidgets.QLabel(self)
         self.calibrateLabel.setText(
             "Calibrate table by moving into cal/rm switches\n"
             "of every axis in a safe manner to protect the probe card."
         )
 
-        self.calibrateGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.calibrateGroupBox = QtWidgets.QGroupBox(self)
         self.calibrateGroupBox.setTitle("Table Calibration")
 
         calibrateGroupBoxLayout = QtWidgets.QHBoxLayout(self.calibrateGroupBox)
@@ -724,14 +725,14 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Update interval
 
-        self.updateIntervalSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.updateIntervalSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.updateIntervalSpinBox.setDecimals(2)
         self.updateIntervalSpinBox.setSingleStep(0.25)
         self.updateIntervalSpinBox.setRange(0.5, 10.0)
         self.updateIntervalSpinBox.setSuffix(" s")
         self.updateIntervalSpinBox.valueChanged.connect(self.updateIntervalChanged.emit)
 
-        self.updateIntervalGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.updateIntervalGroupBox = QtWidgets.QGroupBox(self)
         self.updateIntervalGroupBox.setTitle("Update Interval")
 
         updateIntervalGroupBoxLayout = QtWidgets.QHBoxLayout(self.updateIntervalGroupBox)
@@ -740,29 +741,29 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Dodge
 
-        self.dodgeHeightSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.dodgeHeightSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.dodgeHeightSpinBox.setToolTip("Dodge height in microns.")
         self.dodgeHeightSpinBox.setDecimals(0)
         self.dodgeHeightSpinBox.setRange(0, 10_000)
         self.dodgeHeightSpinBox.setSingleStep(1)
         self.dodgeHeightSpinBox.setSuffix(" um")
 
-        self.dodgeGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.dodgeGroupBox = QtWidgets.QGroupBox(self)
         self.dodgeGroupBox.setTitle("X/Y Dodge")
         self.dodgeGroupBox.setToolTip("Enables -/+ Z dodge for XY movements.")
         self.dodgeGroupBox.setCheckable(True)
 
-        dodgeGroupBoxLayout = QtWidgets.QVBoxLayout(self.dodgeGroupBox)
+        dodgeGroupBoxLayout = QtWidgets.QHBoxLayout(self.dodgeGroupBox)
         dodgeGroupBoxLayout.addWidget(QtWidgets.QLabel("Height"))
         dodgeGroupBoxLayout.addWidget(self.dodgeHeightSpinBox)
         dodgeGroupBoxLayout.addStretch()
 
         # Contact quality
 
-        self.lcrResetOnMoveCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.lcrResetOnMoveCheckBox = QtWidgets.QCheckBox(self)
         self.lcrResetOnMoveCheckBox.setText("Reset graph on X/Y move")
 
-        self.contactQualityGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.contactQualityGroupBox = QtWidgets.QGroupBox(self)
         self.contactQualityGroupBox.setTitle("Contact Quality (LCR)")
 
         contactQualityGroupBoxLayout = QtWidgets.QHBoxLayout(self.contactQualityGroupBox)
@@ -771,18 +772,18 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # Step up
 
-        self.stepUpDelaySpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.stepUpDelaySpinBox = QtWidgets.QDoubleSpinBox(self)
         self.stepUpDelaySpinBox.setDecimals(0)
         self.stepUpDelaySpinBox.setRange(0, 1_000)
         self.stepUpDelaySpinBox.setSingleStep(25)
         self.stepUpDelaySpinBox.setSuffix(" ms")
 
-        self.stepUpMulitplySpinBox: QtWidgets.QSpinBox = QtWidgets.QSpinBox(self)
+        self.stepUpMulitplySpinBox = QtWidgets.QSpinBox(self)
         self.stepUpMulitplySpinBox.setRange(1, 10)
         self.stepUpMulitplySpinBox.setSingleStep(1)
         self.stepUpMulitplySpinBox.setSuffix(" x")
 
-        self.stepUpGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.stepUpGroupBox = QtWidgets.QGroupBox(self)
         self.stepUpGroupBox.setTitle("Step Up (↑⇵)")
 
         stepUpGroupBoxLayout = QtWidgets.QGridLayout(self.stepUpGroupBox)
@@ -794,15 +795,15 @@ class OptionsWidget(QtWidgets.QWidget):
 
         # LCR options
 
-        self.lcrUpdateIntervalSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.lcrUpdateIntervalSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.lcrUpdateIntervalSpinBox.setDecimals(0)
         self.lcrUpdateIntervalSpinBox.setRange(0, 1_000)
         self.lcrUpdateIntervalSpinBox.setSingleStep(25)
         self.lcrUpdateIntervalSpinBox.setSuffix(" ms")
 
-        self.lcrMatrixChannelsLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrMatrixChannelsLineEdit = QtWidgets.QLineEdit(self)
 
-        self.lcrOptionsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrOptionsGroupBox = QtWidgets.QGroupBox(self)
         self.lcrOptionsGroupBox.setTitle("Contact Quality (LCR)")
 
         lcrOptionsGroupBoxLayout = QtWidgets.QGridLayout(self.lcrOptionsGroupBox)
@@ -869,16 +870,16 @@ class OptionsWidget(QtWidgets.QWidget):
     def setLcrUpdateInterval(self, seconds: float) -> None:
         self.lcrUpdateIntervalSpinBox.setValue((seconds * ureg("s")).to("ms").m)
 
-    def lcrMatrixChannels(self) -> list:
+    def lcrMatrixChannels(self) -> List[str]:
         """Matrix channels used for LCR readings."""
-        tokens: list = []
+        tokens: List[str] = []
         for token in self.lcrMatrixChannelsLineEdit.text().split(","):
             token = token.strip()
             if token:
                 tokens.append(token)
         return tokens
 
-    def setLcrMatrixChannels(self, channels: list) -> None:
+    def setLcrMatrixChannels(self, channels: List[str]) -> None:
         self.lcrMatrixChannelsLineEdit.setText(", ".join([token for token in channels]))
 
 
@@ -918,37 +919,37 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Control group box
 
-        self.xAddButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.xAddButton = QtWidgets.QPushButton(self)
         self.xAddButton.setText("+X")
         self.xAddButton.setFixedSize(32, 32)
         self.xAddButton.clicked.connect(self.on_add_x)
 
-        self.xSubButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.xSubButton = QtWidgets.QPushButton(self)
         self.xSubButton.setText("-X")
         self.xSubButton.setFixedSize(32, 32)
         self.xSubButton.clicked.connect(self.on_sub_x)
 
-        self.yAddButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.yAddButton = QtWidgets.QPushButton(self)
         self.yAddButton.setText("+Y")
         self.yAddButton.setFixedSize(32, 32)
         self.yAddButton.clicked.connect(self.on_add_y)
 
-        self.ySubButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.ySubButton = QtWidgets.QPushButton(self)
         self.ySubButton.setText("-Y")
         self.ySubButton.setFixedSize(32, 32)
         self.ySubButton.clicked.connect(self.on_sub_y)
 
-        self.zAddButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.zAddButton = QtWidgets.QPushButton(self)
         self.zAddButton.setText("+Z")
         self.zAddButton.setFixedSize(32, 32)
         self.zAddButton.clicked.connect(self.on_add_z)
 
-        self.zSubButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.zSubButton = QtWidgets.QPushButton(self)
         self.zSubButton.setText("-Z")
         self.zSubButton.setFixedSize(32, 32)
         self.zSubButton.clicked.connect(self.on_sub_z)
 
-        self.stepUpButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stepUpButton = QtWidgets.QPushButton(self)
         self.stepUpButton.setText("↑⇵")
         self.stepUpButton.setFixedSize(32, 32)
         self.stepUpButton.setToolTip("Step up, move single step up then double step down and double step up (experimental).")
@@ -964,7 +965,7 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.stepUpButton
         ]
 
-        self.keypadGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.keypadGroupBox = QtWidgets.QGroupBox(self)
         self.keypadGroupBox.setTitle("Control")
 
         keypadGroupBoxLayout = QtWidgets.QGridLayout(self.keypadGroupBox)
@@ -980,12 +981,12 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Step width group box
 
-        self.stepWidthGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.stepWidthGroupBox = QtWidgets.QGroupBox(self)
         self.stepWidthGroupBox.setTitle("Step Width")
 
         stepWidthGroupBoxLayout = QtWidgets.QVBoxLayout(self.stepWidthGroupBox)
 
-        self.stepWidthButtonGroup: QtWidgets.QButtonGroup = QtWidgets.QButtonGroup(self)
+        self.stepWidthButtonGroup = QtWidgets.QButtonGroup(self)
         self.stepWidthButtonGroup.buttonToggled.connect(self.toggleStepWidth)
 
         # Create step width radio buttons
@@ -1021,7 +1022,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.boxLightButton.setToolTip("Toggle box light")
         self.boxLightButton.toggled.connect(self.boxLightToggled.emit)
 
-        self.lightsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.lightsGroupBox = QtWidgets.QGroupBox(self)
         self.lightsGroupBox.setTitle("Lights")
 
         lightsGroupBoxLayout = QtWidgets.QVBoxLayout(self.lightsGroupBox)
@@ -1032,24 +1033,24 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # LCR group box
 
-        self.lcrPrimLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrPrimLineEdit = QtWidgets.QLineEdit(self)
         self.lcrPrimLineEdit.setReadOnly(True)
 
-        self.lcrSecLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.lcrSecLineEdit = QtWidgets.QLineEdit(self)
         self.lcrSecLineEdit.setReadOnly(True)
 
-        self.lcrWidget: LCRWidget = LCRWidget(self)
+        self.lcrWidget = LCRWidget(self)
 
-        self.lcrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.lcrGroupBox = QtWidgets.QGroupBox(self)
         self.lcrGroupBox.setTitle("Contact Quality (LCR)")
         self.lcrGroupBox.setCheckable(True)
         self.lcrGroupBox.setChecked(False)
         self.lcrGroupBox.toggled.connect(self.on_lcr_toggled)
 
-        self.lcrPrimLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.lcrPrimLabel = QtWidgets.QLabel(self)
         self.lcrPrimLabel.setText("Cp")
 
-        self.lcrSecLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.lcrSecLabel = QtWidgets.QLabel(self)
         self.lcrSecLabel.setText("Rp")
 
         lcrGroupBoxLayout = QtWidgets.QGridLayout(self.lcrGroupBox)
@@ -1079,12 +1080,12 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Soft limits group box
 
-        self.zSoftLimitLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zSoftLimitLabel = QtWidgets.QLabel(self)
         self.zSoftLimitLabel.setText("Z")
 
         self.zSoftLimitValueLabel = PositionLabel(self)
 
-        self.softLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.softLimitsGroupBox = QtWidgets.QGroupBox(self)
         self.softLimitsGroupBox.setTitle("Soft Limits")
 
         softLimitsGroupBoxLayout = QtWidgets.QGridLayout(self.softLimitsGroupBox)
@@ -1093,22 +1094,22 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Hard limits group box
 
-        self.xHardLimitLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xHardLimitLabel = QtWidgets.QLabel(self)
         self.xHardLimitLabel.setText("X")
 
         self.xHardLimitValueLabel = PositionLabel(self)
 
-        self.yHardLimitLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yHardLimitLabel = QtWidgets.QLabel(self)
         self.yHardLimitLabel.setText("Y")
 
         self.yHardLimitValueLabel = PositionLabel(self)
 
-        self.zHardLimitLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zHardLimitLabel = QtWidgets.QLabel(self)
         self.zHardLimitLabel.setText("Z")
 
         self.zHardLimitValueLabel = PositionLabel(self)
 
-        self.hardLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.hardLimitsGroupBox = QtWidgets.QGroupBox(self)
         self.hardLimitsGroupBox.setTitle("Hard Limits")
 
         hardLimitsGroupBoxLayout = QtWidgets.QGridLayout(self.hardLimitsGroupBox)
@@ -1121,12 +1122,12 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Safety group box
 
-        self.laserSensorLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.laserSensorLabel = QtWidgets.QLabel(self)
         self.laserSensorLabel.setText("Laser Sensor")
 
         self.laserSensorSwitch = SwitchLabel(self)
 
-        self.safetyGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.safetyGroupBox = QtWidgets.QGroupBox(self)
         self.safetyGroupBox.setTitle("Safety")
 
         safetyGroupBoxLayout = QtWidgets.QVBoxLayout(self.safetyGroupBox)
@@ -1160,7 +1161,7 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Tab widget
 
-        self.tabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget = QtWidgets.QTabWidget(self)
         self.tabWidget.addTab(self.positionsWidget, "Move")
         self.tabWidget.addTab(self.contactsWidget, "Contacts")
         self.tabWidget.addTab(self.calibrateWidget, "Calibrate")
@@ -1168,19 +1169,19 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Bottom bar
 
-        self.progressBar: QtWidgets.QProgressBar = QtWidgets.QProgressBar(self)
+        self.progressBar = QtWidgets.QProgressBar(self)
         self.progressBar.setVisible(False)
 
-        self.messageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.messageLabel = QtWidgets.QLabel(self)
 
-        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stopButton = QtWidgets.QPushButton(self)
         self.stopButton.setText("&Stop")
         self.stopButton.setDefault(False)
         self.stopButton.setAutoDefault(False)
         self.stopButton.setEnabled(False)
         self.stopButton.clicked.connect(self.stop)
 
-        self.closeButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.closeButton = QtWidgets.QPushButton(self)
         self.closeButton.setText("&Close")
         self.closeButton.setDefault(False)
         self.closeButton.setAutoDefault(False)
@@ -1228,7 +1229,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.updateKeypadButtons()
         if math.isfinite(position.z):
             self.lcrWidget.setLimits(position.z)
-            self.lcrWidget.setLine(position.z)
+            self.lcrWidget.setLinePos(position.z)
 
     def resetCaldone(self) -> None:
         self.calibrationWidget.reset()
@@ -1491,7 +1492,6 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.process.stopped = None
             self.process = None
 
-    @handle_exception
     def on_lcr_toggled(self, state: bool) -> None:
         self.lcrPrimLineEdit.setEnabled(state)
         self.lcrSecLineEdit.setEnabled(state)
@@ -1515,7 +1515,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         if math.isfinite(z) and math.isfinite(sec):
             # Append only absolute Rp readings
             self.lcrWidget.append(z, abs(sec))
-            self.lcrWidget.setLine(z)
+            self.lcrWidget.setLinePos(z)
 
 
 class SwitchLabel(QtWidgets.QLabel):

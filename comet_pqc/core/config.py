@@ -206,14 +206,14 @@ class SequenceMeasurement:
 
     key_ignorelist = ["matrix_enable", "matrix_channels", "analyze_function"]
 
-    def __init__(self, name: str, type: str, id: Optional[str] = None, enabled: bool = True, tags: Optional[List] = None, description: Optional[str] = None, parameters: Dict = None):
+    def __init__(self, name: str, type: str, id: Optional[str] = None, enabled: bool = True, tags: Optional[List[str]] = None, description: Optional[str] = None, parameters: Optional[Dict] = None):
         self.id: str = id or make_id(name)
         self.name: str = name
         self.type: str = type
         self.enabled: bool = enabled
-        self.tags: List = list(map(format, tags or []))
+        self.tags: List[str] = list(map(format, tags or []))
         self.description: str = description or ""
-        self.parameters: Dict = {}
+        self.parameters: Dict[str, Any] = {}
         for key, value in (parameters or {}).items():
             if key not in self.key_ignorelist:
                 if isinstance(value, str):

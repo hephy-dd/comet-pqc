@@ -16,7 +16,7 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.title = "CV Ramp (LCR)"
+        self.setName("CV Ramp (LCR)")
 
         self.register_lcr()
         self.register_environment()
@@ -25,57 +25,81 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Capacitance [pF]")
         self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
-        self.data_tabs.insert(0, ui.Tab(title="CV Curve", layout=self.plot))
+        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
 
         self.plot2 = ui.Plot(height=300, legend="right")
         self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
         self.plot2.axes.get("y").qt.setLabelFormat("%G")
         self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
-        self.data_tabs.insert(1, ui.Tab(title="1/C² Curve", layout=self.plot2))
+        self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
 
-        self.voltage_start = ui.Number(decimals=3, suffix="V")
-        self.voltage_stop = ui.Number(decimals=3, suffix="V")
-        self.voltage_step = ui.Number(minimum=0, maximum=200, decimals=3, suffix="V")
-        self.waiting_time = ui.Number(minimum=0, decimals=2, suffix="s")
+        self.voltage_start = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setRange(-2200, +2200)
+        self.voltage_start.setSuffix(" V")
 
-        self.lcr_frequency = ui.Number(value=1, minimum=0.020, maximum=20e3, decimals=3, suffix="kHz")
-        self.lcr_amplitude = ui.Number(minimum=0, decimals=3, suffix="mV")
+        self.voltage_stop = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setRange(-2200, +2200)
+        self.voltage_stop.setSuffix(" V")
+
+        self.voltage_step = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setRange(0, 200)
+        self.voltage_step.setSuffix(" V")
+
+        self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.waitingTimeSpinBox.setDecimals(2)
+        self.waitingTimeSpinBox.setRange(0, 60)
+        self.waitingTimeSpinBox.setSuffix(" s")
+
+        self.lcrFrequencySpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.lcrFrequencySpinBox.setDecimals(3)
+        self.lcrFrequencySpinBox.setRange(0.020, 20e3)
+        self.lcrFrequencySpinBox.setSuffix(" kHz")
+        self.lcrFrequencySpinBox.setValue(1)
+
+        self.lcrAmplitudeSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.lcrAmplitudeSpinBox.setDecimals(3)
+        self.lcrAmplitudeSpinBox.setRange(0, float("inf"))
+        self.lcrAmplitudeSpinBox.setSuffix(" mV")
 
         self.bind("bias_voltage_start", self.voltage_start, 0, unit="V")
         self.bind("bias_voltage_stop", self.voltage_stop, 0, unit="V")
         self.bind("bias_voltage_step", self.voltage_step, 0, unit="V")
-        self.bind("waiting_time", self.waiting_time, 1, unit="s")
-        self.bind("lcr_frequency", self.lcr_frequency, 1, unit="kHz")
-        self.bind("lcr_amplitude", self.lcr_amplitude, 0, unit="mV")
+        self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
+        self.bind("lcr_frequency", self.lcrFrequencySpinBox, 1.0, unit="kHz")
+        self.bind("lcr_amplitude", self.lcrAmplitudeSpinBox, 250, unit="mV")
 
-        self.general_tab.layout = ui.Row(
-            ui.GroupBox(
-                title="LCR Ramp",
-                layout=ui.Column(
-                    ui.Label(text="Start"),
-                    self.voltage_start,
-                    ui.Label(text="Stop"),
-                    self.voltage_stop,
-                    ui.Label(text="Step"),
-                    self.voltage_step,
-                    ui.Label(text="Waiting Time"),
-                    self.waiting_time,
-                    ui.Spacer()
-                )
-            ),
-            ui.GroupBox(
-                title="LCR Freq.",
-                layout=ui.Column(
-                    ui.Label(text="AC Frequency"),
-                    self.lcr_frequency,
-                    ui.Label(text="AC Amplitude"),
-                    self.lcr_amplitude,
-                    ui.Spacer()
-                )
-            ),
-            stretch=(1, 1, 1)
-        )
+        rampGroupBox = QtWidgets.QGroupBox(self)
+        rampGroupBox.setTitle("LCR Ramp")
+
+        rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
+        rampGroupBoxLayout.addWidget(self.voltage_start)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop"))
+        rampGroupBoxLayout.addWidget(self.voltage_stop)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step"))
+        rampGroupBoxLayout.addWidget(self.voltage_step)
+        rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time"))
+        rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
+        rampGroupBoxLayout.addStretch()
+
+        lcrFreqGroupBox = QtWidgets.QGroupBox(self)
+        lcrFreqGroupBox.setTitle("LCR Freq.")
+
+        lcrFreqGroupBoxLayout = QtWidgets.QVBoxLayout(lcrFreqGroupBox)
+        lcrFreqGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Frequency"))
+        lcrFreqGroupBoxLayout.addWidget(self.lcrFrequencySpinBox)
+        lcrFreqGroupBoxLayout.addWidget(QtWidgets.QLabel("AC Amplitude"))
+        lcrFreqGroupBoxLayout.addWidget(self.lcrAmplitudeSpinBox)
+        lcrFreqGroupBoxLayout.addStretch()
+
+        layout = self.generalWidget.layout()
+        layout.addWidget(rampGroupBox, 1)
+        layout.addWidget(lcrFreqGroupBox, 1)
+        layout.addStretch(1)
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")
@@ -99,7 +123,7 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
         self.plot.fit()
         self.plot2.fit()
 
-    def append_reading(self, name, x, y):
+    def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
             tr = self.series_transform.get(name, self.series_transform_default)
             if name == "lcr":
@@ -121,8 +145,8 @@ class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
                 else:
                     self.plot2.fit()
 
-    def clear_readings(self):
-        super().clear_readings()
+    def clearReadings(self) -> None:
+        super().clearReadings()
         for series in self.plot.series.values():
             series.clear()
         for series in self.plot2.series.values():

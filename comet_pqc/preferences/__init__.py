@@ -21,12 +21,12 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.treeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.treeWidget = QtWidgets.QTreeWidget(self)
         self.treeWidget.setHeaderLabels(["Resource", "Value"])
         self.treeWidget.currentItemChanged.connect(self.itemSelected)
         self.treeWidget.itemDoubleClicked.connect(self.itemDoubleClicked)
 
-        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton = QtWidgets.QPushButton(self)
         self.editButton.setText("&Edit")
         self.editButton.setEnabled(False)
         self.editButton.clicked.connect(self.editItem)
@@ -93,7 +93,7 @@ class PreferencesDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Preferences")
 
-        self.tabWidget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
+        self.tabWidget = QtWidgets.QTabWidget(self)
 
         self.resources_tab = ResourcesWidget(self)
         self.tabWidget.addTab(self.resources_tab, "Resources")
@@ -104,7 +104,7 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.optionsWidget = OptionsWidget(self)
         self.tabWidget.addTab(self.optionsWidget, "Options")
 
-        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)

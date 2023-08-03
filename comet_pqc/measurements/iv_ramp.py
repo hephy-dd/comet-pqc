@@ -51,7 +51,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_analysis()
 
     def initialize(self, hvsrc):
-        self.process.emit("progress", 1, 4)
+        self.process.set_progress(1, 4)
 
         # Parameters
         voltage_start = self.get_parameter("voltage_start")
@@ -100,7 +100,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         self.register_series("temperature_chuck")
         self.register_series("humidity_box")
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": self.hvsrc_get_voltage_level(hvsrc),
             "hvsrc_current": None,
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
@@ -112,36 +112,36 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         hvsrc_current_compliance = self.get_parameter("hvsrc_current_compliance")
         self.hvsrc_set_current_compliance(hvsrc, hvsrc_current_compliance)
 
-        self.process.emit("progress", 2, 4)
+        self.process.set_progress(2, 4)
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_ON)
         time.sleep(.100)
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": voltage,
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
         })
 
-        self.process.emit("progress", 3, 4)
+        self.process.set_progress(3, 4)
 
-        if self.process.running:
+        if not self.process.stop_requested:
 
             voltage = self.hvsrc_get_voltage_level(hvsrc)
 
             logger.info("HV Source ramp to start voltage: from %E V to %E V with step %E V", voltage, voltage_start, voltage_step_before)
             for voltage in LinearRange(voltage, voltage_start, voltage_step_before):
-                self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
+                self.process.set_message("Ramp to start... {}".format(format_metric(voltage, "V")))
                 self.hvsrc_set_voltage_level(hvsrc, voltage)
                 time.sleep(waiting_time_before)
 
                 # Compliance tripped?
                 self.hvsrc_check_compliance(hvsrc)
 
-                if not self.process.running:
+                if self.process.stop_requested:
                     break
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": voltage,
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
         })
@@ -149,7 +149,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         # Waiting time before measurement ramp.
         self.wait(waiting_time_start)
 
-        self.process.emit("progress", 4, 4)
+        self.process.set_progress(4, 4)
 
     def measure(self, hvsrc):
         # Parameters
@@ -159,7 +159,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
         waiting_time = self.get_parameter("waiting_time")
         hvsrc_accept_compliance = self.get_parameter("hvsrc_accept_compliance")
 
-        if not self.process.running:
+        if self.process.stop_requested:
             return
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
@@ -168,7 +168,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         ramp = LinearRange(voltage, voltage_stop, voltage_step)
         est = Estimate(len(ramp))
-        self.process.emit("progress", *est.progress)
+        self.process.set_progress(*est.progress)
 
         logger.info("HV Source ramp to end voltage: from %E V to %E V with step %E V", voltage, ramp.end, ramp.step)
         for voltage in ramp:
@@ -181,10 +181,10 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             self.environment_update()
 
             reading_current = self.hvsrc_read_current(hvsrc)
-            self.process.emit("reading", "hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
+            self.process.append_reading("hvsrc", abs(voltage) if ramp.step < 0 else voltage, reading_current)
 
-            self.process.emit("update")
-            self.process.emit("state", {
+            self.process.update_readings()
+            self.process.update_state({
                 "hvsrc_voltage": voltage,
                 "hvsrc_current": reading_current,
             })
@@ -199,8 +199,8 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
                 humidity_box=self.environment_humidity_box
             )
             est.advance()
-            self.process.emit("message", "{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-            self.process.emit("progress", *est.progress)
+            self.process.set_message("{} | HV Source {}".format(format_estimate(est), format_metric(voltage, "V")))
+            self.process.set_progress(*est.progress)
 
             # Compliance tripped?
             if hvsrc_accept_compliance:
@@ -210,19 +210,19 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
             else:
                 self.hvsrc_check_compliance(hvsrc)
 
-            if not self.process.running:
+            if self.process.stop_requested:
                 break
 
-        self.process.emit("progress", 0, 0)
+        self.process.set_progress(0, 0)
 
     def analyze(self, **kwargs):
-        self.process.emit("progress", 0, 1)
+        self.process.set_progress(0, 1)
 
         i = np.array(self.get_series("current_hvsrc"))
         v = np.array(self.get_series("voltage"))
         self.analysis_iv(i, v)
 
-        self.process.emit("progress", 1, 1)
+        self.process.set_progress(1, 1)
 
     def finalize(self, hvsrc):
         voltage_step_after = self.get_parameter("voltage_step_after") or self.get_parameter("voltage_step")
@@ -231,7 +231,7 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         voltage = self.hvsrc_get_voltage_level(hvsrc)
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": voltage,
             "hvsrc_current": None,
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
@@ -239,9 +239,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         logger.info("HV Source ramp to zero: from %E V to %E V with step %E V", voltage, 0, voltage_step_after)
         for voltage in LinearRange(voltage, 0, voltage_step_after):
-            self.process.emit("message", "Ramp to zero... {}".format(format_metric(voltage, "V")))
+            self.process.set_message("Ramp to zero... {}".format(format_metric(voltage, "V")))
             self.hvsrc_set_voltage_level(hvsrc, voltage)
-            self.process.emit("state", {"hvsrc_voltage": voltage})
+            self.process.update_state({"hvsrc_voltage": voltage})
             time.sleep(waiting_time_after)
 
         # Waiting time after ramp down.
@@ -249,9 +249,9 @@ class IVRampMeasurement(MatrixMeasurement, HVSourceMixin, EnvironmentMixin, Anal
 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": self.hvsrc_get_voltage_level(hvsrc),
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
         })
 
-        self.process.emit("progress", 5, 5)
+        self.process.set_progress(5, 5)

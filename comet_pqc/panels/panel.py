@@ -1,10 +1,12 @@
-from typing import Optional
+from typing import Callable, Dict, Optional
 
 from PyQt5 import QtCore, QtWidgets
+from QCharted import ChartView
 
 import comet
 from comet import ui
 
+from comet_pqc.components import Metric
 from ..settings import settings
 from ..utils import stitch_pixmaps
 
@@ -26,7 +28,7 @@ class PanelStub(QtWidgets.QWidget):
     def restore(self):
         ...
 
-    def clear_readings(self):
+    def clearReadings(self) -> None:
         ...
 
     def setLocked(self, locked: bool) -> None:
@@ -44,17 +46,24 @@ class BasicPanel(PanelStub):
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
+        self.setName("")
 
-        self.titleLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.titleLabel = QtWidgets.QLabel(self)
         self.titleLabel.setStyleSheet("font-size: 16px; font-weight: bold; height: 32px;")
         self.titleLabel.setTextFormat(QtCore.Qt.RichText)
 
-        self.descriptionLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.descriptionLabel = QtWidgets.QLabel(self)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.titleLabel)
         layout.addWidget(self.descriptionLabel)
         layout.addStretch(1)
+
+    def name(self) -> str:
+        return self._name
+
+    def setName(self, name: str) -> None:
+        self._name = name
 
     def setTitle(self, text: str) -> None:
         self.titleLabel.setText(text)
@@ -75,49 +84,65 @@ class Panel(BasicPanel):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self._bindings = {}
+        self._bindings: Dict = {}
+        self._bindings_types: Dict = {}
 
-        self.state_handlers = []
-
-        self.data_panel = ui.Column()
-
-        self.general_tab = ui.Tab(
-            layout=ui.Row()
-        )
-
-        self.controlTabWidget = QtWidgets.QTabWidget(self)
-        self.controlTabWidget.addTab(self.general_tab.qt, self.tr("General"))
-
-        self.statusWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        self.statusWidget.setLayout(QtWidgets.QVBoxLayout())
-
-        col = ui.Column()
-        col.qt.layout().addWidget(self.statusWidget)
-        col.qt.layout().addStretch()
-
-        self.control_panel = ui.Row()
-        self.control_panel.qt.layout().addWidget(self.controlTabWidget, 3)
-        self.control_panel.qt.layout().addWidget(col.qt, 1)
-
-        self.layout().insertWidget(2, self.data_panel.qt)
-        self.layout().insertWidget(3, self.control_panel.qt)
+        self.state_handlers: list[Callable] = []
 
         self.measurement = None
 
-        self.data_tabs = ui.Tabs()
+        self.data_panel = QtWidgets.QWidget(self)
 
-        self.data_panel.append(self.data_tabs)
+        data_panel_layout = QtWidgets.QVBoxLayout(self.data_panel)
+        data_panel_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.generalWidget = QtWidgets.QWidget(self)
+        self.generalWidget.setLayout(QtWidgets.QHBoxLayout())
+
+        self.controlTabWidget = QtWidgets.QTabWidget(self)
+        self.controlTabWidget.addTab(self.generalWidget, "General")
+
+        self.statusWidget = QtWidgets.QWidget(self)
+
+        status_widget_layout = QtWidgets.QVBoxLayout(self.statusWidget)
+        status_widget_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.control_panel = QtWidgets.QWidget(self)
+
+        control_panel_layout = QtWidgets.QHBoxLayout(self.control_panel)
+        control_panel_layout.setContentsMargins(0, 0, 0, 0)
+        control_panel_layout.addWidget(self.controlTabWidget, 3)
+        l = QtWidgets.QVBoxLayout()
+        l.addWidget(self.statusWidget)
+        l.addStretch()
+        control_panel_layout.addLayout(l, 1)
+
+        self.layout().insertWidget(2, self.data_panel)
+        self.layout().insertWidget(3, self.control_panel)
+
+        self.dataTabWidget = QtWidgets.QTabWidget(self)
+
+        data_panel_layout.addWidget(self.dataTabWidget)
 
         # Add analysis tab
-        self.analysis_tree = ui.Tree(header=["Parameter", "Value"])
-        self.data_tabs.insert(0, ui.Tab(title="Analysis", layout=self.analysis_tree))
+        self.analysisTreeWidget = QtWidgets.QTreeWidget(self)
+        self.analysisTreeWidget.setHeaderLabels(["Parameter", "Value"])
+        self.dataTabWidget.insertTab(0, self.analysisTreeWidget, "Analysis")
 
         # Plots
         self.series_transform = {}
         self.series_transform_default = lambda x, y: (x, y)
 
-        self.customBindTypes: dict = {}
-
+        self.registerBindType(
+            QtWidgets.QSpinBox,
+            lambda widget: widget.value(),
+            lambda widget, value: widget.setValue(int(value)),
+        )
+        self.registerBindType(
+            QtWidgets.QDoubleSpinBox,
+            lambda widget: widget.value(),
+            lambda widget, value: widget.setValue(float(value)),
+        )
         self.registerBindType(
             QtWidgets.QCheckBox,
             lambda widget: widget.isChecked(),
@@ -133,12 +158,22 @@ class Panel(BasicPanel):
             lambda widget: widget.text(),
             lambda widget, value: widget.setText(str(value)),
         )
+        self.registerBindType(
+            QtWidgets.QComboBox,
+            lambda widget: widget.itemText(widget.currentIndex()),
+            lambda widget, value: widget.setCurrentIndex(widget.findText(str(value))),
+        )
+        self.registerBindType(
+            Metric,
+            lambda widget: widget.value(),
+            lambda widget, value: widget.setValue(float(value)),
+        )
 
-    def registerBindType(self, type, getter, setter) -> None:
+    def registerBindType(self, type, getter: Callable, setter: Callable) -> None:
         """Register setter and getter bindings for input widgets."""
-        self.customBindTypes.update({type: (getter, setter)})
+        self._bindings_types.update({type: (getter, setter)})
 
-    def bind(self, key, element, default=None, unit=None):
+    def bind(self, key: str, element, default=None, unit: Optional[str] = None) -> None:
         """Bind measurement parameter to input widget for syncronization on
         mount and store.
 
@@ -152,74 +187,57 @@ class Panel(BasicPanel):
         """Mount measurement to panel."""
         super().mount(measurement)
 
-        self.setTitle(f"{self.title} &rarr; {measurement.name}")
-        self.setDescription(measurement.description or "")
+        self.setTitle(f"{self.name()} &rarr; {measurement.name()}")
+        self.setDescription(measurement.description() or "")
         self.measurement = measurement
 
         # Load parameters to UI
         parameters = self.measurement.parameters
         for key, (element, default, unit) in self._bindings.items():
             value = parameters.get(key, default)
+            # Convert using pint
             if unit is not None:
                 if isinstance(value, comet.ureg.Quantity):
                     value = value.to(unit).m
-            if isinstance(element, ui.List):
-                setattr(element, "values", value)
-            elif isinstance(element, ui.ComboBox):
-                setattr(element, "current", value)
-            elif isinstance(element, ui.CheckBox):
-                setattr(element, "checked", value)
-            elif isinstance(element, ui.Text):
-                setattr(element, "value", value)
-            elif isinstance(element, ui.Label):
-                setattr(element, "text", format(value))
-            elif isinstance(element, ui.Metric):
-                setattr(element, "value", value)
-            elif type(element) in self.customBindTypes:
-                _, setter = self.customBindTypes[type(element)]
+            if type(element) in self._bindings_types:
+                _, setter = self._bindings_types[type(element)]
                 setter(element, value)
             else:
-                setattr(element, "value", value)
+                raise TypeError(type(element))
         self.load_analysis()
 
         # Show first tab on mount
-        self.data_tabs.qt.setCurrentIndex(0)
+        self.dataTabWidget.setCurrentIndex(0)
 
+        # TODO
         # Update plot series style
         points_in_plots = settings.settings.get("points_in_plots") or False
-        for tab in self.data_tabs:
-            if isinstance(tab.layout, ui.Plot):
-                for series in tab.layout.series.values():
+        for index in range(self.dataTabWidget.count()):
+            widget = self.dataTabWidget.widget(index)
+            if hasattr(widget, "series"):
+                for series in widget.series():
+                    series.setPointsVisible(points_in_plots)
+            elif isinstance(widget, ui.Plot):
+                for series in widget.series.values():
                     series.qt.setPointsVisible(points_in_plots)
 
     def unmount(self):
         """Unmount measurement from panel."""
         super().unmount()
         self.measurement = None
-        self.analysis_tree.clear()
+        self.analysisTreeWidget.clear()
 
     def store(self):
         """Store UI element values to measurement parameters."""
         if self.measurement:
             parameters = self.measurement.parameters
             for key, (element, default, unit) in self._bindings.items():
-                if isinstance(element, ui.List):
-                    value = getattr(element, "values")
-                elif isinstance(element, ui.ComboBox):
-                    value = getattr(element, "current")
-                elif isinstance(element, ui.CheckBox):
-                    value = getattr(element, "checked")
-                elif isinstance(element, ui.Text):
-                    value = getattr(element, "value")
-                elif isinstance(element, ui.Label):
-                    value = getattr(element, "text")
-                elif isinstance(element, ui.Metric):
-                    value = getattr(element, "value")
-                elif type(element) in self.customBindTypes:
-                    getter, _ = self.customBindTypes[type(element)]
+                if type(element) in self._bindings_types:
+                    getter, _ = self._bindings_types[type(element)]
                     value = getter(element)
                 else:
-                    value = getattr(element, "value")
+                    raise TypeError(type(element))
+                # Convert using pint
                 if unit is not None:
                     value = value * comet.ureg(unit)
                 parameters[key] = value
@@ -230,75 +248,74 @@ class Panel(BasicPanel):
             default_parameters = self.measurement.default_parameters
             for key, (element, default, unit) in self._bindings.items():
                 value = default_parameters.get(key, default)
+                # Convert using pint
                 if unit is not None:
                     if isinstance(value, comet.ureg.Quantity):
                         value = value.to(unit).m
-                if isinstance(element, ui.List):
-                    setattr(element, "values", value)
-                elif isinstance(element, ui.ComboBox):
-                    setattr(element, "current", value)
-                elif isinstance(element, ui.CheckBox):
-                    setattr(element, "checked", value)
-                elif isinstance(element, ui.Text):
-                    setattr(element, "value", value)
-                elif isinstance(element, ui.Metric):
-                    setattr(element, "value", value)
-                elif type(element) in self.customBindTypes:
-                    _, setter = self.customBindTypes[type(element)]
+                if type(element) in self._bindings_types:
+                    _, setter = self._bindings_types[type(element)]
                     setter(element, value)
                 else:
-                    setattr(element, "value", value)
+                    raise TypeError(type(element))
 
-    def state(self, state):
+    def updateState(self, data: dict) -> None:
         for handler in self.state_handlers:
-            handler(state)
+            handler(data)
 
-    def append_reading(self, name, x, y):
+    def appendReading(self, name: str, x: float, y: float) -> None:
         ...
 
-    def update_readings(self):
+    def updateReadings(self) -> None:
         ...
 
-    def clear_readings(self):
-        self.analysis_tree.clear()
+    def clearReadings(self) -> None:
+        self.analysisTreeWidget.clear()
         if self.measurement:
             self.measurement.analysis.clear()
 
-    def append_analysis(self, key, values):
+    def appendAnalysis(self, key: str, values: dict) -> None:
         if self.measurement:
             self.measurement.analysis[key] = values
-            item = self.analysis_tree.append([key])
+            item = QtWidgets.QTreeWidgetItem([key])
+            self.analysisTreeWidget.addTopLevelItem(item)
+            item.setExpanded(True)
             for k, v in values.items():
-                item.append([k, format(v)])
-            self.analysis_tree.fit()
+                child = QtWidgets.QTreeWidgetItem([k, format(v)])
+                item.addChild(child)
+            self.analysisTreeWidget.resizeColumnToContents(0)
+            self.analysisTreeWidget.resizeColumnToContents(1)
 
     def load_analysis(self):
-        self.analysis_tree.clear()
+        self.analysisTreeWidget.clear()
         if self.measurement:
             for key, values in self.measurement.analysis.items():
-                self.append_analysis(key, values)
+                self.appendAnalysis(key, values)
 
     def setLocked(self, locked: bool) -> None:
         for index in range(self.controlTabWidget.count()):
             widget = self.controlTabWidget.widget(index)
             widget.setEnabled(not locked)
         if locked:
-            self.controlTabWidget.setCurrentWidget(self.general_tab.qt)
+            self.controlTabWidget.setCurrentWidget(self.generalWidget)
             self.controlTabWidget.setEnabled(True)
             self.statusWidget.setEnabled(True)
 
-    def save_to_image(self, filename):
+    def saveToImage(self, filename: str) -> None:
         """Save screenshots of data tabs to stitched image."""
-        current = self.data_tabs.current
+        current = self.dataTabWidget.currentIndex()
         pixmaps = []
         png_analysis = settings.png_analysis
-        for tab in self.data_tabs:
-            self.data_tabs.current = tab
-            if isinstance(tab.layout, ui.Plot):
-                tab.layout.fit()
-                pixmaps.append(self.data_tabs.qt.grab())
-            elif tab.layout is self.analysis_tree:
+        for index in range(self.dataTabWidget.count()):
+            self.dataTabWidget.setCurrentIndex(index)
+            widget = self.dataTabWidget.widget(index)
+            if isinstance(widget, ChartView):
+                widget.chart().fit()
+                pixmaps.append(self.dataTabWidget.grab())
+            elif isinstance(widget, ui.Plot):
+                widget.fit()
+                pixmaps.append(self.dataTabWidget.grab())
+            elif widget is self.analysisTreeWidget:
                 if png_analysis:
-                    pixmaps.append(self.data_tabs.qt.grab())
-        self.data_tabs.current = current
+                    pixmaps.append(self.dataTabWidget.grab())
+        self.dataTabWidget.setCurrentIndex(current)
         stitch_pixmaps(pixmaps).save(filename)

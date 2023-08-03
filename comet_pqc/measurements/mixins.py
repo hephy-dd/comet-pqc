@@ -593,8 +593,8 @@ class EnvironmentMixin(Mixin):
 
     def environment_update(self):
         self.environment_clear()
-        if self.process.get("use_environ"):
-            with self.processes.get("environ") as environment:
+        if self.config.get("use_environ"):
+            with self.station.environ_process as environment:
                 pc_data = environment.pc_data()
             self.environment_temperature_box = pc_data.box_temperature
             logger.info("Box temperature: %.2f degC", self.environment_temperature_box)
@@ -602,7 +602,7 @@ class EnvironmentMixin(Mixin):
             logger.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logger.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
-        self.process.emit("state", {
+        self.process.update_state({
             "env_chuck_temperature": self.environment_temperature_chuck,
             "env_box_temperature": self.environment_temperature_box,
             "env_box_humidity": self.environment_humidity_box
@@ -683,10 +683,10 @@ class AnalysisMixin(Mixin):
             results.append((f, r))
             key, values = type(r).__name__, r._asdict()
             self.set_analysis(key, values)
-            self.process.emit("append_analysis", key, values)
+            self.process.append_analysis(key, values)
             if "x_fit" in r._asdict():
                 for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                    self.process.emit("reading", "xfit", x, y)
-                self.process.emit("update")
+                    self.process.append_reading("xfit", x, y)
+                self.process.update_readings()
         for f, r in results:
             f.verify(r)

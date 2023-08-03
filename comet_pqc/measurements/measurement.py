@@ -5,12 +5,11 @@ import logging
 import math
 import time
 import uuid
+from typing import List
 
 import analysis_pqc
 import comet
 import numpy as np
-from comet.process import ProcessMixin
-from comet.resource import ResourceMixin
 
 from .. import __version__
 from ..core.formatter import PQCFormatter
@@ -59,6 +58,39 @@ def annotate_step(name):
     return annotate_step
 
 
+def serialize_json(data: dict, fp) -> None:
+    """Serialize data dictionary to JSON."""
+    json.dump(data, fp, indent=2, cls=NumpyEncoder)
+
+
+def serialize_txt(data: dict, fp) -> None:
+    """Serialize data dictionary to plain text."""
+    meta = data.get("meta", {})
+    series_units = data.get("series_units", {})
+    series = data.get("series", {})
+    fmt = PQCFormatter(fp)
+    # Write meta data
+    for key, value in meta.items():
+        if key == "measurement_tags":
+            value = ", ".join([tag for tag in value if tag])
+        fmt.write_meta(key, value)
+    # Create columns
+    columns = list(series.keys())
+    for key in columns:
+        fmt.add_column(key, "E", unit=series_units.get(key))
+    # Write header
+    fmt.write_header()
+    # Write series
+    if columns:
+        size = len(series.get(columns[0]))
+        for i in range(size):
+            row = {}
+            for key in columns:
+                row[key] = series.get(key)[i]
+            fmt.write_row(row)
+    fmt.flush()
+
+
 class ParameterType:
 
     def __init__(self, key, default, values, unit, type, required):
@@ -70,7 +102,7 @@ class ParameterType:
         self.required = required
 
 
-class Measurement(ResourceMixin, ProcessMixin):
+class Measurement:
     """Base measurement class."""
 
     type: str = ""
@@ -86,18 +118,18 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
 
-    def __init__(self, process, sample_name, sample_type, sample_position,
-                 sample_comment, table_position, operator, tags, timestamp=None):
+    def __init__(self, station, process, sample_name, sample_type, sample_position,
+                 sample_comment, config: dict, tags, timestamp=None):
+        self.station = station
         self.process = process
+        self.config: dict = config
         self.sample_name = sample_name
         self.sample_type = sample_type
         self.sample_position = sample_position
         self.sample_comment = sample_comment
-        self.table_position = table_position
-        self.operator = operator
-        self.tags = tags
+        self.tags: List[str] = tags
         self.registered_parameters = {}
-        self.uuid = format(uuid.uuid4())
+        self.uuid: str = format(uuid.uuid4())
         self._timestamp = timestamp or time.time()
         self._data = {}
 
@@ -194,54 +226,23 @@ class Measurement(ResourceMixin, ProcessMixin):
         for key, value in kwargs.items():
             series.get(key).append(value)
 
-    def serialize_json(self, fp):
-        """Serialize data dictionary to JSON."""
-        json.dump(self.data, fp, indent=2, cls=NumpyEncoder)
-
-    def serialize_txt(self, fp):
-        """Serialize data dictionary to plain text."""
-        meta = self.data.get("meta", {})
-        series_units = self.data.get("series_units", {})
-        series = self.data.get("series", {})
-        fmt = PQCFormatter(fp)
-        # Write meta data
-        for key, value in meta.items():
-            if key == "measurement_tags":
-                value = ", ".join([tag for tag in value if tag])
-            fmt.write_meta(key, value)
-        # Create columns
-        columns = list(series.keys())
-        for key in columns:
-            fmt.add_column(key, "E", unit=series_units.get(key))
-        # Write header
-        fmt.write_header()
-        # Write series
-        if columns:
-            size = len(series.get(columns[0]))
-            for i in range(size):
-                row = {}
-                for key in columns:
-                    row[key] = series.get(key)[i]
-                fmt.write_row(row)
-        fmt.flush()
-
     def wait(self, seconds, interval=1.0):
         logger.info("Waiting %s s...", seconds)
         interval = abs(interval)
         steps = math.ceil(seconds / interval)
         remaining = seconds
-        self.process.emit("message", f"Waiting {seconds} s...")
+        self.process.set_message(f"Waiting {seconds} s...")
         for step in range(steps):
-            self.process.emit("progress", step + 1, steps)
+            self.process.set_progress(step + 1, steps)
             if remaining >= interval:
                 time.sleep(interval)
             else:
                 time.sleep(remaining)
             remaining -= interval
-            if not self.process.running:
+            if self.process.stop_requested:
                 return
         logger.info("Waiting %s s... done.", seconds)
-        self.process.emit("message", "")
+        self.process.set_message("")
 
     def before_initialize(self, **kwargs):
         self.validate_parameters()
@@ -255,13 +256,13 @@ class Measurement(ResourceMixin, ProcessMixin):
         self.set_meta("sample_type", self.sample_type)
         self.set_meta("sample_position", self.sample_position)
         self.set_meta("sample_comment", self.sample_comment)
-        self.set_meta("contact_name", self.measurement_item.contact.name)
-        self.set_meta("measurement_name", self.measurement_item.name)
+        self.set_meta("contact_name", self.measurement_item.contact.name())
+        self.set_meta("measurement_name", self.measurement_item.name())
         self.set_meta("measurement_type", self.type)
         self.set_meta("measurement_tags", self.tags)
-        self.set_meta("table_position", tuple(self.table_position))
+        self.set_meta("table_position", tuple(self.config.get("table_position", [])))
         self.set_meta("start_timestamp", self.timestamp_iso)
-        self.set_meta("operator", self.operator)
+        self.set_meta("operator", self.config.get("operator", ""))
         self.set_meta("pqc_version", __version__)
         self.set_meta("analysis_pqc_version", analysis_pqc.__version__)
 
@@ -288,33 +289,33 @@ class Measurement(ResourceMixin, ProcessMixin):
 
     @annotate_step("Initialize")
     def _initialize(self, **kwargs):
-        self.process.emit("message", "Initialize...")
+        self.process.set_message("Initialize...")
         self.before_initialize(**kwargs)
         self.initialize(**kwargs)
         self.after_initialize(**kwargs)
-        self.process.emit("message", "Initialize... done.")
+        self.process.set_message("Initialize... done.")
 
     @annotate_step("Measure")
     def _measure(self, **kwargs):
-        self.process.emit("message", "Measure...")
+        self.process.set_message("Measure...")
         self.measure(**kwargs)
-        self.process.emit("message", "Measure... done.")
+        self.process.set_message("Measure... done.")
 
     @annotate_step("Finalize")
     def _finalize(self, **kwargs):
-        self.process.emit("message", "Finalize...")
+        self.process.set_message("Finalize...")
         self.before_finalize(**kwargs)
         self.finalize(**kwargs)
         self.after_finalize(**kwargs) # is not executed on error
-        self.process.emit("message", "Finalize... done.")
+        self.process.set_message("Finalize... done.")
 
     @annotate_step("Analyze")
     def _analyze(self, **kwargs):
-        self.process.emit("message", "Analyze...")
+        self.process.set_message("Analyze...")
         self.analyze(**kwargs)
-        self.process.emit("message", "Analyze... done.")
+        self.process.set_message("Analyze... done.")
 
-    def run(self):
+    def run(self, station) -> None:
         """Run measurement.
 
         If initialize, measure or analyze fails, finalize is executed before
@@ -324,7 +325,7 @@ class Measurement(ResourceMixin, ProcessMixin):
             kwargs = {}
             for key in type(self).required_instruments:
                 create = getattr(self, f"{key}_create")
-                resource = self.resources.get(key)
+                resource = self.station.resources.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:
                 self._initialize(**kwargs)

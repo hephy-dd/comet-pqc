@@ -1,9 +1,8 @@
 import math
 import os
-from typing import Optional
+from typing import List, Optional
 
-from comet import ui
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from .core.position import Position
 from .core.utils import make_path, user_home
@@ -14,6 +13,7 @@ from .utils import (
     getcal,
     getrm,
 )
+from .metric import Metric
 
 __all__ = [
     "ToggleButton",
@@ -21,7 +21,7 @@ __all__ = [
     "CalibrationLabel",
     "CalibrationWidget",
     "DirectoryWidget",
-    "OperatorComboBox",
+    "OperatorWidget",
     "PositionsComboBox"
 ]
 
@@ -47,8 +47,8 @@ class ToggleButton(QtWidgets.QPushButton):
         super().__init__(parent)
         self.setCheckable(True)
         self.setChecked(False)
-        self.setProperty("checkedIcon", create_icon(12, "green").qt)
-        self.setProperty("uncheckedIcon", create_icon(12, "grey").qt)
+        self.setProperty("checkedIcon", create_icon(12, "green"))
+        self.setProperty("uncheckedIcon", create_icon(12, "grey"))
         self.updateIcon(self.isChecked())
         self.toggled.connect(self.updateIcon)
 
@@ -82,15 +82,15 @@ class PositionWidget(QtWidgets.QGroupBox):
 
         self.setTitle("Position")
 
-        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel = QtWidgets.QLabel(self)
         self.xLabel.setText("X")
         self.xLabel.setToolTip("X axis position")
 
-        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel = QtWidgets.QLabel(self)
         self.yLabel.setText("Y")
         self.yLabel.setToolTip("Y axis position")
 
-        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel = QtWidgets.QLabel(self)
         self.zLabel.setText("Z")
         self.zLabel.setToolTip("Z axis position")
 
@@ -141,15 +141,15 @@ class CalibrationWidget(QtWidgets.QGroupBox):
 
         self.setTitle("Calibration")
 
-        self.xLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.xLabel = QtWidgets.QLabel(self)
         self.xLabel.setText("X")
         self.xLabel.setToolTip("X axis calibration state")
 
-        self.yLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.yLabel = QtWidgets.QLabel(self)
         self.yLabel.setText("Y")
         self.yLabel.setToolTip("Y axis calibration state")
 
-        self.zLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.zLabel = QtWidgets.QLabel(self)
         self.zLabel.setText("Z")
         self.zLabel.setToolTip("Z axis calibration state")
 
@@ -184,186 +184,186 @@ class CalibrationWidget(QtWidgets.QGroupBox):
         self.zRmLabel.setValue(getrm(position.z))
 
 
-class DirectoryWidget(ui.Row):
+class DirectoryWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.location_combo_box = ui.ComboBox(
-            editable=True,
-            focus_out=self.update_locations,
-            changed=self.on_location_changed,
-        )
-        self.location_combo_box.duplicates_enabled = False
-        self.select_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "search.svg"),
-            tool_tip="Select a directory.",
-            clicked=self.on_select_clicked
-        )
-        self.remove_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "delete.svg"),
-            tool_tip="Remove directory from list.",
-            clicked=self.on_remove_clicked
-        )
-        self.append(self.location_combo_box)
-        self.append(self.select_button)
-        self.append(self.remove_button)
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
-    @property
-    def current_location(self):
-        return self.location_combo_box.qt.currentText().strip()
+        self.locationComboBox = QtWidgets.QComboBox(self)
+        self.locationComboBox.setEditable(True)
+        self.locationComboBox.setDuplicatesEnabled(False)
+        self.locationComboBox.currentIndexChanged.connect(self.updateButtons)
+        self.locationComboBox.focusOutEvent = lambda event: self.updateLocations()  # type: ignore
 
-    @property
-    def locations(self):
+        self.selectButton = QtWidgets.QToolButton(self)
+        self.selectButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "search.svg")))
+        self.selectButton.setToolTip("Select a directory.")
+        self.selectButton.clicked.connect(self.selectLocation)
+
+        self.removeButton = QtWidgets.QToolButton(self)
+        self.removeButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
+        self.removeButton.setToolTip("Remove directory from list.")
+        self.removeButton.clicked.connect(self.removeCurrentLocation)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.locationComboBox, 1)
+        layout.addWidget(self.selectButton)
+        layout.addWidget(self.removeButton)
+
+    def currentLocation(self) -> str:
+        index = self.locationComboBox.currentIndex()
+        return self.locationComboBox.itemText(index).strip()
+
+    def locations(self) -> List[str]:
         locations = []
-        self.update_locations()
-        for i in range(len(self.location_combo_box)):
-            location = self.location_combo_box.qt.itemText(i).strip()
-            locations.append(self.location_combo_box.qt.itemText(i).strip())
+        self.updateLocations()
+        for index in range(self.locationComboBox.count()):
+            location = self.locationComboBox.itemText(index).strip()
+            locations.append(self.locationComboBox.itemText(index).strip())
         return locations
 
-    def clear_locations(self):
-        changed = self.location_combo_box.changed
-        self.location_combo_box.changed = None
-        self.location_combo_box.clear()
-        self.update_locations()
-        self.location_combo_box.changed = changed
+    def clearLocations(self) -> None:
+        with QtCore.QSignalBlocker(self.locationComboBox):
+            self.locationComboBox.clear()
+            self.updateLocations()
 
-    def append_location(self, value):
-        self.location_combo_box.append(value)
+    def addLocation(self, location: str) -> None:
+        self.locationComboBox.addItem(location)
 
-    def on_location_changed(self, _):
-        location = self.current_location
-        self.remove_button.enabled = len(self.location_combo_box) > 1
+    def updateButtons(self, _) -> None:
+        location = self.currentLocation()
+        self.removeButton.setEnabled(self.locationComboBox.count() > 1)
 
-    def on_select_clicked(self):
-        value = ui.directory_open(
-            title="Select directory",
-            path=self.current_location
-        )
-        if value:
-            for i in range(self.location_combo_box.qt.count()):
-                location = self.location_combo_box.qt.itemText(i).strip()
-                if location == value:
-                    self.location_combo_box.qt.setCurrentIndex(i)
+    def selectLocation(self) -> None:
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select directory",
+            self.currentLocation()
+        ).strip()
+        if path:
+            for index in range(self.locationComboBox.count()):
+                location = self.locationComboBox.itemText(index).strip()
+                if location == path:
+                    self.locationComboBox.setCurrentIndex(index)
                     return
-            self.update_locations()
-            self.location_combo_box.qt.insertItem(0, value)
-            self.location_combo_box.qt.setCurrentIndex(0)
+            self.updateLocations()
+            self.locationComboBox.insertItem(0, path)
+            self.locationComboBox.setCurrentIndex(0)
 
-    def on_remove_clicked(self):
-        self.update_locations()
-        if len(self.location_combo_box) > 1:
-            index = self.location_combo_box.qt.currentIndex()
+    def removeCurrentLocation(self) -> None:
+        self.updateLocations()
+        if self.locationComboBox.count() > 1:
+            index = self.locationComboBox.currentIndex()
             if index >= 0:
-                message = f"Do you want to remove directory {self.location_combo_box.qt.currentText()!r} from the list?"
+                message = f"Do you want to remove directory {self.locationComboBox.itemText(index)!r} from the list?"
                 result = QtWidgets.QMessageBox.question(self, "Remove directory", message)
                 if result == QtWidgets.QMessageBox.Yes:
-                    self.location_combo_box.qt.removeItem(index)
+                    self.locationComboBox.removeItem(index)
 
-    def update_locations(self):
-        self.remove_button.enabled = len(self.location_combo_box) > 1
-        current_text = self.location_combo_box.qt.currentText().strip()
-        for i in range(self.location_combo_box.qt.count()):
-            if self.location_combo_box.qt.itemText(i).strip() == current_text:
+    def updateLocations(self) -> None:  # TODO
+        self.removeButton.setEnabled(self.locationComboBox.count() > 1)
+        current_text = self.locationComboBox.currentText().strip()
+        for index in range(self.locationComboBox.count()):
+            if self.locationComboBox.itemText(index).strip() == current_text:
                 return
         if current_text:
-            self.location_combo_box.qt.insertItem(0, current_text)
-            self.location_combo_box.qt.setCurrentIndex(0)
+            self.locationComboBox.insertItem(0, current_text)
+            self.locationComboBox.setCurrentIndex(0)
 
 
 class WorkingDirectoryWidget(DirectoryWidget):
 
-    def readSettings(self):
-        self.clear_locations()
+    def readSettings(self) -> None:
+        self.clearLocations()
         locations = settings.output_path
         if not locations:
             locations = [os.path.join(user_home(), "PQC")]
         for location in locations:
-            self.append_location(location)
-        self.location_combo_box.current = settings.current_output_path
-        self.update_locations()
+            self.addLocation(location)
+        index = self.locationComboBox.findText(settings.current_output_path)
+        self.locationComboBox.setCurrentIndex(max(0, index))
+        self.updateLocations()
 
-    def writeSettings(self):
-        self.update_locations()
-        settings.output_path = self.locations
-        settings.current_output_path = self.location_combo_box.current
+    def writeSettings(self) -> None:
+        self.updateLocations()
+        settings.output_path = self.locations()
+        settings.current_output_path = self.currentLocation()
 
 
-class OperatorComboBox(ui.ComboBox):
+class OperatorWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.duplicates_enabled = False
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
-    def readSettings(self):
-        self.clear()
+        self.setTitle("Operator")
+
+        self.operatorComboBox = QtWidgets.QComboBox(self)
+        self.operatorComboBox.setDuplicatesEnabled(False)
+
+        self.addButton = QtWidgets.QToolButton(self)
+        self.addButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
+        self.addButton.setToolTip("Add new operator.")
+        self.addButton.clicked.connect(self.addOperator)
+
+        self.removeButton = QtWidgets.QToolButton(self)
+        self.removeButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
+        self.removeButton.setToolTip("Remove current operator from list.")
+        self.removeButton.clicked.connect(self.removeCurrent)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.operatorComboBox, 1)
+        layout.addWidget(self.addButton)
+        layout.addWidget(self.removeButton)
+
+    def currentOperator(self) -> str:
+        index = self.operatorComboBox.currentIndex()
+        return self.operatorComboBox.itemText(index).strip()
+
+    def addOperator(self) -> None:
+        operator, ok = QtWidgets.QInputDialog.getText(
+            self,
+            "Add operator",
+            "Enter name of operator to add."
+        )
+        if ok:
+            operator = operator.strip()
+            index = self.operatorComboBox.findText(operator)
+            if index < 0:
+                self.operatorComboBox.addItem(operator)
+                index = self.operatorComboBox.findText(operator)
+            self.operatorComboBox.setCurrentIndex(index)
+
+    def removeCurrent(self) -> None:
+        index = self.operatorComboBox.currentIndex()
+        if index >= 0:
+            message = f"Do you want to remove operator {self.operatorComboBox.itemText(index)!r} from the list?"
+            result = QtWidgets.QMessageBox.question(self, "Remove operator", message)
+            if result == QtWidgets.QMessageBox.Yes:
+                self.operatorComboBox.removeItem(index)
+
+    def readSettings(self) -> None:
+        self.operatorComboBox.clear()
         for operator in settings.operators:
-            self.append(operator)
-        self.current = settings.current_operator
+            self.operatorComboBox.addItem(operator.strip())
+        index = self.operatorComboBox.findText(settings.current_operator)
+        self.operatorComboBox.setCurrentIndex(index)
 
-    def writeSettings(self):
-        settings.current_operator = self.current
+    def writeSettings(self) -> None:
+        settings.current_operator = self.operatorComboBox.currentText()
         operators = []
-        for index in range(len(self)):
-            operators.append(self.qt.itemText(index))
+        for index in range(self.operatorComboBox.count()):
+            operators.append(self.operatorComboBox.itemText(index).strip())
         settings.operators = operators
 
 
-class OperatorWidget(ui.Row):
+class PositionsComboBox(QtWidgets.QComboBox):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.operator_combo_box = OperatorComboBox()
-        self.add_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "add.svg"),
-            tool_tip="Add new operator.",
-            clicked=self.on_add_clicked
-        )
-        self.remove_button = ui.ToolButton(
-            icon=make_path("assets", "icons", "delete.svg"),
-            tool_tip="Remove current operator from list.",
-            clicked=self.on_remove_clicked
-        )
-        self.append(self.operator_combo_box)
-        self.append(self.add_button)
-        self.append(self.remove_button)
-
-    def on_add_clicked(self):
-        operator = ui.get_text(
-            text="",
-            title="Add operator",
-            label="Enter name of operator to add."
-        )
-        if operator:
-            if operator not in self.operator_combo_box:
-                self.operator_combo_box.append(operator)
-            self.operator_combo_box.current = operator
-
-    def on_remove_clicked(self):
-        index = self.operator_combo_box.qt.currentIndex()
-        if index >= 0:
-            message = f"Do you want to remove operator {self.operator_combo_box.qt.currentText()!r} from the list?"
-            result = QtWidgets.QMessageBox.question(self, "Remove operator", message)
-            if result == QtWidgets.QMessageBox.Yes:
-                self.operator_combo_box.qt.removeItem(index)
-
-    def readSettings(self):
-        self.operator_combo_box.readSettings()
-
-    def writeSettings(self):
-        self.operator_combo_box.writeSettings()
-
-
-class PositionsComboBox(ui.ComboBox):
-
-    def readSettings(self):
+    def readSettings(self) -> None:
         self.clear()
         for position in settings.table_positions:
-            self.append(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
+            self.addItem(f"{position} ({position.x:.3f}, {position.y:.3f}, {position.z:.3f})")
         index = settings.settings.get("current_table_position") or 0
-        if 0 <= index < len(self):
-            self.current = self[index]
+        self.setCurrentIndex(index)
 
-    def writeSettings(self):
-        index = self.index(self.current or 0)
-        settings.settings["current_table_position"] = index
+    def writeSettings(self) -> None:
+        settings.settings["current_table_position"] = self.currentIndex()

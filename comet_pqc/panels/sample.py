@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core import config
 from ..sequence import SequenceManagerDialog
-from ..utils import handle_exception, make_path
+from ..utils import make_path
 from .panel import BasicPanel
 
 __all__ = ["SamplePanel"]
@@ -17,50 +17,50 @@ class SamplePanel(BasicPanel):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.sampleNamePrefixLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sampleNamePrefixLineEdit = QtWidgets.QLineEdit(self)
         self.sampleNamePrefixLineEdit.setToolTip("Sample name prefix")
         self.sampleNamePrefixLineEdit.setClearButtonEnabled(True)
         self.sampleNamePrefixLineEdit.editingFinished.connect(self.updateSampleName)
 
-        self.sampleNameInfixLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sampleNameInfixLineEdit = QtWidgets.QLineEdit(self)
         self.sampleNameInfixLineEdit.setToolTip("Sample name")
         self.sampleNameInfixLineEdit.setClearButtonEnabled(True)
         self.sampleNameInfixLineEdit.editingFinished.connect(self.updateSampleName)
 
-        self.sampleNameSuffixLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sampleNameSuffixLineEdit = QtWidgets.QLineEdit(self)
         self.sampleNameSuffixLineEdit.setToolTip("Sample name suffix")
         self.sampleNameSuffixLineEdit.setClearButtonEnabled(True)
         self.sampleNameSuffixLineEdit.editingFinished.connect(self.updateSampleName)
 
-        self.sampleTypeLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sampleTypeLineEdit = QtWidgets.QLineEdit(self)
         self.sampleTypeLineEdit.setToolTip("Sample type")
         self.sampleTypeLineEdit.setClearButtonEnabled(True)
         self.sampleTypeLineEdit.editingFinished.connect(self.updateSampleType)
 
-        self.samplePositionLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.samplePositionLineEdit = QtWidgets.QLineEdit(self)
         self.samplePositionLineEdit.setToolTip("Sample position on the chuck")
         self.samplePositionLineEdit.setClearButtonEnabled(True)
         self.samplePositionLineEdit.editingFinished.connect(self.updateSamplePosition)
 
-        self.sequenceLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sequenceLineEdit = QtWidgets.QLineEdit(self)
         self.sequenceLineEdit.setReadOnly(True)
 
-        self.sampleCommentLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.sampleCommentLineEdit = QtWidgets.QLineEdit(self)
         self.sampleCommentLineEdit.setToolTip("Sample comment (optional)")
         self.sampleCommentLineEdit.setClearButtonEnabled(True)
         self.sampleCommentLineEdit.editingFinished.connect(self.updateSampleComment)
 
-        self.reloadSequenceButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.reloadSequenceButton = QtWidgets.QToolButton(self)
         self.reloadSequenceButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "reload.svg")))
         self.reloadSequenceButton.setToolTip("Reload sequence configuration from file.")
         self.reloadSequenceButton.clicked.connect(self.reloadSequence)
 
-        self.editSequenceButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.editSequenceButton = QtWidgets.QToolButton(self)
         self.editSequenceButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "gear.svg")))
         self.editSequenceButton.setToolTip("Open sequence manager")
         self.editSequenceButton.clicked.connect(self.showSequenceManager)
 
-        self.sampleGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.sampleGroupBox = QtWidgets.QGroupBox(self)
         self.sampleGroupBox.setTitle("Sample")
 
         sampleNameLayout = QtWidgets.QHBoxLayout()
@@ -95,7 +95,7 @@ class SamplePanel(BasicPanel):
             self.context.name_prefix = self.sampleNamePrefixLineEdit.text()
             self.context.name_suffix = self.sampleNameSuffixLineEdit.text()
             self.context.sample_type = self.sampleTypeLineEdit.text()
-            self.setTitle(f"Sample &rarr; {self.context.name}")
+            self.setTitle(f"Sample &rarr; {self.context.name()}")
             self.sampleChanged.emit(self.context)
 
     def updateSampleType(self) -> None:
@@ -110,7 +110,7 @@ class SamplePanel(BasicPanel):
 
     def updateSampleComment(self) -> None:
         if self.context:
-            self.context.comment = self.sampleCommentLineEdit.text()
+            self.context.setComment(self.sampleCommentLineEdit.text())
             self.sampleChanged.emit(self.context)
 
     def reloadSequence(self) -> None:
@@ -131,7 +131,7 @@ class SamplePanel(BasicPanel):
             self.sequenceLineEdit.clear()
             sequence = dialog.currentSequence()
             if sequence is not None:
-                self.sequenceLineEdit.setValue(str(sequence.name))
+                self.sequenceLineEdit.setText(str(sequence.name))
                 self.sequenceLineEdit.setToolTip(str(sequence.filename))
                 self.context.load_sequence(sequence)
                 self.sampleChanged.emit(self.context)
@@ -139,14 +139,15 @@ class SamplePanel(BasicPanel):
     def mount(self, context) -> None:
         """Mount measurement to panel."""
         super().mount(context)
-        self.setTitle(f"Sample &rarr; {context.name}")
+        self.setTitle(f"Sample &rarr; {context.name()}")
         self.setDescription("Current halfmoon sample")
+        self.sampleGroupBox.show()
         self.sampleNamePrefixLineEdit.setText(context.name_prefix)
         self.sampleNameInfixLineEdit.setText(context.name_infix)
         self.sampleNameSuffixLineEdit.setText(context.name_suffix)
         self.sampleTypeLineEdit.setText(context.sample_type)
         self.samplePositionLineEdit.setText(context.sample_position)
-        self.sampleCommentLineEdit.setText(context.comment)
+        self.sampleCommentLineEdit.setText(context.comment())
         if context.sequence:
             self.sequenceLineEdit.setText(context.sequence.name)
         else:
@@ -160,4 +161,5 @@ class SamplePanel(BasicPanel):
         self.samplePositionLineEdit.clear()
         self.sampleCommentLineEdit.clear()
         self.sequenceLineEdit.clear()
+        self.sampleGroupBox.hide()
         super().unmount()

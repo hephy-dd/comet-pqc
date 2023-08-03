@@ -3,6 +3,8 @@ import math
 import traceback
 from typing import Callable, Iterable, List, Optional, Union
 
+from PyQt5 import QtGui
+
 from comet import ui
 from comet import ureg
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -17,7 +19,6 @@ __all__ = [
     "format_switch",
     "stitch_pixmaps",
     "create_icon",
-    "handle_exception",
     "format_table_unit",
     "from_table_unit",
     "to_table_unit"
@@ -117,7 +118,7 @@ def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> Q
     return canvas
 
 
-def create_icon(size: int, color: str) -> ui.Icon:
+def create_icon(size: int, color: str) -> QtGui.QIcon:
     """Return circular colored icon."""
     pixmap = QtGui.QPixmap(size, size)
     pixmap.fill(QtGui.QColor("transparent"))
@@ -127,30 +128,7 @@ def create_icon(size: int, color: str) -> ui.Icon:
     painter.setBrush(QtGui.QColor(color))
     painter.drawEllipse(1, 1, size - 2, size - 2)
     del painter
-    return ui.Icon(qt=pixmap)
-
-
-def progress_dialog(callback, *, text=None, maximum=None, parent=None):
-    dialog = QtWidgets.QProgressDialog(parent)
-    dialog.setWindowModality(QtCore.Qt.WindowModal)
-    dialog.setCancelButton(None)
-    dialog.setLabelText(format(text or ""))
-    if maximum is not None:
-        dialog.setMaximum(maximum)
-    QtCore.QTimer.singleShot(200, lambda dialog=dialog: callback(dialog))
-    dialog.exec()
-
-
-def handle_exception(func: Callable) -> Callable:
-    def catch_exception_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exc:
-            tb = traceback.format_exc()
-            logger.error(exc)
-            logger.error(tb)
-            ui.show_exception(exc, tb)
-    return catch_exception_wrapper
+    return QtGui.QIcon(pixmap)
 
 
 def getcal(value: float) -> Union[int, float]:
@@ -165,5 +143,5 @@ def getrm(value: float) -> Union[int, float]:
     return value
 
 
-def caldone_valid(position: Iterable) -> bool:
+def caldone_valid(position: Iterable[float]) -> bool:
     return all(getcal(value) == 1 and getrm(value) == 1 for value in position)

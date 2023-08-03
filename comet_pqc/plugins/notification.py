@@ -49,18 +49,18 @@ class PreferencesWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.webhookUrlLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.webhookUrlLabel = QtWidgets.QLabel(self)
         self.webhookUrlLabel.setText("Webhook URL")
 
-        self.webhookUrlLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.webhookUrlLineEdit = QtWidgets.QLineEdit(self)
 
-        self.webhookNoticeLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.webhookNoticeLabel = QtWidgets.QLabel(self)
         self.webhookNoticeLabel.setOpenExternalLinks(True)
         self.webhookNoticeLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
         self.webhookNoticeLabel.setTextFormat(QtCore.Qt.MarkdownText)
         self.webhookNoticeLabel.setText("See also https://api.slack.com/messaging/webhooks")
 
-        self.slackGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.slackGroupBox = QtWidgets.QGroupBox(self)
         self.slackGroupBox.setTitle("Slack")
 
         slackLayout = QtWidgets.QVBoxLayout(self.slackGroupBox)
@@ -68,12 +68,12 @@ class PreferencesWidget(QtWidgets.QWidget):
         slackLayout.addWidget(self.webhookUrlLineEdit)
         slackLayout.addWidget(self.webhookNoticeLabel)
 
-        self.finishedMessageLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self.finishedMessageLabel = QtWidgets.QLabel(self)
         self.finishedMessageLabel.setText("Sequence finished")
 
-        self.finishedMessageLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self.finishedMessageLineEdit = QtWidgets.QLineEdit(self)
 
-        self.messagesGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.messagesGroupBox = QtWidgets.QGroupBox(self)
         self.messagesGroupBox.setTitle("Messages")
 
         messagesLayout = QtWidgets.QVBoxLayout(self.messagesGroupBox)

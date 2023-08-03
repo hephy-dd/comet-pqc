@@ -24,19 +24,19 @@ class ContactPanel(BasicPanel):
         self.positionWidget = PositionWidget()
         self.positionWidget.setTitle("Contact Position")
 
-        self.moveButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.moveButton = QtWidgets.QPushButton(self)
         self.moveButton.setText("Move")
         self.moveButton.setToolTip("Move table to position with safe Z position.")
         self.moveButton.setEnabled(False)
         self.moveButton.clicked.connect(self.movePosition)
 
-        self.contactButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.contactButton = QtWidgets.QPushButton(self)
         self.contactButton.setText("Contact")
         self.contactButton.setToolTip("Move table to position and contact with sample.")
         self.contactButton.setEnabled(False)
         self.contactButton.clicked.connect(self.contactPosition)
 
-        self.tableControlGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.tableControlGroupBox = QtWidgets.QGroupBox(self)
         self.tableControlGroupBox.setTitle("Table Control")
 
         tableControlGroupBoxLayout = QtWidgets.QVBoxLayout(self.tableControlGroupBox)
@@ -77,6 +77,6 @@ class ContactPanel(BasicPanel):
     def mount(self, context) -> None:
         """Mount measurement to panel."""
         super().mount(context)
-        self.setTitle(f"Contact &rarr; {context.name}")
-        self.setDescription(context.description or "")
+        self.setTitle(f"Contact &rarr; {context.name()}")
+        self.setDescription(context.description() or "")
         self.updatePosition()

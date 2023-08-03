@@ -103,17 +103,18 @@ class TableErrorHandler:
             raise TableCalibrationError("Table requires calibration.")
 
 
-class TableProcess(comet.Process, ResourceMixin):
+class TableProcess(comet.Process):
     """Table process base class."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, resource, **kwargs):
         super().__init__(**kwargs)
+        self.resource = resource
 
     def run(self):
         while self.running:
             logger.info("start serving table...")
             try:
-                with self.resources.get("table") as resource:
+                with self.resource as resource:
                     context = Venus1(resource)
                     try:
                         self.initialize(context)

@@ -64,7 +64,7 @@ class SummaryPlugin:
     def on_summary(self, data: dict) -> None:
         """Push result to summary and write to summary file (experimantal)."""
         item = self.summaryWidget.appendResult(data)
-        output_path = self.window.dashboard.output_dir()
+        output_path = self.window.dashboard.outputDir()
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)

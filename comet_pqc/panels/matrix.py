@@ -27,21 +27,21 @@ class MatrixPanel(Panel):
 
         # Matrix enable
 
-        self.matrixEnableCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.matrixEnableCheckBox = QtWidgets.QCheckBox(self)
         self.matrixEnableCheckBox.setText("Enable Switching")
 
         # Matrix channels
 
-        self.matrixChannelsLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self.matrixChannelsLabel.setText(self.tr("Channels"))
+        self.matrixChannelsLabel = QtWidgets.QLabel(self)
+        self.matrixChannelsLabel.setText("Channels")
 
         self.matrixChannelsEdit = MatrixChannelsEdit(self)
         self.matrixChannelsEdit.setToolTip("Matrix card switching channels, comma separated list.")
 
         # Matrix group box
 
-        self.matrixGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
-        self.matrixGroupBox.setTitle(self.tr("Matrix"))
+        self.matrixGroupBox = QtWidgets.QGroupBox(self)
+        self.matrixGroupBox.setTitle("Matrix")
 
         matrixgroupBoxLayout = QtWidgets.QVBoxLayout(self.matrixGroupBox)
         matrixgroupBoxLayout.addWidget(self.matrixEnableCheckBox)
@@ -50,13 +50,13 @@ class MatrixPanel(Panel):
 
         # Layout
 
-        self.matrixWidget: QtWidgets.QWidget = QtWidgets.QWidget(self)
+        self.matrixWidget = QtWidgets.QWidget(self)
 
         matrixWidgetLayout = QtWidgets.QVBoxLayout(self.matrixWidget)
         matrixWidgetLayout.addWidget(self.matrixGroupBox)
         matrixWidgetLayout.addStretch()
 
-        self.controlTabWidget.addTab(self.matrixWidget, self.tr("Matrix"))
+        self.controlTabWidget.addTab(self.matrixWidget, "Matrix")
 
         # Bindings
 

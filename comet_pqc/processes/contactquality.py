@@ -14,23 +14,23 @@ logger = logging.getLogger(__name__)
 class LCRInstrument:
 
     def __init__(self, resource):
-        self.context = E4980A(resource)
+        self.lcr_driver = E4980A(resource)
 
     def reset(self):
-        self.context.reset()
-        self.context.clear()
+        self.lcr_driver.reset()
+        self.lcr_driver.clear()
         self.check_error()
-        self.context.system.beeper.state = False
+        self.lcr_driver.system.beeper.state = False
         self.check_error()
 
     def safe_write(self, message):
-        self.context.resource.write(message)
-        self.context.resource.query("*OPC?")
+        self.lcr_driver.resource.write(message)
+        self.lcr_driver.resource.query("*OPC?")
         self.check_error()
 
     def check_error(self):
         """Test for error."""
-        code, message = self.context.system.error
+        code, message = self.lcr_driver.system.error
         if code:
             raise RuntimeError(f"LCR Meter error {code}: {message}")
 
@@ -45,7 +45,7 @@ class LCRInstrument:
     def acquire_reading(self):
         """Return primary and secondary LCR reading."""
         self.safe_write(":TRIG:IMM")
-        prim, sec = self.context.fetch()[:2]
+        prim, sec = self.lcr_driver.fetch()[:2]
         return prim, sec
 
 

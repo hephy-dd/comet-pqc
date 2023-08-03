@@ -25,9 +25,9 @@ class TableStepDialog(QtWidgets.QDialog):
         self.sizeLabel.setText("Size")
         self.sizeLabel.setToolTip("Step size in millimeters")
 
-        self.sizeSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.sizeSpinBox.setRange(0, 1000)
+        self.sizeSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.sizeSpinBox.setDecimals(3)
+        self.sizeSpinBox.setRange(0, 1000)
         self.sizeSpinBox.setSuffix(" mm")
 
         self.zLimitLabel = QtWidgets.QLabel(self)
@@ -35,9 +35,9 @@ class TableStepDialog(QtWidgets.QDialog):
         self.zLimitLabel.setToolTip("Z-Limit in millimeters")
         self.zLimitLabel.setVisible(False)
 
-        self._z_limit_number: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self._z_limit_number.setRange(0, 1000)
+        self._z_limit_number = QtWidgets.QDoubleSpinBox(self)
         self._z_limit_number.setDecimals(3)
+        self._z_limit_number.setRange(0, 1000)
         self._z_limit_number.setSuffix(" mm")
         self._z_limit_number.setVisible(False)
 
@@ -47,7 +47,7 @@ class TableStepDialog(QtWidgets.QDialog):
 
         self.colorLineEdit = QtWidgets.QLineEdit(self)
 
-        self.buttonBox: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
@@ -135,7 +135,7 @@ class TableWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.stepsTreeWidget: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
+        self.stepsTreeWidget = QtWidgets.QTreeWidget(self)
         self.stepsTreeWidget.setHeaderLabels(["Size", "Z-Limit", "Color"])
         self.stepsTreeWidget.setRootIsDecorated(False)
         # Hide Z-Limit column
@@ -143,55 +143,55 @@ class TableWidget(QtWidgets.QWidget):
         self.stepsTreeWidget.itemSelectionChanged.connect(self.on_position_selected)
         self.stepsTreeWidget.itemDoubleClicked.connect(self.on_steps_tree_double_clicked)
 
-        self.addStepButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.addStepButton = QtWidgets.QPushButton(self)
         self.addStepButton.setText("&Add")
         self.addStepButton.setToolTip("Add table step")
         self.addStepButton.clicked.connect(self.addStep)
 
-        self.editStepButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editStepButton = QtWidgets.QPushButton(self)
         self.editStepButton.setText("&Edit")
         self.editStepButton.setToolTip("Edit selected table step")
         self.editStepButton.setEnabled(False)
         self.editStepButton.clicked.connect(self.editCurrentStep)
 
-        self.removeStepButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.removeStepButton = QtWidgets.QPushButton(self)
         self.removeStepButton.setText("&Remove")
         self.removeStepButton.setToolTip("Remove selected table step")
         self.removeStepButton.setEnabled(False)
         self.removeStepButton.clicked.connect(self.removeCurrentStep)
 
-        self.zLimitMovementSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.zLimitMovementSpinBox.setRange(0, 128)
+        self.zLimitMovementSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.zLimitMovementSpinBox.setDecimals(3)
+        self.zLimitMovementSpinBox.setRange(0, 128)
         self.zLimitMovementSpinBox.setSuffix(" mm")
 
-        self.xLimitProbecardSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
-        self.yLimitProbecardSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
-        self.zLimitProbecardSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
+        self.xLimitProbecardSpinBox = createPositionSpinBox(self)
+        self.yLimitProbecardSpinBox = createPositionSpinBox(self)
+        self.zLimitProbecardSpinBox = createPositionSpinBox(self)
 
-        self.zLimitNoticeCheckBox: QtWidgets.QCheckBox = QtWidgets.QCheckBox(self)
+        self.zLimitNoticeCheckBox = QtWidgets.QCheckBox(self)
         self.zLimitNoticeCheckBox.setText("Temporary Z-Limit")
         self.zLimitNoticeCheckBox.setToolTip("Select to show temporary Z-Limit notice.")
 
-        self.xLimitJoystickSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
-        self.yLimitJoystickSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
-        self.zLimitJoystickSpinBox: QtWidgets.QDoubleSpinBox = createPositionSpinBox(self)
+        self.xLimitJoystickSpinBox = createPositionSpinBox(self)
+        self.yLimitJoystickSpinBox = createPositionSpinBox(self)
+        self.zLimitJoystickSpinBox = createPositionSpinBox(self)
 
-        self.probecardContactDelaySpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.probecardContactDelaySpinBox.setRange(0, 3600)
+        self.probecardContactDelaySpinBox = QtWidgets.QDoubleSpinBox(self)
         self.probecardContactDelaySpinBox.setDecimals(2)
+        self.probecardContactDelaySpinBox.setRange(0, 3600)
         self.probecardContactDelaySpinBox.setSingleStep(0.1)
         self.probecardContactDelaySpinBox.setSuffix(" s")
 
-        self.recontactOverdriveSpinBox: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.recontactOverdriveSpinBox.setRange(0, 0.025)
+        self.recontactOverdriveSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.recontactOverdriveSpinBox.setDecimals(3)
+        self.recontactOverdriveSpinBox.setRange(0, 0.025)
         self.recontactOverdriveSpinBox.setSingleStep(0.001)
         self.recontactOverdriveSpinBox.setSuffix(" mm")
 
         # Control Steps
 
-        self.stepsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.stepsGroupBox = QtWidgets.QGroupBox(self)
         self.stepsGroupBox.setTitle("Control Steps (mm)")
 
         stepsGroupBoxLayout = QtWidgets.QGridLayout(self.stepsGroupBox)
@@ -204,7 +204,7 @@ class TableWidget(QtWidgets.QWidget):
 
         # Movement Z-Limit
 
-        self.zLimitGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.zLimitGroupBox = QtWidgets.QGroupBox(self)
         self.zLimitGroupBox.setTitle("Movement Z-Limit")
 
         zLimitGroupBoxLayout = QtWidgets.QHBoxLayout(self.zLimitGroupBox)
@@ -213,7 +213,7 @@ class TableWidget(QtWidgets.QWidget):
 
         # Probe Card Limts
 
-        self.probecardLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.probecardLimitsGroupBox = QtWidgets.QGroupBox(self)
         self.probecardLimitsGroupBox.setTitle("Probe Card Limts")
 
         probecardLimitsGroupBoxLayout = QtWidgets.QGridLayout(self.probecardLimitsGroupBox)
@@ -229,7 +229,7 @@ class TableWidget(QtWidgets.QWidget):
 
         # Joystick Limits
 
-        self.joystickLimitsGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.joystickLimitsGroupBox = QtWidgets.QGroupBox(self)
         self.joystickLimitsGroupBox.setTitle("Joystick Limits")
 
         joystickLimitsGroupBoxLayout = QtWidgets.QGridLayout(self.joystickLimitsGroupBox)
@@ -244,7 +244,7 @@ class TableWidget(QtWidgets.QWidget):
 
         # Probecard Contact Delay
 
-        self.contactDelayGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.contactDelayGroupBox = QtWidgets.QGroupBox(self)
         self.contactDelayGroupBox.setTitle("Probecard Contact Delay")
 
         contactDelayGroupBoxLayout = QtWidgets.QHBoxLayout(self.contactDelayGroupBox)
@@ -253,7 +253,7 @@ class TableWidget(QtWidgets.QWidget):
 
         # Re-Contact Z-Overdrive
 
-        self.overdriveGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
+        self.overdriveGroupBox = QtWidgets.QGroupBox(self)
         self.overdriveGroupBox.setTitle("Re-Contact Z-Overdrive (1x)")
 
         overdriveGroupBoxLayout = QtWidgets.QHBoxLayout(self.overdriveGroupBox)

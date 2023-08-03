@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import time
+import threading
 import webbrowser
 from typing import Optional
 
@@ -11,6 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import comet
 from comet.process import ProcessMixin
 
+from .processes.measure import MeasureWorker
 from .components import (
     CalibrationWidget,
     OperatorWidget,
@@ -25,9 +27,9 @@ from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
     MeasurementTreeItem,
-    SamplesItem,
+    SequenceRootTreeItem,
     SampleTreeItem,
-    SequenceTree,
+    SequenceTreeWidget,
     StartSequenceDialog,
     load_all_sequences,
 )
@@ -35,92 +37,48 @@ from .settings import settings
 from .alignment import AlignmentDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
 from .measurementwidget import MeasurementWidget
-from .utils import caldone_valid, handle_exception, create_icon, progress_dialog
+from .utils import caldone_valid
 
 logger = logging.getLogger(__name__)
 
 
 class SequenceWidget(QtWidgets.QGroupBox):
 
-    def __init__(self, *, tree_selected, tree_double_clicked, start_all, start,
-                 stop, reset_sequence_state, edit_sequence):
-        super().__init__()
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
 
         self.setTitle("Sequence")
-        self.tree_double_clicked = tree_double_clicked
+        self.sequenceTreeWidget = SequenceTreeWidget(self)
+        self.sequenceTreeWidget.setMinimumWidth(360)
 
-        self._sequence_tree = SequenceTree(
-            selected=tree_selected,
-            double_clicked=self.tree_double_clicked
-        )
-        self._sequence_tree.qt.setMinimumWidth(360)
-
-        self.startAllAction: QtWidgets.QAction = QtWidgets.QAction(self)
-        self.startAllAction.setText("&All Samples")
-        self.startAllAction.triggered.connect(start_all)
-
-        self.startSampleAction: QtWidgets.QAction = QtWidgets.QAction(self)
-        self.startSampleAction.setText("&Sample")
-        self.startSampleAction.setEnabled(False)
-        self.startSampleAction.triggered.connect(start)
-
-        self.startContactAction: QtWidgets.QAction = QtWidgets.QAction(self)
-        self.startContactAction.setText("&Contact")
-        self.startContactAction.setEnabled(False)
-        self.startContactAction.triggered.connect(start)
-
-        self.startMeasurementAction: QtWidgets.QAction = QtWidgets.QAction(self)
-        self.startMeasurementAction.setText("&Measurement")
-        self.startMeasurementAction.setEnabled(False)
-        self.startMeasurementAction.triggered.connect(start)
-
-        self.startMenu: QtWidgets.QMenu = QtWidgets.QMenu()
-        self.startMenu.addAction(self.startAllAction)
-        self.startMenu.addAction(self.startSampleAction)
-        self.startMenu.addAction(self.startContactAction)
-        self.startMenu.addAction(self.startMeasurementAction)
-
-        self.startButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.startButton = QtWidgets.QPushButton(self)
         self.startButton.setText("Start")
         self.startButton.setToolTip("Start measurement sequence.")
         self.startButton.setStyleSheet("QPushButton:enabled{color:green;font-weight:bold;}")
-        self.startButton.setMenu(self.startMenu)
 
-        self.stopButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.stopButton = QtWidgets.QPushButton(self)
         self.stopButton.setText("Stop")
         self.stopButton.setToolTip("Stop measurement sequence.")
         self.stopButton.setEnabled(False)
         self.stopButton.setStyleSheet("QPushButton:enabled{color:red;font-weight:bold;}")
-        self.stopButton.clicked.connect(stop)
 
-        self.resetButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.resetButton = QtWidgets.QPushButton(self)
         self.resetButton.setText("Reset")
         self.resetButton.setToolTip("Reset measurement sequence state.")
-        self.resetButton.clicked.connect(reset_sequence_state)
 
-        self.editButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.editButton = QtWidgets.QPushButton(self)
         self.editButton.setText("Edit")
         self.editButton.setToolTip("Quick edit properties of sequence items.",)
-        self.editButton.clicked.connect(edit_sequence)
 
-        self.reloadConfigButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
-        self.reloadConfigButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "reload.svg")))
-        self.reloadConfigButton.setToolTip("Reload sequence configurations from file.")
-        self.reloadConfigButton.clicked.connect(self.on_reload_config_clicked)
+        self.reloadConfigButton = QtWidgets.QToolButton(self)
 
-        self.addSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
-        self.addSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
-        self.addSampleButton.setToolTip("Add new sample sequence.")
-        self.addSampleButton.clicked.connect(self.on_add_sample_clicked)
+        self.addSampleButton = QtWidgets.QToolButton(self)
 
-        self.removeSampleButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
-        self.removeSampleButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
-        self.removeSampleButton.setToolTip("Remove current sample sequence.")
-        self.removeSampleButton.clicked.connect(self.on_remove_sample_clicked)
+        self.removeSampleButton = QtWidgets.QToolButton(self)
 
-        self.importButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.importButton = QtWidgets.QToolButton(self)
 
-        self.exportButton: QtWidgets.QToolButton = QtWidgets.QToolButton(self)
+        self.exportButton = QtWidgets.QToolButton(self)
 
         self.buttonLayout = QtWidgets.QHBoxLayout()
         self.buttonLayout.addWidget(self.startButton)
@@ -134,30 +92,29 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.buttonLayout.addWidget(self.exportButton)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self._sequence_tree.qt)
+        layout.addWidget(self.sequenceTreeWidget)
         layout.addLayout(self.buttonLayout)
 
     def readSettings(self):
         samples = settings.settings.get("sequence_samples") or []
-        self._sequence_tree.clear()
+        self.sequenceTreeWidget.clear()
         for kwargs in samples:
             item = SampleTreeItem()
-            self._sequence_tree.append(item)
-            item.expanded = False # do not expand
+            self.sequenceTreeWidget.addTopLevelItem(item)
+            item.setExpanded(False)
             try:
                 item.from_settings(**kwargs)
             except Exception as exc:
                 logger.error(exc)
-        if len(self._sequence_tree):
-            self._sequence_tree.current = self._sequence_tree[0]
-        self._sequence_tree.fit()
+        if self.sequenceTreeWidget.topLevelItemCount():
+            self.sequenceTreeWidget.setCurrentItem(self.sequenceTreeWidget.topLevelItem(0))
+        self.sequenceTreeWidget.resizeColumns()
 
     def writeSettings(self):
-        sequence_samples = [sample.to_settings() for sample in self._sequence_tree]
+        sequence_samples = [sample.to_settings() for sample in self.sequenceTreeWidget.sampleItems()]
         settings.settings["sequence_samples"] = sequence_samples
 
     def setLocked(self, locked: bool) -> None:
-        self._sequence_tree.double_clicked = None if locked else self.tree_double_clicked
         self.startButton.setEnabled(not locked)
         self.stopButton.setEnabled(locked)
         self.resetButton.setEnabled(not locked)
@@ -165,30 +122,36 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.reloadConfigButton.setEnabled(not locked)
         self.addSampleButton.setEnabled(not locked)
         self.removeSampleButton.setEnabled(not locked)
-        self._sequence_tree.setLocked(locked)
+        self.importButton.setEnabled(not locked)
+        self.exportButton.setEnabled(not locked)
+        self.sequenceTreeWidget.setLocked(locked)
 
     def stop(self):
         self.stopButton.setEnabled(False)
 
-    @handle_exception
-    def on_reload_config_clicked(self, state):
+    def reloadConfig(self) -> None:
         result = QtWidgets.QMessageBox.question(self, "Reload Configuration", "Do you want to reload sequence configurations from file?")
         if result == QtWidgets.QMessageBox.Yes:
-            def callback(progress):
-                sample_items = self._sequence_tree
-                progress.setMaximum(len(sample_items))
-                for sample_item in sample_items:
-                    progress.setValue(progress.value() + 1)
-                    if sample_item.sequence:
-                        filename = sample_item.sequence.filename
-                        sequence = config.load_sequence(filename)
-                        sample_item.load_sequence(sequence)
-                progress.close()
+            progress = QtWidgets.QProgressDialog(self)
+            progress.setLabelText("Reloading sequences...")
+            progress.setMaximum(len(self.sequenceTreeWidget.sampleItems()))
+            progress.setCancelButton(None)
 
-            progress_dialog(callback, text="Reloading sequences...", parent=self)
+            def callback():
+                try:
+                    for sample_item in self.sequenceTreeWidget.sampleItems():
+                        progress.setValue(progress.value() + 1)
+                        if sample_item.sequence:
+                            filename = sample_item.sequence.filename
+                            sequence = config.load_sequence(filename)
+                            sample_item.load_sequence(sequence)
+                finally:
+                    progress.close()
 
-    @handle_exception
-    def on_add_sample_clicked(self, state):
+            QtCore.QTimer.singleShot(200, callback)
+            progress.exec()
+
+    def addSampleItem(self) -> None:
         item = SampleTreeItem(
             name_prefix="",
             name_infix="Unnamed",
@@ -196,17 +159,17 @@ class SequenceWidget(QtWidgets.QGroupBox):
             sample_type="",
             enabled=False
         )
-        self._sequence_tree.append(item)
-        self._sequence_tree.fit()
-        self._sequence_tree.current = item
+        self.sequenceTreeWidget.addSampleItem(item)
+        self.sequenceTreeWidget.setCurrentItem(item)
+        self.sequenceTreeWidget.resizeColumns()
 
-    @handle_exception
-    def on_remove_sample_clicked(self, state):
-        item = self._sequence_tree.current
-        if item in self._sequence_tree:
-            result = QtWidgets.QMessageBox.question(self, "Remove Sample", f"Do you want to remove {item.name!r}?")
+    def removeCurrentSampleItem(self) -> None:
+        item = self.sequenceTreeWidget.currentItem()
+        if isinstance(item, SampleTreeItem):
+            result = QtWidgets.QMessageBox.question(self, "Remove Sample", f"Do you want to remove {item.name()!r}?")
             if result == QtWidgets.QMessageBox.Yes:
-                self._sequence_tree.remove(item)
+                index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+                self.sequenceTreeWidget.takeTopLevelItem(index)
 
 
 class TableControlWidget(QtWidgets.QGroupBox):
@@ -228,7 +191,7 @@ class TableControlWidget(QtWidgets.QGroupBox):
 
         self.calibrationWidget = CalibrationWidget()
 
-        self.alignmentButton: QtWidgets.QPushButton = QtWidgets.QPushButton(self)
+        self.alignmentButton = QtWidgets.QPushButton(self)
         self.alignmentButton.setIcon(QtGui.QIcon(make_path("assets", "icons", "alignment.svg")))
         self.alignmentButton.setText("Alignment...")
         self.alignmentButton.setToolTip("Open table controls dialog.")
@@ -343,6 +306,26 @@ class EnvironmentControlWidget(QtWidgets.QGroupBox):
         self.pidControlButton.setChecked(state)
 
 
+class AnimatedLabel(QtWidgets.QLabel):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.animation = QtCore.QVariantAnimation()
+        self.animation.setStartValue(QtGui.QColor('yellow'))
+        self.animation.setKeyValueAt(0.5, QtGui.QColor('orange'))
+        self.animation.setEndValue(QtGui.QColor('yellow'))
+        self.animation.setDuration(4000)
+        self.animation.valueChanged.connect(self.updateColor)
+        self.animation.setLoopCount(-1)
+        self.animation.start()
+
+    def updateColor(self, color):
+        palette = self.palette()
+        palette.setColor(self.backgroundRole(), QtGui.QColor(color))
+        self.setPalette(palette)
+        self.setAutoFillBackground(True)
+
+
 class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     sample_count = 4
@@ -354,30 +337,25 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     finished = QtCore.pyqtSignal()
     failed = QtCore.pyqtSignal(Exception, object)
 
-    def __init__(self, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, station, plugins, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
+        self.station = station
         self.plugins = plugins
 
-        self.noticeLabel: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self.noticeLabel.setText("Temporary Probecard Z-Limit applied. Revert after finishing current measurements.")
-        self.noticeLabel.setStyleSheet("QLabel{color: black; background-color: yellow; padding: 4px; border-radius: 4px;}")
-        self.noticeLabel.setVisible(False)
+        self.measure_thread = None
 
-        self.sequenceWidget: SequenceWidget = SequenceWidget(
-            tree_selected=self.on_tree_selected,
-            tree_double_clicked=self.on_tree_double_clicked,
-            start_all=self.on_start_all,
-            start=self.on_start,
-            stop=self.on_stop,
-            reset_sequence_state=self.on_reset_sequence_state,
-            edit_sequence=self.on_edit_sequence
-        )
-        self.sequenceTreeWidget = self.sequenceWidget._sequence_tree.qt
-        self.sequence_tree = self.sequenceWidget._sequence_tree
-        self.startAllAction = self.sequenceWidget.startAllAction
-        self.startSampleAction = self.sequenceWidget.startSampleAction
-        self.startContactAction = self.sequenceWidget.startContactAction
-        self.startMeasurementAction = self.sequenceWidget.startMeasurementAction
+        self.noticeLabel = AnimatedLabel(self)
+        self.noticeLabel.setText("Temporary Probecard Z-Limit applied. Revert after finishing current measurements.")
+        # self.noticeLabel.setStyleSheet("QLabel{color: black; background-color: yellow; padding: 8px; border-radius: 0;}")
+        self.noticeLabel.setStyleSheet("QLabel{color: black; padding: 8px; border-radius: 0;}")
+        self.noticeLabel.setVisible(False)
+        self.noticeLabel.animation.start()
+
+        self.sequenceControlWidget = SequenceWidget(self)
+
+        self.sequenceTreeWidget = self.sequenceControlWidget.sequenceTreeWidget
+        self.sequenceTreeWidget.currentItemChanged.connect(self.on_tree_selected)
+        self.sequenceTreeWidget.itemDoubleClicked.connect(self.on_tree_double_clicked)
 
         # Environment Controls
 
@@ -394,31 +372,19 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         # Table controls
 
-        self.table_control_widget: TableControlWidget = TableControlWidget(self)
-        self.table_control_widget.toggled.connect(self.on_table_groupbox_toggled)
-        self.table_control_widget.joystickToggled.connect(self.on_table_joystick_toggled)
-        self.table_control_widget.controlClicked.connect(self.on_table_control_clicked)
+        self.tableControlWidget = TableControlWidget(self)
+        self.tableControlWidget.toggled.connect(self.on_table_groupbox_toggled)
+        self.tableControlWidget.joystickToggled.connect(self.on_table_joystick_toggled)
+        self.tableControlWidget.controlClicked.connect(self.on_table_control_clicked)
 
         # Operator
 
-        self.operator_widget = OperatorWidget()
-        self.operator_widget.readSettings()
-
-        self.operatorGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
-        self.operatorGroupBox.setTitle("Operator")
-
-        operatorGroupBoxLayout = QtWidgets.QVBoxLayout(self.operatorGroupBox)
-        operatorGroupBoxLayout.addWidget(self.operator_widget.qt)
+        self.operatorWidget = OperatorWidget(self)
 
         # Working directory
 
-        self.output_widget = WorkingDirectoryWidget()
-
-        self.outputGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self)
-        self.outputGroupBox.setTitle("Working Directory")
-
-        outputGroupBoxLayout = QtWidgets.QVBoxLayout(self.outputGroupBox)
-        outputGroupBoxLayout.addWidget(self.output_widget.qt)
+        self.outputWidget = WorkingDirectoryWidget(self)
+        self.outputWidget.setTitle("Working Directory")
 
         # Controls
 
@@ -426,11 +392,11 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         controlWidgetLayout = QtWidgets.QGridLayout(self.controlWidget)
         controlWidgetLayout.setContentsMargins(0, 0, 0, 0)
-        controlWidgetLayout.addWidget(self.sequenceWidget, 0, 0, 1, 2)
-        controlWidgetLayout.addWidget(self.table_control_widget, 1, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.sequenceControlWidget, 0, 0, 1, 2)
+        controlWidgetLayout.addWidget(self.tableControlWidget, 1, 0, 1, 2)
         controlWidgetLayout.addWidget(self.environmentControlWidget, 2, 0, 1, 2)
-        controlWidgetLayout.addWidget(self.operatorGroupBox, 3, 0, 1, 1)
-        controlWidgetLayout.addWidget(self.outputGroupBox, 3, 1, 1, 1)
+        controlWidgetLayout.addWidget(self.operatorWidget, 3, 0, 1, 1)
+        controlWidgetLayout.addWidget(self.outputWidget, 3, 1, 1, 1)
         controlWidgetLayout.setRowStretch(0, 1)
         controlWidgetLayout.setColumnStretch(0, 3)
         controlWidgetLayout.setColumnStretch(1, 7)
@@ -443,7 +409,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.environmentWidget = EnvironmentWidget()
 
         self.panels = self.measurementWidget.panels
-        self.panels.sampleChanged.connect(lambda _: self.sequence_tree.fit())
+        self.panels.sampleChanged.connect(lambda _: self.sequenceTreeWidget.resizeColumns())
 
         # Tabs
 
@@ -461,59 +427,53 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.splitter.setStretchFactor(1, 9)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         layout.addWidget(self.noticeLabel, 0)
-        layout.addWidget(self.splitter, 1)
+        self.splitterWrapper = QtWidgets.QWidget()
+        layout.addWidget(self.splitterWrapper, 1)
+        wrapperLayout = QtWidgets.QVBoxLayout(self.splitterWrapper)
+        wrapperLayout.addWidget(self.splitter)
 
         # Setup process callbacks
 
-        self.environ_process = self.processes.get("environ")
-        self.environ_process.pc_data_updated = self.on_pc_data_updated
+        self.environ_process = self.station.environ_process
+        self.environ_process.pc_data_updated = self.setPCData
         self.environ_process.failed = self.failed.emit
 
-        self.table_process = self.processes.get("table")
+        self.table_process = self.station.table_process
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed
         self.table_process.caldone_changed = self.on_table_calibration_changed
         self.table_process.failed = self.failed.emit
 
-        self.measure_process = self.processes.get("measure")
-        self.measure_process.finished = self.on_finished
-        self.measure_process.measurement_state = self.on_measurement_state
-        self.measure_process.measurement_reset = self.on_measurement_reset
-        self.measure_process.save_to_image = self.on_save_to_image
-        self.measure_process.failed = self.failed.emit
-        self.measure_process.message = self.messageChanged.emit
-        self.measure_process.progress = self.progressChanged.emit
-
         self.contact_quality_process = self.processes.get("contact_quality")
         self.contact_quality_process.failed = self.failed.emit
 
-    @handle_exception
     def readSettings(self):
         settings_ = QtCore.QSettings()
         settings_.beginGroup("dashboard")
         self.splitter.restoreState(settings_.value("splitterState", QtCore.QByteArray(), QtCore.QByteArray))
         settings_.endGroup()
 
-        self.sequenceWidget.readSettings()
+        self.sequenceControlWidget.readSettings()
         use_environ = settings.settings.get("use_environ", False)
         self.environmentControlWidget.setChecked(use_environ)
-        self.table_control_widget.readSettings()
-        self.operator_widget.readSettings()
-        self.output_widget.readSettings()
+        self.tableControlWidget.readSettings()
+        self.operatorWidget.readSettings()
+        self.outputWidget.readSettings()
 
-    @handle_exception
     def writeSettings(self):
         settings_ = QtCore.QSettings()
         settings_.beginGroup("dashboard")
         settings_.setValue("splitterState", self.splitter.saveState())
         settings_.endGroup()
 
-        self.sequenceWidget.writeSettings()
+        self.sequenceControlWidget.writeSettings()
         settings.settings["use_environ"] = self.isEnvironmentEnabled()
         settings.settings["use_table"] = self.isTableEnabled()
-        self.operator_widget.writeSettings()
-        self.output_widget.writeSettings()
+        self.operatorWidget.writeSettings()
+        self.outputWidget.writeSettings()
 
     def sequenceItems(self) -> list:
         items = []
@@ -528,26 +488,20 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def addSequenceItem(self, item: SampleTreeItem) -> None:
         self.sequenceTreeWidget.addTopLevelItem(item)
 
-    def resizeSequenceColumns(self) -> None:
-        self.sequenceTreeWidget.resizeColumnToContents(0)
-        self.sequenceTreeWidget.resizeColumnToContents(1)
-        self.sequenceTreeWidget.resizeColumnToContents(2)
-        self.sequenceTreeWidget.resizeColumnToContents(3)
-
     def sample_name(self):
         """Return sample name."""
-        item = self.sequence_tree.current
+        item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, MeasurementTreeItem):
-            return item.contact.sample.name
+            return item.contact.sample.name()
         if isinstance(item, ContactTreeItem):
-            return item.sample.name
+            return item.sample.name()
         if isinstance(item, SampleTreeItem):
-            return item.name
+            return item.name()
         return ""
 
     def sample_type(self):
         """Return sample type."""
-        item = self.sequence_tree.current
+        item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, MeasurementTreeItem):
             return item.contact.sample.sample_type
         if isinstance(item, ContactTreeItem):
@@ -570,21 +524,21 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def isTableEnabled(self) -> bool:
         """Return True if table control enabled."""
-        return self.table_control_widget.isChecked()
+        return self.tableControlWidget.isChecked()
 
-    def operator(self):
+    def currentOperator(self) -> str:
         """Return current operator."""
-        return self.operator_widget.operator_combo_box.qt.currentText().strip()
+        return self.operatorWidget.currentOperator()
 
-    def output_dir(self):
+    def outputDir(self) -> str:
         """Return output base path."""
-        return os.path.realpath(self.output_widget.current_location)
+        return os.path.realpath(self.outputWidget.currentLocation())
 
     def create_output_dir(self):
         """Create output directory for sample if not exists, return directory
         path.
         """
-        output_dir = self.output_dir()
+        output_dir = self.outputDir()
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return output_dir
@@ -597,55 +551,55 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def setControlsLocked(self, locked: bool) -> None:
         """Lock or unlock dashboard controls."""
         self.environmentControlWidget.setEnabled(not locked)
-        self.table_control_widget.setEnabled(not locked)
-        self.sequenceWidget.setLocked(locked)
-        self.outputGroupBox.setEnabled(not locked)
-        self.operatorGroupBox.setEnabled(not locked)
+        self.tableControlWidget.setEnabled(not locked)
+        self.sequenceControlWidget.setLocked(locked)
+        self.outputWidget.setEnabled(not locked)
+        self.operatorWidget.setEnabled(not locked)
         self.measurementWidget.setLocked(locked)
         self.plugins.handle("lock_controls", locked)
 
     def setNoticeVisible(self, visible: bool) -> None:
         self.noticeLabel.setVisible(visible)
+        if visible:
+            self.noticeLabel.animation.start()
+        else:
+            self.noticeLabel.animation.stop()
 
     # Sequence control
 
-    def on_tree_selected(self, item):
+    def on_tree_selected(self, item, previous) -> None:
+        if not self.operatorWidget.isEnabled():
+            return  # TODO
         self.panels.store()
         self.panels.unmount()
         self.panels.clear()
         self.panels.hide()
         self.measurementWidget.setControlsVisible(False)
-        self.startSampleAction.setEnabled(False)
-        self.startContactAction.setEnabled(False)
-        self.startMeasurementAction.setEnabled(False)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
             panel.mount(item)
-            self.startSampleAction.setEnabled(True)
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.setVisible(True)
             panel.tableMoveRequested.connect(self.moveTable)
             panel.tableContactRequested.connect(self.contactTable)
             panel.mount(item)
-            self.startContactAction.setEnabled(True)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
             if panel:
                 panel.setVisible(True)
                 panel.mount(item)
                 self.measurementWidget.setControlsVisible(True)
-                self.startMeasurementAction.setEnabled(True)
         # Show measurement tab
         self.tabWidget.setCurrentWidget(self.measurementWidget)
 
     def on_tree_double_clicked(self, item, index):
-        self.on_start()
+        if self.operatorWidget.isEnabled(): # TODO
+            self.on_start()
 
     # Contcat table controls
 
-    @handle_exception
     def moveTable(self, contact) -> None:
         if self.isTableEnabled():
             self.setControlsLocked(True)
@@ -655,7 +609,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.table_process.absolute_move_finished = self.on_table_finished
             self.table_process.safe_absolute_move(x, y, z)
 
-    @handle_exception
     def contactTable(self, contact) -> None:
         if self.isTableEnabled():
             self.setControlsLocked(True)
@@ -668,7 +621,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def on_table_finished(self):
         self.table_process.absolute_move_finished = None
-        current_item = self.sequence_tree.current
+        current_item = self.sequenceTreeWidget.currentItem()
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
@@ -680,17 +633,17 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.setControlsLocked(False)
 
     def on_start_all(self):
-        sample_items = SamplesItem(self.sequence_tree)
+        sample_items = SequenceRootTreeItem(self.sequenceTreeWidget.sampleItems())
         dialog = StartSequenceDialog(self)
         dialog.setMessage("<b>Are you sure to start all enabled sequences for all enabled samples?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
-        self.operator_widget.writeSettings()
-        self.output_widget.writeSettings()
+        self.operatorWidget.writeSettings()
+        self.outputWidget.writeSettings()
         dialog.readSettings()
         if dialog.exec() == dialog.Accepted:
             dialog.writeSettings()
-            self.operator_widget.readSettings()
-            self.output_widget.readSettings()
+            self.operatorWidget.readSettings()
+            self.outputWidget.readSettings()
             self._on_start(
                 sample_items,
                 move_to_contact=dialog.isMoveToContact(),
@@ -699,23 +652,23 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def startMeasurement(self, item: MeasurementTreeItem) -> None:
         contact_item = item.contact
-        message = f"Are you sure to run measurement {item.name!r} for {contact_item.name!r}?"
+        message = f"Are you sure to run measurement {item.name()!r} for {contact_item.name()!r}?"
         result = QtWidgets.QMessageBox.question(self, "Run Measurement", message)
         if result == QtWidgets.QMessageBox.Yes:
             self._on_start(item)
 
     def startContact(self, item: ContactTreeItem) -> None:
         dialog = StartSequenceDialog(self)
-        dialog.setMessage(f"<b>Are you sure to start sequence {item.name!r}?</b>")
+        dialog.setMessage(f"<b>Are you sure to start sequence {item.name()!r}?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
         # TODO
-        self.operator_widget.writeSettings()
-        self.output_widget.writeSettings()
+        self.operatorWidget.writeSettings()
+        self.outputWidget.writeSettings()
         dialog.readSettings()
         if dialog.exec() == dialog.Accepted:
             dialog.writeSettings()
-            self.operator_widget.readSettings()
-            self.output_widget.readSettings()
+            self.operatorWidget.readSettings()
+            self.outputWidget.readSettings()
             self._on_start(
                 item,
                 move_to_contact=dialog.isMoveToContact(),
@@ -724,16 +677,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def startSample(self, item: SampleTreeItem) -> None:
         dialog = StartSequenceDialog(self)
-        dialog.setMessage(f"<b>Are you sure to start all enabled sequences for {item.name!r}?</b>")
+        dialog.setMessage(f"<b>Are you sure to start all enabled sequences for {item.name()!r}?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
         # TODO
-        self.operator_widget.writeSettings()
-        self.output_widget.writeSettings()
+        self.operatorWidget.writeSettings()
+        self.outputWidget.writeSettings()
         dialog.readSettings()
         if dialog.exec() == dialog.Accepted:
             dialog.writeSettings()
-            self.operator_widget.readSettings()
-            self.output_widget.readSettings()
+            self.operatorWidget.readSettings()
+            self.outputWidget.readSettings()
             self._on_start(
                 item,
                 move_to_contact=dialog.isMoveToContact(),
@@ -743,7 +696,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def on_start(self) -> None:
         # Store settings
         self.writeSettings()
-        item = self.sequence_tree.current
+        item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, MeasurementTreeItem):
             self.startMeasurement(item)
         elif isinstance(item, ContactTreeItem):
@@ -760,123 +713,153 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.create_output_dir()
         self.switch_off_lights()
         self.sync_environment_controls()
-        measure = self.measure_process
-        measure.context = item
-        measure.set("table_position", self.table_position())
-        measure.set("operator", self.operator())
-        measure.set("output_dir", self.output_dir())
-        measure.set("write_logfiles", self.write_logfiles())
-        measure.set("use_environ", self.isEnvironmentEnabled())
-        measure.set("use_table", self.isTableEnabled())
-        measure.set("serialize_json", settings.export_json)
-        measure.set("serialize_txt", settings.export_txt)
-        measure.set("move_to_contact", move_to_contact)
-        measure.set("move_to_after_position", move_to_after_position)
-        measure.set("contact_delay", settings.settings.get("table_contact_delay") or 0)
-        measure.set("retry_contact_overdrive", settings.retry_contact_overdrive)
-        def show_measurement(item):
-            item.selectable = True
-            item.series.clear()
-            item[0].color = "blue"
-            self.sequence_tree.scroll_to(item)
-            self.panels.unmount()
-            self.panels.hide()
-            self.panels.clear()
-            panel = self.panels.get(item.type)
-            panel.setVisible(True)
-            panel.mount(item)
-            measure.reading = panel.append_reading
-            measure.update = panel.update_readings
-            measure.append_analysis = panel.append_analysis
-            measure.state = panel.state
-        def hide_measurement(item):
-            item.selectable = False
-            item[0].color = None
-        measure.show_measurement = show_measurement
-        measure.hide_measurement = hide_measurement
-        measure.push_summary = self.on_push_summary
-        measure.measurements_finished = self.on_measurements_finished
-        measure.start()
 
-    def on_measurement_state(self, item, state=None):
-        item.state = state
-        self.sequence_tree.fit()
+        config = {
+            "table_position": self.table_position(),  # TODO state
+            "table_contact_delay": settings.settings.get("table_contact_delay", 0),  # TODO
+            "retry_contact_overdrive": settings.retry_contact_overdrive,
+            "write_logfiles": self.write_logfiles(),
+            "serialize_json": settings.export_json,
+            "serialize_txt": settings.export_txt,
+            "use_environ": self.isEnvironmentEnabled(),
+            "use_table": self.isTableEnabled(),
+            "move_to_contact": move_to_contact,
+            "move_to_after_position": move_to_after_position,
+            "operator": self.currentOperator(),
+            "output_dir": self.outputDir(),
+        }
 
-    def on_measurement_reset(self, item):
+        worker = MeasureWorker(self.station, config, item)
+        worker.failed.connect(lambda exc: self.failed.emit(exc, None))
+        worker.finished.connect(self.on_finished)
+        worker.message_changed.connect(self.messageChanged.emit)
+        worker.progress_changed.connect(self.progressChanged.emit)
+        worker.item_state_changed.connect(self.setItemState)
+        worker.item_reset.connect(self.resetItem)
+        worker.item_visible.connect(self.showItem)
+        worker.item_hidden.connect(self.hideItem)
+        worker.save_to_image.connect(self.safeToImage)
+        worker.summary_pushed.connect(self.pushSummary)
+        worker.finished.connect(self.sequenceFinished)
+        worker.reading_appended.connect(self.appendReading)
+        worker.readings_updated.connect(self.updateReadings)
+        worker.analysis_appended.connect(self.appendAnalysis)
+        worker.state_changed.connect(self.updateState)
+        self.aborting.connect(worker.abort)
+
+        self.measure_thread = threading.Thread(target=worker)
+        self.measure_thread.start()
+
+    def appendReading(self, name, x, y):
+        if self._panel:
+            self._panel.appendReading(name, x, y)
+
+    def updateReadings(self):
+        if self._panel:
+            self._panel.updateReadings()
+
+    def appendAnalysis(self, key, value):
+        if self._panel:
+            self._panel.appendAnalysis(key, value)
+
+    def updateState(self, *args):
+        if self._panel:
+            self._panel.updateState(*args)
+
+    def setItemState(self, item, state) -> None:
+        item.setState(state)
+        self.sequenceTreeWidget.resizeColumns()
+
+    def resetItem(self, item) -> None:
         item.reset()
-        self.sequence_tree.fit()
+        self.sequenceTreeWidget.resizeColumns()
 
-    def on_save_to_image(self, item, filename):
+    def showItem(self, item) -> None:
+        item.setSelectable(True)
+        item.series.clear()
+        item.setForeground(0, QtGui.QBrush(QtGui.QColor("blue")))
+        self.sequenceTreeWidget.scrollToItem(item)
+        self.panels.unmount()
+        self.panels.hide()
+        self.panels.clear()
+        panel = self.panels.get(item.type)
+        panel.setVisible(True)
+        panel.mount(item)
+        self._panel = panel
+
+    def hideItem(self, item) -> None:
+        item.setSelectable(False)
+        item.setForeground(0, QtGui.QBrush())
+
+    def safeToImage(self, item, filename) -> None:
         plot_png = settings.settings.get("png_plots") or False
         panel = self.panels.get(item.type)
         if panel and plot_png:
-            panel.save_to_image(filename)
+            panel.saveToImage(filename)
 
     def on_stop(self):
-        self.sequenceWidget.stop()
-        self.measure_process.stop()
+        self.sequenceControlWidget.stop()
         self.aborting.emit()
 
     def on_finished(self):
         self.sync_environment_controls()
         self.finished.emit()
+        self.measure_thread = None
 
-    @handle_exception
-    def on_reset_sequence_state(self, state=None):
+    def on_reset_sequence_state(self):
         result = QtWidgets.QMessageBox.question(self, "Reset State", "Do you want to reset all sequence states?")
         if result == QtWidgets.QMessageBox.Yes:
-            current_item = self.sequence_tree.current
+            current_item = self.sequenceTreeWidget.currentItem()
+            self._panel = None
             self.panels.unmount()
             self.panels.clear()
             self.panels.hide()
-            for sample_item in self.sequence_tree:
+            for sample_item in self.sequenceTreeWidget.sampleItems():
                 sample_item.reset()
             if current_item is not None:
                 panel = self.panels.get(current_item.type)
                 panel.setVisible(True)
                 panel.mount(current_item)
 
-    @handle_exception
-    def on_edit_sequence(self, state=None):
+    def on_edit_sequence(self):
         sequences = load_all_sequences(settings.settings)
-        dialog = EditSamplesDialog(self.sequence_tree, sequences)
+        dialog = EditSamplesDialog(self.sequenceTreeWidget.sampleItems(), sequences)
         dialog.run()
-        self.on_tree_selected(self.sequence_tree.current)
+        self.on_tree_selected(self.sequenceTreeWidget.currentItem(), None)
 
     # Measurement control
 
     def restoreDefaults(self) -> None:
         result = QtWidgets.QMessageBox.question(self, "Restore Defaults", "Do you want to restore to default parameters?")
         if result == QtWidgets.QMessageBox.Yes:
-            measurement = self.sequence_tree.current
-            panel = self.panels.get(measurement.type)
-            panel.restore()
+            item = self.sequenceTreeWidget.currentItem()
+            if isinstance(item, MeasurementTreeItem):
+                panel = self.panels.get(item.type)
+                panel.restore()
 
     # Table calibration
 
-    @handle_exception
     def on_table_joystick_toggled(self, state: bool) -> None:
         self.table_process.enable_joystick(state)
 
     def on_table_joystick_changed(self, state):
-        self.table_control_widget.setJoystickEnabled(state)
+        self.tableControlWidget.setJoystickEnabled(state)
 
     def on_table_position_changed(self, position):
-        self.table_control_widget.setPosition(position)
+        self.tableControlWidget.setPosition(position)
 
     def on_table_calibration_changed(self, position):
-        self.table_control_widget.setCalibration(position)
+        self.tableControlWidget.setCalibration(position)
         panel = self.panels.get("contact")
         if panel:
-            enabled = self.isTableEnabled() and self.table_control_widget.isCalibrationValid()
+            enabled = self.isTableEnabled() and self.tableControlWidget.isCalibrationValid()
             panel.setTableEnabled(enabled)
 
-    @handle_exception
     def on_table_control_clicked(self) -> None:
         self.table_process.enable_joystick(False)
         dialog = AlignmentDialog(self.table_process, self.contact_quality_process)
         dialog.readSettings()
-        dialog.loadSamples(list(self.sequence_tree)) # HACK
+        dialog.loadSamples(self.sequenceTreeWidget.sampleItems())
         if self.isEnvironmentEnabled():
             # TODO !!!
             with self.environ_process as environ:
@@ -895,7 +878,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         dialog.writeSettings()
         dialog.updateSamples()
         # Prevent glitch
-        current_item = self.sequence_tree.current
+        current_item = self.sequenceTreeWidget.currentItem()
         if isinstance(current_item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.mount(current_item)
@@ -903,58 +886,48 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_process.joystick_changed = self.on_table_joystick_changed
         self.table_process.position_changed = self.on_table_position_changed
         self.table_process.caldone_changed = self.on_table_calibration_changed
-        self.sync_table_controls()
+        self.syncTableControls()
         # Store settings
         self.writeSettings()
 
-    @handle_exception
     def on_laser_sensor_toggled(self, state):
         with self.environ_process as environment:
             environment.set_laser_sensor(state)
 
-    @handle_exception
     def on_box_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_box_light(state)
 
-    @handle_exception
     def on_microscope_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_light(state)
 
-    @handle_exception
     def on_microscope_camera_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_camera(state)
 
-    @handle_exception
     def on_microscope_control_toggled(self, state):
         with self.environ_process as environment:
             environment.set_microscope_control(state)
 
-    @handle_exception
     def on_probecard_light_toggled(self, state):
         with self.environ_process as environment:
             environment.set_probecard_light(state)
 
-    @handle_exception
     def on_probecard_camera_toggled(self, state):
         with self.environ_process as environment:
             environment.set_probecard_camera(state)
 
-    @handle_exception
     def on_pid_control_toggled(self, state):
         with self.environ_process as environment:
             environment.set_pid_control(state)
 
-    @handle_exception
     def switch_off_lights(self):
         if self.isEnvironmentEnabled():
             with self.environ_process as environment:
                 if environment.has_lights():
                     environment.dim_lights()
 
-    @handle_exception
     def sync_environment_controls(self):
         """Syncronize environment controls."""
         if self.isEnvironmentEnabled():
@@ -964,7 +937,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         else:
             self.environmentWidget.setEnabled(False)
 
-    def on_pc_data_updated(self, pc_data):
+    def setPCData(self, pc_data):
         self.environmentControlWidget.updateLaserSensorState(pc_data.relay_states.laser_sensor)
         self.environmentControlWidget.updateBoxLightState(pc_data.relay_states.box_light)
         self.environmentControlWidget.updateMicroscopeLightState(pc_data.relay_states.microscope_light)
@@ -981,8 +954,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             t = 0
         self.environmentWidget.appendData(t, pc_data)
 
-    @handle_exception
-    def sync_table_controls(self):
+    def syncTableControls(self):
         """Syncronize table controls."""
         enabled = self.isTableEnabled()
         self.table_process.enabled = enabled
@@ -1004,13 +976,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.table_process.enable_joystick(False)
         else:
             self.table_process.stop()
-        self.sync_table_controls()
+        self.syncTableControls()
 
-    @handle_exception
-    def on_push_summary(self, data: dict) -> None:
+    def pushSummary(self, data: dict) -> None:
         self.plugins.handle("summary", data=data)
 
-    @handle_exception
-    def on_measurements_finished(self) -> None:
+    def sequenceFinished(self) -> None:
         message = "PQC measurements finished!"
         self.plugins.handle("notification", message=message)
+
+    def shutdown(self):
+        if self.measure_thread:
+            self.on_stop()
+            self.measure_thread.join()

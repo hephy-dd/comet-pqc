@@ -1,10 +1,9 @@
+import threading
 from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-from comet import ui
-
-from .process import StatusProcess
+from .worker import StatusWorker
 
 __all__ = ["StatusPlugin"]
 
@@ -13,13 +12,7 @@ class StatusPlugin:
 
     def __init__(self, window) -> None:
         self.window = window
-        self.process = StatusProcess(
-            failed=self.window.showException,
-            message=self.window.showMessage,
-            progress=self.window.showProgress,
-            finished = self.worker_finished,
-        )
-        self.window.processes.add("status", self.process)
+        self.thread = None
 
     def on_install(self) -> None:
         self.statusWidget = StatusWidget()
@@ -36,14 +29,26 @@ class StatusPlugin:
     def start_worker(self) -> None:
         self.window.dashboard.setControlsLocked(True)
         self.statusWidget.clearStatus()
-        self.process.set("use_environ", self.window.dashboard.isEnvironmentEnabled())
-        self.process.set("use_table", self.window.dashboard.isTableEnabled())
-        self.process.start()
+        worker = StatusWorker(self.window.station)
+        worker.messageChanged.connect(self.window.showMessage)
+        worker.progressChanged.connect(self.window.showProgress)
+        worker.dataChanged.connect(self.worker_update_data)
+        worker.failed.connect(self.window.showException)
+        worker.finished.connect(self.worker_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.config.update({
+            "use_environ": self.window.dashboard.isEnvironmentEnabled(),
+            "use_table": self.window.dashboard.isTableEnabled(),
+        })
+        self.thread = threading.Thread(target=worker)
+        self.thread.start()
         # Fix: stay in status tab
         self.window.dashboard.tabWidget.setCurrentWidget(self.statusWidget)
 
+    def worker_update_data(self, data) -> None:
+        self.statusWidget.updateStatus(data)
+
     def worker_finished(self) -> None:
-        self.statusWidget.updateStatus(self.process)
         self.statusWidget.setLocked(False)
         self.window.dashboard.setControlsLocked(False)
 
@@ -58,76 +63,76 @@ class StatusWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
-        self.matrixModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.matrixModelLineEdit = QtWidgets.QLineEdit()
         self.matrixModelLineEdit.setReadOnly(True)
 
-        self.matrixChannelsLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.matrixChannelsLineEdit = QtWidgets.QLineEdit()
         self.matrixChannelsLineEdit.setReadOnly(True)
 
-        self.hvSourceModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.hvSourceModelLineEdit = QtWidgets.QLineEdit()
         self.hvSourceModelLineEdit.setReadOnly(True)
 
-        self.vSourceModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.vSourceModelLineEdit = QtWidgets.QLineEdit()
         self.vSourceModelLineEdit.setReadOnly(True)
 
-        self.lcrModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.lcrModelLineEdit = QtWidgets.QLineEdit()
         self.lcrModelLineEdit.setReadOnly(True)
 
-        self.elmModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.elmModelLineEdit = QtWidgets.QLineEdit()
         self.elmModelLineEdit.setReadOnly(True)
 
-        self.tableModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.tableModelLineEdit = QtWidgets.QLineEdit()
         self.tableModelLineEdit.setReadOnly(True)
 
-        self.table_state_text: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
-        self.table_state_text.setReadOnly(True)
+        self.tableStateLineEdit = QtWidgets.QLineEdit()
+        self.tableStateLineEdit.setReadOnly(True)
 
-        self.envModelLineEdit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+        self.envModelLineEdit = QtWidgets.QLineEdit()
         self.envModelLineEdit.setReadOnly(True)
 
-        self.reloadButton: QtWidgets.QPushButton = QtWidgets.QPushButton()
+        self.reloadButton = QtWidgets.QPushButton()
         self.reloadButton.setText("&Reload")
         self.reloadButton.clicked.connect(self.reloadClicked.emit)
 
-        matrixGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        matrixGroupBox = QtWidgets.QGroupBox()
         matrixGroupBox.setTitle("Matrix")
 
         matrixGroupBoxLayout = QtWidgets.QFormLayout(matrixGroupBox)
         matrixGroupBoxLayout.addRow("Model", self.matrixModelLineEdit)
         matrixGroupBoxLayout.addRow("Closed channels", self.matrixChannelsLineEdit)
 
-        hvSourceGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        hvSourceGroupBox = QtWidgets.QGroupBox()
         hvSourceGroupBox.setTitle("HVSource")
 
         hvSourceGroupBoxLayout = QtWidgets.QFormLayout(hvSourceGroupBox)
         hvSourceGroupBoxLayout.addRow("Model", self.hvSourceModelLineEdit)
 
-        vSourceGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        vSourceGroupBox = QtWidgets.QGroupBox()
         vSourceGroupBox.setTitle("VSource")
 
         vSourceGroupBoxLayout = QtWidgets.QFormLayout(vSourceGroupBox)
         vSourceGroupBoxLayout.addRow("Model", self.vSourceModelLineEdit)
 
-        lcrGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        lcrGroupBox = QtWidgets.QGroupBox()
         lcrGroupBox.setTitle("LCRMeter")
 
         lcrGroupBoxLayout = QtWidgets.QFormLayout(lcrGroupBox)
         lcrGroupBoxLayout.addRow("Model", self.lcrModelLineEdit)
 
-        elmGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        elmGroupBox = QtWidgets.QGroupBox()
         elmGroupBox.setTitle("Electrometer")
 
         elmGroupBoxLayout = QtWidgets.QFormLayout(elmGroupBox)
         elmGroupBoxLayout.addRow("Model", self.elmModelLineEdit)
 
-        tableGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        tableGroupBox = QtWidgets.QGroupBox()
         tableGroupBox.setTitle("Table")
 
         tableGroupBoxLayout = QtWidgets.QFormLayout(tableGroupBox)
         tableGroupBoxLayout.addRow("Model", self.tableModelLineEdit)
-        tableGroupBoxLayout.addRow("State", self.table_state_text)
+        tableGroupBoxLayout.addRow("State", self.tableStateLineEdit)
 
-        environGroupBox: QtWidgets.QGroupBox = QtWidgets.QGroupBox()
+        environGroupBox = QtWidgets.QGroupBox()
         environGroupBox.setTitle("Environment Box")
 
         environGroupBoxLayout = QtWidgets.QFormLayout(environGroupBox)
@@ -152,20 +157,20 @@ class StatusWidget(QtWidgets.QWidget):
         self.lcrModelLineEdit.clear()
         self.elmModelLineEdit.clear()
         self.tableModelLineEdit.clear()
-        self.table_state_text.clear()
+        self.tableStateLineEdit.clear()
         self.envModelLineEdit.clear()
 
     def updateStatus(self, data: dict):
         default = "n/a"
-        self.matrixModelLineEdit.setText(data.get("matrix_model") or default)
-        self.matrixChannelsLineEdit.setText(data.get("matrix_channels") or "")
-        self.hvSourceModelLineEdit.setText(data.get("hvsrc_model") or default)
-        self.vSourceModelLineEdit.setText(data.get("vsrc_model") or default)
-        self.lcrModelLineEdit.setText(data.get("lcr_model") or default)
-        self.elmModelLineEdit.setText(data.get("elm_model") or default)
-        self.tableModelLineEdit.setText(data.get("table_model") or default)
-        self.table_state_text.setText(data.get("table_state") or default)
-        self.envModelLineEdit.setText(data.get("env_model") or default)
+        self.matrixModelLineEdit.setText(data.get("matrix_model", default))
+        self.matrixChannelsLineEdit.setText(data.get("matrix_channels", ""))
+        self.hvSourceModelLineEdit.setText(data.get("hvsrc_model", default))
+        self.vSourceModelLineEdit.setText(data.get("vsrc_model", default))
+        self.lcrModelLineEdit.setText(data.get("lcr_model", default))
+        self.elmModelLineEdit.setText(data.get("elm_model", default))
+        self.tableModelLineEdit.setText(data.get("table_model", default))
+        self.tableStateLineEdit.setText(data.get("table_state", default))
+        self.envModelLineEdit.setText(data.get("env_model", default))
 
     def setLocked(self, state: bool) -> None:
         self.reloadButton.setEnabled(not state)
