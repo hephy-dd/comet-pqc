@@ -593,8 +593,8 @@ class EnvironmentMixin(Mixin):
 
     def environment_update(self):
         self.environment_clear()
-        if self.config.get("use_environ"):
-            with self.station.environ_process as environment:
+        if self.process.config.get("use_environ"):
+            with self.process.station.environ_process as environment:
                 pc_data = environment.pc_data()
             self.environment_temperature_box = pc_data.box_temperature
             logger.info("Box temperature: %.2f degC", self.environment_temperature_box)

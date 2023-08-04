@@ -1,22 +1,24 @@
 import contextlib
-import datetime
 import json
 import logging
 import math
 import time
-import uuid
-from typing import List
+from datetime import timedelta
+from typing import Callable, List, Optional
 
-import analysis_pqc
 import comet
 import numpy as np
 
-from .. import __version__
 from ..core.formatter import PQCFormatter
 
 __all__ = ["Measurement"]
 
 logger = logging.getLogger(__name__)
+
+KEY_META = "meta"
+KEY_SERIES = "series"
+KEY_SERIES_UNITS = "series_units"
+KEY_ANALYSIS = "analysis"
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -36,9 +38,9 @@ class InstrumentError(RuntimeError):
 
 def format_estimate(est):
     """Format estimation message without milliseconds."""
-    elapsed = datetime.timedelta(seconds=round(est.elapsed.total_seconds()))
-    remaining = datetime.timedelta(seconds=round(est.remaining.total_seconds()))
-    average = datetime.timedelta(seconds=round(est.average.total_seconds()))
+    elapsed = timedelta(seconds=round(est.elapsed.total_seconds()))
+    remaining = timedelta(seconds=round(est.remaining.total_seconds()))
+    average = timedelta(seconds=round(est.average.total_seconds()))
     return "Elapsed {} | Remaining {} | Average {}".format(elapsed, remaining, average)
 
 
@@ -109,50 +111,17 @@ class Measurement:
 
     required_instruments = []
 
-    measurement_item = None # HACK
-
-    KEY_META = "meta"
-    KEY_SERIES = "series"
-    KEY_SERIES_UNITS = "series_units"
-    KEY_ANALYSIS = "analysis"
-
-    FORMAT_ISO = "%Y-%m-%dT%H:%M:%S"
-
-    def __init__(self, station, process, sample_name, sample_type, sample_position,
-                 sample_comment, config: dict, tags, timestamp=None):
-        self.station = station
+    def __init__(self, process, measurement_parameters, measurement_default_parameters, timestamp: float) -> None:
         self.process = process
-        self.config: dict = config
-        self.sample_name = sample_name
-        self.sample_type = sample_type
-        self.sample_position = sample_position
-        self.sample_comment = sample_comment
-        self.tags: List[str] = tags
-        self.registered_parameters = {}
-        self.uuid: str = format(uuid.uuid4())
-        self._timestamp = timestamp or time.time()
-        self._data = {}
-
-    @property
-    def timestamp(self):
-        """Returns start timestamp in seconds."""
-        return self._timestamp
-
-    @property
-    def timestamp_iso(self):
-        """Returns start timestamp as ISO formatted string."""
-        return datetime.datetime.fromtimestamp(self.timestamp).strftime(self.FORMAT_ISO)
-
-    @property
-    def basename(self):
-        """Return standardized measurement basename."""
-        return "_".join(map(format, (
-            self.sample_name,
-            self.sample_type,
-            self.measurement_item.contact.id,
-            self.measurement_item.id,
-            comet.make_iso(self.timestamp)
-        )))
+        self.measurement_parameters: dict = measurement_parameters
+        self.measurement_default_parameters: dict = measurement_default_parameters
+        self.registered_parameters: dict = {}
+        self.timestamp = timestamp
+        self._data: dict = {}
+        self._data[KEY_META] = {}
+        self._data[KEY_SERIES_UNITS] = {}
+        self._data[KEY_SERIES] = {}
+        self._data[KEY_ANALYSIS] = {}
 
     @property
     def data(self):
@@ -168,27 +137,27 @@ class Measurement:
             key, default, values, unit, type, required
         )
 
-    def validate_parameters(self):
-        for key in self.measurement_item.default_parameters.keys():
+    def validate_parameters(self):  # TODO
+        for key in self.measurement_default_parameters.keys():
             if key not in self.registered_parameters:
                 logger.warning("Unknown parameter: %s", key)
         missing_keys = []
         for key, parameter in self.registered_parameters.items():
             if parameter.required:
-                if key not in self.measurement_item.parameters:
+                if key not in self.measurement_parameters:
                     missing_keys.append(key)
         if missing_keys:
             ValueError(f"missing required parameter(s): {missing_keys}")
 
-    def get_parameter(self, key):
+    def get_parameter(self, key):  # TODO
         """Get measurement parameter."""
         if key not in self.registered_parameters:
             raise KeyError(f"no such parameter: {key}")
         parameter = self.registered_parameters[key]
-        if key not in self.measurement_item.parameters:
+        if key not in self.measurement_parameters:
             if parameter.required:
                 raise ValueError(f"missing required parameter: {key}")
-        value = self.measurement_item.parameters.get(key, parameter.default)
+        value = self.measurement_parameters.get(key, parameter.default)
         if parameter.unit:
             ### TODO !!!
             ### return comet.ureg(value).to(spec.unit).m
@@ -202,25 +171,25 @@ class Measurement:
 
     def set_meta(self, key, value):
         logger.info("Meta %s: %s", key, value)
-        self.data.get(self.KEY_META)[key] = value
+        self.data.get(KEY_META)[key] = value
 
     def set_series_unit(self, key, value):
-        self.data.get(self.KEY_SERIES_UNITS)[key] = value
+        self.data.get(KEY_SERIES_UNITS)[key] = value
 
     def register_series(self, key):
-        series = self.data.get(self.KEY_SERIES)
+        series = self.data.get(KEY_SERIES)
         if key in series:
             raise KeyError(f"Series already exists: {key}")
         series[key] = []
 
     def get_series(self, key):
-        return self.data.get(self.KEY_SERIES).get(key, [])
+        return self.data.get(KEY_SERIES).get(key, [])
 
     def set_analysis(self, key, value):
-        self.data.get(self.KEY_ANALYSIS)[key] = value
+        self.data.get(KEY_ANALYSIS)[key] = value
 
     def append_series(self, **kwargs):
-        series = self.data.get(self.KEY_SERIES)
+        series = self.data.get(KEY_SERIES)
         if sorted(series.keys()) != sorted(kwargs.keys()):
             raise KeyError("Inconsistent series keys")
         for key, value in kwargs.items():
@@ -246,25 +215,6 @@ class Measurement:
 
     def before_initialize(self, **kwargs):
         self.validate_parameters()
-        self.data.clear()
-        self.data[self.KEY_META] = {}
-        self.data[self.KEY_SERIES_UNITS] = {}
-        self.data[self.KEY_SERIES] = {}
-        self.data[self.KEY_ANALYSIS] = {}
-        self.set_meta("uuid", self.uuid)
-        self.set_meta("sample_name", self.sample_name)
-        self.set_meta("sample_type", self.sample_type)
-        self.set_meta("sample_position", self.sample_position)
-        self.set_meta("sample_comment", self.sample_comment)
-        self.set_meta("contact_name", self.measurement_item.contact.name())
-        self.set_meta("measurement_name", self.measurement_item.name())
-        self.set_meta("measurement_type", self.type)
-        self.set_meta("measurement_tags", self.tags)
-        self.set_meta("table_position", tuple(self.config.get("table_position", [])))
-        self.set_meta("start_timestamp", self.timestamp_iso)
-        self.set_meta("operator", self.config.get("operator", ""))
-        self.set_meta("pqc_version", __version__)
-        self.set_meta("analysis_pqc_version", analysis_pqc.__version__)
 
     def initialize(self, **kwargs):
         ...
@@ -325,7 +275,7 @@ class Measurement:
             kwargs = {}
             for key in type(self).required_instruments:
                 create = getattr(self, f"{key}_create")
-                resource = self.station.resources.get(key)
+                resource = self.process.station.resources.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:
                 self._initialize(**kwargs)

@@ -25,7 +25,7 @@ class MatrixMeasurement(Measurement):
             matrix_channels = self.get_parameter("matrix_channels")
             logger.info("Matrix close channels: %s", matrix_channels)
             try:
-                self.station.matrix.safe_close_channels(matrix_channels)
+                self.process.station.matrix.safe_close_channels(matrix_channels)
             except Exception as exc:
                 raise RuntimeError(f"Failed to close matrix channels {matrix_channels}, {exc.args}") from exc
 
@@ -34,7 +34,7 @@ class MatrixMeasurement(Measurement):
         matrix_enable = self.get_parameter("matrix_enable")
         if matrix_enable:
             try:
-                self.station.matrix.open_all_channels()
+                self.process.station.matrix.open_all_channels()
             except Exception as exc:
                 raise RuntimeError(f"Matrix failed to open channels, {exc.args}") from exc
         super().after_finalize(**kwargs)

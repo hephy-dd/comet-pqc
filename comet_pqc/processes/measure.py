@@ -4,13 +4,17 @@ import os
 import time
 import traceback
 import threading
+import uuid
+from datetime import datetime
 
 from PyQt5 import QtCore
 
 import pyvisa
-from comet import safe_filename
+from comet import safe_filename, make_iso
 from comet.resource import ResourceError
+import analysis_pqc
 
+from .. import __version__
 from ..core.functions import LinearRange
 from ..measurements import measurement_factory
 from ..measurements.measurement import ComplianceError, serialize_json, serialize_txt
@@ -27,6 +31,11 @@ from ..utils import format_metric
 __all__ = ["MeasureWorker"]
 
 logger = logging.getLogger(__name__)
+
+
+def timestamp_iso(timestamp: float) -> str:
+    """Returns start timestamp as ISO formatted string."""
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 class LogFileHandler:
@@ -137,11 +146,6 @@ class MeasureWorker(QtCore.QObject):
 
     def update_state(self, data: dict) -> None:
         self.state_changed.emit(data)
-
-    def create_filename(self, measurement, suffix: str) -> None:
-        filename = safe_filename(f"{measurement.basename}{suffix}")
-        output_dir = self.config.get("output_dir", ".")
-        return os.path.join(output_dir, measurement.sample_name, filename)
 
     def safe_recover_hvsrc(self) -> None:
         with self.station.hvsrc_resource as hvsrc_resource:
@@ -283,225 +287,18 @@ class MeasureWorker(QtCore.QObject):
         else:
             self.set_message("Initialize... done.")
 
-    def process_measurement(self, measurement_item) -> None:
-        self.set_message("Process measurement...")
-        state = measurement_item.ActiveState
-        self.reset_measurement_item(measurement_item)
-        self.set_item_state(measurement_item, state)
-        self.show_measurement_item(measurement_item)
-        sample_name = measurement_item.contact.sample.name()
-        sample_type = measurement_item.contact.sample.sample_type
-        sample_position = measurement_item.contact.sample.sample_position
-        sample_comment = measurement_item.contact.sample.comment()
-        tags = measurement_item.tags()
-        output_dir = self.config.get("output_dir", ".")
-
-        time.sleep(self.config.get("before_measurement_delay"))
-
-        sample_output_dir = os.path.join(output_dir, sample_name)
-        if not os.path.exists(sample_output_dir):
-            os.makedirs(sample_output_dir)
-        # TODO
-        measurement = measurement_factory(
-            measurement_item.type,
-            station=self.station,
-            process=self,
-            config=self.config,
-            sample_name=sample_name,
-            sample_type=sample_type,
-            sample_position=sample_position,
-            sample_comment=sample_comment,
-            tags=tags
-        )
-        measurement.measurement_item = measurement_item
-        write_logfiles = self.config.get("write_logfiles")
-        log_filename = self.create_filename(measurement, suffix=".log") if write_logfiles else None
-        plot_filename = self.create_filename(measurement, suffix=".png")
-
-        with LogFileHandler(log_filename):
-            try:
-                measurement.run(self.station)
-            except ResourceError as e:
-                self.set_message("Process... failed.")
-                if isinstance(e.exc, pyvisa.errors.VisaIOError):
-                    state = measurement_item.TimeoutState
-                elif isinstance(e.exc, BrokenPipeError):
-                    state = measurement_item.TimeoutState
-                else:
-                    state = measurement_item.ErrorState
-                raise
-            except ComplianceError:
-                self.set_message("Process... failed.")
-                state = measurement_item.ComplianceState
-                raise
-            except AnalysisError:
-                self.set_message("Process... analysis failed.")
-                state = measurement_item.AnalysisErrorState
-                raise
-            except Exception:
-                self.set_message("Process... failed.")
-                state = measurement_item.ErrorState
-                raise
-            else:
-                self.set_message("Process... done.")
-                if self.stop_requested:
-                    state = measurement_item.StoppedState
-                else:
-                    state = measurement_item.SuccessState
-            finally:
-                self.set_item_state(measurement_item, state)
-                self.save_to_image.emit(measurement_item, plot_filename)
-                self.summary_pushed.emit({
-                    "timestamp": measurement.timestamp,
-                    "sample_name": sample_name,
-                    "sample_type": sample_type,
-                    "contact_name": measurement_item.contact.name(),
-                    "measurement_name": measurement_item.name(),
-                    "measurement_state": state,
-                })
-                self.serialize_measurement(measurement)
-
-    def serialize_measurement(self, measurement) -> None:
-        if self.config.get("serialize_json"):
-            with open(self.create_filename(measurement, suffix=".json"), "w") as fp:
-                serialize_json(measurement.data, fp)
-        if self.config.get("serialize_txt"):
-            # See https://docs.python.org/3/library/csv.html#csv.DictWriter
-            with open(self.create_filename(measurement, suffix=".txt"), "w", newline="") as fp:
-                serialize_txt(measurement.data, fp)
-
-    def process_contact(self, contact_item) -> None:
-        retry_contact_count = settings.retry_contact_count
-        retry_measurement_count = settings.retry_measurement_count
-        # Queue of measurements for the retry loops.
-        measurement_items = [item for item in contact_item.children() if item.isEnabled()]
-        # Auto retry table contact
-        for retry_contact in range(retry_contact_count + 1):
-            if not measurement_items:
-                break
-            if retry_contact:
-                logger.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
-            self.set_message("Process contact...")
-            self.set_item_state(contact_item, contact_item.ProcessingState)
-            logger.info(" => %s", contact_item.name())
-            if self.config.get("move_to_contact") and contact_item.hasPosition():
-                x, y, z = contact_item.position
-                # Add re-contact overdrive
-                if retry_contact:
-                    z = self.add_retry_overdrive(z)
-                # Move table to position
-                self.safe_move_table((x, y, z))
-                self.apply_contact_delay()
-            # Auto retry measurement
-            for retry_measurement in range(retry_measurement_count + 1):
-                self.set_item_state(contact_item, contact_item.ProcessingState)
-                if retry_measurement:
-                    logger.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
-                measurement_items = self.process_measurement_sequence(measurement_items)
-                state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
-                if self.stop_requested:
-                    state = contact_item.StoppedState
-                self.set_item_state(contact_item, state)
-                if not measurement_items:
-                    break
-        return contact_item.ErrorState if measurement_items else contact_item.SuccessState
-
-    def process_measurement_sequence(self, measurement_items) -> None:
-        """Returns a list of failed measurement items."""
-        prev_measurement_item = None
-        failed_measurements = []
-        for measurement_item in measurement_items:
-            if self.stop_requested:
-                break
-            if not measurement_item.isEnabled():
-                continue
-            if self.stop_requested:
-                self.set_item_state(measurement_item, measurement_item.StoppedState)
-                break
-            if prev_measurement_item:
-                self.hide_measurement_item(prev_measurement_item)
-            try:
-                self.process_measurement(measurement_item)
-            except Exception as exc:
-                tb = traceback.format_exc()
-                logger.error("%s: %s", measurement_item.name(), tb)
-                logger.error("%s: %s", measurement_item.name(), exc)
-                # TODO: for now only analysis errors trigger retries...
-                if isinstance(exc, AnalysisError):
-                    failed_measurements.append(measurement_item)
-            prev_measurement_item = measurement_item
-        if prev_measurement_item:
-            self.hide_measurement_item(prev_measurement_item)
-        return failed_measurements
-
-    def process_sample(self, sample_item) -> None:
-        self.set_message("Process sample...")
-        self.set_item_state(sample_item, sample_item.ProcessingState)
-        # Check contact positions
-        for contact_item in sample_item.children():
-            if contact_item.isEnabled():
-                if not contact_item.hasPosition():
-                    raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name()}")
-        results = []
-        for contact_item in sample_item.children():
-            if self.stop_requested:
-                break
-            if not contact_item.isEnabled():
-                continue
-            if self.stop_requested:
-                self.set_item_state(contact_item, contact_item.StoppedState)
-                break
-            result = self.process_contact(contact_item)
-            if result != sample_item.SuccessState:
-                results.append(result)
-        state = sample_item.ErrorState
-        if self.stop_requested:
-            state = sample_item.StoppedState
-        elif not results:
-            state = sample_item.SuccessState
-        self.set_item_state(sample_item, state)
-        if self.stop_requested:
-            return
-        move_to_after_position = self.config.get("move_to_after_position")
-        if move_to_after_position is not None:
-            self.safe_move_table(move_to_after_position)
-
-    def process_samples(self, samples_item) -> None:
-        self.set_message("Process samples...")
-        # Check contact positions
-        for sample_item in samples_item.children():
-            if sample_item.isEnabled():
-                for contact_item in sample_item.children():
-                    if contact_item.isEnabled():
-                        if not contact_item.hasPosition():
-                            raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name()}")
-        for sample_item in samples_item.children():
-            if self.stop_requested:
-                break
-            if not sample_item.isEnabled():
-                continue
-            if self.stop_requested:
-                self.set_item_state(sample_item, contact_item.StoppedState)
-                break
-            self.process_sample(sample_item)
-        if self.stop_requested:
-            return
-        move_to_after_position = self.config.get("move_to_after_position")
-        if move_to_after_position is not None:
-            self.safe_move_table(move_to_after_position)
-
     def process(self) -> None:
-        sequence_item = self.sequence_item
-        if isinstance(sequence_item, MeasurementTreeItem):
-            self.process_measurement(sequence_item)
-        elif isinstance(sequence_item, ContactTreeItem):
-            self.process_contact(sequence_item)
-        elif isinstance(sequence_item, SampleTreeItem):
-            self.process_sample(sequence_item)
-        elif isinstance(sequence_item, SequenceRootTreeItem):
-            self.process_samples(sequence_item)
+        item = self.sequence_item
+        if isinstance(item, MeasurementTreeItem):
+            MeasurementStrategy(self)(item)
+        elif isinstance(item, ContactTreeItem):
+            ContactStrategy(self)(item)
+        elif isinstance(item, SampleTreeItem):
+            SampleStrategy(self)(item)
+        elif isinstance(item, SequenceRootTreeItem):
+            SequenceStrategy(self)(item)
         else:
-            raise TypeError(type(sequence_item))
+            raise TypeError(type(item))
 
     def finalize(self) -> None:
         self.set_message("Finalize...")
@@ -530,3 +327,262 @@ class MeasureWorker(QtCore.QObject):
             self.set_message("Measurement done.")
         finally:
             self.finished.emit()
+
+
+class SequenceStrategy:
+    """Strategy for samples sequence."""
+
+    def __init__(self, worker) -> None:
+        self.worker = worker
+
+    def __call__(self, sequence_item) -> None:
+        self.worker.set_message("Process samples...")
+        # Check contact positions
+        for sample_item in sequence_item.children():
+            if sample_item.isEnabled():
+                for contact_item in sample_item.children():
+                    if contact_item.isEnabled():
+                        if not contact_item.hasPosition():
+                            raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name()}")
+        for sample_item in sequence_item.children():
+            if self.worker.stop_requested:
+                break
+            if not sample_item.isEnabled():
+                continue
+            if self.worker.stop_requested:
+                self.worker.set_item_state(sample_item, contact_item.StoppedState)
+                break
+            SampleStrategy(self.worker)(sample_item)
+        if self.worker.stop_requested:
+            return
+        move_to_after_position = self.worker.config.get("move_to_after_position")
+        if move_to_after_position is not None:
+            self.worker.safe_move_table(move_to_after_position)
+
+
+class SampleStrategy:
+    """Strategy for sample item."""
+
+    def __init__(self, worker) -> None:
+        self.worker = worker
+
+    def __call__(self, sample_item) -> object:
+        self.worker.set_message("Process sample...")
+        self.worker.set_item_state(sample_item, sample_item.ProcessingState)
+        # Check contact positions
+        for contact_item in sample_item.children():
+            if contact_item.isEnabled():
+                if not contact_item.hasPosition():
+                    raise RuntimeError(f"No contact position assigned for {contact_item.sample.name} -> {contact_item.name()}")
+        results = []
+        for contact_item in sample_item.children():
+            if self.worker.stop_requested:
+                break
+            if not contact_item.isEnabled():
+                continue
+            if self.worker.stop_requested:
+                self.worker.set_item_state(contact_item, contact_item.StoppedState)
+                break
+            result = ContactStrategy(self.worker)(contact_item)
+            if result != sample_item.SuccessState:
+                results.append(result)
+        state = sample_item.ErrorState
+        if self.worker.stop_requested:
+            state = sample_item.StoppedState
+        elif not results:
+            state = sample_item.SuccessState
+        self.worker.set_item_state(sample_item, state)
+        if self.worker.stop_requested:
+            return state
+        move_to_after_position = self.worker.config.get("move_to_after_position")
+        if move_to_after_position is not None:
+            self.worker.safe_move_table(move_to_after_position)
+        return state
+
+
+class ContactStrategy:
+    """Strategy for contact item."""
+
+    def __init__(self, worker) -> None:
+        self.worker = worker
+
+    def __call__(self, contact_item) -> object:
+        retry_contact_count = settings.retry_contact_count
+        retry_measurement_count = settings.retry_measurement_count
+        # Queue of measurements for the retry loops.
+        measurement_items = [item for item in contact_item.children() if item.isEnabled()]
+        # Auto retry table contact
+        for retry_contact in range(retry_contact_count + 1):
+            if not measurement_items:
+                break
+            if retry_contact:
+                logger.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
+            self.worker.set_message("Process contact...")
+            self.worker.set_item_state(contact_item, contact_item.ProcessingState)
+            logger.info(" => %s", contact_item.name())
+            if self.worker.config.get("move_to_contact") and contact_item.hasPosition():
+                x, y, z = contact_item.position
+                # Add re-contact overdrive
+                if retry_contact:
+                    z = self.worker.add_retry_overdrive(z)
+                # Move table to position
+                self.worker.safe_move_table((x, y, z))
+                self.worker.apply_contact_delay()
+            # Auto retry measurement
+            for retry_measurement in range(retry_measurement_count + 1):
+                self.worker.set_item_state(contact_item, contact_item.ProcessingState)
+                if retry_measurement:
+                    logger.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
+                measurement_items = self.process_measurement_sequence(measurement_items)
+                state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
+                if self.worker.stop_requested:
+                    state = contact_item.StoppedState
+                self.worker.set_item_state(contact_item, state)
+                if not measurement_items:
+                    break
+        return contact_item.ErrorState if measurement_items else contact_item.SuccessState
+
+    def process_measurement_sequence(self, measurement_items) -> None:
+        """Returns a list of failed measurement items."""
+        prev_measurement_item = None
+        failed_measurements = []
+        for measurement_item in measurement_items:
+            if self.worker.stop_requested:
+                break
+            if not measurement_item.isEnabled():
+                continue
+            if self.worker.stop_requested:
+                self.worker.set_item_state(measurement_item, measurement_item.StoppedState)
+                break
+            if prev_measurement_item:
+                self.worker.hide_measurement_item(prev_measurement_item)
+            try:
+                MeasurementStrategy(self.worker)(measurement_item)
+            except Exception as exc:
+                tb = traceback.format_exc()
+                logger.error("%s: %s", measurement_item.name(), tb)
+                logger.error("%s: %s", measurement_item.name(), exc)
+                # TODO: for now only analysis errors trigger retries...
+                if isinstance(exc, AnalysisError):
+                    failed_measurements.append(measurement_item)
+            prev_measurement_item = measurement_item
+        if prev_measurement_item:
+            self.worker.hide_measurement_item(prev_measurement_item)
+        return failed_measurements
+
+
+class MeasurementStrategy:
+    """Strategy for measurement item."""
+
+    def __init__(self, worker) -> None:
+        self.worker = worker
+
+    def __call__(self, measurement_item) -> None:
+        self.worker.set_message("Process measurement...")
+        state = measurement_item.ActiveState
+        self.worker.reset_measurement_item(measurement_item)
+        self.worker.set_item_state(measurement_item, state)
+        self.worker.show_measurement_item(measurement_item)
+        sample_name = measurement_item.contact.sample.name()
+        sample_type = measurement_item.contact.sample.sample_type
+        sample_position = measurement_item.contact.sample.sample_position
+        sample_comment = measurement_item.contact.sample.comment()
+        output_dir = self.worker.config.get("output_dir", ".")
+
+        time.sleep(self.worker.config.get("before_measurement_delay"))
+
+        sample_output_dir = os.path.join(output_dir, sample_name)
+        if not os.path.exists(sample_output_dir):
+            os.makedirs(sample_output_dir)
+
+        # TODO
+        timestamp = time.time()
+        measurement_item.timestamp = timestamp  # TODO
+        measurement = measurement_factory(measurement_item.type)(
+            process=self.worker,
+            measurement_parameters=measurement_item.parameters,
+            measurement_default_parameters=measurement_item.default_parameters,
+            timestamp=timestamp
+        )
+        measurement.set_meta("uuid", format(uuid.uuid4()))
+        measurement.set_meta("sample_name", sample_name)
+        measurement.set_meta("sample_type", sample_type)
+        measurement.set_meta("sample_position", sample_position)
+        measurement.set_meta("sample_comment", sample_comment)
+        measurement.set_meta("contact_name", measurement_item.contact.name())
+        measurement.set_meta("measurement_name", measurement_item.name())
+        measurement.set_meta("measurement_type", measurement.type)
+        measurement.set_meta("measurement_tags", measurement_item.tags())
+        measurement.set_meta("table_position", tuple(self.worker.config.get("table_position") or []))
+        measurement.set_meta("start_timestamp", timestamp_iso(timestamp))
+        measurement.set_meta("operator", self.worker.config.get("operator", ""))
+        measurement.set_meta("pqc_version", __version__)
+        measurement.set_meta("analysis_pqc_version", analysis_pqc.__version__)
+
+        write_logfiles = self.worker.config.get("write_logfiles")
+        log_filename = self.create_filename(measurement_item, suffix=".log") if write_logfiles else None
+        plot_filename = self.create_filename(measurement_item, suffix=".png")
+
+        with LogFileHandler(log_filename):
+            try:
+                measurement.run(self.worker.station)
+            except ResourceError as e:
+                self.worker.set_message("Process... failed.")
+                if isinstance(e.exc, pyvisa.errors.VisaIOError):
+                    state = measurement_item.TimeoutState
+                elif isinstance(e.exc, BrokenPipeError):
+                    state = measurement_item.TimeoutState
+                else:
+                    state = measurement_item.ErrorState
+                raise
+            except ComplianceError:
+                self.worker.set_message("Process... failed.")
+                state = measurement_item.ComplianceState
+                raise
+            except AnalysisError:
+                self.worker.set_message("Process... analysis failed.")
+                state = measurement_item.AnalysisErrorState
+                raise
+            except Exception:
+                self.worker.set_message("Process... failed.")
+                state = measurement_item.ErrorState
+                raise
+            else:
+                self.worker.set_message("Process... done.")
+                if self.worker.stop_requested:
+                    state = measurement_item.StoppedState
+                else:
+                    state = measurement_item.SuccessState
+            finally:
+                self.worker.set_item_state(measurement_item, state)
+                self.worker.save_to_image.emit(measurement_item, plot_filename)
+                self.worker.summary_pushed.emit({
+                    "timestamp": measurement.timestamp,
+                    "sample_name": sample_name,
+                    "sample_type": sample_type,
+                    "contact_name": measurement_item.contact.name(),
+                    "measurement_name": measurement_item.name(),
+                    "measurement_state": state,
+                })
+                if self.worker.config.get("serialize_json"):
+                    with open(self.create_filename(measurement_item, suffix=".json"), "w") as fp:
+                        serialize_json(measurement.data, fp)
+                if self.worker.config.get("serialize_txt"):
+                    # See https://docs.python.org/3/library/csv.html#csv.DictWriter
+                    with open(self.create_filename(measurement_item, suffix=".txt"), "w", newline="") as fp:
+                        serialize_txt(measurement.data, fp)
+
+    def create_basename(self, measurement_item) -> str:
+        """Return standardized measurement basename."""
+        sample_name = measurement_item.contact.sample.name()
+        sample_type = measurement_item.contact.sample.sample_type
+        contact_id = measurement_item.contact.id
+        measurement_id = measurement_item.id
+        iso_timestamp = make_iso(measurement_item.timestamp)
+        return f"{sample_name}_{sample_type}_{contact_id}_{measurement_id}_{iso_timestamp}"
+
+    def create_filename(self, measurement_item, suffix: str) -> None:
+        filename = safe_filename(f"{self.create_basename(measurement_item)}{suffix}")
+        output_dir = self.worker.config.get("output_dir", ".")
+        sample_dir = safe_filename(measurement_item.contact.sample.name())
+        return os.path.join(output_dir, sample_dir, filename)

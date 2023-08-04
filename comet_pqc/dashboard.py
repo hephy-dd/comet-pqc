@@ -768,6 +768,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def setItemState(self, item, state) -> None:
         item.setState(state)
+        item.setExpanded(True)
         self.sequenceTreeWidget.resizeColumns()
 
     def resetItem(self, item) -> None:

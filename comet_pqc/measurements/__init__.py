@@ -10,14 +10,14 @@ from .iv_ramp_bias_elm import *
 from .iv_ramp_elm import *
 
 
-def measurement_factory(key, *args, **kwargs):
-    """Factory function to create a new measurement instance by type name.
+def measurement_factory(key: str) -> type:
+    """Factory function to retrun measurement class by type name.
 
-    >>> meas = measurement_factory("iv_ramp")
+    >>> meas = measurement_factory("iv_ramp")()
     >>> meas.run()
     """
     for cls in globals().values():
         if hasattr(cls, "type"):
             if cls.type == key:
-                return cls(*args, **kwargs)
+                return cls
     raise KeyError(f"no such measurement type: {key}")
