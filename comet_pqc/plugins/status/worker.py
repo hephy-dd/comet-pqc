@@ -2,7 +2,6 @@ import logging
 
 from PyQt5 import QtCore
 
-from comet.driver.keithley import K707B
 from comet.resource import ResourceError
 
 __all__ = ["StatusWorker"]
@@ -33,12 +32,10 @@ class StatusWorker(QtCore.QObject):
         self.data.update({"matrix_model": ""})
         self.data.update({"matrix_channels": ""})
         try:
-            with self.station.matrix_resource as matrix_res:
-                matrix = K707B(matrix_res)
-                model = matrix.identification
-                self.data.update({"matrix_model": model})
-                channels = matrix.channel.getclose()
-                self.data.update({"matrix_channels": ",".join(channels)})
+            model = self.station.matrix.identify()
+            self.data.update({"matrix_model": model})
+            channels = self.station.matrix.closed_channels()
+            self.data.update({"matrix_channels": ",".join(channels)})
         except (ResourceError, OSError):
             ...
         self.dataChanged.emit(self.data.copy())
@@ -90,9 +87,9 @@ class StatusWorker(QtCore.QObject):
             try:
                 table_process = self.station.table_process
                 model = table_process.get_identification().get(timeout=5.0)
-                caldone = table_process.get_caldone().get(timeout=5.0)
+                caldone = table_process.is_calibrated().get(timeout=5.0)
                 self.data.update({"table_model": model})
-                if caldone == (3, 3, 3):
+                if caldone:
                     state = "CALIBRATED"
                 else:
                     state = "NOT CALIBRATED"

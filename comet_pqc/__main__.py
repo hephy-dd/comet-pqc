@@ -13,8 +13,8 @@ import analysis_pqc
 
 from . import __version__
 from .station import Station
-from .mainwindow import MainWindow
 from .utils import make_path
+from .view.mainwindow import MainWindow
 
 LOG_FILENAME: str = os.path.expanduser("~/comet-pqc.log")
 CONTENTS_URL: str = "https://hephy-dd.github.io/comet-pqc/"

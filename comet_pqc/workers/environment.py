@@ -2,21 +2,21 @@ import logging
 
 from comet.driver.hephy import EnvironmentBox
 
-from .resource import ResourceProcess
+from .resource import ResourceWorker
 
-__all__ = ["EnvironmentProcess"]
+__all__ = ["EnvironmentWorker"]
 
 logger = logging.getLogger(__name__)
 
 
-class EnvironmentProcess(ResourceProcess):
+class EnvironmentWorker(ResourceWorker):
 
     Driver = EnvironmentBox
 
     update_monitoring_interval: float = 2.0
 
-    def __init__(self, *args, pc_data_updated=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, resource, name, pc_data_updated=None):
+        super().__init__(resource=resource, name=name)
         self.pc_data_updated = pc_data_updated
         self._cached_pc_data = None
 

@@ -5,28 +5,27 @@ from PyQt5 import QtWidgets
 import comet
 from comet import ui
 
-from comet_pqc.components import Metric
+from ..components import Metric
 from .matrix import MatrixPanel
-from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
+from .mixins import EnvironmentMixin, HVSourceMixin
 
-__all__ = ["IVRampBiasPanel"]
+__all__ = ["IVRampPanel"]
 
 
-class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
-    """Panel for bias IV ramp measurements."""
+class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
+    """Panel for IV ramp measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.setName("Bias + IV Ramp")
+        self.setName("IV Ramp")
 
         self.register_hvsource()
-        self.register_vsource()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V]")
+        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
         self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
+        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
@@ -50,14 +49,6 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.waitingTimeSpinBox.setRange(0, 60)
         self.waitingTimeSpinBox.setSuffix(" s")
 
-        self.bias_voltage = QtWidgets.QDoubleSpinBox(self)
-        self.bias_voltage.setDecimals(3)
-        self.bias_voltage.setRange(-2200, +2200)
-        self.bias_voltage.setSuffix(" V")
-
-        self.bias_mode = QtWidgets.QComboBox(self)
-        self.bias_mode.addItems(["constant", "offset"])
-
         self.hvsrcCurrentComplianceSpinBox = Metric(self)
         self.hvsrcCurrentComplianceSpinBox.setUnit("A")
         self.hvsrcCurrentComplianceSpinBox.setPrefixes("mun")
@@ -67,28 +58,16 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         self.hvsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrcAcceptComplianceCheckBox.setText("Accept Compliance")
 
-        self.vsrcCurrentComplianceSpinBox = Metric(self)
-        self.vsrcCurrentComplianceSpinBox.setUnit("A")
-        self.vsrcCurrentComplianceSpinBox.setPrefixes("mun")
-        self.vsrcCurrentComplianceSpinBox.setDecimals(3)
-        self.vsrcCurrentComplianceSpinBox.setRange(0, float("inf"))
-
-        self.vsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
-        self.vsrcAcceptComplianceCheckBox.setText("Accept Compliance")
-
         self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
-        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 100, unit="V")
+        self.bind("voltage_step", self.voltage_step, 1, unit="V")
         self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
-        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
-        self.bind("bias_mode", self.bias_mode, "constant")
+
         self.bind("hvsrc_current_compliance", self.hvsrcCurrentComplianceSpinBox, 0, unit="A")
         self.bind("hvsrc_accept_compliance", self.hvsrcAcceptComplianceCheckBox, False)
-        self.bind("vsrc_current_compliance", self.vsrcCurrentComplianceSpinBox, 0, unit="A")
-        self.bind("vsrc_accept_compliance", self.vsrcAcceptComplianceCheckBox, False)
 
         rampGroupBox = QtWidgets.QGroupBox(self)
-        rampGroupBox.setTitle("HV Source Ramp")
+        rampGroupBox.setTitle("Ramp")
 
         rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
@@ -101,19 +80,6 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
         rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
         rampGroupBoxLayout.addStretch()
 
-        vsrcBiasGroupBox = QtWidgets.QGroupBox(self)
-        vsrcBiasGroupBox.setTitle("V Source Bias")
-
-        vsrcBiasGroupBoxLayout = QtWidgets.QVBoxLayout(vsrcBiasGroupBox)
-        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage"))
-        vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage)
-        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance"))
-        vsrcBiasGroupBoxLayout.addWidget(self.vsrcCurrentComplianceSpinBox)
-        vsrcBiasGroupBoxLayout.addWidget(self.vsrcAcceptComplianceCheckBox)
-        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Mode"))
-        vsrcBiasGroupBoxLayout.addWidget(self.bias_mode)
-        vsrcBiasGroupBoxLayout.addStretch()
-
         hvsrcGroupBox = QtWidgets.QGroupBox(self)
         hvsrcGroupBox.setTitle("HV Source")
 
@@ -125,28 +91,23 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
 
         layout = self.generalWidget.layout()
         layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(vsrcBiasGroupBox, 1)
         layout.addWidget(hvsrcGroupBox, 1)
+        layout.addStretch(1)
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
 
-        self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
-        self.series_transform["xfit"] = self.series_transform.get("vsrc")
+        self.series_transform["hvsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
+        self.series_transform["xfit"] = self.series_transform.get("hvsrc")
 
     def mount(self, measurement):
         super().mount(measurement)
         for name, points in measurement.series.items():
             if name in self.plot.series:
-                if name in self.plot.series:
-                    self.plot.series.clear()
-                tr = self.series_transform.get(name, self.series_transform_default)
-                if points[0][0] > points[-1][0]:
-                    self.plot.axes.get("x").qt.setReverse(True)
-                else:
-                    self.plot.axes.get("x").qt.setReverse(False)
-                for x, y in points:
-                    self.plot.series.get(name).append(*tr(x, y))
+                self.plot.series.clear()
+            tr = self.series_transform.get(name, self.series_transform_default)
+            for x, y in points:
+                self.plot.series.get(name).append(*tr(x, y))
         self.updateReadings()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
@@ -155,10 +116,6 @@ class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                if self.voltage_start.value() > self.voltage_stop.value():
-                    self.plot.axes.get("x").qt.setReverse(True)
-                else:
-                    self.plot.axes.get("x").qt.setReverse(False)
                 tr = self.series_transform.get(name, self.series_transform_default)
                 self.plot.series.get(name).append(*tr(x, y))
                 self.plot.series.get(name).qt.setVisible(True)

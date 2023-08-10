@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from PyQt5 import QtWidgets
 
-from ..utils import join_channels, split_channels
+from comet_pqc.utils import join_channels, split_channels
 
 from .panel import Panel
 

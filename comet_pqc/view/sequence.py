@@ -8,15 +8,16 @@ import yaml
 from comet import ui
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from ..core.config import list_configs, load_sequence
+from ..settings import settings
+from ..utils import from_table_unit, to_table_unit
+
 from .components import (
     OperatorWidget,
     PositionsComboBox,
     WorkingDirectoryWidget,
 )
-from .core.config import list_configs, load_sequence
 from .quickedit import QuickEditDialog
-from .settings import settings
-from .utils import from_table_unit, to_table_unit
 
 __all__ = [
     "StartSequenceDialog",
@@ -323,7 +324,7 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setExpandsOnDoubleClick(False)
-        self.setHeaderLabels(["Name", "Pos", "State"])
+        self.setHeaderLabels(["Name", "Pos", "State", "RC", "RM"])
         self.header().setMinimumSectionSize(32)
 
     def addSampleItem(self, item) -> None:
@@ -349,6 +350,8 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
         self.resizeColumnToContents(0)
         self.resizeColumnToContents(1)
         self.resizeColumnToContents(2)
+        self.resizeColumnToContents(3)
+        self.resizeColumnToContents(4)
 
 
 class SequenceRootTreeItem:  #  TODO
@@ -386,6 +389,8 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def __init__(self) -> None:
         super().__init__()
         self.setCheckable(True)
+        self._recontact: int = 0
+        self._remeasure: int = 0
 
     def children(self):
         items = []
@@ -457,6 +462,20 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
         self.setText(2, format(value))
         self.setData(2, 0x2000, value)
 
+    def recontact(self) -> int:
+        return self._recontact
+
+    def setRecontact(self, count: int) -> None:
+        self._recontact = count
+        self.setText(3, format(count or ""))
+
+    def remeasure(self) -> int:
+        return self._remeasure
+
+    def setRemeasure(self, count: int) -> None:
+        self._remeasure = count
+        self.setText(4, format(count or ""))
+
     # Methods
 
     def setLocked(self, locked: bool) -> None:
@@ -467,6 +486,8 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
 
     def reset(self):
         self.setState(None)
+        self.setRecontact(0)
+        self.setRemeasure(0)
         for child in self.children():
             child.reset()
 
@@ -476,17 +497,15 @@ class SampleTreeItem(SequenceTreeItem):
 
     type = "sample"
 
-    def __init__(self, name_prefix=None, name_infix=None, name_suffix=None,
-                 sample_type=None, sample_position=None, enabled=False, comment=None):
+    def __init__(self) -> None:
         super().__init__()
-        self._name_prefix = name_prefix or ""
-        self._name_infix = name_infix or ""
-        self._name_suffix = name_suffix or ""
-        self._sample_type = sample_type or ""
-        self.sample_position = sample_position or ""
+        self._namePrefix: str = ""
+        self._nameInfix: str = ""
+        self._nameSuffix: str = ""
+        self._sampleType: str = ""
+        self._sampleComment: str = ""
         self.update_name()
-        self.setComment(comment or "")
-        self.setEnabled(enabled)
+        self.setEnabled(False)
         self.sequence = None
 
     # Properties
@@ -496,68 +515,57 @@ class SampleTreeItem(SequenceTreeItem):
         return self.sequence.filename if self.sequence else None
 
     def name(self) -> str:
-        return "".join((self.name_prefix, self.name_infix, self.name_suffix)).strip()
+        return "".join((self._namePrefix, self._nameInfix, self._nameSuffix)).strip()
 
-    @property
-    def name_prefix(self):
-        return self._name_prefix
+    def namePrefix(self) -> str:
+        return self._namePrefix
 
-    @name_prefix.setter
-    def name_prefix(self, value):
-        self._name_prefix = value
+    def setNamePrefix(self, prefix: str) -> None:
+        self._namePrefix = prefix
         self.update_name()
 
-    @property
-    def name_infix(self):
-        return self._name_infix
+    def nameInfix(self) -> str:
+        return self._nameInfix
 
-    @name_infix.setter
-    def name_infix(self, value):
-        self._name_infix = value
+    def setNameInfix(self, infix: str) -> None:
+        self._nameInfix = infix
         self.update_name()
 
-    @property
-    def name_suffix(self):
-        return self._name_suffix
+    def nameSuffix(self) -> str:
+        return self._nameSuffix
 
-    @name_suffix.setter
-    def name_suffix(self, value):
-        self._name_suffix = value
+    def setNameSuffix(self, suffix: str) -> None:
+        self._nameSuffix = suffix
         self.update_name()
 
-    @property
-    def sample_type(self):
-        return self._sample_type.strip()
+    def sampleType(self) -> str:
+        return self._sampleType
 
-    @sample_type.setter
-    def sample_type(self, value):
-        self._sample_type = value
+    def setSampleType(self, type: str) -> None:
+        self._sampleType = type
         self.update_name()
 
-    @property
-    def sample_position(self):
-        return self._sample_position
+    def samplePositionLabel(self) -> str:
+        return self.text(1)
 
-    @sample_position.setter
-    def sample_position(self, value):
-        self._sample_position = value.strip()
-        self.setText(1, value.strip())
+    def setSamplePositionLabel(self, label: str) -> None:
+        self.setText(1, label)
 
     def comment(self) -> str:
-        return self._sample_comment
+        return self._sampleComment
 
     def setComment(self, comment: str):
-        self._sample_comment = comment.strip()
+        self._sampleComment = comment
 
     # Settings
 
     def from_settings(self, **kwargs):
-        self._name_prefix = kwargs.get("sample_name_prefix") or ""
-        self._name_infix = kwargs.get("sample_name_infix") or kwargs.get("sample_name") or "Unnamed"
-        self._name_suffix = kwargs.get("sample_name_suffix") or ""
+        self.setNamePrefix(kwargs.get("sample_name_prefix") or "")
+        self.setNameInfix(kwargs.get("sample_name_infix") or kwargs.get("sample_name") or "Unnamed")
+        self.setNameSuffix(kwargs.get("sample_name_suffix") or "")
         self.update_name()
-        self.sample_type = kwargs.get("sample_type") or ""
-        self.sample_position = kwargs.get("sample_position") or ""
+        self.setSampleType(kwargs.get("sample_type") or "")
+        self.setSamplePositionLabel(kwargs.get("sample_position") or "")
         self.setComment(kwargs.get("sample_comment") or "")
         self.setEnabled(kwargs.get("sample_enabled") or False)
         filename = kwargs.get("sample_sequence_filename")
@@ -586,11 +594,11 @@ class SampleTreeItem(SequenceTreeItem):
                     "position": tuple(map(to_table_unit, contact.position))
                 })
         return {
-            "sample_name_prefix": self.name_prefix,
-            "sample_name_infix": self.name_infix,
-            "sample_name_suffix": self.name_suffix,
-            "sample_type": self.sample_type,
-            "sample_position": self.sample_position,
+            "sample_name_prefix": self.namePrefix(),
+            "sample_name_infix": self.nameInfix(),
+            "sample_name_suffix": self.nameSuffix(),
+            "sample_type": self.sampleType(),
+            "sample_position": self.samplePositionLabel(),
             "sample_comment": self.comment(),
             "sample_enabled": self.isEnabled(),
             "sample_sequence_filename": self.sequence_filename,
@@ -600,7 +608,7 @@ class SampleTreeItem(SequenceTreeItem):
     # Methods
 
     def update_name(self):
-        tokens = self.name(), self.sample_type
+        tokens = [self.name(), self.sampleType()]
         self.setText(0, "/".join((token for token in tokens if token)))
 
     def reset_positions(self):
@@ -714,11 +722,11 @@ class EditSamplesDialog:
         for sample_item in self.items:
             item = dialog.addItem()
             item.setEnabled(sample_item.isEnabled())
-            item.setPrefix(sample_item.name_prefix)
-            item.setInfix(sample_item.name_infix)
-            item.setSuffix(sample_item.name_suffix)
-            item.setType(sample_item.sample_type)
-            item.setPosition(sample_item.sample_position)
+            item.setPrefix(sample_item.namePrefix())
+            item.setInfix(sample_item.nameInfix())
+            item.setSuffix(sample_item.nameSuffix())
+            item.setType(sample_item.sampleType())
+            item.setPositionLabel(sample_item.samplePositionLabel())
             for name, filename in self.sequences:
                 item.addSequence(name)
             if sample_item.sequence is not None:
@@ -736,12 +744,12 @@ class EditSamplesDialog:
             for item in dialog.items():
                 progress.setValue(progress.value() + 1)
                 sample_item = item.property("sample_item")
-                sample_item.enabled = item.isEnabled()
-                sample_item.name_prefix = item.prefix()
-                sample_item.name_infix = item.infix()
-                sample_item.name_suffix = item.suffix()
-                sample_item.sample_type = item.type()
-                sample_item.sample_position = item.position()
+                sample_item.setEnabled(item.isEnabled())
+                sample_item.setNamePrefix(item.prefix())
+                sample_item.setNameInfix(item.infix())
+                sample_item.setNameSuffix(item.suffix())
+                sample_item.setSampleType(item.type())
+                sample_item.setSamplePositionLabel(item.positionLabel())
                 for name, filename in self.sequences:
                     if item.currentSequence() == name:
                         if filename not in sequence_cache:

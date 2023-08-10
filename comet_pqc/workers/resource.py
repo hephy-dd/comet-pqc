@@ -6,12 +6,11 @@ import time
 
 from comet.driver import Driver as DefaultDriver
 from comet.process import Process
-from comet.resource import ResourceMixin
 
 from ..core.request import Request
 from ..core.timer import Timer
 
-__all__ = ["ResourceProcess", "async_request"]
+__all__ = ["ResourceWorker", "async_request"]
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +21,17 @@ def async_request(method):
     return async_request
 
 
-class ResourceProcess(Process, ResourceMixin):
+class ResourceWorker(Process):
 
     Driver = DefaultDriver
 
-    throttle_time: float = 0.001
+    throttle_time: float = 1.0
 
     update_monitoring_interval: float = 1.0
 
-    def __init__(self, name: str, enabled: bool = True, **kwargs):
+    def __init__(self, resource, name: str, enabled: bool = True, **kwargs):
         super().__init__(**kwargs)
+        self.resource = resource
         self.name: str = name
         self.enabled: bool = enabled
         self._failed_retries: int = 0
@@ -61,7 +61,7 @@ class ResourceProcess(Process, ResourceMixin):
     def serve(self):
         logger.info("start serving %s", self.name)
         try:
-            with self.resources.get(self.name) as resource:
+            with self.resource as resource:
                 driver = type(self).Driver(resource)
                 t = Timer()
                 while True:

@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets
 import comet
 from comet import ui
 
-from comet_pqc.components import Metric
+from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import ElectrometerMixin, EnvironmentMixin, HVSourceMixin
 

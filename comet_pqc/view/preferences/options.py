@@ -2,7 +2,7 @@ from typing import Optional
 
 from PyQt5 import QtWidgets
 
-from ..settings import settings
+from comet_pqc.settings import settings
 
 __all__ = ["OptionsWidget"]
 

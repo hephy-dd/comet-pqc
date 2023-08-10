@@ -13,10 +13,10 @@ from .components import (
     PositionWidget,
     ToggleButton,
 )
-from .core.position import Position
-from .core.utils import LinearTransform
-from .settings import TablePosition, settings
-from .utils import format_metric, caldone_valid, format_switch
+from ..core.position import Position
+from ..core.utils import LinearTransform
+from ..settings import TablePosition, settings
+from ..utils import format_metric, caldone_valid, format_switch
 
 DEFAULT_STEP_UP_DELAY = 0.
 DEFAULT_STEP_UP_MULTIPLY = 2
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 def format_sample_item(sample_item) -> str:
-    return "/".join([item for item in [sample_item.name(), sample_item.sample_type] if item])
+    return "/".join([item for item in [sample_item.name(), sample_item.sampleType()] if item])
 
 
 def safe_z_position(z: float) -> float:
@@ -146,7 +146,7 @@ class TableSampleItem(QtWidgets.QTreeWidgetItem):
         super().__init__()
         self.sample_item = sample_item
         self.setName(format_sample_item(sample_item))
-        self.setPositionLabel(sample_item.sample_position)
+        self.setPositionLabel(sample_item.samplePositionLabel())
         for contact_item in sample_item.children():
             self.addChild(TableContactItem(contact_item))
 
@@ -563,7 +563,7 @@ class TablePositionsWidget(QtWidgets.QWidget):
         self.exportButton.clicked.connect(self.on_export)
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.positionsTreeWidget, 0, 0, 6, 1)
+        layout.addWidget(self.positionsTreeWidget, 0, 0, 7, 1)
         layout.addWidget(self.moveButton, 0, 1)
         layout.addWidget(self.addButton, 2, 1)
         layout.addWidget(self.editButton, 3, 1)
@@ -714,6 +714,9 @@ class CalibrateWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.calibrateGroupBox)
         layout.addStretch()
+
+    def setLocked(self, locked: bool) -> None:
+        self.calibrateButton.setEnabled(not locked)
 
 
 class OptionsWidget(QtWidgets.QWidget):
@@ -882,6 +885,9 @@ class OptionsWidget(QtWidgets.QWidget):
     def setLcrMatrixChannels(self, channels: List[str]) -> None:
         self.lcrMatrixChannelsLineEdit.setText(", ".join([token for token in channels]))
 
+    def setLocked(self, locked: bool) -> None:
+        self.setEnabled(not locked)
+
 
 class AlignmentDialog(QtWidgets.QDialog):
 
@@ -902,6 +908,10 @@ class AlignmentDialog(QtWidgets.QDialog):
 
     lcrFailed = QtCore.pyqtSignal(Exception, object)
     lcrReadingChanged = QtCore.pyqtSignal(float, float)
+
+    moveRequested = QtCore.pyqtSignal()
+    abortRequested = QtCore.pyqtSignal()
+    moveFinished = QtCore.pyqtSignal()
 
     def __init__(self, process, lcr_process, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -1007,17 +1017,17 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         # Lights group box
 
-        self.probecardLightButton: ToggleButton = ToggleButton(self)
+        self.probecardLightButton = ToggleButton(self)
         self.probecardLightButton.setText("PC Light")
         self.probecardLightButton.setToolTip("Toggle probe card light")
         self.probecardLightButton.toggled.connect(self.probecardLightToggled.emit)
 
-        self.microscopeLightButton: ToggleButton = ToggleButton(self)
+        self.microscopeLightButton = ToggleButton(self)
         self.microscopeLightButton.setText("Mic Light")
         self.microscopeLightButton.setToolTip("Toggle microscope light")
         self.microscopeLightButton.toggled.connect(self.microscopeLightToggled.emit)
 
-        self.boxLightButton: ToggleButton = ToggleButton(self)
+        self.boxLightButton = ToggleButton(self)
         self.boxLightButton.setText("Box Light")
         self.boxLightButton.setToolTip("Toggle box light")
         self.boxLightButton.toggled.connect(self.boxLightToggled.emit)
@@ -1210,6 +1220,44 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.resetSafety()
         self.updateKeypadButtons()
 
+        # State machine
+
+        self.idleState = QtCore.QState()
+        self.idleState.entered.connect(self.enterIdle)
+
+        self.movingState = QtCore.QState()
+        self.movingState.entered.connect(self.enterMoving)
+
+        self.abortingState = QtCore.QState()
+        self.abortingState.entered.connect(self.enterAbort)
+
+        self.idleState.addTransition(self.moveRequested, self.movingState)
+
+        self.movingState.addTransition(self.moveFinished, self.idleState)
+        self.movingState.addTransition(self.abortRequested, self.abortingState)
+
+        self.abortingState.addTransition(self.moveFinished, self.idleState)
+
+        self.stateMachine = QtCore.QStateMachine(self)
+        self.stateMachine.addState(self.idleState)
+        self.stateMachine.addState(self.movingState)
+        self.stateMachine.addState(self.abortingState)
+        self.stateMachine.setInitialState(self.idleState)
+        self.stateMachine.start()
+
+    def enterIdle(self) -> None:
+        self.setLocked(False)
+        self.progressBar.setVisible(False)
+        self.stopButton.setEnabled(False)
+
+    def enterMoving(self) -> None:
+        self.setLocked(True)
+        self.progressBar.setVisible(True)
+        self.stopButton.setEnabled(True)
+
+    def enterAbort(self) -> None:
+        self.stopButton.setEnabled(False)
+
     def stepWidth(self) -> float:
         for button in self.stepWidthButtonGroup.buttons():
             if button.isChecked():
@@ -1238,7 +1286,6 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.current_caldone = position
         self.positionsWidget.setEnabled(caldone_valid(position))
         self.contactsWidget.setEnabled(caldone_valid(position))
-        self.keypadGroupBox.setEnabled(caldone_valid(position))
         self.calibrationWidget.setCalibration(position)
 
     def updateLimits(self) -> None:
@@ -1308,31 +1355,31 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.lcrWidget.clear()
 
     def on_add_x(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.relative_move_xy(+self.stepWidth(), 0)
 
     def on_sub_x(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.relative_move_xy(-self.stepWidth(), 0)
 
     def on_add_y(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.relative_move_xy(0, +self.stepWidth())
 
     def on_sub_y(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.relative_move_xy(0, -self.stepWidth())
 
     def on_add_z(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.process.relative_move(0, 0, +self.stepWidth())
 
     def on_sub_z(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         self.process.relative_move(0, 0, -self.stepWidth())
 
     def on_step_up(self) -> None:
-        self.setLocked(True)
+        self.moveRequested.emit()
         step_width = self.stepWidth()
         multiply = self.optionsWidget.stepUpMultiply()
         vector = (
@@ -1361,14 +1408,7 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.boxLightButton.setEnabled(state)
 
     def on_move_finished(self) -> None:
-        self.progressBar.setVisible(False)
-        self.stopButton.setEnabled(False)
-        self.setLocked(False)
-
-    def on_calibration_finished(self) -> None:
-        self.progressBar.setVisible(False)
-        self.stopButton.setEnabled(False)
-        self.setLocked(False)
+        self.moveFinished.emit()
 
     def setMessage(self, message: str) -> None:
         self.messageLabel.setText(message)
@@ -1387,21 +1427,19 @@ class AlignmentDialog(QtWidgets.QDialog):
         callback(x, y, z)
 
     def on_absolute_move(self, position) -> None:
+        self.moveRequested.emit()
         # Update to safe Z position
         position = Position(position.x, position.y, safe_z_position(position.z))
-        self.setLocked(True)
         # Clear contact quality graph on X/Y movements.
         self.lcrWidget.clear()
-        self.stopButton.setEnabled(True)
         self.process.safe_absolute_move(position.x, position.y, position.z)
 
     def on_calibrate(self) -> None:
-        self.setLocked(True)
-        self.stopButton.setEnabled(True)
+        self.moveRequested.emit()
         self.process.calibrate_table()
 
     def stop(self) -> None:
-        self.stopButton.setEnabled(False)
+        self.abortRequested.emit()
         self.process.stop_current_action()
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
@@ -1462,6 +1500,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.positionsWidget.setLocked(locked)
         self.contactsWidget.setLocked(locked)
         self.closeButton.setEnabled(not locked)
+        self.calibrateWidget.setLocked(locked)
+        self.optionsWidget.setLocked(locked)
         self.progressBar.setVisible(locked)
         if locked:
             self.progressBar.setRange(0, 0)
@@ -1477,8 +1517,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.process.caldone_changed = self.setCaldone
         self.process.relative_move_finished = self.on_move_finished
         self.process.absolute_move_finished = self.on_move_finished
-        self.process.calibration_finished = self.on_calibration_finished
-        self.process.stopped = self.on_calibration_finished
+        self.process.calibration_finished = self.on_move_finished
+        self.process.stopped = self.on_move_finished
 
     def unmount(self) -> None:
         """Unmount table process."""
@@ -1489,6 +1529,7 @@ class AlignmentDialog(QtWidgets.QDialog):
             self.process.caldone_changed = None
             self.process.relative_move_finished = None
             self.process.absolute_move_finished = None
+            self.process.calibration_finished = None
             self.process.stopped = None
             self.process = None
 

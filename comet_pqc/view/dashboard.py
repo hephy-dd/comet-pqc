@@ -11,8 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 import comet
 from comet.process import ProcessMixin
-
-from .processes.measure import MeasureWorker
+from ..workers.measure import MeasureWorker
 from .components import (
     CalibrationWidget,
     OperatorWidget,
@@ -20,9 +19,9 @@ from .components import (
     ToggleButton,
     WorkingDirectoryWidget,
 )
-from .core import config
-from .core.position import Position
-from .core.utils import make_path
+from ..core import config
+from ..core.position import Position
+from ..core.utils import make_path
 from .sequence import (
     ContactTreeItem,
     EditSamplesDialog,
@@ -33,11 +32,11 @@ from .sequence import (
     StartSequenceDialog,
     load_all_sequences,
 )
-from .settings import settings
+from ..settings import settings
 from .alignment import AlignmentDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
 from .measurementwidget import MeasurementWidget
-from .utils import caldone_valid
+from ..utils import caldone_valid
 
 logger = logging.getLogger(__name__)
 
@@ -152,13 +151,9 @@ class SequenceWidget(QtWidgets.QGroupBox):
             progress.exec()
 
     def addSampleItem(self) -> None:
-        item = SampleTreeItem(
-            name_prefix="",
-            name_infix="Unnamed",
-            name_suffix="",
-            sample_type="",
-            enabled=False
-        )
+        item = SampleTreeItem()
+        item.setNameInfix("Unnamed")
+        item.setEnabled(False)
         self.sequenceTreeWidget.addSampleItem(item)
         self.sequenceTreeWidget.setCurrentItem(item)
         self.sequenceTreeWidget.resizeColumns()
@@ -499,15 +494,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             return item.name()
         return ""
 
-    def sample_type(self):
-        """Return sample type."""
+    def sampleType(self) -> str:
+        """Return current sample type."""
         item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, MeasurementTreeItem):
-            return item.contact.sample.sample_type
+            return item.contact.sample.sampleType()
         if isinstance(item, ContactTreeItem):
-            return item.sample.sample_type
+            return item.sample.sampleType()
         if isinstance(item, SampleTreeItem):
-            return item.sample_type
+            return item.sampleType()
         return ""
 
     def table_position(self):
@@ -582,8 +577,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         if isinstance(item, ContactTreeItem):
             panel = self.panels.get("contact")
             panel.setVisible(True)
-            panel.tableMoveRequested.connect(self.moveTable)
-            panel.tableContactRequested.connect(self.contactTable)
             panel.mount(item)
         if isinstance(item, MeasurementTreeItem):
             panel = self.panels.get(item.type)
@@ -735,6 +728,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         worker.message_changed.connect(self.messageChanged.emit)
         worker.progress_changed.connect(self.progressChanged.emit)
         worker.item_state_changed.connect(self.setItemState)
+        worker.item_recontact_changed.connect(self.setItemRecontact)
+        worker.item_remeasure_changed.connect(self.setItemRemeasure)
         worker.item_reset.connect(self.resetItem)
         worker.item_visible.connect(self.showItem)
         worker.item_hidden.connect(self.hideItem)
@@ -768,6 +763,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def setItemState(self, item, state) -> None:
         item.setState(state)
+        item.setExpanded(True)
+        self.sequenceTreeWidget.resizeColumns()
+
+    def setItemRecontact(self, item, count) -> None:
+        item.setRecontact(count)
+        item.setExpanded(True)
+        self.sequenceTreeWidget.resizeColumns()
+
+    def setItemRemeasure(self, item, count) -> None:
+        item.setRemeasure(count)
         item.setExpanded(True)
         self.sequenceTreeWidget.resizeColumns()
 

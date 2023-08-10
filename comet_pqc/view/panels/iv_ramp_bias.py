@@ -5,45 +5,45 @@ from PyQt5 import QtWidgets
 import comet
 from comet import ui
 
-from comet_pqc.components import Metric
+from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
 
-__all__ = ["IVRamp4WireBiasPanel"]
+__all__ = ["IVRampBiasPanel"]
 
 
-class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
-    """Panel for 4 wire IV ramp with bias measurements."""
+class IVRampBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
+    """Panel for bias IV ramp measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self.setName("4 Wire IV Ramp Bias")
+        self.setName("Bias + IV Ramp")
 
         self.register_hvsource()
         self.register_vsource()
         self.register_environment()
 
         self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
-        self.plot.add_axis("y", align="right", text="Voltage [V]")
+        self.plot.add_axis("x", align="bottom", text="Voltage [V]")
+        self.plot.add_axis("y", align="right", text="Current [uA]")
         self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
-        self.current_start = QtWidgets.QDoubleSpinBox(self)
-        self.current_start.setDecimals(3)
-        self.current_start.setRange(float("-inf"), float("+inf"))
-        self.current_start.setSuffix(" uA")
+        self.voltage_start = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_start.setDecimals(3)
+        self.voltage_start.setRange(-2200, +2200)
+        self.voltage_start.setSuffix(" V")
 
-        self.current_stop = QtWidgets.QDoubleSpinBox(self)
-        self.current_stop.setDecimals(3)
-        self.current_stop.setRange(float("-inf"), float("+inf"))
-        self.current_stop.setSuffix(" uA")
+        self.voltage_stop = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_stop.setDecimals(3)
+        self.voltage_stop.setRange(-2200, +2200)
+        self.voltage_stop.setSuffix(" V")
 
-        self.current_step = QtWidgets.QDoubleSpinBox(self)
-        self.current_step.setDecimals(3)
-        self.current_step.setRange(0, float("inf"))
-        self.current_step.setSuffix(" uA")
+        self.voltage_step = QtWidgets.QDoubleSpinBox(self)
+        self.voltage_step.setDecimals(3)
+        self.voltage_step.setRange(0, 200)
+        self.voltage_step.setSuffix(" V")
 
         self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.waitingTimeSpinBox.setDecimals(2)
@@ -55,10 +55,8 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
         self.bias_voltage.setRange(-2200, +2200)
         self.bias_voltage.setSuffix(" V")
 
-        self.bias_voltage_step = QtWidgets.QDoubleSpinBox(self)
-        self.bias_voltage_step.setDecimals(3)
-        self.bias_voltage_step.setRange(-2200, +2200)
-        self.bias_voltage_step.setSuffix(" V")
+        self.bias_mode = QtWidgets.QComboBox(self)
+        self.bias_mode.addItems(["constant", "offset"])
 
         self.hvsrcCurrentComplianceSpinBox = Metric(self)
         self.hvsrcCurrentComplianceSpinBox.setUnit("A")
@@ -69,83 +67,86 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
         self.hvsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
         self.hvsrcAcceptComplianceCheckBox.setText("Accept Compliance")
 
-        self.vsrcVoltageComplianceSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self.vsrcVoltageComplianceSpinBox.setDecimals(3)
-        self.vsrcVoltageComplianceSpinBox.setRange(-2200, +2200)
-        self.vsrcVoltageComplianceSpinBox.setSuffix(" V")
+        self.vsrcCurrentComplianceSpinBox = Metric(self)
+        self.vsrcCurrentComplianceSpinBox.setUnit("A")
+        self.vsrcCurrentComplianceSpinBox.setPrefixes("mun")
+        self.vsrcCurrentComplianceSpinBox.setDecimals(3)
+        self.vsrcCurrentComplianceSpinBox.setRange(0, float("inf"))
 
         self.vsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
         self.vsrcAcceptComplianceCheckBox.setText("Accept Compliance")
 
-        self.bind("current_start", self.current_start, 0, unit="uA")
-        self.bind("current_stop", self.current_stop, 0, unit="uA")
-        self.bind("current_step", self.current_step, 0, unit="uA")
+        self.bind("voltage_start", self.voltage_start, 0, unit="V")
+        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
+        self.bind("voltage_step", self.voltage_step, 0, unit="V")
         self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
-        self.bind("bias_voltage", self.bias_voltage, 10, unit="V")
-        self.bind("bias_voltage_step", self.bias_voltage_step, 1, unit="V")
-
+        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("bias_mode", self.bias_mode, "constant")
         self.bind("hvsrc_current_compliance", self.hvsrcCurrentComplianceSpinBox, 0, unit="A")
         self.bind("hvsrc_accept_compliance", self.hvsrcAcceptComplianceCheckBox, False)
-        self.bind("vsrc_voltage_compliance", self.vsrcVoltageComplianceSpinBox, 0, unit="V")
+        self.bind("vsrc_current_compliance", self.vsrcCurrentComplianceSpinBox, 0, unit="A")
         self.bind("vsrc_accept_compliance", self.vsrcAcceptComplianceCheckBox, False)
 
         rampGroupBox = QtWidgets.QGroupBox(self)
-        rampGroupBox.setTitle("Ramp")
+        rampGroupBox.setTitle("HV Source Ramp")
 
         rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
-        rampGroupBoxLayout.addWidget(self.current_start)
+        rampGroupBoxLayout.addWidget(self.voltage_start)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop"))
-        rampGroupBoxLayout.addWidget(self.current_stop)
+        rampGroupBoxLayout.addWidget(self.voltage_stop)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step"))
-        rampGroupBoxLayout.addWidget(self.current_step)
+        rampGroupBoxLayout.addWidget(self.voltage_step)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time"))
         rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
         rampGroupBoxLayout.addStretch()
 
-        hvsrcBiasGroupBox = QtWidgets.QGroupBox(self)
-        hvsrcBiasGroupBox.setTitle("HV Source Bias")
+        vsrcBiasGroupBox = QtWidgets.QGroupBox(self)
+        vsrcBiasGroupBox.setTitle("V Source Bias")
 
-        hvsrcBiasGroupBoxLayout = QtWidgets.QVBoxLayout(hvsrcBiasGroupBox)
-        hvsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage"))
-        hvsrcBiasGroupBoxLayout.addWidget(self.bias_voltage)
-        hvsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage Step"))
-        hvsrcBiasGroupBoxLayout.addWidget(self.bias_voltage_step)
-        hvsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance"))
-        hvsrcBiasGroupBoxLayout.addWidget(self.hvsrcCurrentComplianceSpinBox)
-        hvsrcBiasGroupBoxLayout.addWidget(self.hvsrcAcceptComplianceCheckBox)
-        hvsrcBiasGroupBoxLayout.addStretch()
+        vsrcBiasGroupBoxLayout = QtWidgets.QVBoxLayout(vsrcBiasGroupBox)
+        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage"))
+        vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage)
+        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance"))
+        vsrcBiasGroupBoxLayout.addWidget(self.vsrcCurrentComplianceSpinBox)
+        vsrcBiasGroupBoxLayout.addWidget(self.vsrcAcceptComplianceCheckBox)
+        vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Mode"))
+        vsrcBiasGroupBoxLayout.addWidget(self.bias_mode)
+        vsrcBiasGroupBoxLayout.addStretch()
 
-        vsrcGroupBox = QtWidgets.QGroupBox(self)
-        vsrcGroupBox.setTitle("V Source")
+        hvsrcGroupBox = QtWidgets.QGroupBox(self)
+        hvsrcGroupBox.setTitle("HV Source")
 
-        vsrcGroupBoxLayout = QtWidgets.QVBoxLayout(vsrcGroupBox)
-        vsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance"))
-        vsrcGroupBoxLayout.addWidget(self.vsrcVoltageComplianceSpinBox)
-        vsrcGroupBoxLayout.addWidget(self.vsrcAcceptComplianceCheckBox)
-        vsrcGroupBoxLayout.addStretch()
+        hvsrcGroupBoxLayout = QtWidgets.QVBoxLayout(hvsrcGroupBox)
+        hvsrcGroupBoxLayout.addWidget(QtWidgets.QLabel("Compliance"))
+        hvsrcGroupBoxLayout.addWidget(self.hvsrcCurrentComplianceSpinBox)
+        hvsrcGroupBoxLayout.addWidget(self.hvsrcAcceptComplianceCheckBox)
+        hvsrcGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
         layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(hvsrcBiasGroupBox, 1)
-        layout.addWidget(vsrcGroupBox, 1)
+        layout.addWidget(vsrcBiasGroupBox, 1)
+        layout.addWidget(hvsrcGroupBox, 1)
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
 
-        self.series_transform["vsrc"] = lambda x, y: ((x * ampere).to("uA").m, (y * volt).to("V").m)
+        self.series_transform["vsrc"] = lambda x, y: ((x * volt).to("V").m, (y * ampere).to("uA").m)
         self.series_transform["xfit"] = self.series_transform.get("vsrc")
 
     def mount(self, measurement):
         super().mount(measurement)
-        self.plot.series.get("xfit").qt.setVisible(False)
         for name, points in measurement.series.items():
             if name in self.plot.series:
-                self.plot.series.clear()
-            tr = self.series_transform.get(name, self.series_transform_default)
-            for x, y in points:
-                self.plot.series.get(name).append(*tr(x, y))
-            self.plot.series.get(name).qt.setVisible(True)
+                if name in self.plot.series:
+                    self.plot.series.clear()
+                tr = self.series_transform.get(name, self.series_transform_default)
+                if points[0][0] > points[-1][0]:
+                    self.plot.axes.get("x").qt.setReverse(True)
+                else:
+                    self.plot.axes.get("x").qt.setReverse(False)
+                for x, y in points:
+                    self.plot.series.get(name).append(*tr(x, y))
         self.updateReadings()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
@@ -154,6 +155,10 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
+                if self.voltage_start.value() > self.voltage_stop.value():
+                    self.plot.axes.get("x").qt.setReverse(True)
+                else:
+                    self.plot.axes.get("x").qt.setReverse(False)
                 tr = self.series_transform.get(name, self.series_transform_default)
                 self.plot.series.get(name).append(*tr(x, y))
                 self.plot.series.get(name).qt.setVisible(True)
@@ -164,7 +169,6 @@ class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, Environment
             if self.plot.zoomed:
                 self.plot.update("x")
             else:
-                self.plot.qt.chart().zoomOut() # HACK
                 self.plot.fit()
 
     def clearReadings(self) -> None:

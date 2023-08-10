@@ -16,10 +16,11 @@ import analysis_pqc
 
 from .. import __version__
 from ..core.functions import LinearRange
+from ..core.request import RequestTimeout
 from ..measurements import measurement_factory
 from ..measurements.measurement import ComplianceError, serialize_json, serialize_txt
 from ..measurements.mixins import AnalysisError
-from ..sequence import (
+from ..view.sequence import (
     ContactTreeItem,
     MeasurementTreeItem,
     SequenceRootTreeItem,
@@ -84,6 +85,8 @@ class MeasureWorker(QtCore.QObject):
     progress_changed = QtCore.pyqtSignal(int, int)
 
     item_state_changed = QtCore.pyqtSignal(object, object)
+    item_recontact_changed = QtCore.pyqtSignal(object, int)
+    item_remeasure_changed = QtCore.pyqtSignal(object, int)
     item_reset = QtCore.pyqtSignal(object)
     item_visible = QtCore.pyqtSignal(object)
     item_hidden = QtCore.pyqtSignal(object)
@@ -125,6 +128,12 @@ class MeasureWorker(QtCore.QObject):
 
     def set_item_state(self, item, state) -> None:
         self.item_state_changed.emit(item, state)
+
+    def increment_item_recontact(self, item) -> None:
+        self.item_recontact_changed.emit(item, item.recontact() + 1)
+
+    def increment_item_remeasure(self, item) -> None:
+        self.item_remeasure_changed.emit(item, item.remeasure() + 1)
 
     def reset_measurement_item(self, item) -> None:
         self.item_reset.emit(item)
@@ -250,19 +259,13 @@ class MeasureWorker(QtCore.QObject):
         if table_process.running and table_process.enabled:
             logger.info("Safe move table to %s", position)
             self.set_message("Moving table...")
-            movement_finished = threading.Event()
-
-            def absolute_move_finished():
-                table_process.absolute_move_finished = None
-                self.config.update({"table_position": table_process.get_cached_position()})
-                movement_finished.set()
-                self.set_message("Moving table... done.")
-
-            table_process.absolute_move_finished = absolute_move_finished
-            table_process.safe_absolute_move(*position)
             timeout = self.config.get("table_move_timeout")
-            if not movement_finished.wait(timeout=timeout):
-                raise TimeoutError(f"Table move timeout after {timeout} s...")
+            try:
+                table_process.safe_absolute_move(*position).get(timeout=timeout)
+                self.config.update({"table_position": table_process.get_cached_position()})
+                self.set_message("Moving table... done.")
+            except RequestTimeout as exc:
+                raise TimeoutError(f"Table move timeout after {timeout} s...") from exc
             logger.info("Safe move table to %s... done.", position)
 
     def apply_contact_delay(self) -> None:
@@ -417,6 +420,7 @@ class ContactStrategy:
                 break
             if retry_contact:
                 logger.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
+                self.worker.increment_item_recontact(contact_item)
             self.worker.set_message("Process contact...")
             self.worker.set_item_state(contact_item, contact_item.ProcessingState)
             logger.info(" => %s", contact_item.name())
@@ -433,7 +437,7 @@ class ContactStrategy:
                 self.worker.set_item_state(contact_item, contact_item.ProcessingState)
                 if retry_measurement:
                     logger.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
-                measurement_items = self.process_measurement_sequence(measurement_items)
+                measurement_items = self.process_measurement_sequence(measurement_items, retry_measurement)
                 state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
                 if self.worker.stop_requested:
                     state = contact_item.StoppedState
@@ -442,7 +446,7 @@ class ContactStrategy:
                     break
         return contact_item.ErrorState if measurement_items else contact_item.SuccessState
 
-    def process_measurement_sequence(self, measurement_items) -> None:
+    def process_measurement_sequence(self, measurement_items, retry_measurement) -> None:
         """Returns a list of failed measurement items."""
         prev_measurement_item = None
         failed_measurements = []
@@ -451,6 +455,8 @@ class ContactStrategy:
                 break
             if not measurement_item.isEnabled():
                 continue
+            if retry_measurement:
+                self.worker.increment_item_remeasure(measurement_item)
             if self.worker.stop_requested:
                 self.worker.set_item_state(measurement_item, measurement_item.StoppedState)
                 break
@@ -484,8 +490,8 @@ class MeasurementStrategy:
         self.worker.set_item_state(measurement_item, state)
         self.worker.show_measurement_item(measurement_item)
         sample_name = measurement_item.contact.sample.name()
-        sample_type = measurement_item.contact.sample.sample_type
-        sample_position = measurement_item.contact.sample.sample_position
+        sample_type = measurement_item.contact.sample.sampleType()
+        sample_position = measurement_item.contact.sample.samplePositionLabel()
         sample_comment = measurement_item.contact.sample.comment()
         output_dir = self.worker.config.get("output_dir", ".")
 
@@ -574,8 +580,8 @@ class MeasurementStrategy:
 
     def create_basename(self, measurement_item) -> str:
         """Return standardized measurement basename."""
-        sample_name = measurement_item.contact.sample.name()
-        sample_type = measurement_item.contact.sample.sample_type
+        sample_name = measurement_item.contact.sample.name().strip()
+        sample_type = measurement_item.contact.sample.sampleType().strip()
         contact_id = measurement_item.contact.id
         measurement_id = measurement_item.id
         iso_timestamp = make_iso(measurement_item.timestamp)

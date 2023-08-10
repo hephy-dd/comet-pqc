@@ -5,7 +5,7 @@ from PyQt5 import QtCore, QtWidgets
 from comet import ResourceMixin
 from comet.utils import escape_string, unescape_string
 
-from ..settings import settings
+from comet_pqc.settings import settings
 from .options import OptionsWidget
 from .table import TableWidget
 

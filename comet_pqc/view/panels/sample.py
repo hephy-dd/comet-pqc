@@ -2,9 +2,10 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from ..core import config
-from ..sequence import SequenceManagerDialog
-from ..utils import make_path
+from comet_pqc.core import config
+from comet_pqc.utils import make_path
+from ..sequence import SequenceManagerDialog, SampleTreeItem
+
 from .panel import BasicPanel
 
 __all__ = ["SamplePanel"]
@@ -90,26 +91,26 @@ class SamplePanel(BasicPanel):
         self.layout().insertWidget(2, self.sampleGroupBox)
 
     def updateSampleName(self) -> None:
-        if self.context:
-            self.context.name_infix = self.sampleNameInfixLineEdit.text()
-            self.context.name_prefix = self.sampleNamePrefixLineEdit.text()
-            self.context.name_suffix = self.sampleNameSuffixLineEdit.text()
-            self.context.sample_type = self.sampleTypeLineEdit.text()
+        if isinstance(self.context, SampleTreeItem):
+            self.context.setNamePrefix(self.sampleNamePrefixLineEdit.text())
+            self.context.setNameInfix(self.sampleNameInfixLineEdit.text())
+            self.context.setNameSuffix(self.sampleNameSuffixLineEdit.text())
+            self.context.setSampleType(self.sampleTypeLineEdit.text())
             self.setTitle(f"Sample &rarr; {self.context.name()}")
             self.sampleChanged.emit(self.context)
 
     def updateSampleType(self) -> None:
-        if self.context:
-            self.context.sample_type = self.sampleTypeLineEdit.text()
+        if isinstance(self.context, SampleTreeItem):
+            self.context.setSampleType(self.sampleTypeLineEdit.text())
             self.sampleChanged.emit(self.context)
 
     def updateSamplePosition(self) -> None:
-        if self.context:
-            self.context.sample_position = self.samplePositionLineEdit.text()
+        if isinstance(self.context, SampleTreeItem):
+            self.context.setSamplePositionLabel(self.samplePositionLineEdit.text())
             self.sampleChanged.emit(self.context)
 
     def updateSampleComment(self) -> None:
-        if self.context:
+        if isinstance(self.context, SampleTreeItem):
             self.context.setComment(self.sampleCommentLineEdit.text())
             self.sampleChanged.emit(self.context)
 
@@ -142,11 +143,11 @@ class SamplePanel(BasicPanel):
         self.setTitle(f"Sample &rarr; {context.name()}")
         self.setDescription("Current halfmoon sample")
         self.sampleGroupBox.show()
-        self.sampleNamePrefixLineEdit.setText(context.name_prefix)
-        self.sampleNameInfixLineEdit.setText(context.name_infix)
-        self.sampleNameSuffixLineEdit.setText(context.name_suffix)
-        self.sampleTypeLineEdit.setText(context.sample_type)
-        self.samplePositionLineEdit.setText(context.sample_position)
+        self.sampleNamePrefixLineEdit.setText(context.namePrefix())
+        self.sampleNameInfixLineEdit.setText(context.nameInfix())
+        self.sampleNameSuffixLineEdit.setText(context.nameSuffix())
+        self.sampleTypeLineEdit.setText(context.sampleType())
+        self.samplePositionLineEdit.setText(context.samplePositionLabel())
         self.sampleCommentLineEdit.setText(context.comment())
         if context.sequence:
             self.sequenceLineEdit.setText(context.sequence.name)

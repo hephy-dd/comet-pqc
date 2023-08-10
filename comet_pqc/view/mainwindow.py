@@ -8,25 +8,24 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from comet import ProcessMixin
 
+from ..plugins import PluginManager
+from ..plugins.status import StatusPlugin
+from ..plugins.logger import LoggerPlugin
+from ..plugins.webapi import WebAPIPlugin
+from ..plugins.notification import NotificationPlugin
+from ..plugins.summary import SummaryPlugin
+from ..workers import ContactQualityWorker
+from ..utils import make_path
+from ..settings import settings as config  # TODO
+
 from .components import MessageBox
 from .dashboard import Dashboard, SampleTreeItem
 from .preferences import PreferencesDialog
-from .plugins import PluginManager
-from .plugins.status import StatusPlugin
-from .plugins.logger import LoggerPlugin
-from .plugins.webapi import WebAPIPlugin
-from .plugins.notification import NotificationPlugin
-from .plugins.summary import SummaryPlugin
-from .processes import (
-    ContactQualityProcess,
-)
 from .sequence import (
     SampleTreeItem,
     ContactTreeItem,
     MeasurementTreeItem,
 )
-from .utils import make_path
-from .settings import settings as config  # TODO
 
 __all__ = ["MainWindow"]
 
@@ -171,7 +170,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.hideMessage()
         self.hideProgress()
 
-        self.processes.add("contact_quality", ContactQualityProcess())
+        self.processes.add("contact_quality", ContactQualityWorker(self.station))
 
         self.plugins = PluginManager()
         self.plugins.register_plugin(StatusPlugin(self))

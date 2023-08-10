@@ -1,10 +1,14 @@
 import logging
+import time
 
 import comet
 from comet.driver.keithley import K707B
+from comet.driver.corvus import Venus1
 
-from .processes.table import AlternateTableProcess
-from .processes.environment import EnvironmentProcess
+from .driver.e4980a import E4980A
+
+from .workers.table import AlternateTableWorker
+from .workers.environment import EnvironmentWorker
 
 __all__ = ["Station"]
 
@@ -68,14 +72,16 @@ class Station(comet.ResourceMixin):
             read_termination="\r\n",
             write_termination="\r\n"
         )
-        self.resources.add("environ", self.environ_resource)
+        self.resources.add("environ", self.environ_resource)  # TODO
 
         self.resources.load_settings()
 
-        self.matrix = MatrixRole(self)
+        self.matrix = MatrixRole(self.matrix_resource)
+        self.lcr = LCRMeterRole(self.lcr_resource)
+        self.table = TableRole(self.table_resource)
 
-        self.environ_process = EnvironmentProcess(name="environ")
-        self.table_process = AlternateTableProcess(resource=self.table_resource)
+        self.environ_process = EnvironmentWorker(resource=self.environ_resource, name="environ")
+        self.table_process = AlternateTableWorker(table=self.table)
 
     def shutdown(self) -> None:
         self.environ_process.stop()
@@ -91,35 +97,194 @@ class Station(comet.ResourceMixin):
 
 class MatrixRole:  # TODO
 
-    def __init__(self, station):
-        self.station = station
+    def __init__(self, matrix_resource):
+        self.matrix_resource = matrix_resource
+        self.matrix_driver = K707B(matrix_resource)
 
-    def create_driver(self, resource):
-        return K707B(resource)
-
-    def identify(self):
-        with self.station.matrix_resource as resource:
-            return K707B(resource).identification
+    def identify(self) -> str:
+        with self.matrix_resource:
+            return self.matrix_driver.identification
 
     def open_all_channels(self) -> None:
-        with self.station.matrix_resource as resource:
-            matrix = self.create_driver(resource)
-            matrix.channel.open() # open all
+        with self.matrix_resource:
+            self.matrix_driver.channel.open() # open all
 
-    def closed_channels(self):
-        with self.station.matrix_resource as resource:
-            matrix = K707B(resource)
-            return matrix.channel.getclose()
+    def closed_channels(self) -> list:
+        with self.matrix_resource:
+            return self.matrix_driver.channel.getclose()
 
     def safe_close_channels(self, channels: list) -> None:
-        with self.station.matrix_resource as resource:
-            matrix = self.create_driver(resource)
-            closed_channels = matrix.channel.getclose()
+        with self.matrix_resource:
+            closed_channels = self.matrix_driver.channel.getclose()
             if closed_channels:
                 raise RuntimeError("Some matrix channels are still closed, " \
                     f"please verify the situation and open closed channels. Closed channels: {closed_channels}")
             if channels:
-                matrix.channel.close(channels)
-                closed_channels = matrix.channel.getclose()
+                self.matrix_driver.channel.close(channels)
+                closed_channels = self.matrix_driver.channel.getclose()
                 if sorted(closed_channels) != sorted(channels):
                     raise RuntimeError("Matrix mismatch in closed channels")
+
+
+class LCRMeterRole:
+
+    def __init__(self, lcr_resource):
+        self.lcr_driver = E4980A(lcr_resource)
+
+    def reset(self):
+        self.lcr_driver.reset()
+        self.lcr_driver.clear()
+        self.check_error()
+        self.lcr_driver.system.beeper.state = False
+        self.check_error()
+
+    def safe_write(self, message):
+        self.lcr_driver.resource.write(message)
+        self.lcr_driver.resource.query("*OPC?")
+        self.check_error()
+
+    def check_error(self):
+        """Test for error."""
+        code, message = self.lcr_driver.system.error
+        if code:
+            raise RuntimeError(f"LCR Meter error {code}: {message}")
+
+    def quick_setup_cp_rp(self):
+        self.safe_write(":FUNC:IMP:RANG:AUTO ON")
+        self.safe_write(":FUNC:IMP:TYPE CPRP")
+        self.safe_write(":APER SHOR")
+        self.safe_write(":INIT:CONT OFF")
+        self.safe_write(":TRIG:SOUR BUS")
+        self.safe_write(":CORR:METH SING")
+
+    def acquire_reading(self):
+        """Return primary and secondary LCR reading."""
+        self.safe_write(":TRIG:IMM")
+        prim, sec = self.lcr_driver.fetch()[:2]
+        return prim, sec
+
+
+class TableError(Exception):
+    ...
+
+
+class TableMachineError(Exception):
+    ...
+
+
+class TableCalibrationError(Exception):
+    ...
+
+
+class TableRole:
+
+    UNIT_MICROMETER: int = 1
+    UNIT_MILLIMETER: int = 2
+
+    ERROR_MESSAGES = {
+        1: "Internal error.",
+        2: "Internal error.",
+        3: "Internal error.",
+        4: "Internal error.",
+        1001: "Invalid parameter.",
+        1002: "Not enough parameters on the stack.",
+        1003: "Valid range of parameter is exceeded.",
+        1007: "Valid range of parameter is exceeded.",
+        1004: "Move stopped working, range should run over.",
+        1008: "Not enough parameters on the stack.",
+        1009: "Not enough space on the stack.",
+        1010: "Not enough space on parameter memory.",
+        1015: "Parameters outside of working range.",
+        2000: "Unknown command."
+    }
+
+    MACHINE_ERROR_MESSAGES = {
+        1: "Error memory overflow.",
+        10: "Motor driver disabled or failing 12V power supply.",
+        13: "Exceeded maximum positioning errors in closed loop.",
+        23: "RS422 encoder error."
+    }
+
+    VALID_CALDONE = 3, 3, 3
+
+    def __init__(self, table_resource):
+        self.resource = table_resource
+        self.table = Venus1(table_resource)
+
+    def identify(self) -> str:
+        return self.table.identification
+
+    @property
+    def is_calibrated(self) -> bool:
+        return (3, 3, 3) == self.table.x.caldone, self.table.y.caldone, self.table.z.caldone
+
+    def move_absolute(self, position) -> None:
+        x, y, z = position
+        self.table.move(x, y, z)
+
+    def move_relative(self, position) -> None:
+        x, y, z = position
+        self.table.rmove(x, y, z)
+
+    @property
+    def position(self) -> tuple:
+        x, y, z = self.table.pos
+        return x, y, z
+
+    @property
+    def caldone(self) -> tuple:
+        x, y, z = self.table.x.caldone, self.table.y.caldone, self.table.z.caldone
+        return x, y, z
+
+    @property
+    def joystick_enabled(self) -> bool:
+        return self.table.joystick
+
+    @joystick_enabled.setter
+    def joystick_enabled(self, value: bool) -> None:
+        self.table.joystick = value
+
+    def set_limit(self, limit):
+        x, y, z = limit
+        self.table.limit = x, y, z
+
+    @property
+    def limit(self):
+        return self.table.limit
+
+    @property
+    def axes(self):
+        return self.table.x, self.table.y, self.table.z
+
+    @property
+    def table_is_moving(self) -> None:
+        return (self.table.status & 0x1) == 0x1
+
+    def configure(self) -> None:
+        self.table.mode = 0
+        self.joystick_enabled = False
+        self.table.x.unit = self.UNIT_MICROMETER
+        self.table.y.unit = self.UNIT_MICROMETER
+        self.table.z.unit = self.UNIT_MICROMETER
+        time.sleep(.250)  # temper
+
+    def handle_error(self, ignore=None):
+        """Handle table system error."""
+        code = self.table.error
+        if code and code not in (ignore or []):
+            message = type(self).ERROR_MESSAGES.get(code, "Unknown error code.")
+            raise TableError(f"Table Error {code}: {message}")
+
+    def handle_machine_error(self, ignore=None):
+        """Handle table machine error."""
+        code = self.table.merror
+        if code and code not in (ignore or []):
+            message = type(self).MACHINE_ERROR_MESSAGES.get(code, "Unknown machine error code.")
+            raise TableMachineError(f"Table Machine Error {code}: {message}")
+
+    def handle_calibration_error(self):
+        """Handle table calibration error."""
+        x, y, z = self.table.x, self.table.y, self.table.z
+        caldone = x.caldone, y.caldone, z.caldone
+        if caldone != type(self).VALID_CALDONE:
+            raise TableCalibrationError("Table requires calibration.")

@@ -1,14 +1,13 @@
 import math
 import os
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from .core.position import Position
-from .core.utils import make_path, user_home
-from .settings import settings
-from .utils import (
-    create_icon,
+from ..core.position import Position
+from ..core.utils import make_path, user_home
+from ..settings import settings
+from ..utils import (
     format_table_unit,
     getcal,
     getrm,
@@ -24,6 +23,43 @@ __all__ = [
     "OperatorWidget",
     "PositionsComboBox"
 ]
+
+
+def create_icon(size: int, color: str) -> QtGui.QIcon:
+    """Return circular colored icon."""
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtGui.QColor("transparent"))
+    painter = QtGui.QPainter(pixmap)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    painter.setPen(QtGui.QColor(color))
+    painter.setBrush(QtGui.QColor(color))
+    painter.drawEllipse(1, 1, size - 2, size - 2)
+    del painter
+    return QtGui.QIcon(pixmap)
+
+
+def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> QtGui.QPixmap:
+    """Stitch together multiple QPixmaps to a single QPixmap."""
+    # Calculate size of stitched image
+    if vertical:
+        width = max([pixmap.width() for pixmap in pixmaps])
+        height = sum([pixmap.height() for pixmap in pixmaps])
+    else:
+        width = sum([pixmap.width() for pixmap in pixmaps])
+        height = max([pixmap.height() for pixmap in pixmaps])
+    canvas = QtGui.QPixmap(width, height)
+    canvas.fill(QtCore.Qt.white)
+    painter = QtGui.QPainter(canvas)
+    offset = 0
+    for pixmap in pixmaps:
+        if vertical:
+            painter.drawPixmap(0, offset, pixmap)
+            offset += pixmap.height()
+        else:
+            painter.drawPixmap(offset, 0, pixmap)
+            offset += pixmap.height()
+    painter.end()
+    return canvas
 
 
 class MessageBox(QtWidgets.QMessageBox):

@@ -2,7 +2,7 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets, QtChart
 
-from comet_pqc.plotwidget import VIPlotWidget
+from ..plotwidget import VIPlotWidget
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin

@@ -6,9 +6,8 @@ from QCharted import ChartView
 import comet
 from comet import ui
 
-from comet_pqc.components import Metric
-from ..settings import settings
-from ..utils import stitch_pixmaps
+from comet_pqc.settings import settings
+from ..components import Metric, stitch_pixmaps
 
 __all__ = ["PanelStub", "BasicPanel", "Panel"]
 

@@ -1,13 +1,7 @@
-import logging
 import math
-import traceback
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
-from PyQt5 import QtGui
-
-from comet import ui
 from comet import ureg
-from PyQt5 import QtCore, QtGui, QtWidgets
 
 from .core.utils import make_path
 
@@ -17,14 +11,10 @@ __all__ = [
     "split_channels",
     "format_metric",
     "format_switch",
-    "stitch_pixmaps",
-    "create_icon",
     "format_table_unit",
     "from_table_unit",
     "to_table_unit"
 ]
-
-logger = logging.getLogger(__name__)
 
 
 def join_channels(channels: List[str]) -> str:
@@ -92,43 +82,6 @@ def from_table_unit(value: float) -> float:
 def to_table_unit(value: float) -> float:
     """Convert millimeters to table unit (micron)."""
     return round((value * ureg("mm")).to("um").m, 0)
-
-
-def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> QtGui.QPixmap:
-    """Stitch together multiple QPixmaps to a single QPixmap."""
-    # Calculate size of stitched image
-    if vertical:
-        width = max([pixmap.width() for pixmap in pixmaps])
-        height = sum([pixmap.height() for pixmap in pixmaps])
-    else:
-        width = sum([pixmap.width() for pixmap in pixmaps])
-        height = max([pixmap.height() for pixmap in pixmaps])
-    canvas = QtGui.QPixmap(width, height)
-    canvas.fill(QtCore.Qt.white)
-    painter = QtGui.QPainter(canvas)
-    offset = 0
-    for pixmap in pixmaps:
-        if vertical:
-            painter.drawPixmap(0, offset, pixmap)
-            offset += pixmap.height()
-        else:
-            painter.drawPixmap(offset, 0, pixmap)
-            offset += pixmap.height()
-    painter.end()
-    return canvas
-
-
-def create_icon(size: int, color: str) -> QtGui.QIcon:
-    """Return circular colored icon."""
-    pixmap = QtGui.QPixmap(size, size)
-    pixmap.fill(QtGui.QColor("transparent"))
-    painter = QtGui.QPainter(pixmap)
-    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-    painter.setPen(QtGui.QColor(color))
-    painter.setBrush(QtGui.QColor(color))
-    painter.drawEllipse(1, 1, size - 2, size - 2)
-    del painter
-    return QtGui.QIcon(pixmap)
 
 
 def getcal(value: float) -> Union[int, float]:

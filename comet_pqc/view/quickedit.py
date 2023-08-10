@@ -85,11 +85,11 @@ class QuickEditItem(QtCore.QObject):
     def setType(self, type: str) -> None:
         self.typeLineEdit.setText(type)
 
-    def position(self) -> str:
+    def positionLabel(self) -> str:
         return self.positionLineEdit.text()
 
-    def setPosition(self, position: str) -> None:
-        self.positionLineEdit.setText(position)
+    def setPositionLabel(self, label: str) -> None:
+        self.positionLineEdit.setText(label)
 
     def addSequence(self, sequence: str) -> None:
         self.sequenceComboBox.addItem(sequence, sequence)
