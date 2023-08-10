@@ -333,12 +333,13 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
     def showException(self, exc: Exception, tb=None) -> None:
         """Raise message box showing exception information."""
         msgbox = MessageBox(self)
-        if not tb:
-            tb = traceback.format_exc()
+        if tb is None:
+            tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         msgbox.setIcon(msgbox.Critical)
         msgbox.setWindowTitle("An exception occured")
         msgbox.setText(format(exc))
         msgbox.setDetailedText(tb)
+        msgbox.exec()
         self.showMessage("Error")
         self.hideProgress()
 

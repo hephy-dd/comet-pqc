@@ -709,8 +709,10 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         config = {
             "table_position": self.table_position(),  # TODO state
-            "table_contact_delay": settings.settings.get("table_contact_delay", 0),  # TODO
+            "table_contact_delay": settings.table_contact_delay,
             "retry_contact_overdrive": settings.retry_contact_overdrive,
+            "retry_contact_count": settings.retry_contact_count,
+            "retry_measurement_count": settings.retry_measurement_count,
             "write_logfiles": self.write_logfiles(),
             "serialize_json": settings.export_json,
             "serialize_txt": settings.export_txt,

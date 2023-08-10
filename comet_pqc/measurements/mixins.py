@@ -8,7 +8,7 @@ from comet.driver.keithley import K6517B
 
 from ..core.filters import std_mean_filter
 from ..core.timer import Timer
-from ..driver import E4980A
+from ..instruments.e4980a import E4980A
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
 from ..utils import format_metric

@@ -123,9 +123,11 @@ class TableStepItem(QtWidgets.QTreeWidgetItem):
         self.setText(2, str(value))
 
     def __lt__(self, other):
-        column = self.treeWidget().sortColumn()
-        if column == 0:
-            return self.step_size < other.step_size
+        widget = self.treeWidget()
+        if widget is not None:
+            column = widget.sortColumn()
+            if column == 0:
+                return self.step_size < other.step_size
         return super().__lt__(other)
 
 
@@ -334,8 +336,7 @@ class TableWidget(QtWidgets.QWidget):
         self.xLimitJoystickSpinBox.setValue(x)
         self.yLimitJoystickSpinBox.setValue(y)
         self.zLimitJoystickSpinBox.setValue(z)
-        table_contact_delay = float(settings.settings.get("table_contact_delay", 0))
-        self.probecardContactDelaySpinBox.setValue(table_contact_delay)
+        self.probecardContactDelaySpinBox.setValue(settings.table_contact_delay)
         self.recontactOverdriveSpinBox.setValue(settings.retry_contact_overdrive)
 
     def writeSettings(self) -> None:
@@ -362,5 +363,5 @@ class TableWidget(QtWidgets.QWidget):
             self.yLimitJoystickSpinBox.value(),
             self.zLimitJoystickSpinBox.value(),
         ]
-        settings.settings["table_contact_delay"] = self.probecardContactDelaySpinBox.value()
+        settings.table_contact_delay = self.probecardContactDelaySpinBox.value()
         settings.retry_contact_overdrive = self.recontactOverdriveSpinBox.value()

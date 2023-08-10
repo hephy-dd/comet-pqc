@@ -5,7 +5,7 @@ import comet
 from comet.driver.keithley import K707B
 from comet.driver.corvus import Venus1
 
-from .driver.e4980a import E4980A
+from .instruments.e4980a import E4980A
 
 from .workers.table import AlternateTableWorker
 from .workers.environment import EnvironmentWorker

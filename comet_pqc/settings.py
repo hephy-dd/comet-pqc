@@ -168,6 +168,14 @@ class Settings(SettingsMixin):
         self.settings["table_control_dodge_height"] = to_table_unit(value)
 
     @property
+    def table_contact_delay(self) -> float:
+        return safe_float(self.settings.get("table_contact_delay"), 0)
+
+    @table_contact_delay.setter
+    def table_contact_delay(self, value: float) -> None:
+        self.settings["table_contact_delay"] = float(value)
+
+    @property
     def operators(self):
         return list(self.settings.get("operators") or [])
 
