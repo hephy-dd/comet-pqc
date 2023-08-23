@@ -9,6 +9,11 @@ nav_order: 10
 
 ## 0.44.0
 
+## 0.43.2
+
+### Changed
+- Migrated to analysis-pqc version 0.8.1.
+
 ## 0.43.1
 
 ### Fixed
