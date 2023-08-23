@@ -132,7 +132,7 @@ class MeasureWorker(QtCore.QObject):
 
     def discharge_decoupling(self) -> None:
         self.set_message("Auto-discharging decoupling box...")
-        self.station.environ_process.discharge()
+        self.station.environ_worker.discharge()
         self.set_message("Auto-discharged decoupling box.")
 
     def safe_recover_matrix(self) -> None:
@@ -153,15 +153,15 @@ class MeasureWorker(QtCore.QObject):
         return z
 
     def safe_move_table(self, position) -> None:
-        table_process = self.station.table_process
-        if table_process.running and table_process.enabled:
+        table_worker = self.station.table_worker
+        if table_worker.running and table_worker.enabled:
             logger.info("Safe move table to %s", position)
             self.set_message("Moving table...")
             timeout = self.config.get("table_move_timeout")
             x, y, z = position
             try:
-                table_process.safe_absolute_move(x, y, z).get(timeout=timeout)
-                self.config.update({"table_position": table_process.get_cached_position()})
+                table_worker.safe_absolute_move(x, y, z).get(timeout=timeout)
+                self.config.update({"table_position": table_worker.get_cached_position()})
                 self.set_message("Moving table... done.")
             except RequestTimeout as exc:
                 raise TimeoutError(f"Table move timeout after {timeout} s...") from exc

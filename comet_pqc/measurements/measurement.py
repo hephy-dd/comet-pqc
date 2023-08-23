@@ -275,7 +275,7 @@ class Measurement:
             kwargs = {}
             for key in type(self).required_instruments:
                 create = getattr(self, f"{key}_create")
-                resource = self.process.station.resources.get(key)
+                resource = station.resources.get(key)
                 kwargs.update({key: create(es.enter_context(resource))})
             try:
                 self._initialize(**kwargs)

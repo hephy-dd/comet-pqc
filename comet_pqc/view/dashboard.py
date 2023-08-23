@@ -432,15 +432,15 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         # Setup process callbacks
 
-        self.environ_process = self.station.environ_process
-        self.environ_process.pc_data_updated = self.setPCData
-        self.environ_process.failed = self.failed.emit
+        self.environ_worker = self.station.environ_worker
+        self.environ_worker.pc_data_updated = self.setPCData
+        self.environ_worker.failed = self.failed.emit
 
-        self.table_process = self.station.table_process
-        self.table_process.joystick_changed = self.on_table_joystick_changed
-        self.table_process.position_changed = self.on_table_position_changed
-        self.table_process.caldone_changed = self.on_table_calibration_changed
-        self.table_process.failed = self.failed.emit
+        self.table_worker = self.station.table_worker
+        self.table_worker.joystick_changed = self.on_table_joystick_changed
+        self.table_worker.position_changed = self.on_table_position_changed
+        self.table_worker.caldone_changed = self.on_table_calibration_changed
+        self.table_worker.failed = self.failed.emit
 
         self.contact_quality_process = self.processes.get("contact_quality")
         self.contact_quality_process.failed = self.failed.emit
@@ -510,7 +510,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         return (0., 0., 0.).
         """
         if self.isTableEnabled():
-            return self.table_process.get_cached_position()
+            return self.table_worker.get_cached_position()
         return Position()
 
     def isEnvironmentEnabled(self) -> bool:
@@ -597,23 +597,23 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         if self.isTableEnabled():
             self.setControlsLocked(True)
             x, y, z = contact.position
-            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
-            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
-            self.table_process.absolute_move_finished = self.on_table_finished
-            self.table_process.safe_absolute_move(x, y, z)
+            self.table_worker.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_worker.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
+            self.table_worker.absolute_move_finished = self.on_table_finished
+            self.table_worker.safe_absolute_move(x, y, z)
 
     def contactTable(self, contact) -> None:
         if self.isTableEnabled():
             self.setControlsLocked(True)
             x, y, z = contact.position
             z = safe_z_position(z)
-            self.table_process.message_changed = lambda message: self.messageChanged.emit(message)
-            self.table_process.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
-            self.table_process.absolute_move_finished = self.on_table_finished
-            self.table_process.safe_absolute_move(x, y, z)
+            self.table_worker.message_changed = lambda message: self.messageChanged.emit(message)
+            self.table_worker.progress_changed = lambda a, b: self.progressChanged.emit(a, b)
+            self.table_worker.absolute_move_finished = self.on_table_finished
+            self.table_worker.safe_absolute_move(x, y, z)
 
     def on_table_finished(self):
-        self.table_process.absolute_move_finished = None
+        self.table_worker.absolute_move_finished = None
         current_item = self.sequenceTreeWidget.currentItem()
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
@@ -848,7 +848,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     # Table calibration
 
     def on_table_joystick_toggled(self, state: bool) -> None:
-        self.table_process.enable_joystick(state)
+        self.table_worker.enable_joystick(state)
 
     def on_table_joystick_changed(self, state):
         self.tableControlWidget.setJoystickEnabled(state)
@@ -864,14 +864,14 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             panel.setTableEnabled(enabled)
 
     def on_table_control_clicked(self) -> None:
-        self.table_process.enable_joystick(False)
-        dialog = AlignmentDialog(self.table_process, self.contact_quality_process)
+        self.table_worker.enable_joystick(False)
+        dialog = AlignmentDialog(self.table_worker, self.contact_quality_process)
         dialog.readSettings()
         dialog.loadSamples(self.sequenceTreeWidget.sampleItems())
         if self.isEnvironmentEnabled():
             # TODO !!!
-            with self.environ_process as environ:
-                pc_data = environ.pc_data()
+            with self.environ_worker as environ_worker:
+                pc_data = environ_worker.pc_data()
                 dialog.updateSafety(pc_data.relay_states.laser_sensor)
                 dialog.update_probecard_light(pc_data.relay_states.probecard_light)
                 dialog.update_microscope_light(pc_data.relay_states.microscope_light)
@@ -891,56 +891,56 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             panel = self.panels.get("contact")
             panel.mount(current_item)
         # Restore events...
-        self.table_process.joystick_changed = self.on_table_joystick_changed
-        self.table_process.position_changed = self.on_table_position_changed
-        self.table_process.caldone_changed = self.on_table_calibration_changed
+        self.table_worker.joystick_changed = self.on_table_joystick_changed
+        self.table_worker.position_changed = self.on_table_position_changed
+        self.table_worker.caldone_changed = self.on_table_calibration_changed
         self.syncTableControls()
         # Store settings
         self.writeSettings()
 
     def on_laser_sensor_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_laser_sensor(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_laser_sensor(state)
 
     def on_box_light_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_box_light(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_box_light(state)
 
     def on_microscope_light_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_microscope_light(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_microscope_light(state)
 
     def on_microscope_camera_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_microscope_camera(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_microscope_camera(state)
 
     def on_microscope_control_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_microscope_control(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_microscope_control(state)
 
     def on_probecard_light_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_probecard_light(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_probecard_light(state)
 
     def on_probecard_camera_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_probecard_camera(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_probecard_camera(state)
 
     def on_pid_control_toggled(self, state):
-        with self.environ_process as environment:
-            environment.set_pid_control(state)
+        with self.environ_worker as environ_worker:
+            environ_worker.set_pid_control(state)
 
     def switch_off_lights(self):
         if self.isEnvironmentEnabled():
-            with self.environ_process as environment:
-                if environment.has_lights():
-                    environment.dim_lights()
+            with self.environ_worker as environ_worker:
+                if environ_worker.has_lights():
+                    environ_worker.dim_lights()
 
     def sync_environment_controls(self):
         """Syncronize environment controls."""
         if self.isEnvironmentEnabled():
-            with self.environ_process as environment:
-                environment.request_pc_data()
+            with self.environ_worker as environ_worker:
+                environ_worker.request_pc_data()
 
         else:
             self.environmentWidget.setEnabled(False)
@@ -965,25 +965,25 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def syncTableControls(self):
         """Syncronize table controls."""
         enabled = self.isTableEnabled()
-        self.table_process.enabled = enabled
+        self.table_worker.enabled = enabled
         self.on_table_position_changed(Position())
         self.on_table_calibration_changed(Position())
         if enabled:
-            self.table_process.status()
+            self.table_worker.status()
 
     def on_environment_groupbox_toggled(self, state):
         if state:
-            self.environ_process.start()
+            self.environ_worker.start()
             self.sync_environment_controls()
         else:
-            self.environ_process.stop()
+            self.environ_worker.stop()
 
     def on_table_groupbox_toggled(self, state: bool) -> None:
         if state:
-            self.table_process.start()
-            self.table_process.enable_joystick(False)
+            self.table_worker.start()
+            self.table_worker.enable_joystick(False)
         else:
-            self.table_process.stop()
+            self.table_worker.stop()
         self.syncTableControls()
 
     def pushSummary(self, data: dict) -> None:

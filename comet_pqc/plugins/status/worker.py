@@ -85,9 +85,9 @@ class StatusWorker(QtCore.QObject):
         self.data.update({"table_state": ""})
         if self.config.get("use_table", False):
             try:
-                table_process = self.station.table_process
-                model = table_process.get_identification().get(timeout=5.0)
-                caldone = table_process.is_calibrated().get(timeout=5.0)
+                table_worker = self.station.table_worker
+                model = table_worker.get_identification().get(timeout=5.0)
+                caldone = table_worker.is_calibrated().get(timeout=5.0)
                 self.data.update({"table_model": model})
                 if caldone:
                     state = "CALIBRATED"
@@ -103,10 +103,10 @@ class StatusWorker(QtCore.QObject):
         self.data.update({"env_pc_data": None})
         if self.config.get("use_environ", False):
             try:
-                with self.station.environ_process as environment:
-                    model = environment.identification()
+                with self.station.environ_worker as environ_worker:
+                    model = environ_worker.identification()
                     self.data.update({"env_model": model})
-                    pc_data = environment.pc_data()
+                    pc_data = environ_worker.pc_data()
                     self.data.update({"env_pc_data": pc_data})
             except (ResourceError, OSError):
                 ...

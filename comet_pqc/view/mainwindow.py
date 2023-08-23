@@ -218,13 +218,13 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         # Sync environment controls
         if self.dashboard.isEnvironmentEnabled():
-            self.station.environ_process.start()
+            self.station.environ_worker.start()
             self.dashboard.sync_environment_controls()
 
         if self.dashboard.isTableEnabled():
-            self.station.table_process.start()
+            self.station.table_worker.start()
             self.dashboard.syncTableControls()
-            self.station.table_process.enable_joystick(False)
+            self.station.table_worker.enable_joystick(False)
 
         # State machine
 

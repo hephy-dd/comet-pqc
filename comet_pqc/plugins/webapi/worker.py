@@ -95,17 +95,17 @@ class WebAPIWorker(comet.Process, comet.ProcessMixin):
         logger.info("stopped serving webapi")
 
     def _table_enabled(self):
-        table_process = self.station.table_process
-        if table_process:
-            return table_process.enabled
+        table_worker = self.station.table_worker
+        if table_worker:
+            return table_worker.enabled
         return False
 
     def _table_position(self):
         x, y, z = None, None, None
-        table_process = self.station.table_process
-        if table_process and table_process.running:
-            if table_process.enabled:
-                x, y, z = table_process.get_cached_position()
+        table_worker = self.station.table_worker
+        if table_worker and table_worker.running:
+            if table_worker.enabled:
+                x, y, z = table_worker.get_cached_position()
         return {
             "x": metric(x, "mm"),
             "y": metric(y, "mm"),

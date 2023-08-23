@@ -80,72 +80,73 @@ class Station(comet.ResourceMixin):
         self.lcr = LCRMeterRole(self.lcr_resource)
         self.table = TableRole(self.table_resource)
 
-        self.environ_process = EnvironmentWorker(resource=self.environ_resource, name="environ")
-        self.table_process = AlternateTableWorker(table=self.table)
+        self.environ_worker= EnvironmentWorker(resource=self.environ_resource, name="environ")
+        self.table_worker = AlternateTableWorker(table=self.table)
 
     def shutdown(self) -> None:
-        self.environ_process.stop()
-        self.table_process.stop()
-        self.environ_process.join()
-        self.table_process.join()
+        self.environ_worker.stop()
+        self.table_worker.stop()
+        self.environ_worker.join()
+        self.table_worker.join()
 
     def set_test_led(self, enabled: bool) -> None:
-        with self.environ_process as environ:
+        with self.environ_worker as environ:
             environ.set_test_led(True)
         logger.info("environbox.test_led = %s", "ON" if enabled else "OFF")
 
 
 class MatrixRole:  # TODO
 
-    def __init__(self, matrix_resource):
-        self.matrix_resource = matrix_resource
-        self.matrix_driver = K707B(matrix_resource)
+    def __init__(self, resource):
+        self.resource = resource
+        self.driver = K707B(resource)
 
     def identify(self) -> str:
-        with self.matrix_resource:
-            return self.matrix_driver.identification
+        with self.resource:
+            return self.driver.identification
 
     def open_all_channels(self) -> None:
-        with self.matrix_resource:
-            self.matrix_driver.channel.open() # open all
+        with self.resource:
+            self.driver.channel.open() # open all
 
     def closed_channels(self) -> list:
-        with self.matrix_resource:
-            return self.matrix_driver.channel.getclose()
+        with self.resource:
+            return self.driver.channel.getclose()
 
     def safe_close_channels(self, channels: list) -> None:
-        with self.matrix_resource:
-            closed_channels = self.matrix_driver.channel.getclose()
+        with self.resource:
+            closed_channels = self.driver.channel.getclose()
             if closed_channels:
                 raise RuntimeError("Some matrix channels are still closed, " \
                     f"please verify the situation and open closed channels. Closed channels: {closed_channels}")
             if channels:
-                self.matrix_driver.channel.close(channels)
-                closed_channels = self.matrix_driver.channel.getclose()
+                self.driver.channel.close(channels)
+                closed_channels = self.driver.channel.getclose()
                 if sorted(closed_channels) != sorted(channels):
                     raise RuntimeError("Matrix mismatch in closed channels")
 
 
 class LCRMeterRole:
 
-    def __init__(self, lcr_resource):
-        self.lcr_driver = E4980A(lcr_resource)
+    def __init__(self, resource):
+        self.resource = resource
+        self.driver = E4980A(resource)
 
     def reset(self):
-        self.lcr_driver.reset()
-        self.lcr_driver.clear()
+        self.driver.reset()
+        self.driver.clear()
         self.check_error()
-        self.lcr_driver.system.beeper.state = False
+        self.driver.system.beeper.state = False
         self.check_error()
 
     def safe_write(self, message):
-        self.lcr_driver.resource.write(message)
-        self.lcr_driver.resource.query("*OPC?")
+        self.driver.resource.write(message)
+        self.driver.resource.query("*OPC?")
         self.check_error()
 
     def check_error(self):
         """Test for error."""
-        code, message = self.lcr_driver.system.error
+        code, message = self.driver.system.error
         if code:
             raise RuntimeError(f"LCR Meter error {code}: {message}")
 
@@ -160,7 +161,7 @@ class LCRMeterRole:
     def acquire_reading(self):
         """Return primary and secondary LCR reading."""
         self.safe_write(":TRIG:IMM")
-        prim, sec = self.lcr_driver.fetch()[:2]
+        prim, sec = self.driver.fetch()[:2]
         return prim, sec
 
 
