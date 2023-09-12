@@ -17,25 +17,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.9
+    - name: Set up Python 3.10
       uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.10
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install wheel flake8 pytest pyusb pyserial gpib-ctypes
-        pip install pyinstaller==5.13.* pyinstaller-versionfile==2.1.*
-        pip install -e .
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        pip install .
+        pip install -r pyinstaller/requirements.txt
     - name: Build with pyinstaller
       run: |
-        pyinstaller windows_app.spec
+        pyinstaller pyinstaller/windows_app.spec
     - name: Publish
       uses: actions/upload-artifact@v2
       with:

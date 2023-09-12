@@ -33,17 +33,15 @@ hiddenimports = [
     "pyvisa",
     "pyvisa_py",
     "PyQt5.sip",
+    "pyusb",
+    "pyserial",
+    "gpib_ctypes",
 ]
 
 # Console will be displayed when the application is run
 console = False
 
-launcher = "launcher.pyw"
-version_info = "version_info.txt"
-
-# Create entry point
-with open(launcher, "wt") as fp:
-    fp.write(launcher_code)
+version_info = os.path.join(os.getcwd(), "version_info.txt")
 
 # Create windows version info
 create_versionfile(
@@ -57,7 +55,8 @@ create_versionfile(
     product_name=app_title,
 )
 
-a = Analysis([launcher],
+a = Analysis(
+    ["entry_point.py"],
     pathex=[os.getcwd()],
     binaries=[],
     datas=datas,
