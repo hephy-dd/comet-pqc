@@ -28,16 +28,6 @@ datas = [
     (os.path.join(app_root, "assets", "schema", "*.yaml"), "comet_pqc/assets/schema"),
 ]
 
-# Hidden imports are modules that PyInstaller cannot detect
-hiddenimports = [
-    "pyvisa",
-    "pyvisa_py",
-    "PyQt5.sip",
-    "pyusb",
-    "pyserial",
-    "gpib_ctypes",
-]
-
 # Console will be displayed when the application is run
 console = False
 
@@ -60,7 +50,14 @@ a = Analysis(
     pathex=[os.getcwd()],
     binaries=[],
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=[
+        "pyvisa",
+        "pyvisa_py",
+        "PyQt5.sip",
+        "usb",
+        "serial",
+        "gpib_ctypes",
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
