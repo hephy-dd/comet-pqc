@@ -2,7 +2,8 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets, QtChart
 
-from ..plotwidget import VIPlotWidget
+import comet
+from comet import ui
 
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, VSourceMixin
@@ -22,20 +23,12 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         self.register_vsource()
         self.register_environment()
 
-        self.ivPlotWidget = VIPlotWidget()
-        self.dataTabWidget.insertTab(0, self.ivPlotWidget, "IV Curve")
-
-        self.vsrcSeries = QtChart.QLineSeries()
-        self.vsrcSeries.setName("V Source")
-        self.vsrcSeries.setPen(QtCore.Qt.blue)
-        self.ivPlotWidget.addSeries(self.vsrcSeries)
-        self.series["vsrc"] = self.vsrcSeries
-
-        self.xfitSeries = QtChart.QLineSeries()
-        self.xfitSeries.setName("Fit")
-        self.xfitSeries.setPen(QtCore.Qt.magenta)
-        self.ivPlotWidget.addSeries(self.xfitSeries)
-        self.series["xfit"] = self.xfitSeries
+        self.plot = ui.Plot(height=300, legend="right")
+        self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")
+        self.plot.add_axis("y", align="right", text="Voltage [V]")
+        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
+        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
+        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
         self.currentStartSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.currentStartSpinBox.setDecimals(3)
@@ -100,34 +93,49 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
         layout.addWidget(vsrcGroupBox, 1)
         layout.addStretch(1)
 
+        ampere = comet.ureg("A")
+        volt = comet.ureg("V")
+
+        self.series_transform["vsrc"] = lambda x, y: ((x * ampere).to("uA").m, (y * volt).to("V").m)
+        self.series_transform["xfit"] = self.series_transform.get("vsrc")
+
     def mount(self, measurement):
         super().mount(measurement)
-        self.xfitSeries.setVisible(False)
-        self.ivPlotWidget.clear()
+        self.plot.series.get("xfit").qt.setVisible(False)
         for name, points in measurement.series.items():
+            if name in self.plot.series:
+                self.plot.series.clear()
+            tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
-                self.series.get(name).append(x, y)
-            self.series.get(name).setVisible(True)
+                self.plot.series.get(name).append(*tr(x, y))
+            self.plot.series.get(name).qt.setVisible(True)
         self.updateReadings()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
-            if name in self.series:
+            if name in self.plot.series:
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.series.get(name).append(x, y)
-                self.series.get(name).setVisible(True)
+                tr = self.series_transform.get(name, self.series_transform_default)
+                self.plot.series.get(name).append(*tr(x, y))
+                self.plot.series.get(name).qt.setVisible(True)
 
     def updateReadings(self) -> None:
         super().updateReadings()
-        self.ivPlotWidget.resizeAxes()
+        if self.measurement:
+            if self.plot.zoomed:
+                self.plot.update("x")
+            else:
+                self.plot.qt.chart().zoomOut() # HACK
+                self.plot.fit()
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.xfitSeries.setVisible(False)
-        self.ivPlotWidget.clear()
+        self.plot.series.get("xfit").qt.setVisible(False)
+        for series in self.plot.series.values():
+            series.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.ivPlotWidget.resizeAxes()
+        self.plot.fit()

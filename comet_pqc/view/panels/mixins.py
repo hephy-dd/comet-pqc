@@ -1,7 +1,5 @@
 from PyQt5 import QtWidgets
 
-from comet import ui
-
 from comet_pqc.utils import format_metric, format_switch
 from ..components import Metric
 
@@ -85,9 +83,9 @@ class HVSourceMixin:
         hvsrc_status_group_box_layout.addWidget(self.status_hvsrc_current, 1, 1)
         hvsrc_status_group_box_layout.addWidget(QtWidgets.QLabel("Output"), 0, 2)
         hvsrc_status_group_box_layout.addWidget(self.status_hvsrc_output, 1, 2)
-        hvsrc_status_group_box_layout.setColumnStretch(0, 1)
-        hvsrc_status_group_box_layout.setColumnStretch(1, 1)
-        hvsrc_status_group_box_layout.setColumnStretch(2, 1)
+        hvsrc_status_group_box_layout.setColumnStretch(0, 3)
+        hvsrc_status_group_box_layout.setColumnStretch(1, 3)
+        hvsrc_status_group_box_layout.setColumnStretch(2, 2)
 
         self.statusWidget.layout().addWidget(self.hvsrc_status_group_box)
 
@@ -221,9 +219,9 @@ class VSourceMixin:
         vsrc_status_group_box_layout.addWidget(self.status_vsrc_current, 1, 1)
         vsrc_status_group_box_layout.addWidget(QtWidgets.QLabel("Output"), 0, 2)
         vsrc_status_group_box_layout.addWidget(self.status_vsrc_output, 1, 2)
-        vsrc_status_group_box_layout.setColumnStretch(0, 1)
-        vsrc_status_group_box_layout.setColumnStretch(1, 1)
-        vsrc_status_group_box_layout.setColumnStretch(2, 1)
+        vsrc_status_group_box_layout.setColumnStretch(0, 3)
+        vsrc_status_group_box_layout.setColumnStretch(1, 3)
+        vsrc_status_group_box_layout.setColumnStretch(2, 2)
 
         self.statusWidget.layout().addWidget(self.vsrc_status_group_box)
 
@@ -503,9 +501,9 @@ class LCRMixin:
         lcr_status_group_box_layout.addWidget(self.status_lcr_current, 1, 1)
         lcr_status_group_box_layout.addWidget(QtWidgets.QLabel("Output"), 0, 2)
         lcr_status_group_box_layout.addWidget(self.status_lcr_output, 1, 2)
-        lcr_status_group_box_layout.setColumnStretch(0, 1)
-        lcr_status_group_box_layout.setColumnStretch(1, 1)
-        lcr_status_group_box_layout.setColumnStretch(2, 1)
+        lcr_status_group_box_layout.setColumnStretch(0, 3)
+        lcr_status_group_box_layout.setColumnStretch(1, 3)
+        lcr_status_group_box_layout.setColumnStretch(2, 2)
 
         self.statusWidget.layout().addWidget(self.lcr_status_group_box)
 

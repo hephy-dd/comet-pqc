@@ -35,30 +35,30 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
         self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
 
-        self.voltage_start = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_start.setDecimals(3)
-        self.voltage_start.setRange(-2200, +2200)
-        self.voltage_start.setSuffix(" V")
+        self.voltageStartSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltageStartSpinBox.setDecimals(3)
+        self.voltageStartSpinBox.setRange(-2200, +2200)
+        self.voltageStartSpinBox.setSuffix(" V")
 
-        self.voltage_stop = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_stop.setDecimals(3)
-        self.voltage_stop.setRange(-2200, +2200)
-        self.voltage_stop.setSuffix(" V")
+        self.voltageStopSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltageStopSpinBox.setDecimals(3)
+        self.voltageStopSpinBox.setRange(-2200, +2200)
+        self.voltageStopSpinBox.setSuffix(" V")
 
-        self.voltage_step = QtWidgets.QDoubleSpinBox(self)
-        self.voltage_step.setDecimals(3)
-        self.voltage_step.setRange(0, 200)
-        self.voltage_step.setSuffix(" V")
+        self.voltageStepSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.voltageStepSpinBox.setDecimals(3)
+        self.voltageStepSpinBox.setRange(0, 200)
+        self.voltageStepSpinBox.setSuffix(" V")
 
         self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.waitingTimeSpinBox.setDecimals(2)
         self.waitingTimeSpinBox.setRange(0, 60)
         self.waitingTimeSpinBox.setSuffix(" s")
 
-        self.bias_voltage = QtWidgets.QDoubleSpinBox(self)
-        self.bias_voltage.setDecimals(3)
-        self.bias_voltage.setRange(-2200, +2200)
-        self.bias_voltage.setSuffix(" V")
+        self.biasVoltageSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.biasVoltageSpinBox.setDecimals(3)
+        self.biasVoltageSpinBox.setRange(-2200, +2200)
+        self.biasVoltageSpinBox.setSuffix(" V")
 
         self.bias_mode = QtWidgets.QComboBox(self)
         self.bias_mode.addItems(["constant", "offset"])
@@ -79,11 +79,11 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
         self.vsrcAcceptComplianceCheckBox = QtWidgets.QCheckBox(self)
         self.vsrcAcceptComplianceCheckBox.setText("Accept Compliance")
 
-        self.bind("voltage_start", self.voltage_start, 0, unit="V")
-        self.bind("voltage_stop", self.voltage_stop, 0, unit="V")
-        self.bind("voltage_step", self.voltage_step, 0, unit="V")
+        self.bind("voltage_start", self.voltageStartSpinBox, 0, unit="V")
+        self.bind("voltage_stop", self.voltageStopSpinBox, 0, unit="V")
+        self.bind("voltage_step", self.voltageStepSpinBox, 0, unit="V")
         self.bind("waiting_time", self.waitingTimeSpinBox, 1, unit="s")
-        self.bind("bias_voltage", self.bias_voltage, 0, unit="V")
+        self.bind("bias_voltage", self.biasVoltageSpinBox, 0, unit="V")
         self.bind("bias_mode", self.bias_mode, "constant")
         self.bind("hvsrc_current_compliance", self.hvsrcCurrentComplianceSpinBox, 0, unit="uA")
         self.bind("hvsrc_accept_compliance", self.hvsrcAcceptComplianceCheckBox, False)
@@ -95,11 +95,11 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
 
         rampGroupBoxLayout = QtWidgets.QVBoxLayout(rampGroupBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Start"))
-        rampGroupBoxLayout.addWidget(self.voltage_start)
+        rampGroupBoxLayout.addWidget(self.voltageStartSpinBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Stop"))
-        rampGroupBoxLayout.addWidget(self.voltage_stop)
+        rampGroupBoxLayout.addWidget(self.voltageStopSpinBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Step"))
-        rampGroupBoxLayout.addWidget(self.voltage_step)
+        rampGroupBoxLayout.addWidget(self.voltageStepSpinBox)
         rampGroupBoxLayout.addWidget(QtWidgets.QLabel("Waiting Time"))
         rampGroupBoxLayout.addWidget(self.waitingTimeSpinBox)
         rampGroupBoxLayout.addStretch()
@@ -109,7 +109,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
 
         vsrcBiasGroupBoxLayout = QtWidgets.QVBoxLayout(vsrcBiasGroupBox)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Voltage"))
-        vsrcBiasGroupBoxLayout.addWidget(self.bias_voltage)
+        vsrcBiasGroupBoxLayout.addWidget(self.biasVoltageSpinBox)
         vsrcBiasGroupBoxLayout.addWidget(QtWidgets.QLabel("Bias Compliance"))
         vsrcBiasGroupBoxLayout.addWidget(self.vsrcCurrentComplianceSpinBox)
         vsrcBiasGroupBoxLayout.addWidget(self.vsrcAcceptComplianceCheckBox)
@@ -158,7 +158,7 @@ class IVRampBiasElmPanel(MatrixPanel, HVSourceMixin, VSourceMixin, ElectrometerM
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                if self.voltage_start.value() > self.voltage_stop.value():
+                if self.voltageStartSpinBox.value() > self.voltageStopSpinBox.value():
                     self.plot.axes.get("x").qt.setReverse(True)
                 else:
                     self.plot.axes.get("x").qt.setReverse(False)
