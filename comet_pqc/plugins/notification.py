@@ -22,13 +22,14 @@ class NotificationPlugin:
         self.window.preferencesDialog.tabWidget.removeTab(index)
         self.preferencesWidget.deleteLater()
 
-    def on_finished(self, message: str) -> None:
+    def on_sequence_finished(self, data: dict) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.notification")
-        slackWebhookUrl = settings.value("slackWebhookUrl", "", str)
-        finishedMessage = settings.value("finishedMessage", "", str)
+        slackEnabled = settings.value("slackEnabled", False, bool)
+        slackWebhookUrl = settings.value("slackWebhookUrl", "", str).strip()
+        finishedMessage = settings.value("finishedMessage", "", str).strip()
         settings.endGroup()
-        if slackWebhookUrl and finishedMessage:
+        if slackEnabled and slackWebhookUrl and finishedMessage:
             send_slack_message(slackWebhookUrl, finishedMessage)
 
 
@@ -62,6 +63,7 @@ class PreferencesWidget(QtWidgets.QWidget):
 
         self.slackGroupBox = QtWidgets.QGroupBox(self)
         self.slackGroupBox.setTitle("Slack")
+        self.slackGroupBox.setCheckable(True)
 
         slackLayout = QtWidgets.QVBoxLayout(self.slackGroupBox)
         slackLayout.addWidget(self.webhookUrlLabel)
@@ -85,6 +87,12 @@ class PreferencesWidget(QtWidgets.QWidget):
         layout.addWidget(self.messagesGroupBox)
         layout.addStretch(1)
 
+    def isSlackEnabled(self) -> bool:
+        return self.slackGroupBox.isChecked()
+
+    def setSlackEnabled(self, state: bool) -> None:
+        self.slackGroupBox.setChecked(state)
+
     def slackWebhookUrl(self) -> str:
         return self.webhookUrlLineEdit.text()
 
@@ -100,6 +108,7 @@ class PreferencesWidget(QtWidgets.QWidget):
     def readSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.notification")
+        self.setSlackEnabled(settings.value("slackEnabled", False, bool))
         self.setSlackWebhookUrl(settings.value("slackWebhookUrl", "", str))
         self.setFinishedMessage(settings.value("finishedMessage", "PQC sequence finished!", str))
         settings.endGroup()
@@ -107,6 +116,7 @@ class PreferencesWidget(QtWidgets.QWidget):
     def writeSettings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("plugin.notification")
+        settings.setValue("slackEnabled", self.isSlackEnabled())
         settings.setValue("slackWebhookUrl", self.slackWebhookUrl())
         settings.setValue("finishedMessage", self.finishedMessage())
         settings.endGroup()

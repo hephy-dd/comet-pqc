@@ -727,6 +727,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         worker = MeasureWorker(self.station, config, item)
         worker.failed.connect(lambda exc: self.failed.emit(exc, None))
         worker.finished.connect(self.on_finished)
+        worker.finished.connect(self.sequenceFinished)
         worker.message_changed.connect(self.messageChanged.emit)
         worker.progress_changed.connect(self.progressChanged.emit)
         worker.item_state_changed.connect(self.setItemState)
@@ -736,8 +737,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         worker.item_visible.connect(self.showItem)
         worker.item_hidden.connect(self.hideItem)
         worker.save_to_image.connect(self.safeToImage)
-        worker.summary_pushed.connect(self.pushSummary)
-        worker.finished.connect(self.sequenceFinished)
+        worker.measurement_finished.connect(self.measurementFinished)
         worker.reading_appended.connect(self.appendReading)
         worker.readings_updated.connect(self.updateReadings)
         worker.analysis_appended.connect(self.appendAnalysis)
@@ -986,12 +986,12 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.table_worker.stop()
         self.syncTableControls()
 
-    def pushSummary(self, data: dict) -> None:
+    def measurementFinished(self, data: dict) -> None:
         self.plugins.handle("summary", data=data)
 
     def sequenceFinished(self) -> None:
-        message = "PQC measurements finished!"
-        self.plugins.handle("notification", message=message)
+        data = {}  # TODO
+        self.plugins.handle("sequence_finished", data=data)
 
     def shutdown(self):
         if self.measure_thread:

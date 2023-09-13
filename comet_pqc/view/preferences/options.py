@@ -64,6 +64,7 @@ class OptionsWidget(QtWidgets.QWidget):
         analysisGroupBoxLayout = QtWidgets.QGridLayout(self.analysisGroupBox)
         analysisGroupBoxLayout.addWidget(self.pngAnalysisCheckBox, 0, 0)
         analysisGroupBoxLayout.setColumnStretch(1, 1)
+        analysisGroupBoxLayout.setRowStretch(1, 1)
 
         # Formats
 
@@ -82,6 +83,7 @@ class OptionsWidget(QtWidgets.QWidget):
         logfileGroupBoxLayout = QtWidgets.QGridLayout(self.logfileGroupBox)
         logfileGroupBoxLayout.addWidget(self.writeLogfilesCheckBox, 0, 0)
         logfileGroupBoxLayout.setColumnStretch(1, 1)
+        logfileGroupBoxLayout.setRowStretch(1, 1)
 
         # Instruments
 

@@ -366,7 +366,7 @@ class MeasurementStrategy:
             finally:
                 self.context.set_item_state(measurement_item, state)
                 self.context.save_to_image.emit(measurement_item, plot_filename)
-                self.context.summary_pushed.emit({
+                self.context.measurement_finished.emit({
                     "timestamp": measurement.timestamp,
                     "sample_name": sample_name,
                     "sample_type": sample_type,

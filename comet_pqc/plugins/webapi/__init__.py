@@ -48,7 +48,7 @@ class WebAPIPreferencesWidget(QtWidgets.QWidget):
         groupBoxLayout = QtWidgets.QFormLayout(self.groupBox)
         groupBoxLayout.addWidget(self.isServerEnabledCheckBox)
         groupBoxLayout.addRow("Host", self.hostLineEdit)
-        groupBoxLayout.addRow("port", self.portSpinBox)
+        groupBoxLayout.addRow("Port", self.portSpinBox)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.groupBox)

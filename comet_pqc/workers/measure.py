@@ -37,7 +37,7 @@ class MeasureWorker(QtCore.QObject):
     item_visible = QtCore.pyqtSignal(object)
     item_hidden = QtCore.pyqtSignal(object)
     save_to_image = QtCore.pyqtSignal(object, str)
-    summary_pushed = QtCore.pyqtSignal(dict)
+    measurement_finished = QtCore.pyqtSignal(dict)
 
     reading_appended = QtCore.pyqtSignal(str, float, float)
     readings_updated = QtCore.pyqtSignal()
