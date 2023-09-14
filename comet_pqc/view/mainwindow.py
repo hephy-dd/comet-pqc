@@ -25,8 +25,8 @@ from .sequence import (
     SampleTreeItem,
     ContactTreeItem,
     MeasurementTreeItem,
-    SequenceManagerDialog,
 )
+from .sequencemanager import SequenceManagerDialog
 
 __all__ = ["MainWindow"]
 

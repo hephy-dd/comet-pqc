@@ -4,7 +4,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from comet_pqc.core import config
 from comet_pqc.utils import make_path
-from ..sequence import SequenceManagerDialog, SampleTreeItem
+from ..sequence import SampleTreeItem
+from ..sequencemanager import SequenceManagerDialog
 
 from .panel import BasicPanel
 

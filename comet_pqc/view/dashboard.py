@@ -30,8 +30,8 @@ from .sequence import (
     SampleTreeItem,
     SequenceTreeWidget,
     StartSequenceDialog,
-    load_all_sequences,
 )
+from .sequencemanager import load_all_sequences
 from ..settings import settings
 from .alignment import AlignmentDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
@@ -987,7 +987,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.syncTableControls()
 
     def measurementFinished(self, data: dict) -> None:
-        self.plugins.handle("summary", data=data)
+        self.plugins.handle("measurement_finished", data=data)
 
     def sequenceFinished(self) -> None:
         data = {}  # TODO
