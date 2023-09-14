@@ -334,6 +334,7 @@ class MeasurementStrategy:
         plot_filename = self.create_filename(measurement_item, suffix=".png")
 
         with LogFileWriter(log_filename):
+            state = ""
             try:
                 measurement.run(self.context.station)
             except ResourceError as e:

@@ -37,11 +37,7 @@ def format_sample_item(sample_item) -> str:
 def safe_z_position(z: float) -> float:
     z_limit = settings.table_z_limit
     if z > z_limit:
-        QtWidgets.QMessageBox.warning(
-            None,
-            "Z Limit",
-            f"Limiting Z movement to {z_limit:.3f} mm to protect probe card.",
-        )
+        logger.warning("Limiting Z movement to %.3f mm to protect probe card.", z_limit)
         z = z_limit
     return z
 
@@ -331,9 +327,8 @@ class TableContactsWidget(QtWidgets.QWidget):
         current_item = self.contactsTreeWidget.currentItem()
         if isinstance(current_item, TableContactItem):
             if current_item.hasPosition():
-                if QtWidgets.QMessageBox.question(None, "", f"Do you want to move table to contact {current_item.name()}?") == QtWidgets.QMessageBox.Yes:
-                    x, y, z = current_item.position()
-                    self.absoluteMove.emit(Position(x, y, z))
+                x, y, z = current_item.position()
+                self.absoluteMove.emit(Position(x, y, z))
 
     def calculate(self) -> None:
         item = self.contactsTreeWidget.currentItem()
@@ -525,7 +520,6 @@ class TablePositionsWidget(QtWidgets.QWidget):
         self.positionsTreeWidget.setHeaderLabels(["Name", "X", "Y", "Z", "Comment"])
         self.positionsTreeWidget.setRootIsDecorated(False)
         self.positionsTreeWidget.currentItemChanged.connect(self.on_position_selected)
-        self.positionsTreeWidget.itemDoubleClicked.connect(lambda item, column: self.moveToCurrentPosition())
 
         self.addButton = QtWidgets.QPushButton(self)
         self.addButton.setText("&Add")
@@ -685,9 +679,8 @@ class TablePositionsWidget(QtWidgets.QWidget):
             return
         item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
-            if QtWidgets.QMessageBox.question(None, "", f"Do you want to move table to position {item.name()!r}?") == QtWidgets.QMessageBox.Yes:
-                x, y ,z = item.position()
-                self.absoluteMove.emit(Position(x, y, z))
+            x, y, z = item.position()
+            self.absoluteMove.emit(Position(x, y, z))
 
 
 class CalibrateWidget(QtWidgets.QWidget):
