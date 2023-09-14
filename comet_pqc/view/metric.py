@@ -62,7 +62,7 @@ class Metric(QtWidgets.QWidget):
     valueChanged = QtCore.pyqtSignal(float)
     editingFinished = QtCore.pyqtSignal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget]) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._valueSpinBox = QtWidgets.QDoubleSpinBox(self)
         self._valueSpinBox.setStepType(QtWidgets.QAbstractSpinBox.AdaptiveDecimalStepType)

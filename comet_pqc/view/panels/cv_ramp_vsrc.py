@@ -11,16 +11,16 @@ from .mixins import EnvironmentMixin, LCRMixin, VSourceMixin
 __all__ = ["CVRampHVPanel"]
 
 
-class CVRampHVPanel(MatrixPanel, VSourceMixin, LCRMixin, EnvironmentMixin):
+class CVRampHVPanel(MatrixPanel):
     """Panel for CV ramp measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName("CV Ramp (V Source)")
 
-        self.register_vsource()
-        self.register_lcr()
-        self.register_environment()
+        VSourceMixin(self)
+        LCRMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")

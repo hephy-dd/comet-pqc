@@ -12,16 +12,16 @@ from .mixins import ElectrometerMixin, EnvironmentMixin, HVSourceMixin
 __all__ = ["IVRampElmPanel"]
 
 
-class IVRampElmPanel(MatrixPanel, HVSourceMixin, ElectrometerMixin, EnvironmentMixin):
+class IVRampElmPanel(MatrixPanel):
     """Panel for IV ramp with electrometer measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName("IV Ramp Elm")
 
-        self.register_hvsource()
-        self.register_electrometer()
-        self.register_environment()
+        HVSourceMixin(self)
+        ElectrometerMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")

@@ -12,16 +12,16 @@ from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
 __all__ = ["IVRamp4WireBiasPanel"]
 
 
-class IVRamp4WireBiasPanel(MatrixPanel, HVSourceMixin, VSourceMixin, EnvironmentMixin):
+class IVRamp4WireBiasPanel(MatrixPanel):
     """Panel for 4 wire IV ramp with bias measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName("4 Wire IV Ramp Bias")
 
-        self.register_hvsource()
-        self.register_vsource()
-        self.register_environment()
+        HVSourceMixin(self)
+        VSourceMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")

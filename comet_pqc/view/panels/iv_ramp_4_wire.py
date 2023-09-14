@@ -11,7 +11,7 @@ from .mixins import EnvironmentMixin, VSourceMixin
 __all__ = ["IVRamp4WirePanel"]
 
 
-class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
+class IVRamp4WirePanel(MatrixPanel):
     """Panel for 4 wire IV ramp measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
@@ -20,8 +20,8 @@ class IVRamp4WirePanel(MatrixPanel, VSourceMixin, EnvironmentMixin):
 
         self.series = {}
 
-        self.register_vsource()
-        self.register_environment()
+        VSourceMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Current [uA] (abs)")

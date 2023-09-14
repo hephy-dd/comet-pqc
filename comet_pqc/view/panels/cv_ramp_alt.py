@@ -11,15 +11,15 @@ from .mixins import EnvironmentMixin, LCRMixin
 __all__ = ["CVRampAltPanel"]
 
 
-class CVRampAltPanel(MatrixPanel, LCRMixin, EnvironmentMixin):
+class CVRampAltPanel(MatrixPanel):
     """Panel for CV ramp (alternate) measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName("CV Ramp (LCR)")
 
-        self.register_lcr()
-        self.register_environment()
+        LCRMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")

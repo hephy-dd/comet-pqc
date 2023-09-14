@@ -12,15 +12,15 @@ from .mixins import EnvironmentMixin, HVSourceMixin
 __all__ = ["IVRampPanel"]
 
 
-class IVRampPanel(MatrixPanel, HVSourceMixin, EnvironmentMixin):
+class IVRampPanel(MatrixPanel):
     """Panel for IV ramp measurements."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName("IV Ramp")
 
-        self.register_hvsource()
-        self.register_environment()
+        HVSourceMixin(self)
+        EnvironmentMixin(self)
 
         self.plot = ui.Plot(height=300, legend="right")
         self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
