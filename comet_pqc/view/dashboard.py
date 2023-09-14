@@ -830,7 +830,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
                 panel.mount(current_item)
 
     def on_edit_sequence(self):
-        sequences = load_all_sequences(settings.settings)
+        sequences = load_all_sequences(settings)
         dialog = EditSamplesDialog(self.sequenceTreeWidget.sampleItems(), sequences)
         dialog.run()
         self.on_tree_selected(self.sequenceTreeWidget.currentItem(), None)

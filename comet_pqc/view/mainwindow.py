@@ -25,6 +25,7 @@ from .sequence import (
     SampleTreeItem,
     ContactTreeItem,
     MeasurementTreeItem,
+    SequenceManagerDialog,
 )
 
 __all__ = ["MainWindow"]
@@ -64,6 +65,10 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.quitAction.setText("&Quit")
         self.quitAction.setShortcut("Ctrl+Q")
         self.quitAction.triggered.connect(self.close)
+
+        self.sequenceManagerAction = QtWidgets.QAction(self)
+        self.sequenceManagerAction.setText("&Sequence Manager")
+        self.sequenceManagerAction.triggered.connect(self.showSequenceManager)
 
         self.preferencesAction = QtWidgets.QAction(self)
         self.preferencesAction.setText("Prefere&nces")
@@ -130,6 +135,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.fileMenu.addAction(self.quitAction)
 
         self.editMenu = self.menuBar().addMenu("&Edit")
+        self.editMenu.addAction(self.sequenceManagerAction)
         self.editMenu.addAction(self.preferencesAction)
 
         self.startMenu = QtWidgets.QMenu()
@@ -280,6 +286,12 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         settings.beginGroup("preferences")
         settings.setValue("geometry", self.preferencesDialog.saveGeometry())
         settings.endGroup()
+
+    def showSequenceManager(self) -> None:
+        dialog = SequenceManagerDialog(self)
+        dialog.readSettings()
+        if dialog.exec() == dialog.Accepted:
+            dialog.writeSettings()
 
     def showPreferences(self) -> None:
         """Show modal preferences dialog."""
@@ -468,6 +480,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
             event.ignore()
 
     def enterIdle(self) -> None:
+        self.sequenceManagerAction.setEnabled(True)
         self.preferencesAction.setEnabled(True)
         self.startMenu.setEnabled(True)
         self.stopAction.setEnabled(False)
@@ -481,6 +494,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.setControlsLocked(False)
 
     def enterRunning(self) -> None:
+        self.sequenceManagerAction.setEnabled(False)
         self.preferencesAction.setEnabled(False)
         self.startMenu.setEnabled(False)
         self.stopAction.setEnabled(True)

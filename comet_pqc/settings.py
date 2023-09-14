@@ -1,3 +1,5 @@
+from typing import List
+
 from comet.settings import SettingsMixin
 
 from .instruments.k2410 import K2410Instrument
@@ -293,6 +295,18 @@ class Settings(SettingsMixin):
     @png_analysis.setter
     def png_analysis(self, value: bool) -> None:
         self.settings["png_analysis"] = bool(value)
+
+    @property
+    def sequence_filenames(self) -> List[str]:
+        filenames = []
+        for filename in self.settings.get("custom_sequences", []):
+            filenames.append(filename)
+        return filenames
+
+    @sequence_filenames.setter
+    def sequence_filenames(self, value: List[str]) -> None:
+        filenames = [filename for filename in value]
+        self.settings["custom_sequences"] = filenames
 
 
 settings = Settings()

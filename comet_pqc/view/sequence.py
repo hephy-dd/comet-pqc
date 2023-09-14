@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def load_all_sequences(settings):
     configs = []
-    for filename in list(set(settings.get("custom_sequences") or [])):
+    for filename in settings.sequence_filenames:
         if os.path.exists(filename):
             try:
                 sequence = load_sequence(filename)
@@ -144,6 +144,16 @@ class SequenceManagerDialog(QtWidgets.QDialog):
         self.addButton.setText("&Add")
         self.addButton.clicked.connect(self.addSequence)
 
+        self.moveUpButton = QtWidgets.QPushButton(self)
+        self.moveUpButton.setText("&Up")
+        self.moveUpButton.setEnabled(False)
+        self.moveUpButton.clicked.connect(self.moveSequenceUp)
+
+        self.moveDownButton = QtWidgets.QPushButton(self)
+        self.moveDownButton.setText("&Down")
+        self.moveDownButton.setEnabled(False)
+        self.moveDownButton.clicked.connect(self.moveSequenceDown)
+
         self.removeButton = QtWidgets.QPushButton(self)
         self.removeButton.setText("&Remove")
         self.removeButton.setEnabled(False)
@@ -164,6 +174,8 @@ class SequenceManagerDialog(QtWidgets.QDialog):
 
         rightLayout = QtWidgets.QVBoxLayout()
         rightLayout.addWidget(self.addButton)
+        rightLayout.addWidget(self.moveUpButton)
+        rightLayout.addWidget(self.moveDownButton)
         rightLayout.addWidget(self.removeButton)
         rightLayout.addStretch()
 
@@ -208,7 +220,7 @@ class SequenceManagerDialog(QtWidgets.QDialog):
         def callback():
             try:
                 self.sequenceTreeWidget.clear()
-                all_sequences = load_all_sequences(settings.settings)
+                all_sequences = load_all_sequences(settings)
                 progress.setMaximum(len(all_sequences))
                 for name, filename in all_sequences:
                     progress.setValue(progress.value() + 1)
@@ -245,20 +257,24 @@ class SequenceManagerDialog(QtWidgets.QDialog):
 
     def store_settings_sequences(self):
         """Store custom sequences to settings."""
-        sequences = []
+        filenames = []
         for index in range(self.sequenceTreeWidget.topLevelItemCount()):
             item = self.sequenceTreeWidget.topLevelItem(index)
-            sequences.append(item.sequence.filename)
-        settings.settings["custom_sequences"] = list(set(sequences))
+            filenames.append(item.sequence.filename)
+        settings.sequence_filenames = filenames
 
     # Callbacks
 
     def loadPreview(self, current, previous) -> None:
         """Load sequence config preview."""
+        self.moveUpButton.setEnabled(False)
+        self.moveDownButton.setEnabled(False)
         self.removeButton.setEnabled(False)
         self.previewTreeWidget.clear()
         item = current
         if item is not None:
+            self.moveUpButton.setEnabled(True)
+            self.moveDownButton.setEnabled(True)
             self.removeButton.setEnabled(True)
             if os.path.exists(item.sequence.filename):
                 with open(item.sequence.filename) as f:
@@ -304,18 +320,38 @@ class SequenceManagerDialog(QtWidgets.QDialog):
                 item.setToolTip(1, filename)
                 item.sequence = sequence
                 self.sequenceTreeWidget.addTopLevelItem(item)
-                index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
-                self.sequenceTreeWidget.setCurrentIndex(index)
+                self.sequenceTreeWidget.indexOfTopLevelItem(item)
+                self.sequenceTreeWidget.setCurrentItem(item)
 
     def removeSequence(self) -> None:
         item = self.sequenceTreeWidget.currentItem()
         if item is not None:
-            message = f"Do yo want to remove sequence {item.sequence.name()!r}?"
+            message = f"Do yo want to remove sequence {item.sequence.name!r}?"
             result = QtWidgets.QMessageBox.question(self, "Remove Sequence", message)
             if result == QtWidgets.QMessageBox.Yes:
                 index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
-                self.sequenceTreeWidget.takeItem(index)
-                self.removeButton.setEnabled(self.sequenceTreeWidget.topLevelItemCount() != 0)
+                self.sequenceTreeWidget.takeTopLevelItem(index)
+                enabled = self.sequenceTreeWidget.topLevelItemCount() != 0
+                self.moveUpButton.setEnabled(enabled)
+                self.moveDownButton.setEnabled(enabled)
+                self.removeButton.setEnabled(enabled)
+
+    def moveSequenceUp(self) -> None:
+        self.moveSequenceItem(-1)
+
+    def moveSequenceDown(self) -> None:
+        self.moveSequenceItem(+1)
+
+    def moveSequenceItem(self, offset: int) -> None:
+        """Moves a top-level item item up/down by offset."""
+        item = self.sequenceTreeWidget.currentItem()
+        # Make sure it is a top-level item
+        if item and not item.parent():
+            index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+            if 0 <= index + offset < self.sequenceTreeWidget.topLevelItemCount():
+                self.sequenceTreeWidget.takeTopLevelItem(index)
+                self.sequenceTreeWidget.insertTopLevelItem(index + offset, item)
+                self.sequenceTreeWidget.setCurrentItem(item)
 
 
 class SequenceTreeWidget(QtWidgets.QTreeWidget):
