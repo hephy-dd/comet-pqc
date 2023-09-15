@@ -9,7 +9,9 @@ nav_order: 14
 
 Generation currents.
 
-Type: `gcd`
+**Note:** since version 0.8 there are three versions of the functions available, `gcd` is an alias for `gcd_num`
+
+Type: `gcd`, `gcd_num`, `gcd_sym`, `gcd_legacy`
 
 ## Parameters
 

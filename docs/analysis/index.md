@@ -12,7 +12,7 @@ has_children: true
 Evaluation of measurement data using PQC analysis functions.
 {: .fs-6 .fw-300 }
 
-Analysis functions used from project [analysis-pqc](https://github.com/hephy-dd/analysis-pqc).
+Analysis functions used from project [analysis-pqc](https://github.com/hephy-dd/analysis-pqc) (version 0.8.1).
 
 ## Example configuration
 
