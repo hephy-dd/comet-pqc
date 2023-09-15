@@ -9,6 +9,15 @@ nav_order: 10
 
 ## 0.44.0
 
+### Added
+- Support for PyInstaller for building windows executable.
+- Manually sort config items in Sequence Manager.
+- Manually sort position items in Alignment dialog.
+
+### Changed
+- Remove verbose message dialoges.
+- Refactored UI widgets.
+
 ## 0.43.2
 
 ### Changed

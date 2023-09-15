@@ -524,19 +524,31 @@ class TablePositionsWidget(QtWidgets.QWidget):
         self.addButton = QtWidgets.QPushButton(self)
         self.addButton.setText("&Add")
         self.addButton.setToolTip("Add new position item")
-        self.addButton.clicked.connect(self.on_add_position)
+        self.addButton.clicked.connect(self.addPosition)
 
         self.editButton = QtWidgets.QPushButton(self)
         self.editButton.setText("&Edit")
         self.editButton.setToolTip("Edit selected position item")
         self.editButton.setEnabled(False)
-        self.editButton.clicked.connect(self.on_edit_position)
+        self.editButton.clicked.connect(self.editCurrentPosition)
+
+        self.upButton = QtWidgets.QPushButton(self)
+        self.upButton.setText("&Up")
+        self.upButton.setToolTip("Move selected item up one row")
+        self.upButton.setEnabled(False)
+        self.upButton.clicked.connect(self.moveUpCurrentPosition)
+
+        self.downButton = QtWidgets.QPushButton(self)
+        self.downButton.setText("&Down")
+        self.downButton.setToolTip("Move selected item down one row")
+        self.downButton.setEnabled(False)
+        self.downButton.clicked.connect(self.moveDownCurrentPosition)
 
         self.removeButton = QtWidgets.QPushButton(self)
         self.removeButton.setText("&Remove")
         self.removeButton.setToolTip("Remove selected position item")
         self.removeButton.setEnabled(False)
-        self.removeButton.clicked.connect(self.on_remove_position)
+        self.removeButton.clicked.connect(self.removeCurrentPosition)
 
         self.moveButton = QtWidgets.QPushButton(self)
         self.moveButton.setText("&Move")
@@ -548,22 +560,26 @@ class TablePositionsWidget(QtWidgets.QWidget):
         self.importButton.setText("Import...")
         self.importButton.setToolTip("Import from CSV")
         self.importButton.setEnabled(False)
-        self.importButton.clicked.connect(self.on_import)
+        self.importButton.setVisible(False)  # TODO
+        self.importButton.clicked.connect(self.importFromFile)
 
         self.exportButton = QtWidgets.QPushButton(self)
         self.exportButton.setText("Export...")
         self.exportButton.setToolTip("Export to CSV")
         self.exportButton.setEnabled(False)
-        self.exportButton.clicked.connect(self.on_export)
+        self.exportButton.setVisible(False)  # TODO
+        self.exportButton.clicked.connect(self.exportToFile)
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.positionsTreeWidget, 0, 0, 7, 1)
+        layout.addWidget(self.positionsTreeWidget, 0, 0, 9, 1)
         layout.addWidget(self.moveButton, 0, 1)
         layout.addWidget(self.addButton, 2, 1)
         layout.addWidget(self.editButton, 3, 1)
-        layout.addWidget(self.removeButton, 4, 1)
-        layout.addWidget(self.importButton, 5, 1)
-        layout.addWidget(self.exportButton, 6, 1)
+        layout.addWidget(self.upButton, 4, 1)
+        layout.addWidget(self.downButton, 5, 1)
+        layout.addWidget(self.removeButton, 6, 1)
+        layout.addWidget(self.importButton, 7, 1)
+        layout.addWidget(self.exportButton, 8, 1)
         layout.setColumnStretch(0, 1)
         layout.setRowStretch(1, 1)
 
@@ -600,21 +616,25 @@ class TablePositionsWidget(QtWidgets.QWidget):
         if locked:
             self.addButton.setEnabled(False)
             self.editButton.setEnabled(False)
+            self.upButton.setEnabled(False)
+            self.downButton.setEnabled(False)
             self.removeButton.setEnabled(False)
             self.moveButton.setEnabled(False)
         else:
             enabled = self.positionsTreeWidget.currentItem() is not None
             self.addButton.setEnabled(True)
             self.editButton.setEnabled(enabled)
+            self.upButton.setEnabled(enabled)
+            self.downButton.setEnabled(enabled)
             self.removeButton.setEnabled(enabled)
             self.moveButton.setEnabled(enabled)
 
-    def on_import(self) -> None:
+    def importFromFile(self) -> None:
         filename, ok = QtWidgets.QFileDialog.getOpenFileName(self, "Import CSV", "", "CSV (*.csv);;All files (*)")
         if ok:
             ...
 
-    def on_export(self) -> None:
+    def exportToFile(self) -> None:
         filename, ok = QtWidgets.QFileDialog.getSaveFileName(self, "Export CSV", "", "CSV (*.csv);;All files (*)")
         if ok:
             ...
@@ -622,13 +642,15 @@ class TablePositionsWidget(QtWidgets.QWidget):
     def on_position_selected(self, current, previous) -> None:
         enabled = current is not None
         self.editButton.setEnabled(True)
+        self.upButton.setEnabled(True)
+        self.downButton.setEnabled(True)
         self.removeButton.setEnabled(True)
         self.moveButton.setEnabled(True)
 
     def on_position_picked(self, callback) -> None:
         self.positionPicked.emit(callback)
 
-    def on_add_position(self) -> None:
+    def addPosition(self) -> None:
         dialog = PositionDialog()
         dialog.positionPicked.connect(lambda dialog=dialog: self.on_position_picked(dialog.setPosition))  # TODO
         if dialog.exec() == dialog.Accepted:
@@ -643,7 +665,7 @@ class TablePositionsWidget(QtWidgets.QWidget):
             self.positionsTreeWidget.resizeColumnToContents(2)
             self.positionsTreeWidget.resizeColumnToContents(3)
 
-    def on_edit_position(self) -> None:
+    def editCurrentPosition(self) -> None:
         item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
             dialog = PositionDialog()
@@ -660,7 +682,25 @@ class TablePositionsWidget(QtWidgets.QWidget):
                 self.positionsTreeWidget.resizeColumnToContents(2)
                 self.positionsTreeWidget.resizeColumnToContents(3)
 
-    def on_remove_position(self):
+    def moveUpCurrentPosition(self) -> None:
+        item = self.positionsTreeWidget.currentItem()
+        self.movePositionItem(item, -1)
+
+    def moveDownCurrentPosition(self) -> None:
+        item = self.positionsTreeWidget.currentItem()
+        self.movePositionItem(item, +1)
+
+    def movePositionItem(self, item, offset: int) -> None:
+        """Moves a top-level item item up/down by offset."""
+        # Make sure it is a top-level item
+        if item and not item.parent():
+            index = self.positionsTreeWidget.indexOfTopLevelItem(item)
+            if 0 <= index + offset < self.positionsTreeWidget.topLevelItemCount():
+                self.positionsTreeWidget.takeTopLevelItem(index)
+                self.positionsTreeWidget.insertTopLevelItem(index + offset, item)
+                self.positionsTreeWidget.setCurrentItem(item)
+
+    def removeCurrentPosition(self):
         item = self.positionsTreeWidget.currentItem()
         if isinstance(item, TablePositionItem):
             if QtWidgets.QMessageBox.question(None, "", f"Do you want to remove position {item.name()!r}?") == QtWidgets.QMessageBox.Yes:
@@ -668,6 +708,8 @@ class TablePositionsWidget(QtWidgets.QWidget):
                 self.positionsTreeWidget.takeTopLevelItem(index)
                 if not self.positionsTreeWidget.topLevelItemCount():
                     self.editButton.setEnabled(False)
+                    self.upButton.setEnabled(False)
+                    self.downButton.setEnabled(False)
                     self.removeButton.setEnabled(False)
                 self.positionsTreeWidget.resizeColumnToContents(0)
                 self.positionsTreeWidget.resizeColumnToContents(1)
@@ -911,6 +953,8 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         self.setWindowTitle("Alignment")
 
+        self.current_position: Position = Position()
+
         self.lcr_process = lcr_process
         self.lcr_process.failed = self.lcrFailed.emit
         self.lcr_process.reading = self.lcrReadingChanged.emit
@@ -1150,9 +1194,9 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.topLayout = QtWidgets.QHBoxLayout()
         self.topLayout.addWidget(self.keypadGroupBox)
         self.topLayout.addWidget(self.stepWidthGroupBox)
-        self.topLayout.addWidget(self.lcrGroupBox)
+        self.topLayout.addWidget(self.lcrGroupBox, 3)
         self.topLayout.addWidget(self.lightsGroupBox)
-        self.topLayout.addStretch()
+        self.topLayout.addStretch(1)
 
         self.rightLayout = QtWidgets.QVBoxLayout()
         self.rightLayout.addWidget(self.positionWidget)
