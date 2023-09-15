@@ -1,11 +1,11 @@
-from typing import Iterable
+from typing import List
 
 import numpy as np
 
 __all__ = ["std_mean_filter"]
 
 
-def std_mean_filter(values: Iterable[float], threshold: float) -> bool:
+def std_mean_filter(values: List[float], threshold: float) -> bool:
     """Return True if standard deviation (sample) / mean < threshold.
 
     >>> std_mean_filter([0.250, 0.249], threshold=0.005)
@@ -17,4 +17,4 @@ def std_mean_filter(values: Iterable[float], threshold: float) -> bool:
     # https://www.sharpsightlabs.com/blog/numpy-standard-deviation/
     sample_std_dev = np.std(values, ddof=1)
     ratio = sample_std_dev / mean
-    return ratio < threshold
+    return bool(ratio < threshold)

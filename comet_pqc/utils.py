@@ -1,27 +1,30 @@
-import logging
 import math
-import traceback
-from typing import Callable, Iterable, Union
+from typing import Iterable, List, Optional, Union
 
-from comet import ui
 from comet import ureg
-from PyQt5 import QtCore, QtGui
 
 from .core.utils import make_path
 
 __all__ = [
     "make_path",
+    "join_channels",
+    "split_channels",
     "format_metric",
     "format_switch",
-    "stitch_pixmaps",
-    "create_icon",
-    "handle_exception",
     "format_table_unit",
     "from_table_unit",
     "to_table_unit"
 ]
 
-logger = logging.getLogger(__name__)
+
+def join_channels(channels: List[str]) -> str:
+    """Return string containing comma separated channels."""
+    return ", ".join([channel.strip() for channel in channels if channel.strip()])
+
+
+def split_channels(channels: str) -> List[str]:
+    """Return list of channels from comma separated string."""
+    return [channel.strip() for channel in channels.split(",") if channel.strip()]
 
 
 def format_metric(value: float, unit: str, decimals: int = 3) -> str:
@@ -57,7 +60,7 @@ def format_metric(value: float, unit: str, decimals: int = 3) -> str:
     return f"{value:.{decimals}f} {unit}"
 
 
-def format_switch(value: bool, default: str = None) -> str:
+def format_switch(value: bool, default: Optional[str] = None) -> str:
     """Pretty format for instrument output states.
 
     >>> format_switch(False)
@@ -81,55 +84,6 @@ def to_table_unit(value: float) -> float:
     return round((value * ureg("mm")).to("um").m, 0)
 
 
-def stitch_pixmaps(pixmaps: Iterable[QtGui.QPixmap], vertical: bool = True) -> QtGui.QPixmap:
-    """Stitch together multiple QPixmaps to a single QPixmap."""
-    # Calculate size of stitched image
-    if vertical:
-        width = max([pixmap.width() for pixmap in pixmaps])
-        height = sum([pixmap.height() for pixmap in pixmaps])
-    else:
-        width = sum([pixmap.width() for pixmap in pixmaps])
-        height = max([pixmap.height() for pixmap in pixmaps])
-    canvas = QtGui.QPixmap(width, height)
-    canvas.fill(QtCore.Qt.white)
-    painter = QtGui.QPainter(canvas)
-    offset = 0
-    for pixmap in pixmaps:
-        if vertical:
-            painter.drawPixmap(0, offset, pixmap)
-            offset += pixmap.height()
-        else:
-            painter.drawPixmap(offset, 0, pixmap)
-            offset += pixmap.height()
-    painter.end()
-    return canvas
-
-
-def create_icon(size: int, color: str) -> ui.Icon:
-    """Return circular colored icon."""
-    pixmap = QtGui.QPixmap(size, size)
-    pixmap.fill(QtGui.QColor("transparent"))
-    painter = QtGui.QPainter(pixmap)
-    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-    painter.setPen(QtGui.QColor(color))
-    painter.setBrush(QtGui.QColor(color))
-    painter.drawEllipse(1, 1, size - 2, size - 2)
-    del painter
-    return ui.Icon(qt=pixmap)
-
-
-def handle_exception(func: Callable) -> Callable:
-    def catch_exception_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exc:
-            tb = traceback.format_exc()
-            logger.error(exc)
-            logger.error(tb)
-            ui.show_exception(exc, tb)
-    return catch_exception_wrapper
-
-
 def getcal(value: float) -> Union[int, float]:
     if not math.isnan(value):
         return int(value) & 0x1
@@ -142,5 +96,5 @@ def getrm(value: float) -> Union[int, float]:
     return value
 
 
-def caldone_valid(position: Iterable) -> bool:
+def caldone_valid(position: Iterable[float]) -> bool:
     return all(getcal(value) == 1 and getrm(value) == 1 for value in position)

@@ -1,11 +1,11 @@
 """Functions module."""
 
 from decimal import Context, Decimal
-from typing import Generator
+from typing import Iterator
 
 __all__ = ["LinearRange"]
 
-ctx: Context = Context(prec=24)
+ctx: Context = Context(prec=16)
 
 
 class LinearRange:
@@ -31,7 +31,7 @@ class LinearRange:
     def __init__(self, begin: float, end: float, step: float):
         self.begin: float = begin
         self.end: float = end
-        self.step: float = -abs(step) if begin > end else abs(step)
+        self.step: float = abs(step) if begin < end else -abs(step)
 
     @property
     def distance(self) -> float:
@@ -56,7 +56,7 @@ class LinearRange:
             return int(abs(round(distance / step)))
         return 0
 
-    def __iter__(self) -> Generator[float, None, None]:
+    def __iter__(self) -> Iterator[float]:
         begin: Decimal = ctx.create_decimal(self.begin)
         end: Decimal = ctx.create_decimal(self.end)
         step: Decimal = ctx.create_decimal(self.step)

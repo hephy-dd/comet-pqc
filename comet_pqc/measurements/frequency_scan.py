@@ -17,29 +17,29 @@ class FrequencyScanMeasurement(MatrixMeasurement, HVSourceMixin, LCRMixin, Envir
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.register_hvsource()
+        self.register_vsource()
         self.register_lcr()
         self.register_environment()
         self.register_analysis()
 
     def initialize(self, hvsrc, lcr):
-        self.process.emit("progress", 0, 2)
+        self.process.set_progress(0, 2)
 
-        self.process.emit("state", {
+        self.process.update_state({
             "hvsrc_voltage": self.hvsrc_get_voltage_level(hvsrc),
             "hvsrc_current": None,
             "hvsrc_output": self.hvsrc_get_output_state(hvsrc),
         })
 
-        self.process.emit("progress", 2, 2)
+        self.process.set_progress(2, 2)
 
     def measure(self, hvsrc, lcr):
-        self.process.emit("progress", 0, 0)
-        self.process.emit("progress", 1, 1)
+        self.process.set_progress(0, 0)
+        self.process.set_progress(1, 1)
 
     def finalize(self, hvsrc, lcr):
-        self.process.emit("progress", 0, 0)
+        self.process.set_progress(0, 0)
 
         self.hvsrc_set_output_state(hvsrc, hvsrc.OUTPUT_OFF)
 
-        self.process.emit("progress", 1, 1)
+        self.process.set_progress(1, 1)

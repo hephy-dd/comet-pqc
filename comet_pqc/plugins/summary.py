@@ -61,10 +61,10 @@ class SummaryPlugin:
         self.window.removePage(self.summaryWidget)
         self.summaryWidget.deleteLater()
 
-    def on_summary(self, data: dict) -> None:
+    def on_measurement_finished(self, data: dict) -> None:
         """Push result to summary and write to summary file (experimantal)."""
-        item = self.summaryWidget.appendResult(data)
-        output_path = self.window.dashboard.output_dir()
+        item = self.summaryWidget.appendResult(data)  # TODO
+        output_path = self.window.dashboard.outputDir()
         if output_path and os.path.exists(output_path):
             filename = os.path.join(output_path, SUMMARY_FILENAME)
             has_header = os.path.exists(filename)

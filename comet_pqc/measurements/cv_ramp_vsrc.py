@@ -38,37 +38,37 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.register_parameter("waiting_time_end", comet.ureg("0 s"), unit="s")
         self.register_parameter("vsrc_current_compliance", unit="A", required=True)
         self.register_parameter("vsrc_accept_compliance", False, type=bool)
-        self.register_vsource()
+        self.register_hvsource()
         self.register_lcr()
         self.register_environment()
         self.register_analysis()
 
     def quick_ramp_zero(self, vsrc):
         """Ramp to zero voltage without measuring current."""
-        self.process.emit("message", "Ramp to zero...")
-        self.process.emit("progress", 0, 1)
+        self.process.set_message("Ramp to zero...")
+        self.process.set_progress(0, 1)
 
         bias_voltage_step_after = self.get_parameter("bias_voltage_step_after") or self.get_parameter("bias_voltage_step")
         waiting_time_after = self.get_parameter("waiting_time_after")
 
         vsrc_output_state = self.vsrc_get_output_state(vsrc)
-        self.process.emit("state", {"vsrc_output": vsrc_output_state})
+        self.process.update_state({"vsrc_output": vsrc_output_state})
         if vsrc_output_state:
             vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
             ramp = LinearRange(vsrc_voltage_level, 0, bias_voltage_step_after)
             for step, voltage in enumerate(ramp):
-                self.process.emit("progress", step + 1, len(ramp))
+                self.process.set_progress(step + 1, len(ramp))
                 self.vsrc_set_voltage_level(vsrc, voltage)
-                self.process.emit("state", {"vsrc_voltage": voltage})
+                self.process.update_state({"vsrc_voltage": voltage})
                 time.sleep(waiting_time_after)
-        self.process.emit("state", {
+        self.process.update_state({
             "vsrc_output": self.vsrc_get_output_state(vsrc)
         })
-        self.process.emit("message", "")
-        self.process.emit("progress", 1, 1)
+        self.process.set_message("")
+        self.process.set_progress(1, 1)
 
     def initialize(self, vsrc, lcr):
-        self.process.emit("progress", 1, 6)
+        self.process.set_progress(1, 6)
 
         # Parameters
         bias_voltage_start = self.get_parameter("bias_voltage_start")
@@ -125,27 +125,27 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         # Initialize V Source
 
-        self.process.emit("message", "Initialize...")
-        self.process.emit("progress", 2, 6)
+        self.process.set_message("Initialize...")
+        self.process.set_progress(2, 6)
 
         self.vsrc_reset(vsrc)
-        self.process.emit("progress", 3, 6)
+        self.process.set_progress(3, 6)
 
         self.vsrc_setup(vsrc)
         self.vsrc_set_function_voltage(vsrc)
         self.vsrc_set_current_compliance(vsrc, vsrc_current_compliance)
-        self.process.emit("progress", 4, 6)
+        self.process.set_progress(4, 6)
 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_ON)
         vsrc_output_state = self.vsrc_get_output_state(vsrc)
-        self.process.emit("state", {"vsrc_output": vsrc_output_state,})
+        self.process.update_state({"vsrc_output": vsrc_output_state,})
 
         # Initialize LCR
 
         self.lcr_reset(lcr)
         self.lcr_setup(lcr)
 
-        self.process.emit("progress", 5, 6)
+        self.process.set_progress(5, 6)
 
         # Ramp to start voltage
 
@@ -153,24 +153,24 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         logger.info("V Source ramp to start voltage: from %E V to %E V with step %E V", vsrc_voltage_level, bias_voltage_start, bias_voltage_step_before)
         for voltage in LinearRange(vsrc_voltage_level, bias_voltage_start, bias_voltage_step_before):
-            self.process.emit("message", "Ramp to start... {}".format(format_metric(voltage, "V")))
+            self.process.set_message("Ramp to start... {}".format(format_metric(voltage, "V")))
             self.vsrc_set_voltage_level(vsrc, voltage)
             time.sleep(waiting_time_before)
-            self.process.emit("state", {"vsrc_voltage": voltage})
+            self.process.update_state({"vsrc_voltage": voltage})
 
             # Compliance tripped?
             self.vsrc_check_compliance(vsrc)
 
-            if not self.process.running:
+            if self.process.stop_requested:
                 break
 
         # Waiting time before measurement ramp.
         self.wait(waiting_time_start)
 
-        self.process.emit("progress", 6, 6)
+        self.process.set_progress(6, 6)
 
     def measure(self, vsrc, lcr):
-        self.process.emit("progress", 1, 2)
+        self.process.set_progress(1, 2)
         # Parameters
         bias_voltage_start = self.get_parameter("bias_voltage_start")
         bias_voltage_step = self.get_parameter("bias_voltage_step")
@@ -179,7 +179,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         lcr_soft_filter = self.get_parameter("lcr_soft_filter")
         vsrc_accept_compliance = self.get_parameter("vsrc_accept_compliance")
 
-        if not self.process.running:
+        if self.process.stop_requested:
             return
 
 
@@ -187,7 +187,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
 
         ramp = LinearRange(vsrc_voltage_level, bias_voltage_stop, bias_voltage_step)
         est = Estimate(len(ramp))
-        self.process.emit("progress", *est.progress)
+        self.process.set_progress(*est.progress)
 
         t0 = time.time()
 
@@ -209,8 +209,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 # vsrc_voltage_level = self.vsrc_get_voltage_level(vsrc)
                 dt = time.time() - t0
                 est.advance()
-                self.process.emit("message", "{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
-                self.process.emit("progress", *est.progress)
+                self.process.set_message("{} | V Source {}".format(format_estimate(est), format_metric(voltage, "V")))
+                self.process.set_progress(*est.progress)
 
                 self.environment_update()
 
@@ -218,8 +218,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 with benchmark_vsrc:
                     vsrc_reading = self.vsrc_read_current(vsrc)
 
-                self.process.emit("update")
-                self.process.emit("state", {
+                self.process.update_readings()
+                self.process.update_state({
                     "vsrc_voltage": voltage,
                     "vsrc_current": vsrc_reading
                 })
@@ -238,8 +238,8 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                     except ZeroDivisionError:
                         lcr_prim2 = 0.0
 
-                self.process.emit("reading", "lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
-                self.process.emit("reading", "lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
+                self.process.append_reading("lcr", abs(voltage) if ramp.step < 0 else voltage, lcr_prim)
+                self.process.append_reading("lcr2", abs(voltage) if ramp.step < 0 else voltage, lcr_prim2)
 
                 # Append series data
                 self.append_series(
@@ -262,7 +262,7 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
                 else:
                     self.vsrc_check_compliance(vsrc)
 
-                if not self.process.running:
+                if self.process.stop_requested:
                     break
 
         logger.info(benchmark_step)
@@ -271,19 +271,19 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         logger.info(benchmark_environ)
 
     def analyze(self, **kwargs):
-        self.process.emit("progress", 0, 1)
+        self.process.set_progress(0, 1)
 
         v = np.array(self.get_series("voltage_vsrc"))
         c = np.array(self.get_series("capacitance"))
         self.analysis_cv(c, v)
 
-        self.process.emit("progress", 1, 1)
+        self.process.set_progress(1, 1)
 
     def finalize(self, vsrc, lcr):
-        self.process.emit("progress", 1, 2)
+        self.process.set_progress(1, 2)
         waiting_time_end = self.get_parameter("waiting_time_end")
 
-        self.process.emit("state", {
+        self.process.update_state({
             "vsrc_current": None,
         })
 
@@ -293,14 +293,14 @@ class CVRampHVMeasurement(MatrixMeasurement, VSourceMixin, LCRMixin, Environment
         self.wait(waiting_time_end)
 
         self.vsrc_set_output_state(vsrc, vsrc.OUTPUT_OFF)
-        self.process.emit("state", {
+        self.process.update_state({
             "vsrc_output": self.vsrc_get_output_state(vsrc),
         })
 
-        self.process.emit("state", {
+        self.process.update_state({
             "env_chuck_temperature": None,
             "env_box_temperature": None,
             "env_box_humidity": None
         })
 
-        self.process.emit("progress", 2, 2)
+        self.process.set_progress(2, 2)

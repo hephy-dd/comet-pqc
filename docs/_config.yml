@@ -1,9 +1,9 @@
 remote_theme: just-the-docs/just-the-docs
 
-title: "COMET PQC"
+title: "PQC"
 
 aux_links:
-  "COMET PQC on GitHub":
+  "PQC on GitHub":
     - "//github.com/hephy-dd/comet-pqc"
 
-footer_content: "Copyright &copy; 2019-2022 Bernhard Arnold. COMET PQC is licensed under the <a href=\"https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE\">GNU General Public License Version 3</a>."
+footer_content: "Copyright &copy; 2019-2023 <a href="https://hepy.at">HEPHY</a>. PQC is licensed under the <a href=\"https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE\">GNU General Public License Version 3</a>."

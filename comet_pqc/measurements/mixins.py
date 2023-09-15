@@ -4,11 +4,9 @@ import time
 
 import analysis_pqc
 import comet
-from comet.driver.keithley import K6517B
 
 from ..core.filters import std_mean_filter
 from ..core.timer import Timer
-from ..driver import E4980A
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
 from ..utils import format_metric
@@ -32,7 +30,7 @@ class Mixin:
 
 class HVSourceMixin(Mixin):
 
-    def register_hvsource(self):
+    def register_vsource(self):
         # self.register_parameter("hvsrc_current_compliance", unit="A", required=True)
         self.register_parameter("hvsrc_sense_mode", "local", values=("local", "remote"))
         self.register_parameter("hvsrc_route_terminal", "rear", values=("front", "rear"))
@@ -59,10 +57,6 @@ class HVSourceMixin(Mixin):
         self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
         self.set_meta("hvsrc_source_voltage_autorange_enable", hvsrc_source_voltage_autorange_enable)
         self.set_meta("hvsrc_source_voltage_range", f"{hvsrc_source_voltage_range:G} V")
-
-    def hvsrc_create(self, resource):
-        """Return HV source instrument instance."""
-        return settings.hvsrc_instrument(resource)
 
     def hvsrc_check_error(self, hvsrc):
         """Test for error."""
@@ -201,7 +195,7 @@ class HVSourceMixin(Mixin):
 
 class VSourceMixin(Mixin):
 
-    def register_vsource(self):
+    def register_hvsource(self):
         # self.register_parameter("vsrc_current_compliance", unit="A", required=True)
         self.register_parameter("vsrc_sense_mode", "local", values=("local", "remote"))
         self.register_parameter("vsrc_route_terminal", "rear", values=("front", "rear"))
@@ -228,10 +222,6 @@ class VSourceMixin(Mixin):
         self.set_meta("vsrc_filter_type", vsrc_filter_type)
         self.set_meta("vsrc_source_voltage_autorange_enable", vsrc_source_voltage_autorange_enable)
         self.set_meta("vsrc_source_voltage_range", f"{vsrc_source_voltage_range:G} V")
-
-    def vsrc_create(self, resource):
-        """Return V source instrument instance."""
-        return settings.vsrc_instrument(resource)
 
     def vsrc_check_error(self, vsrc):
         """Test for error."""
@@ -382,10 +372,6 @@ class ElectrometerMixin(Mixin):
     def elm_update_meta(self):
         """Update meta data parameters."""
 
-    def elm_create(self, resource):
-        """Return ELM instrument instance."""
-        return K6517B(resource)  # TODO
-
     def elm_check_error(self, elm):
         try:
             result = elm.resource.query(":SYST:ERR?")
@@ -481,10 +467,6 @@ class LCRMixin(Mixin):
         self.set_meta("lcr_open_correction_mode", lcr_open_correction_mode)
         self.set_meta("lcr_open_correction_channel", lcr_open_correction_channel)
         self.set_meta("lcr_soft_filter", lcr_soft_filter)
-
-    def lcr_create(self, resource):
-        """Return LCR instrument instance."""
-        return E4980A(resource)  # TODO
 
     def lcr_check_error(self, device):
         """Test for error."""
@@ -593,16 +575,16 @@ class EnvironmentMixin(Mixin):
 
     def environment_update(self):
         self.environment_clear()
-        if self.process.get("use_environ"):
-            with self.processes.get("environ") as environment:
-                pc_data = environment.pc_data()
+        if self.process.config.get("use_environ"):
+            with self.process.station.environ_worker as environ_worker:
+                pc_data = environ_worker.pc_data()
             self.environment_temperature_box = pc_data.box_temperature
             logger.info("Box temperature: %.2f degC", self.environment_temperature_box)
             self.environment_temperature_chuck = pc_data.chuck_temperature
             logger.info("Chuck temperature: %.2f degC", self.environment_temperature_chuck)
             self.environment_humidity_box = pc_data.box_humidity
             logger.info("Box humidity: %.2f %%rH", self.environment_humidity_box)
-        self.process.emit("state", {
+        self.process.update_state({
             "env_chuck_temperature": self.environment_temperature_chuck,
             "env_box_temperature": self.environment_temperature_box,
             "env_box_humidity": self.environment_humidity_box
@@ -683,10 +665,10 @@ class AnalysisMixin(Mixin):
             results.append((f, r))
             key, values = type(r).__name__, r._asdict()
             self.set_analysis(key, values)
-            self.process.emit("append_analysis", key, values)
+            self.process.append_analysis(key, values)
             if "x_fit" in r._asdict():
                 for x, y in [(x, r.a * x + r.b) for x in r.x_fit]:
-                    self.process.emit("reading", "xfit", x, y)
-                self.process.emit("update")
+                    self.process.append_reading("xfit", x, y)
+                self.process.update_readings()
         for f, r in results:
             f.verify(r)

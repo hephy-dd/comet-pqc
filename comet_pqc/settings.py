@@ -1,3 +1,5 @@
+from typing import List
+
 from comet.settings import SettingsMixin
 
 from .instruments.k2410 import K2410Instrument
@@ -40,6 +42,15 @@ class TablePosition(Position):
 
 
 class Settings(SettingsMixin):
+
+    def get(self, key, default=None):
+        return self.settings.get(key, default)
+
+    def __getitem__(self, key):
+        return self.settings[key]
+
+    def __setitem__(self, key, value):
+        self.settings[key] = value
 
     @property
     def table_positions(self):
@@ -159,6 +170,14 @@ class Settings(SettingsMixin):
         self.settings["table_control_dodge_height"] = to_table_unit(value)
 
     @property
+    def table_contact_delay(self) -> float:
+        return safe_float(self.settings.get("table_contact_delay"), 0)
+
+    @table_contact_delay.setter
+    def table_contact_delay(self, value: float) -> None:
+        self.settings["table_contact_delay"] = float(value)
+
+    @property
     def operators(self):
         return list(self.settings.get("operators") or [])
 
@@ -252,6 +271,42 @@ class Settings(SettingsMixin):
     @retry_contact_overdrive.setter
     def retry_contact_overdrive(self, value):
         self.settings["retry_contact_overdrive"] = to_table_unit(value)
+
+    @property
+    def export_json(self) -> bool:
+        return bool(self.settings.get("export_json", True))
+
+    @export_json.setter
+    def export_json(self, value: bool) -> None:
+        self.settings["export_json"] = bool(value)
+
+    @property
+    def export_txt(self) -> bool:
+        return bool(self.settings.get("export_txt", True))
+
+    @export_txt.setter
+    def export_txt(self, value: bool) -> None:
+        self.settings["export_txt"] = bool(value)
+
+    @property
+    def png_analysis(self) -> bool:
+        return bool(self.settings.get("png_analysis", False))
+
+    @png_analysis.setter
+    def png_analysis(self, value: bool) -> None:
+        self.settings["png_analysis"] = bool(value)
+
+    @property
+    def sequence_filenames(self) -> List[str]:
+        filenames = []
+        for filename in self.settings.get("custom_sequences", []):
+            filenames.append(filename)
+        return filenames
+
+    @sequence_filenames.setter
+    def sequence_filenames(self, value: List[str]) -> None:
+        filenames = [filename for filename in value]
+        self.settings["custom_sequences"] = filenames
 
 
 settings = Settings()

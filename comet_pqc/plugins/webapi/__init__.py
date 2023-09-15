@@ -2,7 +2,7 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-from .processes import WebAPIProcess
+from .worker import WebAPIWorker
 
 __all__ = ["WebAPIPlugin"]
 
@@ -11,18 +11,19 @@ class WebAPIPlugin:
 
     def __init__(self, window) -> None:
         self.window = window
-        self.process = WebAPIProcess(
+        self.worker = WebAPIWorker(
             failed=self.window.showException
         )
-        self.window.processes.add("webapi", self.process)
+        self.worker.station = self.window.station  # TODO
+        self.window.processes.add("webapi", self.worker)
 
     def on_install(self) -> None:
         self.preferencesWidget = WebAPIPreferencesWidget()
         self.window.preferencesDialog.tabWidget.addTab(self.preferencesWidget, "WebAPI")
-        self.process.start()
+        self.worker.start()
 
     def on_uninstall(self) -> None:
-        self.process.stop()
+        self.worker.stop()
         index = self.window.preferencesDialog.tabWidget.indexOf(self.preferencesWidget)
         self.window.preferencesDialog.tabWidget.removeTab(index)
         self.preferencesWidget.deleteLater()
@@ -47,7 +48,7 @@ class WebAPIPreferencesWidget(QtWidgets.QWidget):
         groupBoxLayout = QtWidgets.QFormLayout(self.groupBox)
         groupBoxLayout.addWidget(self.isServerEnabledCheckBox)
         groupBoxLayout.addRow("Host", self.hostLineEdit)
-        groupBoxLayout.addRow("port", self.portSpinBox)
+        groupBoxLayout.addRow("Port", self.portSpinBox)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.groupBox)

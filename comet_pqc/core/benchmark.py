@@ -8,7 +8,7 @@ __all__ = ["Benchmark"]
 class Benchmark:
     """Aggregating bench mark context manager."""
 
-    def __init__(self, name: str) -> str:
+    def __init__(self, name: str) -> None:
         self.name: str = name
         self._series: List[float] = []
         self._timer: Timer = Timer()
@@ -17,10 +17,9 @@ class Benchmark:
         self._timer.reset()
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc) -> None:
         delta = self._timer.delta()
         self._series.append(delta)
-        return False
 
     def clear(self) -> None:
         self._series.clear()

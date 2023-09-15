@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 
 __all__ = ["Position"]
 
@@ -6,7 +7,7 @@ __all__ = ["Position"]
 class Position:
     """Three-dimensional Cartesian coordinate."""
 
-    def __init__(self, x: float = None, y: float = None, z: float = None):
+    def __init__(self, x: Optional[float] = None, y: Optional[float] = None, z: Optional[float] = None):
         self._x: float = math.nan if x is None else float(x)
         self._y: float = math.nan if y is None else float(y)
         self._z: float = math.nan if z is None else float(z)

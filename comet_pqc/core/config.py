@@ -2,7 +2,7 @@ import copy
 import glob
 import os
 import re
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import comet
 import jsonschema
@@ -53,7 +53,7 @@ def validate_config(data: dict, schema: str) -> None:
     jsonschema.validate(data, schema_data)
 
 
-def load_config(filename: str, schema: str = None) -> dict:
+def load_config(filename: str, schema: Optional[str] = None) -> dict:
     """Loads a YAML configuration file and optionally validates the content
     using the provided schema.
 
@@ -112,7 +112,7 @@ def list_configs(directory: str) -> List[Tuple[str, str]]:
 class Chuck:
     """Chuck configuration."""
 
-    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, positions: List = None, filename: str = None) -> None:
+    def __init__(self, id: str, name: str, enabled: bool = True, description: Optional[str] = None, positions: Optional[List] = None, filename: Optional[str] = None) -> None:
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
@@ -127,7 +127,7 @@ class Chuck:
 class ChuckSamplePosition:
     """Chuck sample position."""
 
-    def __init__(self, id: str, name: str, pos, enabled: bool = True, description: str = None):
+    def __init__(self, id: str, name: str, pos, enabled: bool = True, description: Optional[str] = None):
         self.id: str = id
         self.name: str = name
         self.pos: Position = Position(**pos)
@@ -138,7 +138,7 @@ class ChuckSamplePosition:
 class Sample:
     """Silicon sample."""
 
-    def __init__(self, id: str, name: str, enabled=True, description="", contacts=None, filename=None):
+    def __init__(self, id: str, name: str, enabled=True, description="", contacts: Optional[List] = None, filename: Optional[str] = None):
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
@@ -153,7 +153,7 @@ class Sample:
 class SampleContact:
     """Sample contact geometry."""
 
-    def __init__(self, id: str, name: str, pos, type: str = None, enabled: bool = True, description: str = None):
+    def __init__(self, id: str, name: str, pos, type: Optional[str] = None, enabled: bool = True, description: Optional[str] = None):
         self.id: str = id
         self.name: str = name
         self.type: str = type or ""
@@ -165,7 +165,7 @@ class SampleContact:
 class Sequence:
     """Sequence configuration."""
 
-    def __init__(self, id: str, name: str, enabled: bool = True, description: str = None, contacts: List = None, filename: str = None):
+    def __init__(self, id: str, name: str, enabled: bool = True, description: Optional[str] = None, contacts: Optional[List] = None, filename: Optional[str] = None):
         self.id: str = id
         self.name: str = name
         self.enabled: bool = enabled
@@ -186,7 +186,7 @@ class Sequence:
 class SequenceContact:
     """Sequence contact point."""
 
-    def __init__(self, name: str, contact_id: str, id: str = None, enabled: bool = True, description: str = None, measurements: List = None):
+    def __init__(self, name: str, contact_id: str, id: Optional[str] = None, enabled: bool = True, description: Optional[str] = None, measurements: Optional[List] = None):
         self.id: str = id or make_id(name)
         self.name: str = name
         self.contact_id: str = contact_id
@@ -206,14 +206,14 @@ class SequenceMeasurement:
 
     key_ignorelist = ["matrix_enable", "matrix_channels", "analyze_function"]
 
-    def __init__(self, name: str, type: str, id: str = None, enabled: bool = True, tags: List = None, description: str = None, parameters: Dict = None):
+    def __init__(self, name: str, type: str, id: Optional[str] = None, enabled: bool = True, tags: Optional[List[str]] = None, description: Optional[str] = None, parameters: Optional[Dict] = None):
         self.id: str = id or make_id(name)
         self.name: str = name
         self.type: str = type
         self.enabled: bool = enabled
-        self.tags: List = list(map(format, tags or []))
+        self.tags: List[str] = list(map(format, tags or []))
         self.description: str = description or ""
-        self.parameters: Dict = {}
+        self.parameters: Dict[str, Any] = {}
         for key, value in (parameters or {}).items():
             if key not in self.key_ignorelist:
                 if isinstance(value, str):
