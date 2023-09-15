@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from comet.driver import Driver, Property
+from comet.driver import Driver
 from comet.driver.iec60488 import IEC60488, lock
 
 __all__ = ["E4980A"]
@@ -33,30 +33,30 @@ class Bias(Driver):
             def level(self) -> float:
                 return float(self.resource.query(":BIAS:POL:VOLT:LEV?"))
 
-        def __init__(self, resource):
+        def __init__(self, resource) -> None:
             super().__init__(resource)
             self.current = self.Current(resource)
             self.voltage = self.Voltage(resource)
 
-        @Property(values={False: 0, True: 1})
-        def auto(self) -> int:
+        @property
+        def auto(self) -> bool:
             """Returns True if automatic polarity control is enabled."""
-            return int(self.resource.query(":BIAS:POL:AUTO?"))
+            return bool(int(self.resource.query(":BIAS:POL:AUTO?")))
 
         @auto.setter
-        def auto(self, value: int):
+        def auto(self, value: bool) -> None:
             self.resource.write(f":BIAS:POL:AUTO {value:d}")
             self.resource.query("*OPC?")
 
     class Range(Driver):
 
-        @Property(values={False: 0, True: 1})
-        def auto(self) -> int:
+        @property
+        def auto(self) -> bool:
             """Returns True if DC bias range is set to AUTO."""
-            return int(self.resource.query(":BIAS:RANG:AUTO?"))
+            return bool(int(self.resource.query(":BIAS:RANG:AUTO?")))
 
         @auto.setter
-        def auto(self, value: int):
+        def auto(self, value: bool) -> None:
             self.resource.write(f":BIAS:RANG:AUTO {value:d}")
             self.resource.query("*OPC?")
 
@@ -78,13 +78,13 @@ class Bias(Driver):
         self.range = self.Range(resource)
         self.voltage = self.Voltage(resource)
 
-    @Property(values={False: 0, True: 1})
-    def state(self) -> int:
+    @property
+    def state(self) -> bool:
         """Returns True if bias output enabled."""
-        return int(self.resource.query(":BIAS:STAT?"))
+        return bool(int(self.resource.query(":BIAS:STAT?")))
 
     @state.setter
-    def state(self, value: int):
+    def state(self, value: bool) -> None:
         self.resource.write(f":BIAS:STAT {value:d}")
         self.resource.query("*OPC?")
 
@@ -99,13 +99,13 @@ class Display(Driver):
         self.resource.write(":DISP:CCL")
         self.resource.query("*OPC?")
 
-    @Property(values={False: 0, True: 1})
-    def enable(self) -> int:
+    @property
+    def enable(self) -> bool:
         """Enable display updates."""
-        return int(self.resource.query(":DISP:ENAB?"))
+        return bool(int(self.resource.query(":DISP:ENAB?")))
 
     @enable.setter
-    def enable(self, value: int):
+    def enable(self, value: bool) -> None:
         self.resource.write(f":DISP:ENAB {value:d}")
         self.resource.query("*OPC?")
 
@@ -125,13 +125,13 @@ class Fetch(Driver):
     class Impedance(Driver):
 
         @lock
-        def corrected(self) -> Tuple[float]:
+        def corrected(self) -> Tuple[float, ...]:
             """Return tuple with two corrected values."""
             result = self.resource.query(":FETC:IMP:CORR?")
             return tuple(map(float, result.split(",")))
 
         @lock
-        def formatted(self) -> Tuple[float]:
+        def formatted(self) -> Tuple[float, ...]:
             """Return tuple with three values."""
             result = self.resource.query(":FETC:IMP:FORM?")
             return tuple(map(float, result.split(",")))
@@ -160,7 +160,7 @@ class Fetch(Driver):
         self.smonitor = self.SMonitor(resource)
 
     @lock
-    def __call__(self) -> Tuple[float]:
+    def __call__(self) -> Tuple[float, ...]:
         """Return tuple with three values."""
         result = self.resource.query(":FETC?")
         return tuple(map(float, result.split(",")))
@@ -183,12 +183,12 @@ class System(Driver):
 
     class Beeper(Driver):
 
-        @Property(values={False: 0, True: 1})
-        def state(self) -> int:
-            return int(self.resource.query(":SYST:BEEP:STAT?"))
+        @property
+        def state(self) -> bool:
+            return bool(int(self.resource.query(":SYST:BEEP:STAT?")))
 
         @state.setter
-        def state(self, value: int):
+        def state(self, value: bool) -> None:
             self.resource.write(f":SYST:BEEP:STAT {value:d}")
             self.resource.query("*OPC?")
 
