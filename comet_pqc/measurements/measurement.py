@@ -109,7 +109,7 @@ class Measurement:
 
     type: str = ""
 
-    required_instruments = []
+    required_instruments: list = []
 
     def __init__(self, process, measurement_parameters, measurement_default_parameters, timestamp: float) -> None:
         self.process = process
@@ -274,9 +274,9 @@ class Measurement:
         with contextlib.ExitStack() as es:
             kwargs = {}
             for key in type(self).required_instruments:
-                create = getattr(self, f"{key}_create")
+                cls = station.create_instrument(key)
                 resource = station.resources.get(key)
-                kwargs.update({key: create(es.enter_context(resource))})
+                kwargs.update({key: cls(es.enter_context(resource))})
             try:
                 self._initialize(**kwargs)
                 self._measure(**kwargs)

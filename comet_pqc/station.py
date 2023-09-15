@@ -4,9 +4,10 @@ import time
 import comet
 from comet.driver.keithley import K707B
 from comet.driver.corvus import Venus1
+from comet.driver.keithley import K6517B
 
 from .instruments.e4980a import E4980A
-
+from .settings import settings
 from .workers.table import AlternateTableWorker
 from .workers.environment import EnvironmentWorker
 
@@ -80,8 +81,16 @@ class Station(comet.ResourceMixin):
         self.lcr = LCRMeterRole(self.lcr_resource)
         self.table = TableRole(self.table_resource)
 
-        self.environ_worker= EnvironmentWorker(resource=self.environ_resource, name="environ")
+        self.environ_worker = EnvironmentWorker(resource=self.environ_resource, name="environ")
         self.table_worker = AlternateTableWorker(table=self.table)
+
+    def create_instrument(self, key: str):
+        return {
+            "hvsrc": settings.hvsrc_instrument,
+            "vsrc": settings.vsrc_instrument,
+            "elm": K6517B,
+            "lcr": E4980A,
+        }.get(key)
 
     def shutdown(self) -> None:
         self.environ_worker.stop()
@@ -217,7 +226,7 @@ class TableRole:
 
     @property
     def is_calibrated(self) -> bool:
-        return (3, 3, 3) == self.table.x.caldone, self.table.y.caldone, self.table.z.caldone
+        return (3, 3, 3) == (self.table.x.caldone, self.table.y.caldone, self.table.z.caldone)
 
     def move_absolute(self, position) -> None:
         x, y, z = position

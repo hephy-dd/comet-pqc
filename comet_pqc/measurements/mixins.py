@@ -4,11 +4,9 @@ import time
 
 import analysis_pqc
 import comet
-from comet.driver.keithley import K6517B
 
 from ..core.filters import std_mean_filter
 from ..core.timer import Timer
-from ..instruments.e4980a import E4980A
 from ..instruments.k2657a import K2657AInstrument
 from ..settings import settings
 from ..utils import format_metric
@@ -59,10 +57,6 @@ class HVSourceMixin(Mixin):
         self.set_meta("hvsrc_filter_type", hvsrc_filter_type)
         self.set_meta("hvsrc_source_voltage_autorange_enable", hvsrc_source_voltage_autorange_enable)
         self.set_meta("hvsrc_source_voltage_range", f"{hvsrc_source_voltage_range:G} V")
-
-    def hvsrc_create(self, resource):
-        """Return HV source instrument instance."""
-        return settings.hvsrc_instrument(resource)
 
     def hvsrc_check_error(self, hvsrc):
         """Test for error."""
@@ -229,10 +223,6 @@ class VSourceMixin(Mixin):
         self.set_meta("vsrc_source_voltage_autorange_enable", vsrc_source_voltage_autorange_enable)
         self.set_meta("vsrc_source_voltage_range", f"{vsrc_source_voltage_range:G} V")
 
-    def vsrc_create(self, resource):
-        """Return V source instrument instance."""
-        return settings.vsrc_instrument(resource)
-
     def vsrc_check_error(self, vsrc):
         """Test for error."""
         code, message = vsrc.get_error()
@@ -382,10 +372,6 @@ class ElectrometerMixin(Mixin):
     def elm_update_meta(self):
         """Update meta data parameters."""
 
-    def elm_create(self, resource):
-        """Return ELM instrument instance."""
-        return K6517B(resource)  # TODO
-
     def elm_check_error(self, elm):
         try:
             result = elm.resource.query(":SYST:ERR?")
@@ -481,10 +467,6 @@ class LCRMixin(Mixin):
         self.set_meta("lcr_open_correction_mode", lcr_open_correction_mode)
         self.set_meta("lcr_open_correction_channel", lcr_open_correction_channel)
         self.set_meta("lcr_soft_filter", lcr_soft_filter)
-
-    def lcr_create(self, resource):
-        """Return LCR instrument instance."""
-        return E4980A(resource)  # TODO
 
     def lcr_check_error(self, device):
         """Test for error."""
