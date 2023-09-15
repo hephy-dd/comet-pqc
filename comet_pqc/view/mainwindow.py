@@ -222,16 +222,6 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
         self.dashboard.setNoticeVisible(config.table_temporary_z_limit)  # TODO
 
-        # Sync environment controls
-        if self.dashboard.isEnvironmentEnabled():
-            self.station.environ_worker.start()
-            self.dashboard.sync_environment_controls()
-
-        if self.dashboard.isTableEnabled():
-            self.station.table_worker.start()
-            self.dashboard.syncTableControls()
-            self.station.table_worker.enable_joystick(False)
-
         # State machine
 
         self.idleState = QtCore.QState()
@@ -451,6 +441,17 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
             QtCore.QTimer.singleShot(200, callback)
             progress.exec()
+
+    def startup(self) -> None:
+        # Sync environment controls
+        if self.dashboard.isEnvironmentEnabled():
+            self.station.environ_worker.start()
+            self.dashboard.sync_environment_controls()
+
+        if self.dashboard.isTableEnabled():
+            self.station.table_worker.start()
+            self.dashboard.syncTableControls()
+            self.station.table_worker.enable_joystick(False)
 
     def shutdown(self) -> None:
         self.dashboard.shutdown()

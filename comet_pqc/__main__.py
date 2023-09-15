@@ -113,12 +113,13 @@ def main() -> None:
 
     window = MainWindow(station)
     window.readSettings()
+    window.plugins.install_plugins()
     window.show()
 
     logging.info("PQC version %s", __version__)
     logging.info("Analysis-PQC version %s", analysis_pqc.__version__)
 
-    window.plugins.install_plugins()
+    window.startup()  # start workers
 
     app.exec()
 
