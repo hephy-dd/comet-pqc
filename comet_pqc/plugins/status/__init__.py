@@ -12,7 +12,6 @@ class StatusPlugin:
 
     def __init__(self, window) -> None:
         self.window = window
-        self.thread = None
 
     def on_install(self) -> None:
         self.statusWidget = StatusWidget()
@@ -40,8 +39,8 @@ class StatusPlugin:
             "use_environ": self.window.dashboard.isEnvironmentEnabled(),
             "use_table": self.window.dashboard.isTableEnabled(),
         })
-        self.thread = threading.Thread(target=worker)
-        self.thread.start()
+        thread = threading.Thread(target=worker)
+        thread.start()
         # Fix: stay in status tab
         self.window.dashboard.tabWidget.setCurrentWidget(self.statusWidget)
 
