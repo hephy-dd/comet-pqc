@@ -4,9 +4,9 @@ from PyQt5 import QtCore, QtWidgets
 from QCharted import ChartView
 
 import comet
-from comet import ui
 
 from comet_pqc.settings import settings
+from ..components import PlotWidget
 from ..components import Metric, stitch_pixmaps
 
 __all__ = ["PanelStub", "BasicPanel", "Panel"]
@@ -213,11 +213,8 @@ class Panel(BasicPanel):
         points_in_plots = settings.settings.get("points_in_plots") or False
         for index in range(self.dataTabWidget.count()):
             widget = self.dataTabWidget.widget(index)
-            if hasattr(widget, "series"):
-                for series in widget.series():
-                    series.setPointsVisible(points_in_plots)
-            elif isinstance(widget, ui.Plot):
-                for series in widget.series.values():
+            if isinstance(widget, PlotWidget):
+                for series in widget.series().values():
                     series.qt.setPointsVisible(points_in_plots)
 
     def unmount(self):
@@ -307,10 +304,7 @@ class Panel(BasicPanel):
         for index in range(self.dataTabWidget.count()):
             self.dataTabWidget.setCurrentIndex(index)
             widget = self.dataTabWidget.widget(index)
-            if isinstance(widget, ChartView):
-                widget.chart().fit()
-                pixmaps.append(self.dataTabWidget.grab())
-            elif isinstance(widget, ui.Plot):
+            if isinstance(widget, PlotWidget):
                 widget.fit()
                 pixmaps.append(self.dataTabWidget.grab())
             elif widget is self.analysisTreeWidget:

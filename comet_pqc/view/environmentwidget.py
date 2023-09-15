@@ -4,7 +4,7 @@ from typing import Optional
 
 from PyQt5 import QtWidgets, QtChart
 
-from comet.ui import Plot
+from .components import PlotWidget
 
 __all__ = ["EnvironmentWidget"]
 
@@ -27,14 +27,14 @@ class EnvironmentWidget(QtWidgets.QWidget):
         self.box_humidity_series = []
 
         # Plot
-        self.plot = Plot(legend="right")
-        self.plot.add_axis("x", align="bottom", type="datetime")
-        self.plot.add_axis("y1", align="left", text="Temperature [°C]", color="red")
-        self.plot.add_axis("y2", align="right", text="Humidity [%rH]", color="blue")
-        self.plot.add_series("box_temperature", "x", "y1", text="Box Temperature", color="red")
-        self.plot.add_series("chuck_temperature", "x", "y1", text="Chuck Temperature", color="magenta")
-        self.plot.add_series("box_humidity", "x", "y2", text="Box Humidity", color="blue")
-        self.plot.qt.setMinimumHeight(320)
+        self.plotWidget = PlotWidget()
+        self.plotWidget.setMinimumHeight(320)
+        self.plotWidget.addAxis("x", align="bottom", type="datetime")
+        self.plotWidget.addAxis("y1", align="left", text="Temperature [°C]", color="red")
+        self.plotWidget.addAxis("y2", align="right", text="Humidity [%rH]", color="blue")
+        self.plotWidget.addSeries("box_temperature", "x", "y1", text="Box Temperature", color="red")
+        self.plotWidget.addSeries("chuck_temperature", "x", "y1", text="Chuck Temperature", color="magenta")
+        self.plotWidget.addSeries("box_humidity", "x", "y2", text="Box Humidity", color="blue")
 
         self.boxTemperatureLineEdit = QtWidgets.QLineEdit(self)
         self.boxTemperatureLineEdit.setReadOnly(True)
@@ -55,7 +55,7 @@ class EnvironmentWidget(QtWidgets.QWidget):
         self.boxDoorLineEdit.setReadOnly(True)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.plot.qt)
+        layout.addWidget(self.plotWidget)
         layout.addWidget(QtWidgets.QLabel("Box Temperature"))
         layout.addWidget(self.boxTemperatureLineEdit)
         layout.addWidget(QtWidgets.QLabel("Box Humidity"))
@@ -91,15 +91,12 @@ class EnvironmentWidget(QtWidgets.QWidget):
             self.updatePlot()
 
     def updatePlot(self) -> None:
-        self.plot.series.get("box_temperature").replace(self.box_temperature_series)
-        self.plot.series.get("chuck_temperature").replace(self.chuck_temperature_series)
-        self.plot.series.get("box_humidity").replace(self.box_humidity_series)
+        self.plotWidget.series().get("box_temperature").replace(self.box_temperature_series)
+        self.plotWidget.series().get("chuck_temperature").replace(self.chuck_temperature_series)
+        self.plotWidget.series().get("box_humidity").replace(self.box_humidity_series)
         # Suppress invalid float crashes
         try:
-            if self.plot.zoomed:
-                self.plot.update("x")
-            else:
-                self.plot.fit()
+            self.plotWidget.smartFit()
         except Exception as exc:
-            logger.error("failed to resize plot.")
             logger.exception(exc)
+            logger.error("failed to resize plot.")

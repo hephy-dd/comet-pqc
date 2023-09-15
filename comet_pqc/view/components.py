@@ -2,6 +2,7 @@ import math
 import os
 from typing import Iterable, List, Optional
 
+from comet import ui
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core.position import Position
@@ -403,3 +404,53 @@ class PositionsComboBox(QtWidgets.QComboBox):
 
     def writeSettings(self) -> None:
         settings.settings["current_table_position"] = self.currentIndex()
+
+
+class PlotWidget(QtWidgets.QWidget):
+    """Transitional wrapper for plots."""
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+
+        self._plot = ui.Plot(height=300, legend="right")
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._plot.qt)
+
+    def addAxis(self, name: str, *, align: str, text=None, type=None, color=None) -> None:
+        self._plot.add_axis(name, align=align, text=text or "", type=type or "value", color=color)
+
+    def addSeries(self, name: str, xaxis: str, yaxis: str, *, text: str, color=None) -> None:
+        self._plot.add_series(name, xaxis, yaxis, text=text, color=color)
+        return self._plot.series.get(name)
+
+    def axes(self) -> dict:
+        return self._plot.axes
+
+    def series(self) -> dict:
+        return self._plot.series
+
+    def smartFit(self, hack=False) -> None:
+        if self._plot.zoomed:
+            self._plot.update("x")
+        else:
+            if hack:
+                self._plot.qt.chart().zoomOut() # HACK
+            self._plot.fit()
+
+    def fit(self) -> None:
+        self._plot.fit()
+
+    def update(self, *args) -> None:
+        self._plot.update(*args)
+
+    def clear(self) -> None:
+        for series in self._plot.series.values():
+            series.clear()
+
+    def chart(self):
+        return self._plot.qt.chart()
+
+    def chartView(self):
+        return self._plot.qt.chartView()

@@ -3,8 +3,8 @@ from typing import Optional
 from PyQt5 import QtWidgets
 
 import comet
-from comet import ui
 
+from ..components import PlotWidget
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, LCRMixin
 
@@ -22,11 +22,11 @@ class FrequencyScanPanel(MatrixPanel):
         LCRMixin(self)
         EnvironmentMixin(self)
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
-        self.plot.add_series("lcr", "x", "y", text="LCR", color="blue")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
+        self.plotWidget = PlotWidget(self)
+        self.plotWidget.addAxis("x", align="bottom", text="Voltage [V] (abs)")
+        self.plotWidget.addAxis("y", align="right", text="Capacitance [pF]")
+        self.plotWidget.addSeries("lcr", "x", "y", text="LCR", color="blue")
+        self.dataTabWidget.insertTab(0, self.plotWidget, "CV Curve")
 
         self.biasVoltageSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.biasVoltageSpinBox.setDecimals(3)

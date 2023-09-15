@@ -3,8 +3,8 @@ from typing import Optional
 from PyQt5 import QtWidgets
 
 import comet
-from comet import ui
 
+from ..components import PlotWidget
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, LCRMixin
 
@@ -22,18 +22,18 @@ class CVRampPanel(MatrixPanel):
         LCRMixin(self)
         EnvironmentMixin(self)
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Capacitance [pF]")
-        self.plot.add_series("lcr", "x", "y", text="LCR Cp", color="blue")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "CV Curve")
+        self.plotWidget = PlotWidget(self)
+        self.plotWidget.addAxis("x", align="bottom", text="Voltage [V] (abs)")
+        self.plotWidget.addAxis("y", align="right", text="Capacitance [pF]")
+        self.plotWidget.addSeries("lcr", "x", "y", text="LCR Cp", color="blue")
+        self.dataTabWidget.insertTab(0, self.plotWidget, "CV Curve")
 
-        self.plot2 = ui.Plot(height=300, legend="right")
-        self.plot2.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot2.add_axis("y", align="right", text="1/Capacitance² [1/F²]")
-        self.plot2.axes.get("y").qt.setLabelFormat("%G")
-        self.plot2.add_series("lcr2", "x", "y", text="LCR Cp", color="blue")
-        self.dataTabWidget.insertTab(1, self.plot2.qt, "1/C² Curve")
+        self.plotWidget2 = PlotWidget(self)
+        self.plotWidget2.addAxis("x", align="bottom", text="Voltage [V] (abs)")
+        self.plotWidget2.addAxis("y", align="right", text="1/Capacitance² [1/F²]")
+        self.plotWidget2.axes().get("y").qt.setLabelFormat("%G")
+        self.plotWidget2.addSeries("lcr2", "x", "y", text="LCR Cp", color="blue")
+        self.dataTabWidget.insertTab(1, self.plotWidget2, "1/C² Curve")
 
         self.voltageStartSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.voltageStartSpinBox.setDecimals(3)
@@ -129,20 +129,18 @@ class CVRampPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
-        for series in self.plot.series.values():
-            series.clear()
-        for series in self.plot2.series.values():
-            series.clear()
+        self.plotWidget.clear()
+        self.plotWidget2.clear()
         for name, points in measurement.series.items():
             tr = self.series_transform.get(name, self.series_transform_default)
             if name == "lcr":
                 for x, y in points:
-                    self.plot.series.get(name).append(*tr(x, y))
+                    self.plotWidget.series().get(name).append(*tr(x, y))
             elif name == "lcr2":
                 for x, y in points:
-                    self.plot2.series.get(name).append(*tr(x, y))
-        self.plot.fit()
-        self.plot2.fit()
+                    self.plotWidget2.series().get(name).append(*tr(x, y))
+        self.plotWidget.fit()
+        self.plotWidget2.fit()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
@@ -151,28 +149,20 @@ class CVRampPanel(MatrixPanel):
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot.series.get(name).append(*tr(x, y))
-                if self.plot.zoomed:
-                    self.plot.update("x")
-                else:
-                    self.plot.fit()
+                self.plotWidget.series().get(name).append(*tr(x, y))
+                self.plotWidget.smartFit()
             elif name == "lcr2":
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
-                self.plot2.series.get(name).append(*tr(x, y))
-                if self.plot2.zoomed:
-                    self.plot2.update("x")
-                else:
-                    self.plot2.fit()
+                self.plotWidget2.series().get(name).append(*tr(x, y))
+                self.plotWidget2.smartFit()
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        for series in self.plot.series.values():
-            series.clear()
-        for series in self.plot2.series.values():
-            series.clear()
+        self.plotWidget.clear()
+        self.plotWidget2.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.plotWidget.fit()

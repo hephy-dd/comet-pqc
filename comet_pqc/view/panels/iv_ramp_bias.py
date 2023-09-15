@@ -3,8 +3,8 @@ from typing import Optional
 from PyQt5 import QtWidgets
 
 import comet
-from comet import ui
 
+from ..components import PlotWidget
 from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import EnvironmentMixin, HVSourceMixin, VSourceMixin
@@ -23,12 +23,12 @@ class IVRampBiasPanel(MatrixPanel):
         VSourceMixin(self)
         EnvironmentMixin(self)
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V]")
-        self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("vsrc", "x", "y", text="V Source", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
+        self.plotWidget = PlotWidget(self)
+        self.plotWidget.addAxis("x", align="bottom", text="Voltage [V]")
+        self.plotWidget.addAxis("y", align="right", text="Current [uA]")
+        self.plotWidget.addSeries("vsrc", "x", "y", text="V Source", color="blue")
+        self.plotWidget.addSeries("xfit", "x", "y", text="Fit", color="magenta")
+        self.dataTabWidget.insertTab(0, self.plotWidget, "IV Curve")
 
         self.voltageStartSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.voltageStartSpinBox.setDecimals(3)
@@ -136,47 +136,42 @@ class IVRampBiasPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
+        self.plotWidget.clear()
         for name, points in measurement.series.items():
-            if name in self.plot.series:
-                if name in self.plot.series:
-                    self.plot.series.clear()
+            if name in self.plotWidget.series():
                 tr = self.series_transform.get(name, self.series_transform_default)
                 if points[0][0] > points[-1][0]:
-                    self.plot.axes.get("x").qt.setReverse(True)
+                    self.plotWidget.axes().get("x").qt.setReverse(True)
                 else:
-                    self.plot.axes.get("x").qt.setReverse(False)
+                    self.plotWidget.axes().get("x").qt.setReverse(False)
                 for x, y in points:
-                    self.plot.series.get(name).append(*tr(x, y))
+                    self.plotWidget.series().get(name).append(*tr(x, y))
         self.updateReadings()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
-            if name in self.plot.series:
+            if name in self.plotWidget.series():
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
                 if self.voltageStartSpinBox.value() > self.voltageStopSpinBox.value():
-                    self.plot.axes.get("x").qt.setReverse(True)
+                    self.plotWidget.axes().get("x").qt.setReverse(True)
                 else:
-                    self.plot.axes.get("x").qt.setReverse(False)
+                    self.plotWidget.axes().get("x").qt.setReverse(False)
                 tr = self.series_transform.get(name, self.series_transform_default)
-                self.plot.series.get(name).append(*tr(x, y))
-                self.plot.series.get(name).qt.setVisible(True)
+                self.plotWidget.series().get(name).append(*tr(x, y))
+                self.plotWidget.series().get(name).qt.setVisible(True)
 
     def updateReadings(self) -> None:
         super().updateReadings()
         if self.measurement:
-            if self.plot.zoomed:
-                self.plot.update("x")
-            else:
-                self.plot.fit()
+            self.plotWidget.smartFit()
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for series in self.plot.series.values():
-            series.clear()
+        self.plotWidget.series().get("xfit").qt.setVisible(False)
+        self.plotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.plotWidget.fit()

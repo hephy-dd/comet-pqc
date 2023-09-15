@@ -3,8 +3,8 @@ from typing import Optional
 from PyQt5 import QtWidgets
 
 import comet
-from comet import ui
 
+from ..components import PlotWidget
 from ..components import Metric
 from .matrix import MatrixPanel
 from .mixins import ElectrometerMixin, EnvironmentMixin, HVSourceMixin
@@ -23,13 +23,13 @@ class IVRampElmPanel(MatrixPanel):
         ElectrometerMixin(self)
         EnvironmentMixin(self)
 
-        self.plot = ui.Plot(height=300, legend="right")
-        self.plot.add_axis("x", align="bottom", text="Voltage [V] (abs)")
-        self.plot.add_axis("y", align="right", text="Current [uA]")
-        self.plot.add_series("hvsrc", "x", "y", text="HV Source", color="red")
-        self.plot.add_series("elm", "x", "y", text="Electrometer", color="blue")
-        self.plot.add_series("xfit", "x", "y", text="Fit", color="magenta")
-        self.dataTabWidget.insertTab(0, self.plot.qt, "IV Curve")
+        self.plotWidget = PlotWidget(self)
+        self.plotWidget.addAxis("x", align="bottom", text="Voltage [V] (abs)")
+        self.plotWidget.addAxis("y", align="right", text="Current [uA]")
+        self.plotWidget.addSeries("hvsrc", "x", "y", text="HV Source", color="red")
+        self.plotWidget.addSeries("elm", "x", "y", text="Electrometer", color="blue")
+        self.plotWidget.addSeries("xfit", "x", "y", text="Fit", color="magenta")
+        self.dataTabWidget.insertTab(0, self.plotWidget, "IV Curve")
 
         self.voltageStartSpinBox = QtWidgets.QDoubleSpinBox(self)
         self.voltageStartSpinBox.setDecimals(3)
@@ -106,38 +106,34 @@ class IVRampElmPanel(MatrixPanel):
 
     def mount(self, measurement):
         super().mount(measurement)
+        self.plotWidget.clear()
         for name, points in measurement.series.items():
-            if name in self.plot.series:
-                self.plot.series.clear()
             tr = self.series_transform.get(name, self.series_transform_default)
             for x, y in points:
-                self.plot.series.get(name).append(*tr(x, y))
+                self.plotWidget.series().get(name).append(*tr(x, y))
         self.updateReadings()
 
     def appendReading(self, name: str, x: float, y: float) -> None:
         if self.measurement:
-            if name in self.plot.series:
+            if name in self.plotWidget.series():
                 if name not in self.measurement.series:
                     self.measurement.series[name] = []
                 self.measurement.series[name].append((x, y))
                 tr = self.series_transform.get(name, self.series_transform_default)
-                self.plot.series.get(name).append(*tr(x, y))
-                self.plot.series.get(name).qt.setVisible(True)
+                series = self.plotWidget.series().get(name)
+                series.append(*tr(x, y))
+                series.qt.setVisible(True)
 
     def updateReadings(self) -> None:
         super().updateReadings()
         if self.measurement:
-            if self.plot.zoomed:
-                self.plot.update("x")
-            else:
-                self.plot.fit()
+            self.plotWidget.smartFit()
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.plot.series.get("xfit").qt.setVisible(False)
-        for series in self.plot.series.values():
-            series.clear()
+        self.plotWidget.series().get("xfit").qt.setVisible(False)
+        self.plotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():
                 self.measurement.series[name] = []
-        self.plot.fit()
+        self.plotWidget.fit()
