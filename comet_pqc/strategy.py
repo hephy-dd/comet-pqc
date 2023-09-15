@@ -222,7 +222,6 @@ class ContactStrategy:
                 break
             if retry_contact:
                 logger.info(f"Retry contact {retry_contact}/{retry_contact_count}...")
-                self.context.increment_item_recontact(contact_item)
             self.context.set_message("Process contact...")
             self.context.set_item_state(contact_item, contact_item.ProcessingState)
             logger.info(" => %s", contact_item.name())
@@ -232,7 +231,7 @@ class ContactStrategy:
                 self.context.set_item_state(contact_item, contact_item.ProcessingState)
                 if retry_measurement:
                     logger.info(f"Retry measurement {retry_measurement}/{retry_measurement_count}...")
-                measurement_items = self.process_measurement_sequence(measurement_items, retry_measurement)
+                measurement_items = self.process_measurement_sequence(measurement_items)
                 state = contact_item.ErrorState if measurement_items else contact_item.SuccessState
                 if self.context.stop_requested:
                     state = contact_item.StoppedState
@@ -251,7 +250,7 @@ class ContactStrategy:
             self.context.safe_move_table((x, y, z))
             self.context.apply_contact_delay()
 
-    def process_measurement_sequence(self, measurement_items, retry_measurement) -> list:
+    def process_measurement_sequence(self, measurement_items) -> list:
         """Returns a list of failed measurement items."""
         prev_measurement_item = None
         failed_measurements: list = []
@@ -260,8 +259,6 @@ class ContactStrategy:
                 break
             if not measurement_item.isEnabled():
                 continue
-            if retry_measurement:
-                self.context.increment_item_remeasure(measurement_item)
             if self.context.stop_requested:
                 self.context.set_item_state(measurement_item, measurement_item.StoppedState)
                 break

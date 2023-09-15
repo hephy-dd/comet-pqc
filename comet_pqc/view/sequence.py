@@ -117,7 +117,7 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setExpandsOnDoubleClick(False)
-        self.setHeaderLabels(["Name", "Pos", "State", "RC", "RM"])
+        self.setHeaderLabels(["Name", "Pos", "State"])
         self.header().setMinimumSectionSize(32)
 
     def addSampleItem(self, item) -> None:
@@ -143,8 +143,6 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
         self.resizeColumnToContents(0)
         self.resizeColumnToContents(1)
         self.resizeColumnToContents(2)
-        self.resizeColumnToContents(3)
-        self.resizeColumnToContents(4)
 
 
 class SequenceRootTreeItem:  #  TODO
@@ -182,8 +180,6 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def __init__(self) -> None:
         super().__init__()
         self.setCheckable(True)
-        self._recontact: int = 0
-        self._remeasure: int = 0
 
     def children(self):
         items = []
@@ -255,20 +251,6 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
         self.setText(2, format(value))
         self.setData(2, 0x2000, value)
 
-    def recontact(self) -> int:
-        return self._recontact
-
-    def setRecontact(self, count: int) -> None:
-        self._recontact = count
-        self.setText(3, format(count or ""))  # omit zero
-
-    def remeasure(self) -> int:
-        return self._remeasure
-
-    def setRemeasure(self, count: int) -> None:
-        self._remeasure = count
-        self.setText(4, format(count or ""))  # omit zero
-
     # Methods
 
     def setLocked(self, locked: bool) -> None:
@@ -279,8 +261,6 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
 
     def reset(self):
         self.setState(None)
-        self.setRecontact(0)
-        self.setRemeasure(0)
         for child in self.children():
             child.reset()
 

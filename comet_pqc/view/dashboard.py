@@ -731,8 +731,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         worker.message_changed.connect(self.messageChanged.emit)
         worker.progress_changed.connect(self.progressChanged.emit)
         worker.item_state_changed.connect(self.setItemState)
-        worker.item_recontact_changed.connect(self.setItemRecontact)
-        worker.item_remeasure_changed.connect(self.setItemRemeasure)
         worker.item_reset.connect(self.resetItem)
         worker.item_visible.connect(self.showItem)
         worker.item_hidden.connect(self.hideItem)
@@ -765,16 +763,6 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def setItemState(self, item, state) -> None:
         item.setState(state)
-        item.setExpanded(True)
-        self.sequenceTreeWidget.resizeColumns()
-
-    def setItemRecontact(self, item, count) -> None:
-        item.setRecontact(count)
-        item.setExpanded(True)
-        self.sequenceTreeWidget.resizeColumns()
-
-    def setItemRemeasure(self, item, count) -> None:
-        item.setRemeasure(count)
         item.setExpanded(True)
         self.sequenceTreeWidget.resizeColumns()
 

@@ -31,8 +31,6 @@ class MeasureWorker(QtCore.QObject):
     progress_changed = QtCore.pyqtSignal(int, int)
 
     item_state_changed = QtCore.pyqtSignal(object, object)
-    item_recontact_changed = QtCore.pyqtSignal(object, int)
-    item_remeasure_changed = QtCore.pyqtSignal(object, int)
     item_reset = QtCore.pyqtSignal(object)
     item_visible = QtCore.pyqtSignal(object)
     item_hidden = QtCore.pyqtSignal(object)
@@ -74,12 +72,6 @@ class MeasureWorker(QtCore.QObject):
 
     def set_item_state(self, item, state) -> None:
         self.item_state_changed.emit(item, state)
-
-    def increment_item_recontact(self, item) -> None:
-        self.item_recontact_changed.emit(item, item.recontact() + 1)
-
-    def increment_item_remeasure(self, item) -> None:
-        self.item_remeasure_changed.emit(item, item.remeasure() + 1)
 
     def reset_measurement_item(self, item) -> None:
         self.item_reset.emit(item)
