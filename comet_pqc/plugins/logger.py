@@ -17,11 +17,15 @@ class LoggerPlugin:
     def on_install(self) -> None:
         self.logWidget = LogTreeWidget()
         self.logWidget.add_logger(logging.getLogger())
-        self.window.addPage(self.logWidget, "Logging")
+        self.widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(self.widget)
+        layout.addWidget(self.logWidget)
+        self.window.addPage(self.widget, "Logging")
 
     def on_uninstall(self) -> None:
-        self.window.removePage(self.logWidget)
-        self.logWidget.deleteLater()
+        self.window.removePage(self.widget)
+        self.logWidget.remove_logger(logging.getLogger())
+        self.widget.deleteLater()
 
 
 def format_time(seconds: float) -> str:
