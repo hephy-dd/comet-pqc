@@ -40,7 +40,7 @@ class LogFileWriter:
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
-    def create_handler(self, filename: str) -> None:
+    def create_handler(self, filename: str) -> logging.FileHandler:
         self.create_path(filename)
         handler = logging.FileHandler(filename=filename)
         handler.setFormatter(logging.Formatter(
@@ -77,12 +77,12 @@ class InitializeStrategy:
         try:
             self.context.safe_recover_hvsrc()
         except Exception:
-            logger.error("unable to connect with HVSource")
-            raise RuntimeError("Failed to connect with HVSource")
+            logger.error("unable to recover HVSource")
+            raise RuntimeError("Failed to recover HVSource")
         try:
             self.context.safe_recover_vsrc()
         except Exception:
-            logger.error("unable to connect with VSource")
+            logger.error("unable to recover VSource")
         try:
             if self.context.config.get("use_environ"):
                 self.context.discharge_decoupling()
@@ -91,8 +91,8 @@ class InitializeStrategy:
         try:
             self.context.safe_recover_matrix()
         except Exception:
-            logger.error("unable to connect with Matrix")
-            raise RuntimeError("Failed to connect with Matrix")
+            logger.error("unable to recover Matrix")
+            raise RuntimeError("Failed to recover Matrix")
 
 
 class FinalizeStrategy:
@@ -105,16 +105,16 @@ class FinalizeStrategy:
         try:
             self.context.safe_recover_hvsrc()
         except Exception:
-            logger.error("unable to connect with HVSource")
+            logger.error("unable to recover HVSource")
         try:
             self.context.safe_recover_vsrc()
         except Exception:
-            logger.error("unable to connect with VSource")
+            logger.error("unable to recover VSource")
         try:
             self.context.safe_recover_matrix()
         except Exception:
             logger.error("unable to connect with: Matrix")
-            raise RuntimeError("Failed to connect with Matrix")
+            raise RuntimeError("Failed to recover Matrix")
         try:
             if self.context.config.get("use_environ"):
                 self.context.station.set_test_led(False)
@@ -226,14 +226,7 @@ class ContactStrategy:
             self.context.set_message("Process contact...")
             self.context.set_item_state(contact_item, contact_item.ProcessingState)
             logger.info(" => %s", contact_item.name())
-            if self.context.config.get("move_to_contact") and contact_item.hasPosition():
-                x, y, z = contact_item.position
-                # Add re-contact overdrive
-                if retry_contact:
-                    z = self.context.add_retry_overdrive(z)
-                # Move table to position
-                self.context.safe_move_table((x, y, z))
-                self.context.apply_contact_delay()
+            self.move_to_contact(contact_item, retry_contact)
             # Auto retry measurement
             for retry_measurement in range(retry_measurement_count + 1):
                 self.context.set_item_state(contact_item, contact_item.ProcessingState)
@@ -248,10 +241,20 @@ class ContactStrategy:
                     break
         return contact_item.ErrorState if measurement_items else contact_item.SuccessState
 
-    def process_measurement_sequence(self, measurement_items, retry_measurement) -> None:
+    def move_to_contact(self, contact_item, retry_contact: int)-> None:
+        if self.context.config.get("move_to_contact") and contact_item.hasPosition():
+            x, y, z = contact_item.position
+            # Add re-contact overdrive
+            if retry_contact:
+                z = self.context.add_retry_overdrive(z)
+            # Move table to position
+            self.context.safe_move_table((x, y, z))
+            self.context.apply_contact_delay()
+
+    def process_measurement_sequence(self, measurement_items, retry_measurement) -> list:
         """Returns a list of failed measurement items."""
         prev_measurement_item = None
-        failed_measurements = []
+        failed_measurements: list = []
         for measurement_item in measurement_items:
             if self.context.stop_requested:
                 break
@@ -398,7 +401,7 @@ class MeasurementStrategy:
         iso_timestamp = make_iso(measurement_item.timestamp)
         return f"{sample_name}_{sample_type}_{contact_id}_{measurement_id}_{iso_timestamp}"
 
-    def create_filename(self, measurement_item, suffix: str) -> None:
+    def create_filename(self, measurement_item, suffix: str) -> str:
         filename = safe_filename(f"{self.create_basename(measurement_item)}{suffix}")
         output_dir = self.context.config.get("output_dir", ".")
         sample_dir = safe_filename(measurement_item.contact.sample.name())

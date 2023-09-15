@@ -260,14 +260,14 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
 
     def setRecontact(self, count: int) -> None:
         self._recontact = count
-        self.setText(3, format(count or ""))
+        self.setText(3, format(count or ""))  # omit zero
 
     def remeasure(self) -> int:
         return self._remeasure
 
     def setRemeasure(self, count: int) -> None:
         self._remeasure = count
-        self.setText(4, format(count or ""))
+        self.setText(4, format(count or ""))  # omit zero
 
     # Methods
 

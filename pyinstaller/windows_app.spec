@@ -12,7 +12,7 @@ app_filename = f"pqc-{app_version}.exe"
 app_icon = os.path.join(app_root, "assets", "icons", "pqc.ico")
 app_title = "PQC"
 app_description = "Process Quality Control for CMS outer tracker"
-app_copyright = "Copyright © 2021-2023 HEPHY"
+app_copyright = "Copyright © 2019-2023 HEPHY"
 app_organization = "HEPHY"
 
 # Entry point for the application
