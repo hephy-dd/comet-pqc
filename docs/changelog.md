@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.45.0
+
+### Added
+- Enhanced recontact strategy.
+
 ## 0.44.0
 
 ### Added

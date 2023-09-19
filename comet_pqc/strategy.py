@@ -243,9 +243,10 @@ class ContactStrategy:
     def move_to_contact(self, contact_item, retry_contact: int)-> None:
         if self.context.config.get("move_to_contact") and contact_item.hasPosition():
             x, y, z = contact_item.position
-            # Add re-contact overdrive
+            # Add re-contact overdrive and offset
             if retry_contact:
                 z = self.context.add_retry_overdrive(z)
+                x, y = self.context.add_retry_offset(x, y)
             # Move table to position
             self.context.safe_move_table((x, y, z))
             self.context.apply_contact_delay()

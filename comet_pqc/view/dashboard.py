@@ -710,6 +710,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         config = {
             "table_position": self.table_position(),  # TODO state
             "table_contact_delay": settings.table_contact_delay,
+            "retry_contact_radius": settings.retry_contact_radius,
+            "retry_contact_distance": settings.retry_contact_distance,
             "retry_contact_overdrive": settings.retry_contact_overdrive,
             "retry_contact_count": settings.retry_contact_count,
             "retry_measurement_count": settings.retry_measurement_count,

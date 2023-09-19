@@ -1,11 +1,13 @@
 import logging
 import os
 import time
+from typing import Tuple
 
 from PyQt5 import QtCore
 
 from ..core.functions import LinearRange
 from ..core.request import RequestTimeout
+from ..core.utils import points_in_circle
 from ..settings import settings
 from ..strategy import InitializeStrategy, FinalizeStrategy, SequenceStrategy, SampleStrategy, ContactStrategy, MeasurementStrategy
 from ..utils import format_metric
@@ -48,9 +50,12 @@ class MeasureWorker(QtCore.QObject):
         self.station = station
         self.config: dict = {}
         self.sequence_item = item
+        self.retry_offset_generators: dict = {}
         # Set default configuration
         self.config.update({
             "before_measurement_delay": 0.0,
+            "retry_contact_radius": 0.01,
+            "retry_contact_distance": 0.001,
             "retry_contact_overdrive": 0.0,
             "table_contact_delay": 0.0,
             "table_move_timeout": 120.0,
@@ -138,10 +143,26 @@ class MeasureWorker(QtCore.QObject):
             raise RuntimeError("Unable to open matrix channels: %s", channels)
         self.set_message("Opened all matrix channels.")
 
+    def add_retry_offset(self, x: float, y: float) -> Tuple[float, float]:
+        """Add a random offset to point (x, y) within specified radius and
+        minimum distance between all other points before."""
+        point = x, y
+        # create generator on demand
+        if point not in self.retry_offset_generators:
+            r = abs(self.config.get("retry_contact_radius"))
+            d = abs(self.config.get("retry_contact_distance"))
+            self.retry_offset_generators[point] = points_in_circle(0, 0, r, d)
+        gen = self.retry_offset_generators.get(point)
+        x_offset, y_offset = next(gen)
+        x = x + x_offset
+        y = y + y_offset
+        logger.info(" => applying re-contact offset: %g, %g mm", x_offset, y_offset)
+        return x, y
+
     def add_retry_overdrive(self, z: float) -> float:
-        retry_contact_overdrive = abs(self.config.get("retry_contact_overdrive"))
-        z = z + retry_contact_overdrive
-        logger.info(" => applying re-contact overdrive: %g mm", retry_contact_overdrive)
+        overdrive = abs(self.config.get("retry_contact_overdrive"))
+        z = z + overdrive
+        logger.info(" => applying re-contact overdrive: %g mm", overdrive)
         return z
 
     def safe_move_table(self, position) -> None:
