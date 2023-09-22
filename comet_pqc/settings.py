@@ -265,8 +265,24 @@ class Settings(SettingsMixin):
         self.settings["retry_contact_count"] = int(value)
 
     @property
+    def retry_contact_radius(self):
+        return from_table_unit(self.settings.get("retry_contact_radius", 10.0))
+
+    @retry_contact_radius.setter
+    def retry_contact_radius(self, value):
+        self.settings["retry_contact_radius"] = to_table_unit(value)
+
+    @property
+    def retry_contact_distance(self):
+        return from_table_unit(self.settings.get("retry_contact_distance", 1.0))
+
+    @retry_contact_distance.setter
+    def retry_contact_distance(self, value):
+        self.settings["retry_contact_distance"] = to_table_unit(value)
+
+    @property
     def retry_contact_overdrive(self):
-        return from_table_unit(self.settings.get("retry_contact_overdrive") or 0)
+        return from_table_unit(self.settings.get("retry_contact_overdrive", 0.0))
 
     @retry_contact_overdrive.setter
     def retry_contact_overdrive(self, value):

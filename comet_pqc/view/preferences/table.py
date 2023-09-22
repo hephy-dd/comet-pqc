@@ -191,6 +191,20 @@ class TableWidget(QtWidgets.QWidget):
         self.recontactOverdriveSpinBox.setSingleStep(0.001)
         self.recontactOverdriveSpinBox.setSuffix(" mm")
 
+        self.recontactRadiusSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.recontactRadiusSpinBox.setDecimals(3)
+        self.recontactRadiusSpinBox.setRange(0, 0.100)
+        self.recontactRadiusSpinBox.setSingleStep(0.001)
+        self.recontactRadiusSpinBox.setSuffix(" mm")
+        self.recontactRadiusSpinBox.setToolTip("Radius for random re-contact offset")
+
+        self.recontactDistanceSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.recontactDistanceSpinBox.setDecimals(3)
+        self.recontactDistanceSpinBox.setRange(0, 0.060)
+        self.recontactDistanceSpinBox.setSingleStep(0.001)
+        self.recontactDistanceSpinBox.setSuffix(" mm")
+        self.recontactDistanceSpinBox.setToolTip("Minimum distance to all previous re-contact positions")
+
         # Control Steps
 
         self.stepsGroupBox = QtWidgets.QGroupBox(self)
@@ -246,25 +260,30 @@ class TableWidget(QtWidgets.QWidget):
 
         # Probecard Contact Delay
 
-        self.contactDelayGroupBox = QtWidgets.QGroupBox(self)
-        self.contactDelayGroupBox.setTitle("Probecard Contact Delay")
+        self.probecardGroupBox = QtWidgets.QGroupBox(self)
+        self.probecardGroupBox.setTitle("Probecard")
 
-        contactDelayGroupBoxLayout = QtWidgets.QHBoxLayout(self.contactDelayGroupBox)
-        contactDelayGroupBoxLayout.addWidget(self.probecardContactDelaySpinBox)
-        contactDelayGroupBoxLayout.addStretch()
+        probecardGroupBoxLayout = QtWidgets.QGridLayout(self.probecardGroupBox)
+        probecardGroupBoxLayout.addWidget(QtWidgets.QLabel("Contact Delay"), 0, 0)
+        probecardGroupBoxLayout.addWidget(self.probecardContactDelaySpinBox, 1, 0)
 
         # Re-Contact Z-Overdrive
 
-        self.overdriveGroupBox = QtWidgets.QGroupBox(self)
-        self.overdriveGroupBox.setTitle("Re-Contact Z-Overdrive (1x)")
+        self.recontactGroupBox = QtWidgets.QGroupBox(self)
+        self.recontactGroupBox.setTitle("Re-Contact")
 
-        overdriveGroupBoxLayout = QtWidgets.QHBoxLayout(self.overdriveGroupBox)
-        overdriveGroupBoxLayout.addWidget(self.recontactOverdriveSpinBox)
-        overdriveGroupBoxLayout.addStretch()
+        recontactGroupBoxLayout = QtWidgets.QGridLayout(self.recontactGroupBox)
+        recontactGroupBoxLayout.addWidget(QtWidgets.QLabel("Z-Overdrive"), 0, 0)
+        recontactGroupBoxLayout.addWidget(self.recontactOverdriveSpinBox, 1, 0)
+        recontactGroupBoxLayout.addWidget(QtWidgets.QLabel("Offset Radius"), 0, 1)
+        recontactGroupBoxLayout.addWidget(self.recontactRadiusSpinBox, 1, 1)
+        recontactGroupBoxLayout.addWidget(QtWidgets.QLabel("Min. Distance"), 0, 2)
+        recontactGroupBoxLayout.addWidget(self.recontactDistanceSpinBox, 1, 2)
+        recontactGroupBoxLayout.setColumnStretch(3, 1)
 
         bottomLayout = QtWidgets.QHBoxLayout()
-        bottomLayout.addWidget(self.contactDelayGroupBox, 0)
-        bottomLayout.addWidget(self.overdriveGroupBox, 1)
+        bottomLayout.addWidget(self.probecardGroupBox, 0)
+        bottomLayout.addWidget(self.recontactGroupBox, 1)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.stepsGroupBox, 1)
@@ -338,6 +357,8 @@ class TableWidget(QtWidgets.QWidget):
         self.zLimitJoystickSpinBox.setValue(z)
         self.probecardContactDelaySpinBox.setValue(settings.table_contact_delay)
         self.recontactOverdriveSpinBox.setValue(settings.retry_contact_overdrive)
+        self.recontactRadiusSpinBox.setValue(settings.retry_contact_radius)
+        self.recontactDistanceSpinBox.setValue(settings.retry_contact_distance)
 
     def writeSettings(self) -> None:
         table_step_sizes = []
@@ -365,3 +386,5 @@ class TableWidget(QtWidgets.QWidget):
         ]
         settings.table_contact_delay = self.probecardContactDelaySpinBox.value()
         settings.retry_contact_overdrive = self.recontactOverdriveSpinBox.value()
+        settings.retry_contact_radius = self.recontactRadiusSpinBox.value()
+        settings.retry_contact_distance = self.recontactDistanceSpinBox.value()
