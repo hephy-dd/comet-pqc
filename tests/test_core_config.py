@@ -1,6 +1,6 @@
 import os
 
-from comet_pqc.core import config
+from pqc.core import config
 
 
 def test_dirs():

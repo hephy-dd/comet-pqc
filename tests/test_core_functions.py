@@ -1,4 +1,4 @@
-from comet_pqc.core import functions
+from pqc.core import functions
 
 
 def assert_range(begin, end, step, ref):

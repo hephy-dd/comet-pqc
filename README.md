@@ -1,6 +1,6 @@
 # PQC
 
-PQC sensor measurements
+Process Quality Control for CMS tracker
 
 ## Overview
 
@@ -43,4 +43,4 @@ See for pre-built Windows binaries in the releases section.
 
 ## License
 
-comet-pqc is licensed under the [GNU General Public License Version 3](https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE).
+comet-pqc is licensed under the [GNU General Public License Version 3](https://github.com/hephy-dd/comet-pqc/tree/main/LICENSE).

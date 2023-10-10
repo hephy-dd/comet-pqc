@@ -5,7 +5,7 @@ from QCharted import ChartView
 
 import comet
 
-from comet_pqc.settings import settings
+from pqc.settings import settings
 from ..components import PlotWidget
 from ..components import Metric, stitch_pixmaps
 

@@ -1,7 +1,7 @@
 import os
 from io import StringIO
 
-from comet_pqc.core.formatter import CSVFormatter, PQCFormatter
+from pqc.core.formatter import CSVFormatter, PQCFormatter
 
 
 def test_csv_formatter():

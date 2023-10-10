@@ -10,8 +10,8 @@ from PyQt5 import QtCore
 
 import comet
 
-from comet_pqc.utils import from_table_unit, to_table_unit
-from comet_pqc.core.timer import Timer
+from pqc.utils import from_table_unit, to_table_unit
+from pqc.core.timer import Timer
 
 from ..core.request import Request
 from ..core.position import Position

@@ -120,6 +120,67 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
         self.setHeaderLabels(["Name", "Pos", "State"])
         self.header().setMinimumSectionSize(32)
 
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
+
+    def showContextMenu(self, position) -> None:
+        item = self.itemAt(position)
+        if item:
+            contextMenu = QtWidgets.QMenu(self)
+
+            # Enable Default
+
+            def recursiveEnableDefault(item):
+                for child in item.children():
+                    if hasattr(child, "isEnabledDefault"):
+                        child.setEnabled(child.isEnabledDefault())
+                    recursiveEnableDefault(child)
+
+            def enableDefault():
+                recursiveEnableDefault(item)
+
+            if item.childCount():
+                action = contextMenu.addAction("Enable Default")
+                action.triggered.connect(enableDefault)
+
+            # Enable Failed
+
+            def recursiveEnableFailed(item):
+                for child in item.children():
+                    enabled = child.state() in [
+                        child.StoppedState,
+                        child.ComplianceState,
+                        child.TimeoutState,
+                        child.ErrorState,
+                        child.AnalysisErrorState,
+                    ]
+                    child.setEnabled(enabled)
+                    recursiveEnableFailed(child)
+
+            def enableFailed():
+                recursiveEnableFailed(item)
+
+            if item.childCount():
+                action = contextMenu.addAction("Enable Only Failed")
+                action.triggered.connect(enableFailed)
+
+            # Disable All
+
+            def recursiveDisableItem(item):
+                for child in item.children():
+                    child.setEnabled(False)
+                    recursiveDisableItem(child)
+
+            def disableAll():
+                recursiveDisableItem(item)
+
+            if item.childCount():
+                contextMenu.addSeparator()
+                action = contextMenu.addAction("Disable All")
+                action.triggered.connect(disableAll)
+
+            contextMenu.exec(self.viewport().mapToGlobal(position))
+
     def addSampleItem(self, item) -> None:
         self.addTopLevelItem(item)
 
@@ -180,6 +241,8 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def __init__(self) -> None:
         super().__init__()
         self.setCheckable(True)
+        self.setEnabled(False)
+        self.setEnabledDefault(False)
 
     def children(self):
         items = []
@@ -231,6 +294,12 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
     def setEnabled(self, enabled: bool) -> None:
         self.setChecked(0, enabled)
 
+    def isEnabledDefault(self) -> bool:
+        return self._is_enabled_default
+
+    def setEnabledDefault(self, state: bool) -> None:
+        self._is_enabled_default = state
+
     def state(self) -> str:
         return self.data(2, 0x2000)
 
@@ -279,6 +348,7 @@ class SampleTreeItem(SequenceTreeItem):
         self._sampleComment: str = ""
         self.update_name()
         self.setEnabled(False)
+        self.setEnabledDefault(False)
         self.sequence = None
 
     # Properties
@@ -416,6 +486,8 @@ class ContactTreeItem(SequenceTreeItem):
         self.id = contact.id
         self.setName(contact.name)
         self.setEnabled(contact.enabled)
+        self.setEnabledDefault(contact.enabled)
+        self._is_enabled_default = contact.enabled
         self.contact_id = contact.contact_id
         self.setDescription(contact.description)
         self.reset_position()
@@ -459,6 +531,7 @@ class MeasurementTreeItem(SequenceTreeItem):
         self.setName(measurement.name)
         self.type = measurement.type
         self.setEnabled(measurement.enabled)
+        self.setEnabledDefault(measurement.enabled)
         self.parameters = copy.deepcopy(measurement.parameters)
         self.default_parameters = copy.deepcopy(measurement.default_parameters)
         self.setTags(measurement.tags)

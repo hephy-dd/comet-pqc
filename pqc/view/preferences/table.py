@@ -2,8 +2,8 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-from comet_pqc.settings import settings
-from comet_pqc.utils import from_table_unit, to_table_unit
+from pqc.settings import settings
+from pqc.utils import from_table_unit, to_table_unit
 
 __all__ = ["TableWidget"]
 

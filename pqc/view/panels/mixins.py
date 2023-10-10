@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 
-from comet_pqc.utils import format_metric, format_switch
+from pqc.utils import format_metric, format_switch
 from ..components import Metric
 from .panel import Panel
 

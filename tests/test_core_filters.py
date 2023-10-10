@@ -1,4 +1,4 @@
-from comet_pqc.core.filters import std_mean_filter
+from pqc.core.filters import std_mean_filter
 
 
 def test_std_mean_filter():

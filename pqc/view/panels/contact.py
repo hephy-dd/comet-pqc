@@ -3,7 +3,7 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-from comet_pqc.core.position import Position
+from pqc.core.position import Position
 from ..components import PositionWidget
 from .panel import BasicPanel
 

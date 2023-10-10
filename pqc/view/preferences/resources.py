@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets
 from comet import ResourceMixin
 from comet.utils import escape_string, unescape_string
 
-from comet_pqc.settings import settings
+from pqc.settings import settings
 
 __all__ = ["ResourcesWidget"]
 

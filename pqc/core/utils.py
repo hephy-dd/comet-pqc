@@ -18,7 +18,7 @@ def make_path(*args) -> str:
     """Construct an absolute path relative to package path.
 
     >>> make_path("assets", "sample.txt")
-    '/usr/local/lib/python/comet_pqc/assets/sample.txt'
+    '/usr/local/lib/python/pqc/assets/sample.txt'
     """
     return os.path.join(PACKAGE_PATH, *args)
 

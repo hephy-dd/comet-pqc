@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 from PyQt5 import QtCore
 from waitress.server import TcpWSGIServer
 
-from comet_pqc import __version__
+from pqc import __version__
 
 __all__ = ["WebAPIWorker"]
 

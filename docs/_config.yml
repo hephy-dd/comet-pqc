@@ -6,4 +6,4 @@ aux_links:
   "PQC on GitHub":
     - "//github.com/hephy-dd/comet-pqc"
 
-footer_content: "Copyright &copy; 2019-2023 <a href=\"https://hephy.at\">HEPHY</a>. PQC is licensed under the <a href=\"https://github.com/hephy-dd/comet-pqc/tree/master/LICENSE\">GNU General Public License Version 3</a>."
+footer_content: "Copyright &copy; 2019-2023 <a href=\"https://hephy.at\">HEPHY</a>. PQC is licensed under the <a href=\"https://github.com/hephy-dd/comet-pqc/tree/main/LICENSE\">GNU General Public License Version 3</a>."

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.0] - 2023-10-10
+### Added
+- Context menu for sequence tree items.
+
+### Changed
+- Renamed package `comet_pqc` to `pqc`.
+
 ## [0.45.0] - 2023-09-20
 ### Added
 - Enhanced recontact strategy (#190).
@@ -384,7 +391,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter selection for type `moving`.
 - Default HV source route terminal `rear` (#17).
 
-[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.45.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.46.0...HEAD
+[0.46.0]: https://github.com/hephy-dd/comet-pqc/compare/0.45.0...0.46.0
 [0.45.0]: https://github.com/hephy-dd/comet-pqc/compare/0.44.0...0.45.0
 [0.44.0]: https://github.com/hephy-dd/comet-pqc/compare/0.43.2...0.44.0
 [0.43.2]: https://github.com/hephy-dd/comet-pqc/compare/0.43.1...0.43.2

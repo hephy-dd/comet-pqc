@@ -3,11 +3,11 @@
 import os
 from pyinstaller_versionfile import create_versionfile
 
-import comet_pqc
+import pqc
 
 # Application configurations
-app_root = os.path.abspath(os.path.dirname(comet_pqc.__file__))
-app_version = comet_pqc.__version__
+app_root = os.path.abspath(os.path.dirname(pqc.__file__))
+app_version = pqc.__version__
 app_filename = f"pqc-{app_version}.exe"
 app_icon = os.path.join(app_root, "assets", "icons", "pqc.ico")
 app_title = "PQC"
@@ -16,16 +16,16 @@ app_copyright = "Copyright © 2019-2023 HEPHY"
 app_organization = "HEPHY"
 
 # Entry point for the application
-launcher_code = "from comet_pqc.__main__ import main; main()"
+launcher_code = "from pqc.__main__ import main; main()"
 
 # Data files to be included in the output executable
 datas = [
-    (os.path.join(app_root, "assets", "icons", "*.svg"), "comet_pqc/assets/icons"),
-    (os.path.join(app_root, "assets", "icons", "*.ico"), "comet_pqc/assets/icons"),
-    (os.path.join(app_root, "assets", "config", "chuck", "*.yaml"), "comet_pqc/assets/config/chuck"),
-    (os.path.join(app_root, "assets", "config", "sequence", "*.yaml"), "comet_pqc/assets/config/sequence"),
-    (os.path.join(app_root, "assets", "config", "sample", "*.yaml"), "comet_pqc/assets/config/sample"),
-    (os.path.join(app_root, "assets", "schema", "*.yaml"), "comet_pqc/assets/schema"),
+    (os.path.join(app_root, "assets", "icons", "*.svg"), "pqc/assets/icons"),
+    (os.path.join(app_root, "assets", "icons", "*.ico"), "pqc/assets/icons"),
+    (os.path.join(app_root, "assets", "config", "chuck", "*.yaml"), "pqc/assets/config/chuck"),
+    (os.path.join(app_root, "assets", "config", "sequence", "*.yaml"), "pqc/assets/config/sequence"),
+    (os.path.join(app_root, "assets", "config", "sample", "*.yaml"), "pqc/assets/config/sample"),
+    (os.path.join(app_root, "assets", "schema", "*.yaml"), "pqc/assets/schema"),
 ]
 
 # Console will be displayed when the application is run

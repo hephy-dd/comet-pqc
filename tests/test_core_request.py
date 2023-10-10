@@ -1,6 +1,6 @@
 import pytest
 
-from comet_pqc.core.request import Request, RequestTimeout
+from pqc.core.request import Request, RequestTimeout
 
 
 def test_request():
