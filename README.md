@@ -39,7 +39,7 @@ pqc
 
 ## Binaries
 
-See for pre-built Windows binaries in the releases section.
+See for pre-built Windows binaries in the [releases](https://github.com/hephy-dd/comet-pqc/releases) section.
 
 ## License
 
