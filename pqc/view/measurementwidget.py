@@ -15,6 +15,7 @@ from .panels import (
     IVRampElmPanel,
     IVRampPanel,
     SamplePanel,
+    GroupPanel,
 )
 
 __all__ = ["MeasurementWidget"]
@@ -58,6 +59,7 @@ class PanelStack(QtWidgets.QWidget):
     """Stack of measurement panels."""
 
     sampleChanged = QtCore.pyqtSignal(object)
+    groupChanged = QtCore.pyqtSignal(object)
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -67,9 +69,13 @@ class PanelStack(QtWidgets.QWidget):
 
         self.panels: Dict[str, QtWidgets.QWidget] = {}
 
+        groupPanel = GroupPanel()
+        groupPanel.groupChanged.connect(self.groupChanged.emit)
+
         samplePanel = SamplePanel()
         samplePanel.sampleChanged.connect(self.sampleChanged.emit)
 
+        self.addPanel("group", groupPanel)
         self.addPanel("sample", samplePanel)
         self.addPanel("contact", ContactPanel())
         self.addPanel("iv_ramp", IVRampPanel())

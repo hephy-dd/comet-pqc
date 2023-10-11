@@ -13,6 +13,7 @@ from .components import (
     PositionWidget,
     ToggleButton,
 )
+from .sequence import GroupTreeItem, SampleTreeItem
 from ..core.position import Position
 from ..core.utils import LinearTransform
 from ..settings import TablePosition, settings
@@ -134,6 +135,25 @@ class LCRWidget(QtWidgets.QWidget):
     def setMarkerPos(self, x: float, y: float) -> None:
         self.markerSeries.clear()
         self.markerSeries.append(x, y)
+
+
+class TableGroupItem(QtWidgets.QTreeWidgetItem):
+
+    def __init__(self, group_item) -> None:
+        super().__init__()
+        self.group_item = group_item
+        self.setName(group_item.name())
+        for child in group_item.children():
+            if isinstance(child, GroupTreeItem):
+                self.addChild(TableGroupItem(child))
+            elif isinstance(child, SampleTreeItem):
+                self.addChild(TableSampleItem(child))
+
+    def name(self) -> str:
+        return self.text(0)
+
+    def setName(self, name: str) -> None:
+        self.setText(0, name)
 
 
 class TableSampleItem(QtWidgets.QTreeWidgetItem):
@@ -278,16 +298,20 @@ class TableContactsWidget(QtWidgets.QWidget):
         layout.setRowStretch(3, 1)
 
     def append_sample(self, sample_item) -> None:
-        item = TableSampleItem(sample_item)
+        if isinstance(sample_item, GroupTreeItem):
+            item = TableGroupItem(sample_item)
+        else:
+            item = TableSampleItem(sample_item)
         self.contactsTreeWidget.addTopLevelItem(item)
         item.setExpanded(True)
 
     def setButtonStates(self, item: Optional[QtWidgets.QTreeWidgetItem]) -> None:
+        isSample = isinstance(item, TableSampleItem)
         isContact = isinstance(item, TableContactItem)
         isMovable = item.hasPosition() if isinstance(item, TableContactItem) else False
         self.pickButton.setEnabled(isContact)
         self.moveButton.setEnabled(isMovable)
-        self.calculateButton.setEnabled(not isContact)
+        self.calculateButton.setEnabled(isSample)
         self.resetButton.setEnabled(isContact)
 
     def pickPosition(self) -> None:

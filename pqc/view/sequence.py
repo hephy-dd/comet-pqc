@@ -120,6 +120,10 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
         self.setHeaderLabels(["Name", "Pos", "State"])
         self.header().setMinimumSectionSize(32)
 
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtWidgets.QTreeWidget.InternalMove)
+
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
 
@@ -184,7 +188,11 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
     def addSampleItem(self, item) -> None:
         self.addTopLevelItem(item)
 
-    def sampleItems(self) -> list:
+    def addGroupItem(self, item) -> None:
+        self.addTopLevelItem(item)
+
+    def allItems(self) -> list:
+        """Return list of all top level sequence items."""
         items: list = []
         for index in range(self.topLevelItemCount()):
             item = self.topLevelItem(index)
@@ -192,12 +200,27 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
                 items.append(item)
         return items
 
+    def sampleItemsOnly(self) -> list:
+        """Return a flattend list of all samples."""
+        items: list = []
+
+        def sample_items(parent):
+            for index in range(parent.childCount()):
+                child = parent.child(index)
+                if isinstance(child, GroupTreeItem):
+                    sample_items(child)
+                elif isinstance(child, SampleTreeItem):
+                    items.append(child)
+
+        sample_items(self.invisibleRootItem())
+        return items
+
     def setLocked(self, locked: bool) -> None:
-        for item in self.sampleItems():
+        for item in self.allItems():
             item.setLocked(locked)
 
     def reset(self) -> None:
-        for item in self.sampleItems():
+        for item in self.allItems():
             item.reset()
 
     def resizeColumns(self) -> None:
@@ -240,6 +263,9 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
 
     def __init__(self) -> None:
         super().__init__()
+        self.item_type: str = ""
+        self.setFlags(self.flags() & ~QtCore.Qt.ItemIsDragEnabled)
+        self.setFlags(self.flags() & ~QtCore.Qt.ItemIsDropEnabled)
         self.setCheckable(True)
         self.setEnabled(False)
         self.setEnabledDefault(False)
@@ -334,13 +360,41 @@ class SequenceTreeItem(QtWidgets.QTreeWidgetItem):
             child.reset()
 
 
-class SampleTreeItem(SequenceTreeItem):
-    """Sample (halfmoon) item of sequence tree."""
-
-    type = "sample"
+class GroupTreeItem(SequenceTreeItem):
 
     def __init__(self) -> None:
         super().__init__()
+        self.item_type = "group"
+        self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
+        self.setFlags(self.flags() | QtCore.Qt.ItemIsDropEnabled)
+
+    def from_settings(self, **kwargs) -> None:
+        self.setName(kwargs.get("group_name", ""))
+        self.setEnabled(kwargs.get("group_enabled", False))
+        for sample_kwargs in kwargs.get("group_samples", []):
+            sample_item = SampleTreeItem()
+            sample_item.from_settings(**sample_kwargs)
+            self.addChild(sample_item)
+            self.setExpanded(True)
+
+    def to_settings(self) -> dict:
+        group_samples = []
+        for sample in self.children():
+            group_samples.append(sample.to_settings())
+        return {
+            "group_name": self.name(),
+            "group_enabled": self.isEnabled(),
+            "group_samples": group_samples,
+        }
+
+
+class SampleTreeItem(SequenceTreeItem):
+    """Sample (halfmoon) item of sequence tree."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.item_type = "sample"
+        self.setFlags(self.flags() | QtCore.Qt.ItemIsDragEnabled)
         self._namePrefix: str = ""
         self._nameInfix: str = ""
         self._nameSuffix: str = ""
@@ -478,10 +532,9 @@ class SampleTreeItem(SequenceTreeItem):
 class ContactTreeItem(SequenceTreeItem):
     """Contact (flute) item of sequence tree."""
 
-    type = "contact"
-
     def __init__(self, sample, contact):
         super().__init__()
+        self.item_type = "contact"
         self.sample = sample
         self.id = contact.id
         self.setName(contact.name)
@@ -526,10 +579,10 @@ class MeasurementTreeItem(SequenceTreeItem):
 
     def __init__(self, contact, measurement):
         super().__init__()
+        self.item_type = measurement.type
         self.contact = contact
         self.id = measurement.id
         self.setName(measurement.name)
-        self.type = measurement.type
         self.setEnabled(measurement.enabled)
         self.setEnabledDefault(measurement.enabled)
         self.parameters = copy.deepcopy(measurement.parameters)

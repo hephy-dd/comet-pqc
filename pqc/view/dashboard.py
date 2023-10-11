@@ -23,6 +23,7 @@ from ..core import config
 from ..core.position import Position
 from ..core.utils import make_path
 from .sequence import (
+    GroupTreeItem,
     ContactTreeItem,
     EditSamplesDialog,
     MeasurementTreeItem,
@@ -95,10 +96,13 @@ class SequenceWidget(QtWidgets.QGroupBox):
         layout.addLayout(self.buttonLayout)
 
     def readSettings(self):
-        samples = settings.settings.get("sequence_samples") or []
+        samples = settings.settings.get("sequence_samples", [])
         self.sequenceTreeWidget.clear()
         for kwargs in samples:
-            item = SampleTreeItem()
+            if "group_samples" in kwargs:
+                item = GroupTreeItem()
+            else:
+                item = SampleTreeItem()
             self.sequenceTreeWidget.addTopLevelItem(item)
             item.setExpanded(False)
             try:
@@ -110,7 +114,7 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.sequenceTreeWidget.resizeColumns()
 
     def writeSettings(self):
-        sequence_samples = [sample.to_settings() for sample in self.sequenceTreeWidget.sampleItems()]
+        sequence_samples = [sample.to_settings() for sample in self.sequenceTreeWidget.allItems()]
         settings.settings["sequence_samples"] = sequence_samples
 
     def setLocked(self, locked: bool) -> None:
@@ -133,12 +137,12 @@ class SequenceWidget(QtWidgets.QGroupBox):
         if result == QtWidgets.QMessageBox.Yes:
             progress = QtWidgets.QProgressDialog(self)
             progress.setLabelText("Reloading sequences...")
-            progress.setMaximum(len(self.sequenceTreeWidget.sampleItems()))
+            progress.setMaximum(len(self.sequenceTreeWidget.sampleItemsOnly()))
             progress.setCancelButton(None)
 
             def callback():
                 try:
-                    for sample_item in self.sequenceTreeWidget.sampleItems():
+                    for sample_item in self.sequenceTreeWidget.sampleItemsOnly():
                         progress.setValue(progress.value() + 1)
                         if sample_item.sequence:
                             filename = sample_item.sequence.filename
@@ -152,19 +156,39 @@ class SequenceWidget(QtWidgets.QGroupBox):
 
     def addSampleItem(self) -> None:
         item = SampleTreeItem()
-        item.setNameInfix("Unnamed")
-        item.setEnabled(False)
+        item.setNameInfix("Unnamed Sample")
+        item.setEnabled(True)
         self.sequenceTreeWidget.addSampleItem(item)
+        self.sequenceTreeWidget.setCurrentItem(item)
+        self.sequenceTreeWidget.resizeColumns()
+
+    def addGroupItem(self) -> None:
+        item = GroupTreeItem()
+        item.setName("Unnamed Group")
+        item.setEnabled(True)
+        self.sequenceTreeWidget.addGroupItem(item)
         self.sequenceTreeWidget.setCurrentItem(item)
         self.sequenceTreeWidget.resizeColumns()
 
     def removeCurrentSampleItem(self) -> None:
         item = self.sequenceTreeWidget.currentItem()
         if isinstance(item, SampleTreeItem):
-            result = QtWidgets.QMessageBox.question(self, "Remove Sample", f"Do you want to remove {item.name()!r}?")
+            result = QtWidgets.QMessageBox.question(self, "Remove Sample", f"Do you want to remove sample {item.name()!r}?")
             if result == QtWidgets.QMessageBox.Yes:
-                index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
-                self.sequenceTreeWidget.takeTopLevelItem(index)
+                self._removeSequenceItem(item)
+        elif isinstance(item, GroupTreeItem):
+            result = QtWidgets.QMessageBox.question(self, "Remove Group", f"Do you want to remove group {item.name()!r}?")
+            if result == QtWidgets.QMessageBox.Yes:
+                self._removeSequenceItem(item)
+
+    def _removeSequenceItem(self, item):
+        parent = item.parent()
+        if parent is None:
+            index = self.sequenceTreeWidget.indexOfTopLevelItem(item)
+            self.sequenceTreeWidget.takeTopLevelItem(index)
+        else:
+            index = parent.indexOfChild(item)
+            parent.takeChild(index)
 
 
 class TableControlWidget(QtWidgets.QGroupBox):
@@ -405,6 +429,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
         self.panels = self.measurementWidget.panels
         self.panels.sampleChanged.connect(lambda _: self.sequenceTreeWidget.resizeColumns())
+        self.panels.groupChanged.connect(lambda _: self.sequenceTreeWidget.resizeColumns())
 
         # Tabs
 
@@ -570,6 +595,10 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.panels.clear()
         self.panels.hide()
         self.measurementWidget.setControlsVisible(False)
+        if isinstance(item, GroupTreeItem):
+            panel = self.panels.get("group")
+            panel.setVisible(True)
+            panel.mount(item)
         if isinstance(item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
@@ -579,7 +608,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             panel.setVisible(True)
             panel.mount(item)
         if isinstance(item, MeasurementTreeItem):
-            panel = self.panels.get(item.type)
+            panel = self.panels.get(item.item_type)
             if panel:
                 panel.setVisible(True)
                 panel.mount(item)
@@ -615,6 +644,10 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
     def on_table_finished(self):
         self.table_worker.absolute_move_finished = None
         current_item = self.sequenceTreeWidget.currentItem()
+        if isinstance(current_item, GroupTreeItem):
+            panel = self.panels.get("group")
+            panel.setVisible(True)
+            panel.mount(current_item)
         if isinstance(current_item, SampleTreeItem):
             panel = self.panels.get("sample")
             panel.setVisible(True)
@@ -626,9 +659,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.setControlsLocked(False)
 
     def on_start_all(self):
-        sample_items = SequenceRootTreeItem(self.sequenceTreeWidget.sampleItems())
+        sample_items = SequenceRootTreeItem(self.sequenceTreeWidget.allItems())
         dialog = StartSequenceDialog(self)
-        dialog.setMessage("<b>Are you sure to start all enabled sequences for all enabled samples?</b>")
+        dialog.setMessage("<b>Are you sure to start all enabled sequences for all enabled samples/groups?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
         self.operatorWidget.writeSettings()
         self.outputWidget.writeSettings()
@@ -695,6 +728,8 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         elif isinstance(item, ContactTreeItem):
             self.startContact(item)
         elif isinstance(item, SampleTreeItem):
+            self.startSample(item)
+        elif isinstance(item, GroupTreeItem):
             self.startSample(item)
 
     def _on_start(self, item, move_to_contact=False, move_to_after_position=None):
@@ -780,7 +815,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.panels.unmount()
         self.panels.hide()
         self.panels.clear()
-        panel = self.panels.get(item.type)
+        panel = self.panels.get(item.item_type)
         panel.setVisible(True)
         panel.mount(item)
         self._panel = panel
@@ -791,7 +826,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def safeToImage(self, item, filename) -> None:
         plot_png = settings.settings.get("png_plots") or False
-        panel = self.panels.get(item.type)
+        panel = self.panels.get(item.item_type)
         if panel and plot_png:
             panel.saveToImage(filename)
 
@@ -812,16 +847,16 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.panels.unmount()
             self.panels.clear()
             self.panels.hide()
-            for sample_item in self.sequenceTreeWidget.sampleItems():
+            for sample_item in self.sequenceTreeWidget.sampleItemsOnly():
                 sample_item.reset()
             if current_item is not None:
-                panel = self.panels.get(current_item.type)
+                panel = self.panels.get(current_item.item_type)
                 panel.setVisible(True)
                 panel.mount(current_item)
 
     def on_edit_sequence(self):
         sequences = load_all_sequences(settings)
-        dialog = EditSamplesDialog(self.sequenceTreeWidget.sampleItems(), sequences)
+        dialog = EditSamplesDialog(self.sequenceTreeWidget.sampleItemsOnly(), sequences)
         dialog.run()
         self.on_tree_selected(self.sequenceTreeWidget.currentItem(), None)
 
@@ -832,7 +867,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         if result == QtWidgets.QMessageBox.Yes:
             item = self.sequenceTreeWidget.currentItem()
             if isinstance(item, MeasurementTreeItem):
-                panel = self.panels.get(item.type)
+                panel = self.panels.get(item.item_type)
                 panel.restore()
 
     # Table calibration
@@ -857,7 +892,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_worker.enable_joystick(False)
         dialog = AlignmentDialog(self.table_worker, self.contact_quality_process)
         dialog.readSettings()
-        dialog.loadSamples(self.sequenceTreeWidget.sampleItems())
+        dialog.loadSamples(self.sequenceTreeWidget.allItems())
         if self.isEnvironmentEnabled():
             # TODO !!!
             with self.environ_worker as environ_worker:

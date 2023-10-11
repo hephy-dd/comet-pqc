@@ -9,13 +9,14 @@ from ..core.functions import LinearRange
 from ..core.request import RequestTimeout
 from ..core.utils import points_in_circle
 from ..settings import settings
-from ..strategy import InitializeStrategy, FinalizeStrategy, SequenceStrategy, SampleStrategy, ContactStrategy, MeasurementStrategy
+from ..strategy import InitializeStrategy, FinalizeStrategy, SequenceStrategy, GroupStrategy, SampleStrategy, ContactStrategy, MeasurementStrategy
 from ..utils import format_metric
 from ..view.sequence import (
     ContactTreeItem,
     MeasurementTreeItem,
     SequenceRootTreeItem,
     SampleTreeItem,
+    GroupTreeItem,
 )
 
 __all__ = ["MeasureWorker"]
@@ -210,6 +211,8 @@ class MeasureWorker(QtCore.QObject):
             ContactStrategy(self)(item)
         elif isinstance(item, SampleTreeItem):
             SampleStrategy(self)(item)
+        elif isinstance(item, GroupTreeItem):
+            GroupStrategy(self)(item)
         elif isinstance(item, SequenceRootTreeItem):
             SequenceStrategy(self)(item)
         else:

@@ -22,6 +22,7 @@ from .components import MessageBox
 from .dashboard import Dashboard, SampleTreeItem
 from .preferences import PreferencesDialog
 from .sequence import (
+    GroupTreeItem,
     SampleTreeItem,
     ContactTreeItem,
     MeasurementTreeItem,
@@ -77,6 +78,9 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.startAllAction = QtWidgets.QAction(self)
         self.startAllAction.setText("&All Samples")
 
+        self.startGroupAction = QtWidgets.QAction(self)
+        self.startGroupAction.setText("&Group")
+
         self.startSampleAction = QtWidgets.QAction(self)
         self.startSampleAction.setText("&Sample")
 
@@ -105,10 +109,15 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.addSampleAction.setText("Add Sample")
         self.addSampleAction.setStatusTip("Add new sample to sequence.")
 
+        self.addGroupAction = QtWidgets.QAction(self)
+        self.addGroupAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
+        self.addGroupAction.setText("Add Group")
+        self.addGroupAction.setStatusTip("Add new sample group to sequence.")
+
         self.removeSampleAction = QtWidgets.QAction(self)
         self.removeSampleAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
-        self.removeSampleAction.setText("Remove Sample")
-        self.removeSampleAction.setToolTip("Remove current sample sequence.")
+        self.removeSampleAction.setText("Remove")
+        self.removeSampleAction.setToolTip("Remove current group/sample.")
 
         self.contentsAction = QtWidgets.QAction(self)
         self.contentsAction.setText("&Contents")
@@ -141,6 +150,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.startMenu = QtWidgets.QMenu()
         self.startMenu.setTitle("&Start")
         self.startMenu.addAction(self.startAllAction)
+        self.startMenu.addAction(self.startGroupAction)
         self.startMenu.addAction(self.startSampleAction)
         self.startMenu.addAction(self.startContactAction)
         self.startMenu.addAction(self.startMeasurementAction)
@@ -153,6 +163,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.sequenceMenu.addAction(self.editAction)
         self.sequenceMenu.addAction(self.reloadConfigAction)
         self.sequenceMenu.addAction(self.addSampleAction)
+        self.sequenceMenu.addAction(self.addGroupAction)
         self.sequenceMenu.addAction(self.removeSampleAction)
 
         self.helpMenu = self.menuBar().addMenu("&Help")
@@ -203,6 +214,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.sequenceControlWidget.exportButton.setDefaultAction(self.exportSequenceAction)
 
         self.startAllAction.triggered.connect(self.dashboard.on_start_all)
+        self.startGroupAction.triggered.connect(self.dashboard.on_start)
         self.startSampleAction.triggered.connect(self.dashboard.on_start)
         self.startContactAction.triggered.connect(self.dashboard.on_start)
         self.startMeasurementAction.triggered.connect(self.dashboard.on_start)
@@ -211,12 +223,15 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.editAction.triggered.connect(self.dashboard.on_edit_sequence)
         self.reloadConfigAction.triggered.connect(self.dashboard.sequenceControlWidget.reloadConfig)
         self.addSampleAction.triggered.connect(self.dashboard.sequenceControlWidget.addSampleItem)
+        self.addGroupAction.triggered.connect(self.dashboard.sequenceControlWidget.addGroupItem)
         self.removeSampleAction.triggered.connect(self.dashboard.sequenceControlWidget.removeCurrentSampleItem)
 
         def updateSequenceActions(current, previous):
+            self.startGroupAction.setEnabled(isinstance(current, GroupTreeItem))
             self.startSampleAction.setEnabled(isinstance(current, SampleTreeItem))
             self.startContactAction.setEnabled(isinstance(current, ContactTreeItem))
             self.startMeasurementAction.setEnabled(isinstance(current, MeasurementTreeItem))
+            self.removeSampleAction.setEnabled(isinstance(current, (GroupTreeItem, SampleTreeItem)))
 
         self.dashboard.sequenceTreeWidget.currentItemChanged.connect(updateSequenceActions)
 
@@ -388,13 +403,19 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
                     progress.setMaximum(len(samples))
                     for kwargs in samples:
                         progress.setValue(progress.value() + 1)
-                        item = SampleTreeItem()
+                        if "group_samples" in kwargs:
+                            item = GroupTreeItem()
+                        else:
+                            item = SampleTreeItem()
                         try:
                             item.from_settings(**kwargs)
                         except Exception as exc:
                             logging.error(exc)
                         self.dashboard.addSequenceItem(item)
-                        item.setExpanded(False)
+                        if isinstance(item, GroupTreeItem):
+                            item.setExpanded(True)
+                        else:
+                            item.setExpanded(False)
                     if self.dashboard.sequenceTreeWidget.topLevelItemCount():
                         self.dashboard.sequenceTreeWidget.setCurrentItem(self.dashboard.sequenceTreeWidget.topLevelItem(0))
                     self.dashboard.sequenceTreeWidget.resizeColumns()
@@ -489,6 +510,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.editAction.setEnabled(True)
         self.reloadConfigAction.setEnabled(True)
         self.addSampleAction.setEnabled(True)
+        self.addGroupAction.setEnabled(True)
         self.removeSampleAction.setEnabled(True)
         self.importSequenceAction.setEnabled(True)
         self.exportSequenceAction.setEnabled(True)
@@ -503,6 +525,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.editAction.setEnabled(False)
         self.reloadConfigAction.setEnabled(False)
         self.addSampleAction.setEnabled(False)
+        self.addGroupAction.setEnabled(False)
         self.removeSampleAction.setEnabled(False)
         self.importSequenceAction.setEnabled(False)
         self.exportSequenceAction.setEnabled(False)

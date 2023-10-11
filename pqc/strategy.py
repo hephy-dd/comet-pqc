@@ -14,8 +14,9 @@ from . import __version__
 from .measurements import measurement_factory
 from .measurements.measurement import ComplianceError, serialize_json, serialize_txt
 from .measurements.mixins import AnalysisError
+from .view.sequence import GroupTreeItem, SampleTreeItem
 
-__all__ = ["SequenceStrategy", "SampleStrategy", "ContactStrategy", "MeasurementStrategy"]
+__all__ = ["SequenceStrategy", "GroupStrategy", "SampleStrategy", "ContactStrategy", "MeasurementStrategy"]
 
 logger = logging.getLogger(__name__)
 
@@ -133,13 +134,14 @@ class SequenceStrategy:
         # Check contact positions
         for sample_item in sequence_item.children():
             if sample_item.isEnabled():
-                for contact_item in sample_item.children():
-                    if contact_item.isEnabled():
-                        if not contact_item.hasPosition():
-                            self.context.set_item_state(sample_item, sample_item.ErrorState)
-                            sample_name = contact_item.sample.name()
-                            contact_name = contact_item.name()
-                            raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
+                if isinstance(sample_item, SampleTreeItem):
+                    for contact_item in sample_item.children():
+                        if contact_item.isEnabled():
+                            if not contact_item.hasPosition():
+                                self.context.set_item_state(sample_item, sample_item.ErrorState)
+                                sample_name = contact_item.sample.name()
+                                contact_name = contact_item.name()
+                                raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
         for sample_item in sequence_item.children():
             if self.context.stop_requested:
                 break
@@ -148,7 +150,10 @@ class SequenceStrategy:
             if self.context.stop_requested:
                 self.context.set_item_state(sample_item, sample_item.StoppedState)
                 break
-            SampleStrategy(self.context)(sample_item)
+            if isinstance(sample_item,GroupTreeItem):
+                GroupStrategy(self.context)(sample_item)
+            elif isinstance(sample_item, SampleTreeItem):
+                SampleStrategy(self.context)(sample_item)
         if self.context.stop_requested:
             return
         self.final_movement()
@@ -157,6 +162,41 @@ class SequenceStrategy:
         move_to_after_position = self.context.config.get("move_to_after_position")
         if move_to_after_position is not None:
             self.context.safe_move_table(move_to_after_position)
+
+
+class GroupStrategy:
+    """Strategy for group item."""
+
+    def __init__(self, context) -> None:
+        self.context = context
+
+    def __call__(self, group_item) -> object:
+        self.context.set_message("Process group...")
+        self.context.set_item_state(group_item, group_item.ProcessingState)
+        results = []
+        for child in group_item.children():
+            if self.context.stop_requested:
+                break
+            if not child.isEnabled():
+                continue
+            if self.context.stop_requested:
+                self.context.set_item_state(child, child.StoppedState)
+                break
+            if isinstance(child, GroupTreeItem):
+                result = GroupStrategy(self.context)(child)
+            else:
+                result = SampleStrategy(self.context)(child)
+            if result != group_item.SuccessState:
+                results.append(result)
+        state = group_item.ErrorState
+        if self.context.stop_requested:
+            state = group_item.StoppedState
+        elif not results:
+            state = group_item.SuccessState
+        self.context.set_item_state(group_item, state)
+        if self.context.stop_requested:
+            return state
+        return state
 
 
 class SampleStrategy:
@@ -305,7 +345,7 @@ class MeasurementStrategy:
         # TODO
         timestamp = time.time()
         measurement_item.timestamp = timestamp  # TODO
-        measurement = measurement_factory(measurement_item.type)(
+        measurement = measurement_factory(measurement_item.item_type)(
             process=self.context,
             measurement_parameters=measurement_item.parameters,
             measurement_default_parameters=measurement_item.default_parameters,
