@@ -297,13 +297,19 @@ class TableContactsWidget(QtWidgets.QWidget):
         layout.setColumnStretch(0, 1)
         layout.setRowStretch(3, 1)
 
-    def append_sample(self, sample_item) -> None:
-        if isinstance(sample_item, GroupTreeItem):
-            item = TableGroupItem(sample_item)
+    def addSequencItem(self, sequence_item) -> None:
+        if isinstance(sequence_item, GroupTreeItem):
+            item = TableGroupItem(sequence_item)
         else:
-            item = TableSampleItem(sample_item)
+            item = TableSampleItem(sequence_item)
         self.contactsTreeWidget.addTopLevelItem(item)
-        item.setExpanded(True)
+
+        def expandAll(item):
+            item.setExpanded(True)
+            for index in range(item.childCount()):
+                expandAll(item.child(index))
+
+        expandAll(item)
 
     def setButtonStates(self, item: Optional[QtWidgets.QTreeWidgetItem]) -> None:
         isSample = isinstance(item, TableSampleItem)
@@ -359,10 +365,10 @@ class TableContactsWidget(QtWidgets.QWidget):
         if isinstance(item, TableSampleItem):
             item.calculatePositions()
 
-    def loadSamples(self, sample_items) -> None:
+    def loadSequence(self, sequence_items) -> None:
         self.contactsTreeWidget.clear()
-        for sample_item in sample_items:
-            self.append_sample(sample_item)
+        for item in sequence_items:
+            self.addSequencItem(item)
         self.contactsTreeWidget.resizeColumnToContents(0)
         self.contactsTreeWidget.resizeColumnToContents(1)
         self.contactsTreeWidget.resizeColumnToContents(2)
@@ -993,37 +999,44 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.xAddButton = QtWidgets.QPushButton(self)
         self.xAddButton.setText("+X")
         self.xAddButton.setFixedSize(32, 32)
+        self.xAddButton.setAutoDefault(False)
         self.xAddButton.clicked.connect(self.on_add_x)
 
         self.xSubButton = QtWidgets.QPushButton(self)
         self.xSubButton.setText("-X")
         self.xSubButton.setFixedSize(32, 32)
+        self.xSubButton.setAutoDefault(False)
         self.xSubButton.clicked.connect(self.on_sub_x)
 
         self.yAddButton = QtWidgets.QPushButton(self)
         self.yAddButton.setText("+Y")
         self.yAddButton.setFixedSize(32, 32)
+        self.yAddButton.setAutoDefault(False)
         self.yAddButton.clicked.connect(self.on_add_y)
 
         self.ySubButton = QtWidgets.QPushButton(self)
         self.ySubButton.setText("-Y")
         self.ySubButton.setFixedSize(32, 32)
+        self.ySubButton.setAutoDefault(False)
         self.ySubButton.clicked.connect(self.on_sub_y)
 
         self.zAddButton = QtWidgets.QPushButton(self)
         self.zAddButton.setText("+Z")
         self.zAddButton.setFixedSize(32, 32)
+        self.zAddButton.setAutoDefault(False)
         self.zAddButton.clicked.connect(self.on_add_z)
 
         self.zSubButton = QtWidgets.QPushButton(self)
         self.zSubButton.setText("-Z")
         self.zSubButton.setFixedSize(32, 32)
+        self.zSubButton.setAutoDefault(False)
         self.zSubButton.clicked.connect(self.on_sub_z)
 
         self.stepUpButton = QtWidgets.QPushButton(self)
         self.stepUpButton.setText("↑⇵")
         self.stepUpButton.setFixedSize(32, 32)
         self.stepUpButton.setToolTip("Step up, move single step up then double step down and double step up (experimental).")
+        self.stepUpButton.setAutoDefault(False)
         self.stepUpButton.clicked.connect(self.on_step_up)
 
         self.allKeypadButtons: list = [
@@ -1247,8 +1260,8 @@ class AlignmentDialog(QtWidgets.QDialog):
 
         self.stopButton = QtWidgets.QPushButton(self)
         self.stopButton.setText("&Stop")
-        self.stopButton.setDefault(False)
-        self.stopButton.setAutoDefault(False)
+        self.stopButton.setDefault(True)
+        self.stopButton.setAutoDefault(True)
         self.stopButton.setEnabled(False)
         self.stopButton.clicked.connect(self.stop)
 
@@ -1507,8 +1520,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         self.process.wait()
         event.accept()
 
-    def loadSamples(self, sample_items) -> None:
-        self.contactsWidget.loadSamples(sample_items)
+    def loadSequence(self, sequence_items) -> None:
+        self.contactsWidget.loadSequence(sequence_items)
 
     def updateSamples(self) -> None:
         self.contactsWidget.updateSamples()

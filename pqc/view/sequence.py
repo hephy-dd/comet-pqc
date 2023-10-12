@@ -191,7 +191,7 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
     def addGroupItem(self, item) -> None:
         self.addTopLevelItem(item)
 
-    def allItems(self) -> list:
+    def sequenceItems(self) -> list:
         """Return list of all top level sequence items."""
         items: list = []
         for index in range(self.topLevelItemCount()):
@@ -216,11 +216,11 @@ class SequenceTreeWidget(QtWidgets.QTreeWidget):
         return items
 
     def setLocked(self, locked: bool) -> None:
-        for item in self.allItems():
+        for item in self.sequenceItems():
             item.setLocked(locked)
 
     def reset(self) -> None:
-        for item in self.allItems():
+        for item in self.sequenceItems():
             item.reset()
 
     def resizeColumns(self) -> None:

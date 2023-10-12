@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.46.0] - 2023-10-10
 ### Added
-- Context menu for sequence tree items.
+- Context menu for sequence tree items (#206).
+- Sequence item groups (#207).
 
 ### Changed
 - Renamed package `comet_pqc` to `pqc`.

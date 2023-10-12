@@ -14,7 +14,7 @@ from ..plugins.logger import LoggerPlugin
 from ..plugins.webapi import WebAPIPlugin
 from ..plugins.notification import NotificationPlugin
 from ..plugins.summary import SummaryPlugin
-from ..workers import ContactQualityWorker
+from ..workers.contactquality import ContactQualityWorker
 from ..utils import make_path
 from ..settings import settings as config  # TODO
 

@@ -10,7 +10,8 @@ nav_order: 10
 ## 0.46.0
 
 ### Added
-- Context menu for sequence tree.
+- Context menu for sequence tree items.
+- Sequence item groups.
 
 ## 0.45.0
 

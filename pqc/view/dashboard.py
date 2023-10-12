@@ -114,7 +114,7 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.sequenceTreeWidget.resizeColumns()
 
     def writeSettings(self):
-        sequence_samples = [sample.to_settings() for sample in self.sequenceTreeWidget.allItems()]
+        sequence_samples = [sample.to_settings() for sample in self.sequenceTreeWidget.sequenceItems()]
         settings.settings["sequence_samples"] = sequence_samples
 
     def setLocked(self, locked: bool) -> None:
@@ -659,7 +659,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.setControlsLocked(False)
 
     def on_start_all(self):
-        sample_items = SequenceRootTreeItem(self.sequenceTreeWidget.allItems())
+        sample_items = SequenceRootTreeItem(self.sequenceTreeWidget.sequenceItems())
         dialog = StartSequenceDialog(self)
         dialog.setMessage("<b>Are you sure to start all enabled sequences for all enabled samples/groups?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
@@ -892,7 +892,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_worker.enable_joystick(False)
         dialog = AlignmentDialog(self.table_worker, self.contact_quality_process)
         dialog.readSettings()
-        dialog.loadSamples(self.sequenceTreeWidget.allItems())
+        dialog.loadSequence(self.sequenceTreeWidget.sequenceItems())
         if self.isEnvironmentEnabled():
             # TODO !!!
             with self.environ_worker as environ_worker:

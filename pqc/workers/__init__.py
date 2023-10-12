@@ -1,1 +1,0 @@
-from .contactquality import ContactQualityWorker
