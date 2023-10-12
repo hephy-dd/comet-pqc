@@ -1,4 +1,4 @@
-from comet_pqc.core.estimate import Estimate
+from pqc.core.estimate import Estimate
 
 
 def test_estimate_progress():

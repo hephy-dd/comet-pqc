@@ -1,4 +1,4 @@
-from comet_pqc import utils
+from pqc import utils
 
 
 def test_encode_matrix():

@@ -1,6 +1,6 @@
 import math
 
-from comet_pqc.core.position import Position
+from pqc.core.position import Position
 
 
 def test_empty():

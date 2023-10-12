@@ -35,7 +35,7 @@ enabled: true
 contacts: []
 ```
 
-See [assets/config/sequence/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/sequence/default.yaml) for reference.
+See [assets/config/sequence/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/main/pqc/assets/config/sequence/default.yaml) for reference.
 
 Custom sequence configuration files can be imported using `File` &rarr;
 `Sequence` &rarr; `Import...`.
@@ -143,7 +143,7 @@ enabled: true
 contacts: []
 ```
 
-See [assets/config/sample/default_hme_n.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/sample/default_hmw_n.yaml) for reference.
+See [assets/config/sample/default_hme_n.yaml](https://github.com/hephy-dd/comet-pqc/blob/main/pqc/assets/config/sample/default_hmw_n.yaml) for reference.
 
 ### Contacts
 
@@ -203,5 +203,5 @@ positions:
 ```
 
 See
-[assets/config/chuck/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/master/comet_pqc/assets/config/chuck/default.yaml)
+[assets/config/chuck/default.yaml](https://github.com/hephy-dd/comet-pqc/blob/main/pqc/assets/config/chuck/default.yaml)
 for reference.

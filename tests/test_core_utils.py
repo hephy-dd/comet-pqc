@@ -1,11 +1,11 @@
 import os
 
-from comet_pqc.core import utils
+from pqc.core import utils
 
 
 def test_package_path():
     root_path = os.path.dirname(os.path.dirname(__file__))
-    package_path = os.path.join(root_path, "comet_pqc")
+    package_path = os.path.join(root_path, "pqc")
     assert package_path == utils.PACKAGE_PATH
 
 

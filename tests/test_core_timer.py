@@ -1,6 +1,6 @@
 import time
 
-from comet_pqc.core.timer import Timer
+from pqc.core.timer import Timer
 
 
 def test_timer(monkeypatch):

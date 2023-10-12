@@ -7,6 +7,12 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.46.0
+
+### Added
+- Context menu for sequence tree items.
+- Sequence item groups.
+
 ## 0.45.0
 
 ### Added
