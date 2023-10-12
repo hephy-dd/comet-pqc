@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class Station(comet.ResourceMixin):
 
     def __init__(self) -> None:
+        self.state: dict = {}
 
         self.matrix_resource = comet.Resource(
             resource_name="TCPIP::localhost::11001::SOCKET",

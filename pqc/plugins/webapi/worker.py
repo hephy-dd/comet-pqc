@@ -40,12 +40,16 @@ class WSGIServer(TcpWSGIServer):
         return True
 
 
-class WebAPIWorker(comet.Process, comet.ProcessMixin):
+class WebAPIWorker(comet.Process):
 
     host = "localhost"
     port = 9000
     enabled = False
     server = None
+
+    def __init__(self, station) -> None:
+        super().__init__()
+        self.station = station
 
     def stop(self):
         super().stop()
@@ -113,10 +117,9 @@ class WebAPIWorker(comet.Process, comet.ProcessMixin):
         }
 
     def _contact_quality(self):
-        cp, rp = None, None
-        contact_quality_process = self.processes.get("contact_quality")
-        if contact_quality_process and contact_quality_process.running:
-            cp, rp = contact_quality_process.cached_reading()
+        contact_quality = self.station.state.get("contact_quality", {})
+        cp = contact_quality.get("cp")
+        rp = contact_quality.get("rp")
         return {
             "cp": metric(cp, "F"),
             "rp": metric(rp, "Ohm")

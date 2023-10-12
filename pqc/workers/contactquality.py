@@ -17,10 +17,6 @@ class ContactQualityWorker(comet.Process):
         self.update_interval = update_interval
         self.matrix_channels = matrix_channels or []
         self.reading = reading
-        self._cached_reading = None, None
-
-    def cached_reading(self) -> tuple:
-        return self._cached_reading
 
     def measure(self):
         with self.station.lcr_resource:  # TODO
@@ -30,14 +26,21 @@ class ContactQualityWorker(comet.Process):
             while self.running:
                 prim, sec = lcr.acquire_reading()
                 self.emit(self.reading, prim, sec)
-                self._cached_reading = prim, sec
+                # Update station state
+                self.station.state.update({
+                    "contact_quality": {
+                        "ts": time.time(),
+                        "cp": prim,
+                        "rp": sec,
+                    },
+                })
                 time.sleep(self.update_interval)
 
     def run(self):
-        self._cached_reading = None, None
         try:
             self.station.matrix.safe_close_channels(self.matrix_channels)
             self.measure()
         finally:
-            self._cached_reading = None, None
             self.station.matrix.open_all_channels()
+            # Remove form station state
+            self.station.state.pop("contact_quality", None)

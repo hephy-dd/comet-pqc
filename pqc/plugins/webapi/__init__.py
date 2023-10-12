@@ -11,10 +11,8 @@ class WebAPIPlugin:
 
     def __init__(self, window) -> None:
         self.window = window
-        self.worker = WebAPIWorker(
-            failed=self.window.showException
-        )
-        self.worker.station = self.window.station  # TODO
+        self.worker = WebAPIWorker(self.window.station)
+        self.worker.failed = self.window.showException
         self.window.processes.add("webapi", self.worker)
 
     def on_install(self) -> None:
