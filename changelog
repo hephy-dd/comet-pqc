@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.46.1] - 2023-10-16
+### Changed
+- Migrated to PyInstaller 6.1.0
+
 ### Fixed
 - Contact positions inside groups are not saved in alignment dialog.
 

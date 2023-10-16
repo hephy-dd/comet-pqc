@@ -9,6 +9,9 @@ nav_order: 10
 
 ## 0.46.1
 
+### Changed
+- Migrated to PyInstaller 6.1.0
+
 ### Fixed
 - Contact positions inside groups are not saved in alignment dialog.
 
