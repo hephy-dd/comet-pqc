@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.46.1
+
+### Fixed
+- Contact positions inside groups are not saved in alignment dialog.
+
 ## 0.46.0
 
 ### Added
