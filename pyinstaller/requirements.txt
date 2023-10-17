@@ -2,5 +2,5 @@ wheel
 pyusb==1.2.1
 pyserial==3.5
 gpib-ctypes==0.3.0
-pyinstaller==5.13.2
+pyinstaller==6.1.0
 pyinstaller-versionfile==2.1.1

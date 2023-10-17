@@ -369,6 +369,7 @@ class TableContactsWidget(QtWidgets.QWidget):
         self.contactsTreeWidget.clear()
         for item in sequence_items:
             self.addSequencItem(item)
+
         self.contactsTreeWidget.resizeColumnToContents(0)
         self.contactsTreeWidget.resizeColumnToContents(1)
         self.contactsTreeWidget.resizeColumnToContents(2)
@@ -377,10 +378,19 @@ class TableContactsWidget(QtWidgets.QWidget):
 
     def sampleItems(self) -> List[TableSampleItem]:
         items: list = []
+
+        def collect(item):
+            if isinstance(item, TableGroupItem):
+                for index in range(item.childCount()):
+                    child = item.child(index)
+                    collect(child)
+            elif isinstance(item, TableSampleItem):
+                items.append(item)
+
         for index in range(self.contactsTreeWidget.topLevelItemCount()):
             item = self.contactsTreeWidget.topLevelItem(index)
-            if isinstance(item, TableSampleItem):
-                items.append(item)
+            collect(item)
+
         return items
 
     def updateSamples(self) -> None:

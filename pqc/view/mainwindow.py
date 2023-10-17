@@ -110,7 +110,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.addSampleAction.setStatusTip("Add new sample to sequence.")
 
         self.addGroupAction = QtWidgets.QAction(self)
-        self.addGroupAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "add.svg")))
+        self.addGroupAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "add-group.svg")))
         self.addGroupAction.setText("Add Group")
         self.addGroupAction.setStatusTip("Add new sample group to sequence.")
 
@@ -118,6 +118,11 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.removeSampleAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "delete.svg")))
         self.removeSampleAction.setText("Remove")
         self.removeSampleAction.setToolTip("Remove current group/sample.")
+
+        self.collapseAllSamplesAction = QtWidgets.QAction(self)
+        self.collapseAllSamplesAction.setIcon(QtGui.QIcon(make_path("assets", "icons", "collapse.svg")))
+        self.collapseAllSamplesAction.setText("Collapse Samples")
+        self.collapseAllSamplesAction.setToolTip("Collapse all samples.")
 
         self.contentsAction = QtWidgets.QAction(self)
         self.contentsAction.setText("&Contents")
@@ -147,6 +152,9 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.editMenu.addAction(self.sequenceManagerAction)
         self.editMenu.addAction(self.preferencesAction)
 
+        self.viewMenu = self.menuBar().addMenu("&View")
+        self.viewMenu.addAction(self.collapseAllSamplesAction)
+
         self.startMenu = QtWidgets.QMenu()
         self.startMenu.setTitle("&Start")
         self.startMenu.addAction(self.startAllAction)
@@ -162,6 +170,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.sequenceMenu.addAction(self.resetAction)
         self.sequenceMenu.addAction(self.editAction)
         self.sequenceMenu.addAction(self.reloadConfigAction)
+        self.sequenceMenu.addSeparator()
         self.sequenceMenu.addAction(self.addSampleAction)
         self.sequenceMenu.addAction(self.addGroupAction)
         self.sequenceMenu.addAction(self.removeSampleAction)
@@ -209,9 +218,9 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.dashboard.sequenceControlWidget.editButton.clicked.connect(self.editAction.trigger)
         self.dashboard.sequenceControlWidget.reloadConfigButton.setDefaultAction(self.reloadConfigAction)
         self.dashboard.sequenceControlWidget.addSampleButton.setDefaultAction(self.addSampleAction)
+        self.dashboard.sequenceControlWidget.addGroupButton.setDefaultAction(self.addGroupAction)
         self.dashboard.sequenceControlWidget.removeSampleButton.setDefaultAction(self.removeSampleAction)
-        self.dashboard.sequenceControlWidget.importButton.setDefaultAction(self.importSequenceAction)
-        self.dashboard.sequenceControlWidget.exportButton.setDefaultAction(self.exportSequenceAction)
+        self.dashboard.sequenceControlWidget.collapseAllSamplesButton.setDefaultAction(self.collapseAllSamplesAction)
 
         self.startAllAction.triggered.connect(self.dashboard.on_start_all)
         self.startGroupAction.triggered.connect(self.dashboard.on_start)
@@ -512,6 +521,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.addSampleAction.setEnabled(True)
         self.addGroupAction.setEnabled(True)
         self.removeSampleAction.setEnabled(True)
+        self.collapseAllSamplesAction.setEnabled(True)
         self.importSequenceAction.setEnabled(True)
         self.exportSequenceAction.setEnabled(True)
         self.dashboard.setControlsLocked(False)
@@ -527,6 +537,7 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
         self.addSampleAction.setEnabled(False)
         self.addGroupAction.setEnabled(False)
         self.removeSampleAction.setEnabled(False)
+        self.collapseAllSamplesAction.setEnabled(False)
         self.importSequenceAction.setEnabled(False)
         self.exportSequenceAction.setEnabled(False)
         self.dashboard.setControlsLocked(True)
