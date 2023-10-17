@@ -8,7 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..core.config import list_configs, load_sequence
 from ..settings import settings as config
-from ..utils import from_table_unit, to_table_unit
+from ..utils import make_path, from_table_unit, to_table_unit
 
 from .components import (
     OperatorWidget,

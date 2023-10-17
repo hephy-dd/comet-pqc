@@ -74,11 +74,12 @@ class SequenceWidget(QtWidgets.QGroupBox):
 
         self.addSampleButton = QtWidgets.QToolButton(self)
 
+        self.addGroupButton = QtWidgets.QToolButton(self)
+
         self.removeSampleButton = QtWidgets.QToolButton(self)
 
-        self.importButton = QtWidgets.QToolButton(self)
-
-        self.exportButton = QtWidgets.QToolButton(self)
+        self.collapseAllSamplesButton = QtWidgets.QToolButton(self)
+        self.collapseAllSamplesButton.triggered.connect(self.collapseAllSamples)
 
         self.buttonLayout = QtWidgets.QHBoxLayout()
         self.buttonLayout.addWidget(self.startButton)
@@ -87,9 +88,9 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.buttonLayout.addWidget(self.editButton)
         self.buttonLayout.addWidget(self.reloadConfigButton)
         self.buttonLayout.addWidget(self.addSampleButton)
+        self.buttonLayout.addWidget(self.addGroupButton)
         self.buttonLayout.addWidget(self.removeSampleButton)
-        self.buttonLayout.addWidget(self.importButton)
-        self.buttonLayout.addWidget(self.exportButton)
+        self.buttonLayout.addWidget(self.collapseAllSamplesButton)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.sequenceTreeWidget)
@@ -125,8 +126,7 @@ class SequenceWidget(QtWidgets.QGroupBox):
         self.reloadConfigButton.setEnabled(not locked)
         self.addSampleButton.setEnabled(not locked)
         self.removeSampleButton.setEnabled(not locked)
-        self.importButton.setEnabled(not locked)
-        self.exportButton.setEnabled(not locked)
+        self.collapseAllSamplesButton.setEnabled(not locked)
         self.sequenceTreeWidget.setLocked(locked)
 
     def stop(self):
@@ -153,6 +153,16 @@ class SequenceWidget(QtWidgets.QGroupBox):
 
             QtCore.QTimer.singleShot(200, callback)
             progress.exec()
+
+    def collapseAllSamples(self) -> None:
+
+        def collapse(item):
+            if isinstance(item, (SampleTreeItem, ContactTreeItem, MeasurementTreeItem)):
+                item.setExpanded(False)
+            for index in range(item.childCount()):
+                collapse(item.child(index))
+
+        collapse(self.sequenceTreeWidget.invisibleRootItem())
 
     def addSampleItem(self) -> None:
         item = SampleTreeItem()
