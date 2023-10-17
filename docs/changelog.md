@@ -9,6 +9,10 @@ nav_order: 10
 
 ## 0.46.1
 
+### Added
+- Collapse all samples action.
+- Button and icon for _Add Group_ action.
+
 ### Changed
 - Migrated to PyInstaller 6.1.0
 

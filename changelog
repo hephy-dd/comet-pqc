@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.46.1] - 2023-10-16
+### Added
+- Collapse all samples action (#210).
+- Button and icon for _Add Group_ action.
+
 ### Changed
 - Migrated to PyInstaller 6.1.0
 
