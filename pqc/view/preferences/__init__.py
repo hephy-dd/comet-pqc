@@ -39,10 +39,12 @@ class PreferencesDialog(QtWidgets.QDialog):
     def writeSettings(self) -> None:
         for index in range(self.tabWidget.count()):
             widget = self.tabWidget.widget(index)
-            widget.writeSettings()
+            if hasattr(widget, "writeSettings"):
+                widget.writeSettings()
         QtWidgets.QMessageBox.information(self, "Restart Required", "Application restart required for some changes to take effect.")
 
     def readSettings(self) -> None:
         for index in range(self.tabWidget.count()):
             widget = self.tabWidget.widget(index)
-            widget.readSettings()
+            if hasattr(widget, "readSettings"):
+                widget.readSettings()

@@ -35,11 +35,11 @@ class TableStepDialog(QtWidgets.QDialog):
         self.zLimitLabel.setToolTip("Z-Limit in millimeters")
         self.zLimitLabel.setVisible(False)
 
-        self._z_limit_number = QtWidgets.QDoubleSpinBox(self)
-        self._z_limit_number.setDecimals(3)
-        self._z_limit_number.setRange(0, 1000)
-        self._z_limit_number.setSuffix(" mm")
-        self._z_limit_number.setVisible(False)
+        self.zLimitSpinBox = QtWidgets.QDoubleSpinBox(self)
+        self.zLimitSpinBox.setDecimals(3)
+        self.zLimitSpinBox.setRange(0, 1000)
+        self.zLimitSpinBox.setSuffix(" mm")
+        self.zLimitSpinBox.setVisible(False)
 
         self.colorLabel = QtWidgets.QLabel(self)
         self.colorLabel.setText("Color")
@@ -57,77 +57,66 @@ class TableStepDialog(QtWidgets.QDialog):
         layout.addWidget(self.sizeLabel)
         layout.addWidget(self.sizeSpinBox)
         layout.addWidget(self.zLimitLabel)
-        layout.addWidget(self._z_limit_number)
+        layout.addWidget(self.zLimitSpinBox)
         layout.addWidget(self.colorLabel)
         layout.addWidget(self.colorLineEdit)
         layout.addWidget(self.buttonBox)
 
-    @property
-    def step_size(self) -> float:
+    def stepSize(self) -> float:
         return self.sizeSpinBox.value()
 
-    @step_size.setter
-    def step_size(self, value: float) -> None:
+    def setStepSize(self, value: float) -> None:
         self.sizeSpinBox.setValue(value)
 
-    @property
-    def z_limit(self) -> float:
-        return self._z_limit_number.value()
+    def zLimit(self) -> float:
+        return self.zLimitSpinBox.value()
 
-    @z_limit.setter
-    def z_limit(self, value: float) -> None:
-        self._z_limit_number.setValue(value)
+    def setZLimit(self, value: float) -> None:
+        self.zLimitSpinBox.setValue(value)
 
-    @property
-    def step_color(self) -> str:
+    def stepColor(self) -> str:
         return self.colorLineEdit.text()
 
-    @step_color.setter
-    def step_color(self, value: str) -> None:
+    def setStepColor(self, value: str) -> None:
         self.colorLineEdit.setText(str(value or ""))
 
 
 class TableStepItem(QtWidgets.QTreeWidgetItem):
 
-    def __init__(self, step_size, z_limit, step_color=None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.step_size = step_size
-        self.z_limit = z_limit
-        self.step_color = step_color or ""
+        self.setStepSize(0.0)
+        self.setZLimit(0.0)
+        self.setStepColor("")
 
-    @property
-    def step_size(self) -> float:
+    def stepSize(self) -> float:
         return self.data(0, 0x2000)
 
-    @step_size.setter
-    def step_size(self, value: float) -> None:
+    def setStepSize(self, value: float) -> None:
         self.setData(0, 0x2000, value)
         self.setText(0, f"{value:.3f} mm")
 
-    @property
-    def z_limit(self) -> float:
+    def zLimit(self) -> float:
         return self.data(1, 0x2000)
 
-    @z_limit.setter
-    def z_limit(self, value: float) -> None:
+    def setZLimit(self, value: float) -> None:
         self.setData(1, 0x2000, value)
         self.setText(1, str(value))
 
-    @property
-    def step_color(self) -> str:
+    def stepColor(self) -> str:
         return self.data(2, 0x2000)
 
-    @step_color.setter
-    def step_color(self, value: str) -> None:
+    def setStepColor(self, value: str) -> None:
         self.setData(2, 0x2000, value)
         self.setText(2, str(value))
 
     def __lt__(self, other):
-        widget = self.treeWidget()
-        if widget is not None:
-            column = widget.sortColumn()
-            if column == 0:
-                return self.step_size < other.step_size
+        if isinstance(other, type(self)):
+            widget = self.treeWidget()
+            if widget is not None:
+                column = widget.sortColumn()
+                if column == 0:
+                    return self.stepSize() < other.stepSize()
         return super().__lt__(other)
 
 
@@ -303,29 +292,30 @@ class TableWidget(QtWidgets.QWidget):
     def addStep(self) -> None:
         dialog = TableStepDialog()
         if dialog.exec() == dialog.Accepted:
-            step_size = dialog.step_size
-            z_limit = dialog.z_limit
-            step_color = dialog.step_color
-            self.stepsTreeWidget.addTopLevelItem(TableStepItem(step_size, z_limit, step_color))
+            item = TableStepItem()
+            item.setStepSize(dialog.stepSize())
+            item.setZLimit(dialog.zLimit())
+            item.setStepColor(dialog.stepColor())
+            self.stepsTreeWidget.addTopLevelItem(item)
             self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def editCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
-        if item:
+        if isinstance(item, TableStepItem):
             dialog = TableStepDialog()
-            dialog.step_size = item.step_size
-            dialog.z_limit = item.z_limit
-            dialog.step_color = item.step_color
+            dialog.setStepSize(item.stepSize())
+            dialog.setZLimit(item.zLimit())
+            dialog.setStepColor(item.stepColor())
             if dialog.exec() == dialog.Accepted:
-                item.step_size = dialog.step_size
-                item.z_limit = dialog.z_limit
-                item.step_color = dialog.step_color
+                item.setStepSize(dialog.stepSize())
+                item.setZLimit(dialog.zLimit())
+                item.setStepColor(dialog.stepColor())
                 self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def removeCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()
-        if item:
-            if QtWidgets.QMessageBox.question(self, "Remove Step", f"Do you want to remove step size {item.step_size!r}?"):
+        if isinstance(item, TableStepItem):
+            if QtWidgets.QMessageBox.question(self, "Remove Step", f"Do you want to remove step size {item.stepSize()!r}?"):
                 index = self.stepsTreeWidget.indexOfTopLevelItem(item)
                 self.stepsTreeWidget.takeTopLevelItem(index)
                 if not self.stepsTreeWidget.topLevelItemCount():
@@ -334,14 +324,14 @@ class TableWidget(QtWidgets.QWidget):
                 self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
     def readSettings(self) -> None:
-        table_step_sizes = settings.settings.get("table_step_sizes") or []
+        table_step_sizes = settings.settings.get("table_step_sizes", [])
         self.stepsTreeWidget.clear()
-        for item in table_step_sizes:
-            self.stepsTreeWidget.addTopLevelItem(TableStepItem(
-                step_size=from_table_unit(item.get("step_size")),
-                z_limit=from_table_unit(item.get("z_limit")),
-                step_color=format(item.get("step_color"))
-            ))
+        for data in table_step_sizes:
+            item = TableStepItem()
+            item.setStepSize(from_table_unit(data.get("step_size", 0)))
+            item.setZLimit(from_table_unit(data.get("z_limit", 0)))
+            item.setStepColor(format(data.get("step_color", "")))
+            self.stepsTreeWidget.addTopLevelItem(item)
         self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
         self.zLimitMovementSpinBox.setValue(settings.table_z_limit)
         # Probecard limits
@@ -364,11 +354,12 @@ class TableWidget(QtWidgets.QWidget):
         table_step_sizes = []
         for index in range(self.stepsTreeWidget.topLevelItemCount()):
             item = self.stepsTreeWidget.topLevelItem(index)
-            table_step_sizes.append({
-                "step_size": to_table_unit(item.step_size),
-                "z_limit": to_table_unit(item.z_limit),
-                "step_color": format(item.step_color),
-            })
+            if isinstance(item, TableStepItem):
+                table_step_sizes.append({
+                    "step_size": to_table_unit(item.stepSize()),
+                    "z_limit": to_table_unit(item.zLimit()),
+                    "step_color": format(item.stepColor()),
+                })
         settings.settings["table_step_sizes"] = table_step_sizes
         settings.table_z_limit = self.zLimitMovementSpinBox.value()
         # Probecard limits

@@ -10,6 +10,62 @@ from pqc.settings import settings
 __all__ = ["ResourcesWidget"]
 
 
+class TextItem(QtWidgets.QTreeWidgetItem): ...
+
+
+class TerminationItem(QtWidgets.QTreeWidgetItem): ...
+
+
+class TimeoutItem(QtWidgets.QTreeWidgetItem): ...
+
+
+class ResourceItem(QtWidgets.QTreeWidgetItem):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.resourceNameItem = TextItem(self, ["Resource Name"])
+        self.readTerminationItem = TerminationItem(self, ["Read Termination"])
+        self.writeTerminationItem = TerminationItem(self, ["Write Termination"])
+        self.timeoutItem = TimeoutItem(self, ["Timeout"])
+        self.visaLibraryItem = TextItem(self, ["Visa Library"])
+
+    def name(self) -> str:
+        return self.text(0)
+
+    def setName(self, name: str) -> None:
+        self.setText(0, name)
+
+    def resourceName(self) -> str:
+        return self.resourceNameItem.text(1)
+
+    def setResourceName(self, name: str) -> None:
+        self.resourceNameItem.setText(1, name)
+
+    def readTermination(self) -> str:
+        return self.readTerminationItem.text(1)
+
+    def setReadTermination(self, termination: str) -> None:
+        self.readTerminationItem.setText(1, termination)
+
+    def writeTermination(self) -> str:
+        return self.writeTerminationItem.text(1)
+
+    def setWriteTermination(self, termination: str) -> None:
+        self.writeTerminationItem.setText(1, termination)
+
+    def timeout(self) -> str:
+        return self.timeoutItem.text(1)
+
+    def setTimeout(self, timeout: str) -> None:
+        self.timeoutItem.setText(1, timeout)
+
+    def visaLibrary(self) -> str:
+        return self.visaLibraryItem.text(1)
+
+    def setVisaLibrary(self, library: str) -> None:
+        self.visaLibraryItem.setText(1, library)
+
+
 class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
 
     default_write_termination = "\n"
@@ -38,7 +94,8 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
         self.treeWidget.clear()
         resources = settings.settings.get("resources") or {}
         for key, resource in self.resources.items():
-            item = QtWidgets.QTreeWidgetItem([key])
+            item = ResourceItem()
+            item.setName(key)
             self.treeWidget.addTopLevelItem(item)
             item.setExpanded(True)
             d = resources.get(key) or {}
@@ -47,36 +104,51 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
             write_termination = d.get("write_termination") or resource.options.get("write_termination") or self.default_write_termination
             timeout = d.get("timeout") or resource.options.get("timeout") or self.default_timeout
             visa_library = d.get("visa_library") or resource.visa_library
-            item.addChild(QtWidgets.QTreeWidgetItem(["resource_name", resource_name]))
-            item.addChild(QtWidgets.QTreeWidgetItem(["read_termination", escape_string(read_termination)]))
-            item.addChild(QtWidgets.QTreeWidgetItem(["write_termination", escape_string(write_termination)]))
-            item.addChild(QtWidgets.QTreeWidgetItem(["timeout", format(timeout)]))
-            item.addChild(QtWidgets.QTreeWidgetItem(["visa_library", visa_library]))
+            item.setResourceName(resource_name)
+            item.setReadTermination(escape_string(read_termination))
+            item.setWriteTermination(escape_string(write_termination))
+            item.setTimeout(format(timeout))
+            item.setVisaLibrary(visa_library)
         self.treeWidget.resizeColumnToContents(0)
 
     def writeSettings(self) -> None:
         resources = {}
         for index in range(self.treeWidget.topLevelItemCount()):
             item = self.treeWidget.topLevelItem(index)
-            try:
-                timeout = int(item.child(3).text(1))
-            except ValueError:
-                timeout = self.default_timeout
-            resources[item.text(0)] = {
-                "resource_name": item.child(0).text(1),
-                "read_termination": unescape_string(item.child(1).text(1)),
-                "write_termination": unescape_string(item.child(2).text(1)),
-                "timeout": timeout,
-                "visa_library": item.child(4).text(1),
-            }
+            if isinstance(item, ResourceItem):
+                try:
+                    timeout = int(item.timeout())
+                except ValueError:
+                    timeout = self.default_timeout
+                resources[item.name()] = {
+                    "resource_name": item.resourceName(),
+                    "read_termination": unescape_string(item.readTermination()),
+                    "write_termination": unescape_string(item.writeTermination()),
+                    "timeout": timeout,
+                    "visa_library": item.visaLibrary(),
+                }
         settings.settings["resources"] = resources
 
     def editItem(self) -> None:
         item = self.treeWidget.currentItem()
-        if item is not None and not item.childCount():
+        if isinstance(item, TextItem):
             text, success = QtWidgets.QInputDialog.getText(self, "", "", QtWidgets.QLineEdit.Normal, item.text(1))
             if success:
                 item.setText(1, text)
+        elif isinstance(item, TerminationItem):
+            items = ["\\r\\n", "\\n", "\\r"]
+            index = items.index(item.text(1)) if item.text(1) in items else 0
+            text, success = QtWidgets.QInputDialog.getItem(self, "Termination", "Set termination character(s).", items, index, False)
+            if success:
+                item.setText(1, text)
+        elif isinstance(item, TimeoutItem):
+            try:
+                value = int(item.text(1))
+            except:
+                value = 4000
+            value, success = QtWidgets.QInputDialog.getInt(self, "Timeout", "Set timeout in milliseconds.", value, 0, 60000)
+            if success:
+                item.setText(1, format(value))
 
     def itemSelected(self, current, previous):
         self.editButton.setEnabled(current is not None and not current.childCount())

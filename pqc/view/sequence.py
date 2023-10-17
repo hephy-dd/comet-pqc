@@ -613,11 +613,11 @@ class MeasurementTreeItem(SequenceTreeItem):
 class EditSamplesDialog:
     """Quick edit all samples at once dialog."""
 
-    def __init__(self, items, sequences):
+    def __init__(self, items, sequences) -> None:
         self.items = items
         self.sequences = sequences
 
-    def populate_dialog(self, dialog):
+    def populate_dialog(self, dialog) -> None:
         for sample_item in self.items:
             item = dialog.addItem()
             item.setEnabled(sample_item.isEnabled())
@@ -632,13 +632,13 @@ class EditSamplesDialog:
                 item.setCurrentSequence(sample_item.sequence.name)
             item.setProperty("sample_item", sample_item)
 
-    def update_samples(self, dialog):
+    def update_samples(self, dialog) -> None:
         progress = QtWidgets.QProgressDialog()
         progress.setLabelText("Updating sequence...")
         progress.setMaximum(len(dialog.items()))
         progress.setCancelButton(None)
 
-        def callback():
+        def callback() -> None:
             sequence_cache: dict = {}
             for item in dialog.items():
                 progress.setValue(progress.value() + 1)
@@ -661,7 +661,7 @@ class EditSamplesDialog:
         QtCore.QTimer.singleShot(200, callback)
         progress.exec()
 
-    def run(self):
+    def run(self) -> None:
         dialog = QuickEditDialog()
         dialog.readSettings()
         self.populate_dialog(dialog)
