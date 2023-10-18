@@ -30,7 +30,7 @@ class GroupPanel(BasicPanel):
         self.groupGroupBoxLayout.setColumnStretch(0, 0)
         self.groupGroupBoxLayout.setColumnStretch(1, 1)
 
-        self.layout().insertWidget(2, self.groupGroupBox)
+        self.layout().insertWidget(2, self.groupGroupBox)  # type: ignore
 
     def updateGroupName(self) -> None:
         if isinstance(self.context, GroupTreeItem):

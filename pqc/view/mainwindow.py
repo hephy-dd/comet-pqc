@@ -317,13 +317,13 @@ class MainWindow(QtWidgets.QMainWindow, ProcessMixin):
 
     def showContents(self) -> None:
         """Open local webbrowser with contents URL."""
-        contents_url = QtWidgets.QApplication.instance().property("contentsUrl")
+        contents_url = QtWidgets.QApplication.instance().property("contentsUrl")  # type: ignore
         if isinstance(contents_url, str):
             webbrowser.open(contents_url)
 
     def showGithub(self) -> None:
         """Open local webbrowser with GitHub URL."""
-        github_url = QtWidgets.QApplication.instance().property("githubUrl")
+        github_url = QtWidgets.QApplication.instance().property("githubUrl")  # type: ignore
         if isinstance(github_url, str):
             webbrowser.open(github_url)
 

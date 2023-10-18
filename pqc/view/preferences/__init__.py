@@ -17,15 +17,6 @@ class PreferencesDialog(QtWidgets.QDialog):
 
         self.tabWidget = QtWidgets.QTabWidget(self)
 
-        self.resourcesWidget = ResourcesWidget(self)
-        self.tabWidget.addTab(self.resourcesWidget, "Resources")
-
-        self.tableWidget = TableWidget(self)
-        self.tabWidget.addTab(self.tableWidget, "Table")
-
-        self.optionsWidget = OptionsWidget(self)
-        self.tabWidget.addTab(self.optionsWidget, "Options")
-
         self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.addButton(QtWidgets.QDialogButtonBox.Cancel)
@@ -35,6 +26,20 @@ class PreferencesDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.tabWidget)
         layout.addWidget(self.buttonBox)
+
+        # Register tabs
+
+        self.resourcesWidget = ResourcesWidget(self)
+        self.addTab(self.resourcesWidget, "Resources")
+
+        self.tableWidget = TableWidget(self)
+        self.addTab(self.tableWidget, "Table")
+
+        self.optionsWidget = OptionsWidget(self)
+        self.addTab(self.optionsWidget, "Options")
+
+    def addTab(self, widget: QtWidgets.QWidget, title: str) -> None:
+        self.tabWidget.addTab(widget, "Resources")
 
     def writeSettings(self) -> None:
         for index in range(self.tabWidget.count()):

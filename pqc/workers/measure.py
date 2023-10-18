@@ -45,7 +45,7 @@ class MeasureWorker(QtCore.QObject):
     analysis_appended = QtCore.pyqtSignal(str, dict)
     state_changed = QtCore.pyqtSignal(dict)
 
-    def __init__(self, station, config, item):
+    def __init__(self, station, config, item) -> None:
         super().__init__()
         self.stop_requested: bool = False
         self.station = station
@@ -66,7 +66,7 @@ class MeasureWorker(QtCore.QObject):
         # Update custom configuration
         self.config.update(config)
 
-    def abort(self):
+    def abort(self) -> None:
         """Stop running measurements."""
         self.stop_requested = True
 
@@ -150,18 +150,19 @@ class MeasureWorker(QtCore.QObject):
         point = x, y
         # create generator on demand
         if point not in self.retry_offset_generators:
-            r = abs(self.config.get("retry_contact_radius"))
-            d = abs(self.config.get("retry_contact_distance"))
+            r = abs(self.config.get("retry_contact_radius", 0))
+            d = abs(self.config.get("retry_contact_distance", 0))
             self.retry_offset_generators[point] = points_in_circle(0, 0, r, d)
         gen = self.retry_offset_generators.get(point)
-        x_offset, y_offset = next(gen)
-        x = x + x_offset
-        y = y + y_offset
-        logger.info(" => applying re-contact offset: %g, %g mm", x_offset, y_offset)
+        if gen:
+            x_offset, y_offset = next(gen)
+            x = x + x_offset
+            y = y + y_offset
+            logger.info(" => applying re-contact offset: %g, %g mm", x_offset, y_offset)
         return x, y
 
     def add_retry_overdrive(self, z: float) -> float:
-        overdrive = abs(self.config.get("retry_contact_overdrive"))
+        overdrive = abs(self.config.get("retry_contact_overdrive", 0))
         z = z + overdrive
         logger.info(" => applying re-contact overdrive: %g mm", overdrive)
         return z
@@ -182,7 +183,7 @@ class MeasureWorker(QtCore.QObject):
             logger.info("Safe move table to %s... done.", position)
 
     def apply_contact_delay(self) -> None:
-        contact_delay = abs(self.config.get("table_contact_delay"))
+        contact_delay = abs(self.config.get("table_contact_delay", 0))
         if contact_delay > 0:
             logger.info("Applying contact delay: %s s", contact_delay)
             steps = 25

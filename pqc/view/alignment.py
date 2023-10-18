@@ -298,16 +298,19 @@ class TableContactsWidget(QtWidgets.QWidget):
         layout.setRowStretch(3, 1)
 
     def addSequencItem(self, sequence_item) -> None:
-        if isinstance(sequence_item, GroupTreeItem):
-            item = TableGroupItem(sequence_item)
-        else:
-            item = TableSampleItem(sequence_item)
-        self.contactsTreeWidget.addTopLevelItem(item)
+
+        def createItem(sequence_item):
+            if isinstance(sequence_item, GroupTreeItem):
+                return TableGroupItem(sequence_item)
+            return TableSampleItem(sequence_item)
 
         def expandAll(item):
             item.setExpanded(True)
             for index in range(item.childCount()):
                 expandAll(item.child(index))
+
+        item = createItem(sequence_item)
+        self.contactsTreeWidget.addTopLevelItem(item)
 
         expandAll(item)
 
@@ -966,8 +969,6 @@ class OptionsWidget(QtWidgets.QWidget):
 
 class AlignmentDialog(QtWidgets.QDialog):
 
-    process = None
-
     default_steps = [
         {"step_size": 1.0, "step_color": "green"}, # microns!
         {"step_size": 10.0, "step_color": "orange"},
@@ -992,6 +993,8 @@ class AlignmentDialog(QtWidgets.QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Alignment")
+
+        self.process = process
 
         self.current_position: Position = Position()
 
@@ -1593,7 +1596,6 @@ class AlignmentDialog(QtWidgets.QDialog):
 
     def mount(self, process) -> None:
         """Mount table process."""
-        self.unmount()
         self.process = process
         self.process.message_changed = self.setMessage
         self.process.progress_changed = self.setProgress

@@ -31,7 +31,7 @@ class CVRampHVPanel(MatrixPanel):
         self.plotWidget2 = PlotWidget(self)
         self.plotWidget2.addAxis("x", align="bottom", text="Voltage [V] (abs)")
         self.plotWidget2.addAxis("y", align="right", text="1/Capacitance² [1/F²]")
-        self.plotWidget2.axes().get("y").qt.setLabelFormat("%G")
+        self.plotWidget2.axes().get("y").qt.setLabelFormat("%G")  # type: ignore
         self.plotWidget2.addSeries("lcr2", "x", "y", text="LCR Cp", color="blue")
         self.dataTabWidget.insertTab(1, self.plotWidget2, "1/C² Curve")
 
@@ -117,9 +117,9 @@ class CVRampHVPanel(MatrixPanel):
         lcrGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(vSourceGroupBox, 1)
-        layout.addWidget(lcrGroupBox, 1)
+        layout.addWidget(rampGroupBox, 1)  # type: ignore
+        layout.addWidget(vSourceGroupBox, 1)  # type: ignore
+        layout.addWidget(lcrGroupBox, 1)  # type: ignore
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")

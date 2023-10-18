@@ -5,7 +5,7 @@ import os
 import time
 import threading
 import webbrowser
-from typing import Optional
+from typing import Optional, Union
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -37,6 +37,7 @@ from ..settings import settings
 from .alignment import AlignmentDialog, safe_z_position
 from .environmentwidget import EnvironmentWidget
 from .measurementwidget import MeasurementWidget
+from .panels import Panel
 from ..utils import caldone_valid
 
 logger = logging.getLogger(__name__)
@@ -606,19 +607,22 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.panels.hide()
         self.measurementWidget.setControlsVisible(False)
         if isinstance(item, GroupTreeItem):
-            panel = self.panels.get("group")
-            panel.setVisible(True)
-            panel.mount(item)
+            panel = self.panels.getPanel("group")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(item)
         if isinstance(item, SampleTreeItem):
-            panel = self.panels.get("sample")
-            panel.setVisible(True)
-            panel.mount(item)
+            panel = self.panels.getPanel("sample")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(item)
         if isinstance(item, ContactTreeItem):
-            panel = self.panels.get("contact")
-            panel.setVisible(True)
-            panel.mount(item)
+            panel = self.panels.getPanel("contact")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(item)
         if isinstance(item, MeasurementTreeItem):
-            panel = self.panels.get(item.item_type)
+            panel = self.panels.getPanel(item.item_type)
             if panel:
                 panel.setVisible(True)
                 panel.mount(item)
@@ -655,17 +659,20 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.table_worker.absolute_move_finished = None
         current_item = self.sequenceTreeWidget.currentItem()
         if isinstance(current_item, GroupTreeItem):
-            panel = self.panels.get("group")
-            panel.setVisible(True)
-            panel.mount(current_item)
+            panel = self.panels.getPanel("group")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(current_item)
         if isinstance(current_item, SampleTreeItem):
-            panel = self.panels.get("sample")
-            panel.setVisible(True)
-            panel.mount(current_item)
+            panel = self.panels.getPanel("sample")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(current_item)
         if isinstance(current_item, ContactTreeItem):
-            panel = self.panels.get("contact")
-            panel.setVisible(True)
-            panel.mount(current_item)
+            panel = self.panels.getPanel("contact")
+            if panel:
+                panel.setVisible(True)
+                panel.mount(current_item)
         self.setControlsLocked(False)
 
     def on_start_all(self):
@@ -711,7 +718,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
                 move_to_after_position=dialog.isMoveToPosition()
             )
 
-    def startSample(self, item: SampleTreeItem) -> None:
+    def startSample(self, item: Union[GroupTreeItem, SampleTreeItem]) -> None:
         dialog = StartSequenceDialog(self)
         dialog.setMessage(f"<b>Are you sure to start all enabled sequences for {item.name()!r}?</b>")
         dialog.setTableEnabled(self.isTableEnabled())
@@ -825,20 +832,22 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.panels.unmount()
         self.panels.hide()
         self.panels.clear()
-        panel = self.panels.get(item.item_type)
-        panel.setVisible(True)
-        panel.mount(item)
+        panel = self.panels.getPanel(item.item_type)
+        if panel:
+            panel.setVisible(True)
+            panel.mount(item)
         self._panel = panel
 
     def hideItem(self, item) -> None:
         item.setSelectable(False)
         item.setForeground(0, QtGui.QBrush())
 
-    def safeToImage(self, item, filename) -> None:
-        plot_png = settings.settings.get("png_plots") or False
-        panel = self.panels.get(item.item_type)
-        if panel and plot_png:
-            panel.saveToImage(filename)
+    def safeToImage(self, item, filename: str) -> None:
+        plot_png = settings.settings.get("png_plots", False)
+        if plot_png:
+            panel = self.panels.getPanel(item.item_type)
+            if isinstance(panel, Panel):
+                panel.saveToImage(filename)
 
     def on_stop(self):
         self.sequenceControlWidget.stop()
@@ -857,12 +866,13 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
             self.panels.unmount()
             self.panels.clear()
             self.panels.hide()
-            for sample_item in self.sequenceTreeWidget.sampleItemsOnly():
-                sample_item.reset()
+            for sequence_item in self.sequenceTreeWidget.sequenceItems():
+                sequence_item.reset()
             if current_item is not None:
-                panel = self.panels.get(current_item.item_type)
-                panel.setVisible(True)
-                panel.mount(current_item)
+                panel = self.panels.getPanel(current_item.item_type)
+                if panel:
+                    panel.setVisible(True)
+                    panel.mount(current_item)
 
     def on_edit_sequence(self):
         sequences = load_all_sequences(settings)
@@ -877,8 +887,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         if result == QtWidgets.QMessageBox.Yes:
             item = self.sequenceTreeWidget.currentItem()
             if isinstance(item, MeasurementTreeItem):
-                panel = self.panels.get(item.item_type)
-                panel.restore()
+                panel = self.panels.getPanel(item.item_type)
+                if panel:
+                    panel.restore()
 
     # Table calibration
 
@@ -893,7 +904,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
 
     def on_table_calibration_changed(self, position):
         self.tableControlWidget.setCalibration(position)
-        panel = self.panels.get("contact")
+        panel = self.panels.getPanel("contact")
         if panel:
             enabled = self.isTableEnabled() and self.tableControlWidget.isCalibrationValid()
             panel.setTableEnabled(enabled)
@@ -923,8 +934,9 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         # Prevent glitch
         current_item = self.sequenceTreeWidget.currentItem()
         if isinstance(current_item, ContactTreeItem):
-            panel = self.panels.get("contact")
-            panel.mount(current_item)
+            panel = self.panels.getPanel("contact")
+            if panel:
+                panel.mount(current_item)
         # Restore events...
         self.table_worker.joystick_changed = self.on_table_joystick_changed
         self.table_worker.position_changed = self.on_table_position_changed
@@ -1025,7 +1037,7 @@ class Dashboard(QtWidgets.QWidget, ProcessMixin):
         self.plugins.handle("measurement_finished", data=data)
 
     def sequenceFinished(self) -> None:
-        data = {}  # TODO
+        data: dict = {}  # TODO
         self.plugins.handle("sequence_finished", data=data)
 
     def shutdown(self):

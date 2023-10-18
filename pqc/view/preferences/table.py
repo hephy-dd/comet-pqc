@@ -8,7 +8,7 @@ from pqc.utils import from_table_unit, to_table_unit
 __all__ = ["TableWidget"]
 
 
-def createPositionSpinBox(parent: QtWidgets.QWidget):
+def createPositionSpinBox(parent: QtWidgets.QWidget) -> QtWidgets.QDoubleSpinBox:
     spinBox = QtWidgets.QDoubleSpinBox(parent)
     spinBox.setRange(0, 1000)
     spinBox.setDecimals(3)
@@ -131,8 +131,8 @@ class TableWidget(QtWidgets.QWidget):
         self.stepsTreeWidget.setRootIsDecorated(False)
         # Hide Z-Limit column
         self.stepsTreeWidget.setColumnHidden(1, True)
-        self.stepsTreeWidget.itemSelectionChanged.connect(self.on_position_selected)
-        self.stepsTreeWidget.itemDoubleClicked.connect(self.on_steps_tree_double_clicked)
+        self.stepsTreeWidget.itemSelectionChanged.connect(self.updateStepButtons)
+        self.stepsTreeWidget.itemDoubleClicked.connect(lambda item, column: self.editStep(item))
 
         self.addStepButton = QtWidgets.QPushButton(self)
         self.addStepButton.setText("&Add")
@@ -281,13 +281,10 @@ class TableWidget(QtWidgets.QWidget):
         layout.addWidget(self.joystickLimitsGroupBox)
         layout.addLayout(bottomLayout)
 
-    def on_position_selected(self):
+    def updateStepButtons(self) -> None:
         enabled = self.stepsTreeWidget.currentItem() is not None
         self.editStepButton.setEnabled(enabled)
         self.removeStepButton.setEnabled(enabled)
-
-    def on_steps_tree_double_clicked(self, item, index):
-        self.editCurrentStep()
 
     def addStep(self) -> None:
         dialog = TableStepDialog()
@@ -299,8 +296,7 @@ class TableWidget(QtWidgets.QWidget):
             self.stepsTreeWidget.addTopLevelItem(item)
             self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
 
-    def editCurrentStep(self) -> None:
-        item = self.stepsTreeWidget.currentItem()
+    def editStep(self, item: QtWidgets.QTreeWidgetItem) -> None:
         if isinstance(item, TableStepItem):
             dialog = TableStepDialog()
             dialog.setStepSize(item.stepSize())
@@ -311,6 +307,11 @@ class TableWidget(QtWidgets.QWidget):
                 item.setZLimit(dialog.zLimit())
                 item.setStepColor(dialog.stepColor())
                 self.stepsTreeWidget.sortItems(0, QtCore.Qt.AscendingOrder)
+
+    def editCurrentStep(self) -> None:
+        item = self.stepsTreeWidget.currentItem()
+        if isinstance(item, QtWidgets.QTreeWidgetItem):
+            self.editStep(item)
 
     def removeCurrentStep(self) -> None:
         item = self.stepsTreeWidget.currentItem()

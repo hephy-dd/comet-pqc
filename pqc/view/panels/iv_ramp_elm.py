@@ -93,9 +93,9 @@ class IVRampElmPanel(MatrixPanel):
         hvsrcGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(hvsrcGroupBox, 1)
-        layout.addStretch(1)
+        layout.addWidget(rampGroupBox, 1)  # type: ignore
+        layout.addWidget(hvsrcGroupBox, 1)  # type: ignore
+        layout.addStretch(1)  # type: ignore
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
@@ -131,7 +131,7 @@ class IVRampElmPanel(MatrixPanel):
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.plotWidget.series().get("xfit").qt.setVisible(False)
+        self.plotWidget.series().get("xfit").qt.setVisible(False)  # type: ignore
         self.plotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():

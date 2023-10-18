@@ -89,7 +89,7 @@ class SamplePanel(BasicPanel):
         sampleGroupBoxLayout.setColumnStretch(0, 0)
         sampleGroupBoxLayout.setColumnStretch(1, 1)
 
-        self.layout().insertWidget(2, self.sampleGroupBox)
+        self.layout().insertWidget(2, self.sampleGroupBox)  # type: ignore
 
     def updateSampleName(self) -> None:
         if isinstance(self.context, SampleTreeItem):

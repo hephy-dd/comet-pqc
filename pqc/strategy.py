@@ -131,17 +131,7 @@ class SequenceStrategy:
 
     def __call__(self, sequence_item) -> None:
         self.context.set_message("Process samples...")
-        # Check contact positions
-        for sample_item in sequence_item.children():
-            if sample_item.isEnabled():
-                if isinstance(sample_item, SampleTreeItem):
-                    for contact_item in sample_item.children():
-                        if contact_item.isEnabled():
-                            if not contact_item.hasPosition():
-                                self.context.set_item_state(sample_item, sample_item.ErrorState)
-                                sample_name = contact_item.sample.name()
-                                contact_name = contact_item.name()
-                                raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
+        self.validate(sequence_item)
         for sample_item in sequence_item.children():
             if self.context.stop_requested:
                 break
@@ -162,6 +152,21 @@ class SequenceStrategy:
         move_to_after_position = self.context.config.get("move_to_after_position")
         if move_to_after_position is not None:
             self.context.safe_move_table(move_to_after_position)
+
+    def validate(self, sequence_item) -> None:
+        # Check contact positions
+        for sample_item in sequence_item.children():
+            if sample_item.isEnabled():
+                if isinstance(sample_item, SampleTreeItem):
+                    for contact_item in sample_item.children():
+                        if contact_item.isEnabled():
+                            if not contact_item.hasPosition():
+                                self.context.set_item_state(sample_item, sample_item.ErrorState)
+                                sample_name = contact_item.sample.name()
+                                contact_name = contact_item.name()
+                                raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
+                elif isinstance(sample_item, GroupTreeItem):
+                    self.validate(sample_item)
 
 
 class GroupStrategy:
@@ -208,14 +213,7 @@ class SampleStrategy:
     def __call__(self, sample_item) -> object:
         self.context.set_message("Process sample...")
         self.context.set_item_state(sample_item, sample_item.ProcessingState)
-        # Check contact positions
-        for contact_item in sample_item.children():
-            if contact_item.isEnabled():
-                if not contact_item.hasPosition():
-                    self.context.set_item_state(sample_item, sample_item.ErrorState)
-                    sample_name = contact_item.sample.name()
-                    contact_name = contact_item.name()
-                    raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
+        self.validate(sample_item)
         results = []
         for contact_item in sample_item.children():
             if self.context.stop_requested:
@@ -243,6 +241,16 @@ class SampleStrategy:
         move_to_after_position = self.context.config.get("move_to_after_position")
         if move_to_after_position is not None:
             self.context.safe_move_table(move_to_after_position)
+
+    def validate(self, sample_item) -> None:
+        # Check contact positions
+        for contact_item in sample_item.children():
+            if contact_item.isEnabled():
+                if not contact_item.hasPosition():
+                    self.context.set_item_state(sample_item, sample_item.ErrorState)
+                    sample_name = contact_item.sample.name()
+                    contact_name = contact_item.name()
+                    raise RuntimeError(f"No contact position assigned for {sample_name} -> {contact_name}")
 
 
 class ContactStrategy:

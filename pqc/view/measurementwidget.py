@@ -16,6 +16,7 @@ from .panels import (
     IVRampPanel,
     SamplePanel,
     GroupPanel,
+    PanelStub,
 )
 
 __all__ = ["MeasurementWidget"]
@@ -67,7 +68,7 @@ class PanelStack(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.panels: Dict[str, QtWidgets.QWidget] = {}
+        self.panels: Dict[str, PanelStub] = {}
 
         groupPanel = GroupPanel()
         groupPanel.groupChanged.connect(self.groupChanged.emit)
@@ -89,7 +90,7 @@ class PanelStack(QtWidgets.QWidget):
         self.addPanel("iv_ramp_4_wire_bias", IVRamp4WireBiasPanel())
         self.addPanel("frequency_scan", FrequencyScanPanel())
 
-    def addPanel(self, type: str, panel: QtWidgets.QWidget) -> None:
+    def addPanel(self, type: str, panel: PanelStub) -> None:
         self.panels.update({type: panel})
         self.layout().addWidget(panel)
         panel.setVisible(False)
@@ -114,6 +115,6 @@ class PanelStack(QtWidgets.QWidget):
         for child in self.panels.values():
             child.setLocked(locked)
 
-    def get(self, type: str) -> Optional[QtWidgets.QWidget]:
+    def getPanel(self, type: str) -> Optional[PanelStub]:
         """Get panel by type name."""
         return self.panels.get(type)

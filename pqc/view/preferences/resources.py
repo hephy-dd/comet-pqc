@@ -10,13 +10,23 @@ from pqc.settings import settings
 __all__ = ["ResourcesWidget"]
 
 
-class TextItem(QtWidgets.QTreeWidgetItem): ...
+def safe_timeout(timeout: str) -> int:
+    try:
+        return max(0, int(timeout))
+    except:
+        return 0
 
 
-class TerminationItem(QtWidgets.QTreeWidgetItem): ...
+class PropertyItem(QtWidgets.QTreeWidgetItem): ...
 
 
-class TimeoutItem(QtWidgets.QTreeWidgetItem): ...
+class TextItem(PropertyItem): ...
+
+
+class TerminationItem(PropertyItem): ...
+
+
+class TimeoutItem(PropertyItem): ...
 
 
 class ResourceItem(QtWidgets.QTreeWidgetItem):
@@ -78,12 +88,12 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
         self.treeWidget = QtWidgets.QTreeWidget(self)
         self.treeWidget.setHeaderLabels(["Resource", "Value"])
         self.treeWidget.currentItemChanged.connect(self.itemSelected)
-        self.treeWidget.itemDoubleClicked.connect(self.itemDoubleClicked)
+        self.treeWidget.itemDoubleClicked.connect(lambda item, column: self.editItem(item))
 
         self.editButton = QtWidgets.QPushButton(self)
         self.editButton.setText("&Edit")
         self.editButton.setEnabled(False)
-        self.editButton.clicked.connect(self.editItem)
+        self.editButton.clicked.connect(self.editCurrentItem)
 
         layout = QtWidgets.QGridLayout(self)
         layout.addWidget(self.treeWidget, 0, 0, 2, 1)
@@ -116,29 +126,24 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
         for index in range(self.treeWidget.topLevelItemCount()):
             item = self.treeWidget.topLevelItem(index)
             if isinstance(item, ResourceItem):
-                try:
-                    timeout = int(item.timeout())
-                except ValueError:
-                    timeout = self.default_timeout
                 resources[item.name()] = {
                     "resource_name": item.resourceName(),
                     "read_termination": unescape_string(item.readTermination()),
                     "write_termination": unescape_string(item.writeTermination()),
-                    "timeout": timeout,
+                    "timeout": safe_timeout(item.timeout()) or self.default_timeout,
                     "visa_library": item.visaLibrary(),
                 }
         settings.settings["resources"] = resources
 
-    def editItem(self) -> None:
-        item = self.treeWidget.currentItem()
+    def editItem(self, item: QtWidgets.QTreeWidgetItem) -> None:
         if isinstance(item, TextItem):
-            text, success = QtWidgets.QInputDialog.getText(self, "", "", QtWidgets.QLineEdit.Normal, item.text(1))
+            text, success = QtWidgets.QInputDialog.getText(self, "", item.text(0), QtWidgets.QLineEdit.Normal, item.text(1))
             if success:
                 item.setText(1, text)
         elif isinstance(item, TerminationItem):
             items = ["\\r\\n", "\\n", "\\r"]
             index = items.index(item.text(1)) if item.text(1) in items else 0
-            text, success = QtWidgets.QInputDialog.getItem(self, "Termination", "Set termination character(s).", items, index, False)
+            text, success = QtWidgets.QInputDialog.getItem(self, "", item.text(0), items, index, False)
             if success:
                 item.setText(1, text)
         elif isinstance(item, TimeoutItem):
@@ -146,12 +151,14 @@ class ResourcesWidget(ResourceMixin, QtWidgets.QWidget):
                 value = int(item.text(1))
             except:
                 value = 4000
-            value, success = QtWidgets.QInputDialog.getInt(self, "Timeout", "Set timeout in milliseconds.", value, 0, 60000)
+            value, success = QtWidgets.QInputDialog.getInt(self, "", f"{item.text(0)} in milliseconds.", safe_timeout(item.text(1)), 0, 60000)
             if success:
                 item.setText(1, format(value))
 
-    def itemSelected(self, current, previous):
-        self.editButton.setEnabled(current is not None and not current.childCount())
+    def editCurrentItem(self) -> None:
+        item = self.treeWidget.currentItem()
+        if isinstance(item, QtWidgets.QTreeWidgetItem):
+            self.editItem(item)
 
-    def itemDoubleClicked(self, item, index):
-        self.editItem()
+    def itemSelected(self, current: Optional[QtWidgets.QTreeWidgetItem], previous: Optional[QtWidgets.QTreeWidgetItem]) -> None:
+        self.editButton.setEnabled(isinstance(current, PropertyItem))

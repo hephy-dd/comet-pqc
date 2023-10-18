@@ -25,7 +25,7 @@ class ContactPanel(BasicPanel):
         centralLayout.addWidget(self.positionWidget)
         centralLayout.addStretch(1)
 
-        self.layout().insertLayout(2, centralLayout)
+        self.layout().insertLayout(2, centralLayout)  # type: ignore
 
     def setTableEnabled(self, enabled: bool) -> None:
         self.isTableEnabled = enabled

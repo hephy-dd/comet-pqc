@@ -26,6 +26,21 @@ def load_all_sequences(config):
     return configs
 
 
+class SequenceItem(QtWidgets.QTreeWidgetItem):
+
+    def __init__(self, sequence, filename: str) -> None:
+        super().__init__([sequence.name, filename])
+        self._sequence = sequence
+        self._filename: str = filename
+        self.setToolTip(1, filename)
+
+    def sequence(self):
+        return self._sequence
+
+    def filename(self) -> str:
+        return self._filename
+
+
 class SequenceManagerDialog(QtWidgets.QDialog):
     """Dialog for managing custom sequence configuration files."""
 
@@ -86,15 +101,16 @@ class SequenceManagerDialog(QtWidgets.QDialog):
     def currentSequence(self):
         """Return selected sequence object or None if nothing selected."""
         item = self.sequenceTreeWidget.currentItem()
-        if item is not None:
-            return item.sequence  # TODO
+        if isinstance(item, SequenceItem):
+            return item.sequence()  # TODO
         return None
 
     def sequenceFilenames(self) -> list:
         filenames: list = []
         for index in range(self.sequenceTreeWidget.topLevelItemCount()):
             item = self.sequenceTreeWidget.topLevelItem(index)
-            filenames.append(item.sequence.filename)
+            if isinstance(item, SequenceItem):
+                filenames.append(item.filename())
         return filenames
 
     # Settings
@@ -125,11 +141,7 @@ class SequenceManagerDialog(QtWidgets.QDialog):
                     progress.setValue(progress.value() + 1)
                     try:
                         sequence = load_sequence(filename)
-                        item = QtWidgets.QTreeWidgetItem()
-                        item.setText(0, sequence.name)
-                        item.setText(1, filename)
-                        item.setToolTip(1, filename)
-                        item.sequence = sequence
+                        item = SequenceItem(sequence, filename)
                         self.sequenceTreeWidget.addTopLevelItem(item)
                     except Exception as exc:
                         logger.exception(exc)
@@ -160,7 +172,8 @@ class SequenceManagerDialog(QtWidgets.QDialog):
         filenames = []
         for index in range(self.sequenceTreeWidget.topLevelItemCount()):
             item = self.sequenceTreeWidget.topLevelItem(index)
-            filenames.append(item.sequence.filename)
+            if isinstance(item, SequenceItem):
+                filenames.append(item.filename())
         config.sequence_filenames = filenames
 
     # Callbacks
@@ -176,8 +189,8 @@ class SequenceManagerDialog(QtWidgets.QDialog):
             self.moveUpButton.setEnabled(True)
             self.moveDownButton.setEnabled(True)
             self.removeButton.setEnabled(True)
-            if os.path.exists(item.sequence.filename):
-                with open(item.sequence.filename) as f:
+            if os.path.exists(item.filename()):
+                with open(item.filename()) as f:
                     data = yaml.safe_load(f)
 
                     def append(item, key, value):
@@ -217,19 +230,15 @@ class SequenceManagerDialog(QtWidgets.QDialog):
         if filename:
             sequence = load_sequence(filename)
             if filename not in self.sequenceFilenames():
-                item = QtWidgets.QTreeWidgetItem()
-                item.setText(0, sequence.name)
-                item.setText(1, filename)
-                item.setToolTip(1, filename)
-                item.sequence = sequence
+                item = SequenceItem(sequence, filename)
                 self.sequenceTreeWidget.addTopLevelItem(item)
                 self.sequenceTreeWidget.indexOfTopLevelItem(item)
                 self.sequenceTreeWidget.setCurrentItem(item)
 
     def removeSequence(self) -> None:
         item = self.sequenceTreeWidget.currentItem()
-        if item is not None:
-            message = f"Do yo want to remove sequence {item.sequence.name!r}?"
+        if isinstance(item, SequenceItem):
+            message = f"Do yo want to remove sequence {item.sequence().name!r}?"
             result = QtWidgets.QMessageBox.question(self, "Remove Sequence", message)
             if result == QtWidgets.QMessageBox.Yes:
                 index = self.sequenceTreeWidget.indexOfTopLevelItem(item)

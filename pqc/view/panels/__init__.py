@@ -1,3 +1,4 @@
+from .panel import PanelStub, Panel
 from .contact import *
 from .cv_ramp import *
 from .cv_ramp_alt import *

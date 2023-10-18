@@ -18,7 +18,7 @@ class IVRamp4WirePanel(MatrixPanel):
         super().__init__(parent)
         self.setName("4 Wire IV Ramp")
 
-        self.series = {}
+        self.series: dict = {}
 
         VSourceMixin(self)
         EnvironmentMixin(self)
@@ -89,9 +89,9 @@ class IVRamp4WirePanel(MatrixPanel):
         vsrcGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(vsrcGroupBox, 1)
-        layout.addStretch(1)
+        layout.addWidget(rampGroupBox, 1)  # type: ignore
+        layout.addWidget(vsrcGroupBox, 1)  # type: ignore
+        layout.addStretch(1)  # type: ignore
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
@@ -129,7 +129,7 @@ class IVRamp4WirePanel(MatrixPanel):
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.plotWidget.series().get("xfit").qt.setVisible(False)
+        self.plotWidget.series().get("xfit").qt.setVisible(False)  # type: ignore
         self.plotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():

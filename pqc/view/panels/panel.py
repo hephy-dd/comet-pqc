@@ -116,8 +116,8 @@ class Panel(BasicPanel):
         l.addStretch()
         control_panel_layout.addLayout(l, 1)
 
-        self.layout().insertWidget(2, self.data_panel)
-        self.layout().insertWidget(3, self.control_panel)
+        self.layout().insertWidget(2, self.data_panel)  # type: ignore
+        self.layout().insertWidget(3, self.control_panel)  # type: ignore
 
         self.dataTabWidget = QtWidgets.QTabWidget(self)
 
@@ -129,8 +129,8 @@ class Panel(BasicPanel):
         self.dataTabWidget.insertTab(0, self.analysisTreeWidget, "Analysis")
 
         # Plots
-        self.series_transform = {}
-        self.series_transform_default = lambda x, y: (x, y)
+        self.series_transform: Dict = {}
+        self.series_transform_default: Callable = lambda x, y: (x, y)
 
         self.registerBindType(
             QtWidgets.QSpinBox,

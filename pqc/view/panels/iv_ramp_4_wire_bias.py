@@ -126,9 +126,9 @@ class IVRamp4WireBiasPanel(MatrixPanel):
         vsrcGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(hvsrcBiasGroupBox, 1)
-        layout.addWidget(vsrcGroupBox, 1)
+        layout.addWidget(rampGroupBox, 1)  # type: ignore
+        layout.addWidget(hvsrcBiasGroupBox, 1)  # type: ignore
+        layout.addWidget(vsrcGroupBox, 1)  # type: ignore
 
         ampere = comet.ureg("A")
         volt = comet.ureg("V")
@@ -164,7 +164,7 @@ class IVRamp4WireBiasPanel(MatrixPanel):
 
     def clearReadings(self) -> None:
         super().clearReadings()
-        self.plotWidget.series().get("xfit").qt.setVisible(False)
+        self.plotWidget.series().get("xfit").qt.setVisible(False)  # type: ignore
         self.plotWidget.clear()
         if self.measurement:
             for name, points in self.measurement.series.items():

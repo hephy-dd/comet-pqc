@@ -7,6 +7,14 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.47.0
+
+### Changed
+- Refactored code to pass mypy all tests.
+
+### Fixed
+- Reset sequence state for group items correctly.
+
 ## 0.46.1
 
 ### Added

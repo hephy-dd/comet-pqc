@@ -88,9 +88,9 @@ class FrequencyScanPanel(MatrixPanel):
         lcrGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(hvsrcGroupBox, 1)
-        layout.addWidget(lcrGroupBox, 1)
-        layout.addStretch(1)
+        layout.addWidget(hvsrcGroupBox, 1)  # type: ignore
+        layout.addWidget(lcrGroupBox, 1)  # type: ignore
+        layout.addStretch(1)  # type: ignore
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")

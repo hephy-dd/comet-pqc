@@ -24,14 +24,14 @@ class CVRampAltPanel(MatrixPanel):
         self.plotWidget = PlotWidget(self)
         self.plotWidget.addAxis("x", align="bottom", text="Voltage [V] (abs)")
         self.plotWidget.addAxis("y", align="right", text="Capacitance [pF]")
-        self.lcrSeries = self.plotWidget.addSeries("lcr", "x", "y", text="LCR Cp", color="blue")
+        self.lcrSeries = self.plotWidget.addSeries("lcr", "x", "y", text="LCR Cp", color="blue")  # type: ignore
         self.dataTabWidget.insertTab(0, self.plotWidget, "CV Curve")
 
         self.plotWidget2 = PlotWidget(self)
         self.plotWidget2.addAxis("x", align="bottom", text="Voltage [V] (abs)")
         self.plotWidget2.addAxis("y", align="right", text="1/Capacitance² [1/F²]")
-        self.plotWidget2.axes().get("y").qt.setLabelFormat("%G")
-        self.lcr2Series = self.plotWidget2.addSeries("lcr2", "x", "y", text="LCR Cp", color="blue")
+        self.plotWidget2.axes().get("y").qt.setLabelFormat("%G")  # type: ignore
+        self.lcr2Series = self.plotWidget2.addSeries("lcr2", "x", "y", text="LCR Cp", color="blue")  # type: ignore
         self.dataTabWidget.insertTab(1, self.plotWidget2, "1/C² Curve")
 
         self.voltageStartSpinBox = QtWidgets.QDoubleSpinBox(self)
@@ -97,9 +97,9 @@ class CVRampAltPanel(MatrixPanel):
         lcrFreqGroupBoxLayout.addStretch()
 
         layout = self.generalWidget.layout()
-        layout.addWidget(rampGroupBox, 1)
-        layout.addWidget(lcrFreqGroupBox, 1)
-        layout.addStretch(1)
+        layout.addWidget(rampGroupBox, 1)  # type: ignore
+        layout.addWidget(lcrFreqGroupBox, 1)  # type: ignore
+        layout.addStretch(1)  # type: ignore
 
         fahrad = comet.ureg("F")
         volt = comet.ureg("V")

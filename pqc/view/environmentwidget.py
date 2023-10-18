@@ -22,9 +22,9 @@ class EnvironmentWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         # Data series
-        self.box_temperature_series = []
-        self.chuck_temperature_series = []
-        self.box_humidity_series = []
+        self.box_temperature_series: list = []
+        self.chuck_temperature_series: list = []
+        self.box_humidity_series: list = []
 
         # Plot
         self.plotWidget = PlotWidget()
@@ -91,12 +91,17 @@ class EnvironmentWidget(QtWidgets.QWidget):
             self.updatePlot()
 
     def updatePlot(self) -> None:
-        self.plotWidget.series().get("box_temperature").replace(self.box_temperature_series)
-        self.plotWidget.series().get("chuck_temperature").replace(self.chuck_temperature_series)
-        self.plotWidget.series().get("box_humidity").replace(self.box_humidity_series)
+        self.updateSeries("box_temperature", self.box_temperature_series)
+        self.updateSeries("chuck_temperature", self.chuck_temperature_series)
+        self.updateSeries("box_humidity", self.box_humidity_series)
         # Suppress invalid float crashes
         try:
             self.plotWidget.smartFit()
         except Exception as exc:
             logger.exception(exc)
             logger.error("failed to resize plot.")
+
+    def updateSeries(self, key: str, points: list) -> None:
+        series = self.plotWidget.series().get("box_temperature")
+        if series:
+            series.replace(points)

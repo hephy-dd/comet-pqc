@@ -80,9 +80,9 @@ def main() -> None:
     app.lastWindowClosed.connect(app.quit)
 
     # TODO
-    app.reflection = lambda: app
-    app.name = app.applicationName()
-    app.organization = app.organizationName()
+    app.reflection = lambda: app  # type: ignore
+    app.name = app.applicationName()  # type: ignore
+    app.organization = app.organizationName()  # type: ignore
 
     # Register interupt signal handler
     def signal_handler(signum, frame):
