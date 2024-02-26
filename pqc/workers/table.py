@@ -606,6 +606,7 @@ class AlternateTableWorker(TableWorker):
                             tb = traceback.format_exc()
                             self.emit("failed", exc, tb)
                             self.emit("stopped")
+                            raise
                         finally:
                             self._queue.task_done()
                     if t.delta() > self.update_interval:
