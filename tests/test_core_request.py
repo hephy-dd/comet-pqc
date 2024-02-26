@@ -11,7 +11,8 @@ def test_request():
 
 def test_request_exception():
     req = Request(lambda: 1 / 0)
-    req()
+    with pytest.raises(ZeroDivisionError):
+        req()
     with pytest.raises(ZeroDivisionError):
         req.get(timeout=.001)
 

@@ -351,8 +351,9 @@ class AlternateTableWorker(TableWorker):
         def request(table):
             self._stop_event.clear()
             self.set_message("Calibrating...")
+            timeout: float = 60.0  # movement timeout in seconds
             retries = RETRIES
-            delay = 1.0
+            delay: float = 1.0  # operaion delay in seconds
             axes = table.axes
 
             def handle_abort():
@@ -374,35 +375,37 @@ class AlternateTableWorker(TableWorker):
                 index = axes.index(axis)
                 logger.info("ncal %s...", AXIS_NAMES.get(index))
                 axis.ncal()
-                for i in range(retries + 1):
+                t_start = time.monotonic()
+                time.sleep(delay)
+                while table.is_moving:
                     handle_abort()
-                    # Axis reached origin?
+                    if time.monotonic() - t_start > timeout:
+                        raise TimeoutError()
                     current_pos = table.position
                     update_status(*current_pos)
-                    if current_pos[index] == 0.0:
-                        logger.info("ncal %s... done.", AXIS_NAMES.get(index))
-                        break
                     time.sleep(delay)
-                return i < retries
+                current_pos = table.position
+                update_status(*current_pos)
+                logger.info("ncal %s... done.", AXIS_NAMES.get(index))
+                return True
 
             def nrm(axis):
                 index = axes.index(axis)
                 logger.info("nrm %s...", AXIS_NAMES.get(index))
                 axis.nrm()
-                reference_pos = table.position
-                update_status(*reference_pos)
+                t_start = time.monotonic()
                 time.sleep(delay)
-                for i in range(retries + 1):
+                while table.is_moving:
                     handle_abort()
+                    if time.monotonic() - t_start > timeout:
+                        raise TimeoutError()
                     current_pos = table.position
                     update_status(*current_pos)
-                    # Axis stopped moving?
-                    if reference_pos[index] == current_pos[index]:
-                        logger.info("nrm %s... done.", AXIS_NAMES.get(index))
-                        break
-                    reference_pos = current_pos
                     time.sleep(delay)
-                return i < retries
+                current_pos = table.position
+                update_status(*current_pos)
+                logger.info("nrm %s... done.", AXIS_NAMES.get(index))
+                return True
 
             handle_abort()
             update_caldone()
@@ -476,10 +479,10 @@ class AlternateTableWorker(TableWorker):
             table.handle_error()
 
             # Moving into limit switches generates error 1004
-            table.relative_move((-AXIS_OFFSET, -AXIS_OFFSET, 0))
+            table.move_relative((-AXIS_OFFSET, -AXIS_OFFSET, 0))
             for i in range(retries):
                 time.sleep(delay)
-                if not table.is_moving():
+                if not table.is_moving:
                     break
                 handle_abort()
                 update_status(*table.position)
@@ -491,12 +494,12 @@ class AlternateTableWorker(TableWorker):
             table.handle_error(ignore=[1004])
 
             # Move X=52.000 mm before Z calibration to avoid collisions
-            x_offset = 52000
+            x_offset = 52000  # TODO
             y_offset = 0
-            table.relative_move((x_offset, y_offset, 0))
+            table.move_relative((x_offset, y_offset, 0))
             for i in range(retries):
                 time.sleep(delay)
-                if not table.is_moving():
+                if not table.is_moving:
                     break
                 handle_abort()
                 update_status(*table.position)
@@ -538,12 +541,12 @@ class AlternateTableWorker(TableWorker):
             table.handle_error()
 
             # Move Z axis down
-            x_offset = 52000
+            x_offset = 52000  # TODO
             y_offset = 0
             table.move_absolute((x_offset, y_offset, 0))
             for i in range(retries):
                 time.sleep(delay)
-                if not table.is_moving():
+                if not table.is_moving:
                     break
                 handle_abort()
                 update_status(*table.position)
@@ -559,10 +562,10 @@ class AlternateTableWorker(TableWorker):
             table.handle_error()
 
             # Move to default position
-            table.move_absolute(0, 0, 0)
+            table.move_absolute((0, 0, 0))
             for i in range(retries):
                 time.sleep(delay)
-                if not table.is_moving():
+                if not table.is_moving:
                     break
                 handle_abort()
                 update_status(*table.position)

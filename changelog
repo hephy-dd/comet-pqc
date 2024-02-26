@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Reset sequence state for group items correctly.
 
+## [0.46.2] - 2024-02-26
+### Fixed
+- Table calibration fails for Z axis (#214).
+
 ## [0.46.1] - 2023-10-16
 ### Added
 - Collapse all samples action (#210).
@@ -411,7 +415,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default HV source route terminal `rear` (#17).
 
 [Unreleased]: https://github.com/hephy-dd/comet-pqc/compare/0.47.0...HEAD
-[0.47.0]: https://github.com/hephy-dd/comet-pqc/compare/0.46.1...0.47.0
+[0.47.0]: https://github.com/hephy-dd/comet-pqc/compare/0.46.2...0.47.0
+[0.46.2]: https://github.com/hephy-dd/comet-pqc/compare/0.46.1...0.46.2
 [0.46.1]: https://github.com/hephy-dd/comet-pqc/compare/0.46.0...0.46.1
 [0.46.0]: https://github.com/hephy-dd/comet-pqc/compare/0.45.0...0.46.0
 [0.45.0]: https://github.com/hephy-dd/comet-pqc/compare/0.44.0...0.45.0

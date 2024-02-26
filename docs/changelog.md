@@ -15,6 +15,11 @@ nav_order: 10
 ### Fixed
 - Reset sequence state for group items correctly.
 
+## 0.46.2
+
+### Fixed
+- Table calibration fails for Z axis.
+
 ## 0.46.1
 
 ### Added
