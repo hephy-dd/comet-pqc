@@ -32,7 +32,7 @@ from .sequencemanager import SequenceManagerDialog
 __all__ = ["MainWindow"]
 
 APP_TITLE = "PQC"
-APP_COPY = "Copyright &copy; 2020-2023 HEPHY"
+APP_COPY = "Copyright &copy; 2020-2024 HEPHY"
 APP_LICENSE = "This software is licensed under the GNU General Public License v3.0"
 APP_DECRIPTION = """Process Quality Control (PQC) for CMS Tracker."""
 
