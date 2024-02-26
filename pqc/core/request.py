@@ -24,6 +24,7 @@ class Request:
             self._result = self._target(*args, **kwargs)
         except Exception as exc:
             self._exc = exc
+            raise exc
         finally:
             self._ready.set()
 

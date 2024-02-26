@@ -7,6 +7,11 @@ nav_order: 10
 # Changelog
 {: .no_toc }
 
+## 0.46.2
+
+### Fixed
+- Table calibration fails for Z axis.
+
 ## 0.46.1
 
 ### Added

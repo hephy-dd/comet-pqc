@@ -268,7 +268,7 @@ class TableRole:
         return self.table.x, self.table.y, self.table.z
 
     @property
-    def table_is_moving(self) -> None:
+    def is_moving(self) -> None:
         return (self.table.status & 0x1) == 0x1
 
     def configure(self) -> None:
