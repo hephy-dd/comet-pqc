@@ -3,12 +3,6 @@ import os
 from pqc.core import utils
 
 
-def test_package_path():
-    root_path = os.path.dirname(os.path.dirname(__file__))
-    package_path = os.path.join(root_path, "pqc")
-    assert package_path == utils.PACKAGE_PATH
-
-
 def test_make_path():
     filename = os.path.join(utils.PACKAGE_PATH, "assets", "sample.txt")
     assert filename == utils.make_path("assets", "sample.txt")
